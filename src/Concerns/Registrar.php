@@ -88,7 +88,13 @@ trait Registrar
             false === mb_strpos($controller, $namespace)
         ) {
             $controller = $namespace . $controller;
+        } elseif (
+            is_array($controller) && !$controller instanceof \Closure &&
+            !class_exists($controller[0]) && count($controller) === 2)
+        {
+            $controller[0] = $namespace . $controller[0];
         }
+        
         return $controller;
     }
 
