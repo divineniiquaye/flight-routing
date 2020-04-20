@@ -19,63 +19,78 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Services;
 
-use BiuradPHP\Http\Interfaces\EmitterInterface;
 use Flight\Routing\Interfaces\PublisherInterface;
+use Laminas\HttpHandlerRunner\Emitter\EmitterInterface;
 use Psr\Http\Message\StreamInterface, LogicException;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 /**
- * Class StreamPublisher
+ * Class StreamPublisher.
  * StreamPublisher publishes the given response.
  */
 class HttpPublisher implements PublisherInterface
 {
     /**
      * {@inheritdoc}
+     *
+     * @throws \LogicException
      */
-    public function publish($content, ?EmitterInterface $emitter)
+    public function publish($content, ?EmitterInterface $emitter): bool
     {
         $content = empty($content) ? '' : $content;
 
-        if ($content instanceof StreamInterface) {
-            return $this->publish($content, $emitter);
-        }
-
-        if ($content instanceof PsrResponseInterface) {
-            http_response_code($content->getStatusCode());
-        }
-
-        if (null !== $emitter) {
+        if (null !== $emitter && $content instanceof PsrResponseInterface) {
             return $emitter->emit($content);
-        } elseif (is_null($emitter) && $content instanceof PsrResponseInterface) {
-            foreach ($content->getHeaders() as $name => $values) {
-                $name  = ucwords($name, '-'); // Filter a header name to wordcase
-                $value = $content->getHeaderLine($name);
-
-                $first = $name !== 'Set-Cookie';
-                if (true !== $first) {
-                    foreach ($values as $cookie) {
-                        header(sprintf('%s: %s', $name, $cookie), $first);
-                    }
-                } elseif ($first) {
-                    header($name.': '.$value, $first);
-                }
-            }
         }
 
-        // We want to make sure that we pass raw content's into empty resopnse.
-        if (is_scalar($content) || $content instanceof PsrResponseInterface) {
-            $output = fopen('php://output', 'a');
-
-            if ($content instanceof PsrResponseInterface) {
-                $content = $content->getBody()->getContents();
-            }
-
-            fwrite($output, $content);
-
-            return fclose($output);
+        if (null === $emitter && $content instanceof PsrResponseInterface) {
+            $this->emitResponseHeaders($content);
+            $content = $content->getBody();
         }
 
-        throw new LogicException('The response body must be instance of PsrResponseInterface\StreamInterface or is scalar');
+        if ($content instanceof StreamInterface) {
+            return $this->emitStreamBody($content);
+        }
+
+        throw new LogicException('The response body must be instance of PsrResponseInterface\StreamInterface');
+    }
+
+    /**
+     * Emit the message body.
+     */
+    private function emitStreamBody(StreamInterface $body) : bool
+    {
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
+
+        if (! $body->isReadable()) {
+            echo $body;
+            return true;
+        }
+
+        while (! $body->eof()) {
+            echo $body->read(8192);
+        }
+
+        return true;
+    }
+
+    /**
+     * Emit the response header.
+     */
+    private function emitResponseHeaders(PsrResponseInterface $response) : void
+    {
+        $statusCode = $response->getStatusCode();
+
+        foreach ($response->getHeaders() as $name => $values) {
+            $name  = ucwords($name, '-'); // Filter a header name to wordcase
+            $first = $name === 'Set-Cookie' ? false : true;
+
+            foreach ($values as $value) {
+                header(sprintf('%s: %s', $name, $value), $first, $statusCode);
+                $first = false;
+            }
+        }
     }
 }

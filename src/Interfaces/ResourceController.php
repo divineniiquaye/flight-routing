@@ -17,7 +17,7 @@ declare(strict_types=1);
  * @since     Version 0.1
  */
 
-namespace Flight\Routing;
+namespace Flight\Routing\Interfaces;
 
 use Psr\Http\Message\ServerRequestInterface as Request;
 

@@ -21,6 +21,8 @@ namespace Flight\Routing\Concerns;
 
 use Fig\Http\Message\RequestMethodInterface;
 
+use function strtoupper;
+
 /**
  * Class HttpMethods
  */

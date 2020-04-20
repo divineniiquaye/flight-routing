@@ -19,33 +19,17 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
-trait Validations
+use function rtrim;
+use function in_array;
+use function is_array;
+use function preg_match;
+use function strlen;
+use function substr;
+
+use const PHP_VERSION_ID;
+
+trait RouteValidation
 {
-    /**
-     * @var string[]string
-     */
-    private $parameters = [
-        'id' => '\d+',
-        'any' => '[^/]+',
-        'all' => '.*',
-        'string' => '\w+',
-        'slug' => '[\w\-_]+',
-    ];
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return $this
-     */
-    public function addParameters(array $requirements)
-    {
-        foreach ($requirements as $key => $regex) {
-            $this->parameters[$key] = $this->sanitizeRequirement($key, $regex);
-        }
-
-        return $this;
-    }
-
     /**
      * Check if given request method matches given route method.
      *
@@ -68,12 +52,13 @@ trait Validations
      *
      * @param string|null $routeDomain
      * @param string      $requestDomain
+     * @param array       $parameters
      *
      * @return bool
      */
-    protected function compareDomain(?string $routeDomain, string $requestDomain): bool
+    protected function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
     {
-        return $routeDomain == null || preg_match($routeDomain, $requestDomain);
+        return ($routeDomain == null || empty($routeDomain)) || preg_match($routeDomain, $requestDomain, $parameters);
     }
 
     /**
@@ -90,30 +75,36 @@ trait Validations
         return preg_match($routeUri, $requestUri, $parameters);
     }
 
-    private function sanitizeRequirement(string $key, string $regex)
-    {
-        if ('' !== $regex && '^' === $regex[0]) {
-            $regex = (string) mb_substr($regex, 1); // returns false for a single character
-        }
-
-        if ('$' === mb_substr($regex, -1)) {
-            $regex = substr($regex, 0, -1);
-        }
-
-        if ('' === $regex) {
-            throw new \InvalidArgumentException(sprintf('Routing requirement for "%s" cannot be empty.', $key));
-        }
-
-        return $regex;
-    }
-
     /**
-     * Get the value of parameters
+     * Check if the user is on the right uri which was matched.
+     * If matched returns null, else returns the path the user should be in.
      *
-     * @return  array
+     * @param string $routeUri
+     * @param string $requestUri
+     *
+     * @return string|null
      */
-    public function getParameters()
+    protected function compareRedirection(string $routeUri, string $requestUri): ?string
     {
-        return $this->parameters;
+        if (PHP_VERSION_ID < 70300 || !in_array(php_sapi_name(), ['cli-server', 'cgi-fcgi'])) {
+            return null;
+        }
+
+        // Resolve Request Uri.
+        $newRequestUri  = '/' === $requestUri ? '/' : rtrim($requestUri, '/');
+        $newRouteUri    = '/' === $routeUri ? $routeUri : rtrim($routeUri, '/');
+
+        $paths = [
+            'path'      => substr($requestUri, strlen($newRequestUri)),
+            'route'     => substr($routeUri, strlen($newRouteUri))
+        ];
+
+        if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
+            return $newRequestUri . $paths['route'];
+        } elseif (empty($paths['route']) && $paths['route'] !== $paths['path']) {
+            return $newRequestUri;
+        }
+
+        return null;
     }
 }

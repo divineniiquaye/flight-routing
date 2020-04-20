@@ -19,10 +19,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
+use Flight\Routing\Interfaces\ExceptionInterface;
+
 /**
  * Class InvalidControllerException
  */
-class InvalidControllerException extends \DomainException
+class InvalidControllerException extends \DomainException implements ExceptionInterface
 {
     //
 }

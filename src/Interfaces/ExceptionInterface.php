@@ -17,16 +17,11 @@ declare(strict_types=1);
  * @since     Version 0.1
  */
 
-namespace Flight\Routing\Concerns;
+namespace Flight\Routing\Interfaces;
 
 /**
- * Class GroupAttributes
+ * Marker interface for package-specific exceptions.
  */
-class GroupAttributes
+interface ExceptionInterface
 {
-    const MIDDLEWARE = 'middleware';
-    const PREFIX = 'prefix';
-    const NAMESPACE = 'namespace';
-    const DOMAIN = 'domain';
-    const NAME = 'name';
 }

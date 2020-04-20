@@ -1,6 +1,6 @@
-# Url routing is a simple, fast PHP router that is easy to get integrated with other routers. Heavily inspired by the Laravel router
+# Flight routing is a simple, fast PHP router that is easy to get integrated with other routers. Partially inspired by the Laravel router
 
-The goal of this project is to create a router that is more or less 100% compatible with the Laravel documentation, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority. Take it like standalone version of laravel routing.
+The goal of this project is to create a router that is more or less 100% compatible with all php http routers, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority.
 
 First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
 
@@ -142,12 +142,12 @@ In your ```index.php``` require your newly-created ```routes.php``` and call the
 
 It's not required, but you can set `namespace method paramter's value to '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
-Router uses [laminas-diactoros](https://github.com/laminas/laminas-diactoros) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
+Router uses [biurad-http](https://github.com/biurad/biurad-hhtp) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
 
 run this in command line if the package has not be added.
 
 ```bash
-composer require laminas/laminas-diactoros
+composer require biurad/biurad-http
 ```
 
 Please note that this example only covers how to this router in a project without an existing framework. If you are using a framework in your project, the implementation varies.
@@ -155,39 +155,46 @@ Please note that this example only covers how to this router in a project withou
 **This is an example of how your ```routes.php``` file shoud start:**
 
 ```php
-use Laminas\Diactoros\ServerRequestFactory;
+use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use BiuradPHP\Routing\RouteCollector as Router;
 
 // Need th have extensive idea in php before using this dependency ,though it easy to use.
-$router = new Router(ServerRequestFactory::fromGlobals());
+$router = new Router(Psr17Factory::fromGlobalRequest(), new Psr17Factory);
 
 /**
  * The default namespace for route-callbacks, so we don't have to specify it each time.
  * Can be overwritten by using the namespace config option on your routes.
  */
-$router->namespace('\Demo\Controllers');
+$router->setNamespace('\Demo\Controllers');
+
+// Routes goes here...
 
 // All routers goes in this space of the file
-
-return function (& $router): Router {
-  return $router;
-}();
+return $router;
 ```
+There are two ways of dipatching a router, either by using the default Flight\Routing\Services\HttpPublisher or BiuradPHP\Http\Response\EmitResponse to dispatch the router.
 
 **This is an example of a basic ```index.php``` file:**
 
 ```php
 <?php
 
+use Flight\Routing\Services\HttpPublisher;
+use BiuradPHP\Http\Response\EmitResponse;
+
 /* Load external routes file */
 $router = require_once 'routes.php';
 assert($router instanceof BiuradPHP\Routing\RouteCollector);
 
 // Start the routing
-$router->dispatch();
+return (new EmitResponse)->emit($router->dispatch());
+// or 
+return (new HttpPublisher)->publish($router->dispatch(), new EmitResponse);
 ```
 
 Remember the ```routes.php``` file you required in your ```index.php```? This file be where you place all your custom rules for routing.
+
+> **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be abit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml, doesn't contain a <!doctype> or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
 ## Basic routing
 
@@ -205,8 +212,8 @@ You can catch the request object like this example:
 
 ```php
 use Zend\Diactoros\ServerRequest;
-use Zend\Diactoros\Response\EmptyResponse;
-use Zend\Diactoros\Response\JsonResponse;
+use BiuradPHP\Http\Response\EmptyResponse;
+use BiuradPHP\Http\Response\JsonResponse;
 
 $router->get('/', function (ServerRequest $request) {
     return new JsonResponse([
@@ -235,10 +242,10 @@ $router->post('/blog/posts', function (ServerRequest $request) {
 The example below illustrates supported kinds of responses.
 
 ```php
-use Zend\Diactoros\Response\EmptyResponse;
-use Zend\Diactoros\Response\HtmlResponse;
-use Zend\Diactoros\Response\JsonResponse;
-use Zend\Diactoros\Response\TextResponse;
+use BiuradPHP\Http\Response\EmptyResponse;
+use BiuradPHP\Http\Response\HtmlResponse;
+use BiuradPHP\Http\Response\JsonResponse;
+use BiuradPHP\Http\Response\TextResponse;
 
 $router
     ->get('/html/1', function () {
@@ -264,7 +271,7 @@ $router
 In case of needing to redirecting user to another URL:
 
 ```php
-use Zend\Diactoros\Response\RedirectResponse;
+use BiuradPHP\Http\Response\RedirectResponse;
 
 $router
     ->get('/redirect', function () {
@@ -300,7 +307,7 @@ $router
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
 ```php
-$router->match(['get', 'post'], '/', function() {
+$router->map(['get', 'post'], '/', function() {
   // ...
 });
 
@@ -316,7 +323,7 @@ $router->any('foo', function() {
 You'll properly wondering by know how you parse parameters from your urls. For example, you might want to capture the users id from an url. You can do so by defining route-parameters.
 
 ```php
-$router->get('/user/{id}', function ($userId) {
+$router->get('/user/{userId}', function ($userId) {
   return 'User with id: ' . $userId;
 });
 ```
@@ -324,7 +331,7 @@ $router->get('/user/{id}', function ($userId) {
 You may define as many route parameters as required by your route:
 
 ```php
-$router->get('/posts/{post}/comments/{comment}', function ($postId, $commentId) {
+$router->get('/posts/{postId}/comments/{commentId}', function ($postId, $commentId) {
   // ...
 });
 ```
@@ -354,15 +361,19 @@ You may constrain the format of your route parameters using the where method on 
 ```php
 $router->get('/user/{name}', function ($name) {
     //
-})->define('name', '[A-Za-z]+');
+})->setPattern('name', '[A-Za-z]+');
 
-$router->get('/user/{id}', function ($id) {
+$router->get('/user/{id}', function (int $id) {
     //
-})->define('id', '[0-9]+');
+})->setPattern('id', '[0-9]+');
 
-$router->get('/user/{id}/{name}', function ($id, $name) {
+$router->get('/user/{id}/{name}', function (int $id, string $name) {
     //
 })->whereArray(['id' => '[0-9]+', 'name' => '[a-z]+']);
+
+$router->get('/user/{id<[0-9]+>}/{name<[a-z]+>}', function (int $id, string $name) {
+    //
+});
 ```
 
 ## Named routes
@@ -372,13 +383,13 @@ Named routes allow the convenient generation of URLs or redirects for specific r
 ```php
 $router->get('/user/profile', function () {
     // Your code here
-})->name('profile');
+})->setName('profile');
 ```
 
 You can also specify names for Controller-actions:
 
 ```php
-$router->get('/user/profile', 'UserController@profile')->name('profile');
+$router->get('/user/profile', 'UserController@profile')->setName('profile');
 ```
 
 ### Generating URLs To Named Routes
@@ -395,7 +406,7 @@ If the named route defines parameters, you may pass the parameters as the second
 ```php
 $router->get('/user/{id}/profile', function ($id) {
     //
-})->name('profile');
+})->setName('profile');
 
 $url = $router->generateUri('profile', ['id' => 1]);
 ```
@@ -416,10 +427,10 @@ Input --[Request]↦ Router ↦ Middleware 1 ↦ ... ↦ Middleware N ↦ Contro
 Output ↤[Response]- Router ↤ Middleware 1 ↤ ... ↤ Middleware N ↤ [Response]
 ```
 
-We using using [zend-stratigility](https://github.com/zendframework/zend-stratigility) to allow better and saver middleware usage. install [zend-stratigility](https://github.com/zendframework/zend-stratigility) via composer:
+We using using [laminas-stratigility](https://github.com/laminas/laminas-stratigility) to allow better and saver middleware usage. install [laminas-stratigility](https://github.com/zendframework/laminas-stratigility) via composer:
 
 ```bash
-composer require zendframework/zend-stratigility
+composer require laminas/laminas-stratigility
 ```
 
 To declare a middleware, you must implements Middleware `Psr\Http\Server\MiddlewareInterface` interface.
@@ -432,7 +443,7 @@ it passes the request to the next middleware or the controller (if there is no m
 ```php
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
-use Zend\Diactoros\Response\EmptyResponse;
+use BiuradPHP\Http\Response\EmptyResponse;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 
@@ -452,7 +463,7 @@ class AuthMiddleware implements Middleware
 To assign middleware to all routes within a group, you may use the middleware key in the group attribute array. Middleware are executed in the order they are listed in the array:
 
 ```php
-$router->group(['middleware' => \Demo\Middleware\AuthMiddleware::class], function ($route) {
+$router->group(['middleware' => \Demo\Middleware\AuthMiddleware::class], function (RouterProxyInterface $route) {
     $route->get('/', function ()    {
         // Uses Auth Middleware
     });
@@ -466,7 +477,7 @@ $router->group(['middleware' => \Demo\Middleware\AuthMiddleware::class], functio
 
 $router->get('/auth', function () {
    // Uses Auth Middleware
-})->middlewares([\Demo\Middleware\AuthMiddleware::class]);
+})->addMiddleware(\Demo\Middleware\AuthMiddleware::class);
 
 ```
 
@@ -483,7 +494,7 @@ For example if your route has an absolute callback like `\Demo\Controller\Defaul
 To fix this you can make the callback relative by removing the `\` in the beginning of the callback.
 
 ```php
-$router->group(['namespace' => 'Admin'], function () {
+$router->group(['namespace' => 'Admin'], function (RouterProxyInterface $route) {
     // Controllers Within The "App\Http\Controllers\Admin" Namespace
 });
 ```
@@ -494,15 +505,15 @@ Route groups may also be used to handle sub-domain routing. The sub-domain may b
 
 ```php
 // Domain
-$router->get('/', 'Controller@method', [], 'domain2.com');
+$router->get('/', 'Controller@method')->setDomain('domain.com');
 
 // Subdomain
-$router->get('/', 'Controller@method', [], 'server2.domain.com');
+$router->get('/', 'Controller:method')->setDomain('server2.domain.com');
 
 // Subdomain regex pattern
-$router->get('/', 'Controller@method', [], '(.*).domain.com');
+$router->get('/', ['Controller', 'method'])->setDomain('{accounts<.*>}.domain.com');
 
-$router->group(['domain' => 'account.myapp.com'], function ($route) {
+$router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface $route) {
     $route->get('/user/{id}', function ($id) {
         //
     });
@@ -548,22 +559,22 @@ use our example [Issue Report](.github/ISSUE_TEMPLATE/Bug_report.md) template.
 
 You're free to use this package, but if it makes it to your production environment we highly appreciate you sending us a message on our website, mentioning which of our package(s) you are using.
 
-Post Here: [SeeMyWork - https://biurad.com/see-my-work.aspx](https://see-my-work.biurad.com/submit.aspx)
+Post Here: [Project Patreons - https://patreons.biurad.com](https://patreons.biurad.com)
 
 We publish all received request's on our website;
 
 ## Credits
 
-- [Divine Niiquaye Ibok](https://divineniiquayeibok.com)
-- [All Contributors](https://biurad.com/projects/cachemanager/contributers)
+- [Divine Niiquaye](https://github.com/divineniiquaye)
+- [All Contributors](https://biurad.com/projects/flight-routing/contributers)
 
 ## Support us
 
-`Biurad Lap` is a webdesign agency in Accra, Ghana. You'll find an overview of all our open source projects [on our website](https://biurad.com/opensource).
+I am Niquaye Divine a software engineer at [`Biurad Lap`](https://biurad.com), Ghana. You'll find an overview of all our open source projects [on our website](https://biurad.com/opensource).
 
 Does your business depend on our contributions? Reach out and support us on to build more project's. We want to build over one hundred project's in two years. [Support Us](https://biurad.com/donate) achieve our goal.
-All pledges will be dedicated to allocating workforce on maintenance and new awesome stuff.
 
+All pledges will be dedicated to allocating workforce on maintenance and new awesome stuff.
 [Thanks to all who made Donations and Pledges to Us.](.github/ISSUE_TEMPLATE/Support_us.md)
 
 ## License

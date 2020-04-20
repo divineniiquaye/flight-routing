@@ -19,12 +19,19 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\RouteCollector;
-use Flight\Routing\Route;
+use Flight\Routing\RouteResults;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Flight\Routing\Exceptions\UrlGenerationException;
 
 /**
  * Interface defining required router capabilities.
+ *
+ * This Interface is an implementation of Router subcomponent for Expressive
+ * from the makers of Zend Framework.
+ *
+ * Implemented so routing is flexible, instead of a rigid router."
+ *
+ * @copyright Copyright (c) 2015-2017 Zend Technologies USA Inc. (https://www.zend.com)
  */
 interface RouterInterface
 {
@@ -33,41 +40,50 @@ interface RouterInterface
      *
      * This method adds a route against which the underlying implementation may
      * match. Implementations MUST aggregate route instances, but MUST NOT use
-     * the details to inject the underlying router until `match()`.
-     * This is required to allow consumers to modify route instances before matching
-     * (e.g., to provide route options, inject a name, etc.).
+     * the details to inject the underlying router until `match()` and/or
+     * `generateUri()` is called.  This is required to allow consumers to
+     * modify route instances before matching (e.g., to provide route options,
+     * inject a name, etc.).
      *
-     * The method MUST raise RuntimeException if called after `match()`
-     * have already been called, to ensure integrity of the
+     * The method MUST raise \RuntimeException if called after either `match()`
+     * or `generateUri()` have already been called, to ensure integrity of the
      * router between invocations of either of those methods.
      *
-     * @throws \RuntimeException when called after match() have been called.
+     * @throws \RuntimeException when called after match() or
+     *     generateUri() have been called.
      */
-    public function addRoute(Route $route) : void;
-
-    /**
-     * Adds parameters.
-     *
-     * This method implements a fluent interface.
-     *
-     * @param array $parameters The parameters
-     *
-     * @return $this
-     */
-    public function addParameters(array $parameters);
+    public function addRoute(RouteInterface $route) : void;
 
     /**
      * Match a request against the known routes.
      *
      * Implementations will aggregate required information from the provided
      * request instance, and pass them to the underlying router implementation;
-     * when done, they will then marshal a `RouteCollector` instance indicating
+     * when done, they will then marshal a `RouteResults` instance indicating
      * the results of the matching operation and return it to the caller.
-     *
-     * The caller should be implemented in such a way by passing an empty
-     * parameter into results and returning an array of matched `Route` instance,
-     * and the passed `$parameters`.
-     *
      */
-    public function match(Request $request, RouteCollector $router): array;
+    public function match(Request $request) : RouteResults;
+
+    /**
+     * Generate a URI from the named route.
+     *
+     * Takes the named route and any substitutions, and attempts to generate a
+     * URI from it.
+     *
+     * The URI generated MUST NOT be escaped. If you wish to escape any part of
+     * the URI, this should be performed afterwards; consider passing the URI
+     * to league/uri to encode it.
+     *
+     * @param RouteInterface $route         The Route instance name.
+     * @param string[]|array $substitutions key => value option pairs to pass to the
+     *                                      router for purposes of generating a URI; takes precedence over options
+     *                                      present in route used to generate URI
+     *
+     * @see https://github.com/auraphp/Aura.Router/blob/3.x/docs/generating-paths.md
+     * @see https://docs.zendframework.com/zend-router/routing/
+     *
+     * @throws UrlGenerationException if the route name is not known
+     *                                or a parameter value does not match its regex
+     */
+    public function generateUri(RouteInterface $route, array $substitutions = []) : string;
 }

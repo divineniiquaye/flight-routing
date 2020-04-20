@@ -19,24 +19,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
-use BiuradPHP\Http\Exceptions\HttpException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\NotFoundException;
+use Flight\Routing\Interfaces\ExceptionInterface;
 
 /**
  * Class RouteNotFoundException
  */
-class RouteNotFoundException extends \DomainException
+class RouteNotFoundException extends NotFoundException implements ExceptionInterface
 {
-    /**
-     * The Router Exception
-     *
-     * @param string $message
-     */
-    public function __construct(string $message = '')
-    {
-        if (empty($message) && class_exists(HttpException::class)) {
-            throw new NotFoundException();
-        }
-        return parent::__construct($message, 404, $this->getPrevious());
-    }
 }

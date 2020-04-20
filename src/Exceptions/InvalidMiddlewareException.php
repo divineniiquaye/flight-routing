@@ -19,10 +19,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
+use Flight\Routing\Interfaces\ExceptionInterface;
+
 /**
  * Class InvalidMiddlewareException
  */
-class InvalidMiddlewareException extends \DomainException
+class InvalidMiddlewareException extends \DomainException implements ExceptionInterface
 {
     //
 }

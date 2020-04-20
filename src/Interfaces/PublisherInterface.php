@@ -19,7 +19,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use BiuradPHP\Http\Interfaces\EmitterInterface;
+use Laminas\HttpHandlerRunner\Emitter\EmitterInterface;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 /**
@@ -36,5 +36,5 @@ interface PublisherInterface
      *
      * @return bool
      */
-    public function publish($content, ?EmitterInterface $response);
+    public function publish($content, ?EmitterInterface $response): bool;
 }

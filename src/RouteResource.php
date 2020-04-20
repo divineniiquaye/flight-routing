@@ -19,6 +19,19 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Flight\Routing\Interfaces\RouteCollectorInterface;
+
+use function array_intersect;
+use function ucfirst;
+use function array_diff;
+use function mb_strpos;
+use function str_replace;
+use function explode;
+use function array_map;
+use function implode;
+use function trim;
+use function array_merge;
+
 class RouteResource
 {
     /**
@@ -72,7 +85,7 @@ class RouteResource
      *
      * @param \Flight\Routing\RouteCollector $router
      */
-    public function __construct(RouteCollector $router)
+    public function __construct(RouteCollectorInterface $router)
     {
         $this->router = $router;
     }
@@ -243,7 +256,7 @@ class RouteResource
         $uri = $this->getResourceUri($name);
         $action = $this->getResourceAction($name, $controller, 'index', $options);
 
-        return $this->router->get($uri, $action['controller'])->name($action['name']);
+        return $this->router->get($uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -261,7 +274,7 @@ class RouteResource
         $uri = $this->getResourceUri($name).'/'.static::$verbs['create'];
         $action = $this->getResourceAction($name, $controller, 'create', $options);
 
-        return $this->router->get($uri, $action['controller'])->name($action['name']);
+        return $this->router->get($uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -279,7 +292,7 @@ class RouteResource
         $uri = $this->getResourceUri($name);
         $action = $this->getResourceAction($name, $controller, 'store', $options);
 
-        return $this->router->post($uri, $action['controller'])->name($action['name']);
+        return $this->router->post($uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -297,7 +310,7 @@ class RouteResource
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
         $action = $this->getResourceAction($name, $controller, 'show', $options);
 
-        return $this->router->get($uri, $action['controller'])->name($action['name']);
+        return $this->router->get($uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -315,7 +328,7 @@ class RouteResource
         $uri = $this->getResourceUri($name).'/{'.$base.'}/'.static::$verbs['edit'];
         $action = $this->getResourceAction($name, $controller, 'edit', $options);
 
-        return $this->router->get($uri, $action['controller'])->name($action['name']);
+        return $this->router->get($uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -333,7 +346,7 @@ class RouteResource
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
         $action = $this->getResourceAction($name, $controller, 'update', $options);
 
-        return $this->router->match(['PUT', 'PATCH'], $uri, $action['controller'])->name($action['name']);
+        return $this->router->map(['PUT', 'PATCH'], $uri, $action['controller'])->setName($action['name']);
     }
 
     /**
@@ -356,7 +369,7 @@ class RouteResource
 
         $action = $this->getResourceAction($name, $controller, 'destroy', $options);
 
-        return $this->router->delete($uri, $action['controller'])->name($action['name']);
+        return $this->router->delete($uri, $action['controller'])->setName($action['name']);
     }
 
     /**

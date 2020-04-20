@@ -18,19 +18,6 @@ Whether you are chief of IT company which benefits from Biurad, or developer who
 
 Thank you!
 
-> # Golden + Silver Donations ($180+ monthly)
-
-- [AirLive Stream](https://airlive.com)
-- [Code Academy](https://code-academy.net)
-- [Spacely International](https://spacely.com)
-- [Divine Niiquaye Ibok](https://divineniiquayeibok.com)
-
-> # Bronze Donations ($50+ monthly)
-
-- Trinity Ofusu
-- Acheampong Obed
-- Rosemond Koluh
-
 > # Pledges ($5 - $50 one-time-payment)
 
 - Ankrah Elvis

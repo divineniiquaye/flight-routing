@@ -1,8 +1,15 @@
 {
     "name": "divineniiquaye/flight-routing",
     "type": "library",
-    "description": "Url routing is a simple, fast PHP router that is easy to get integrated with other routers. Heavily inspired by the Laravel router.",
-    "keywords": ["router", "url routing", "laravel", "routing-engine", "biuradphp", "php7"],
+    "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers. Partially inspired by the Laravel router.",
+    "keywords": [
+        "router",
+        "url routing",
+        "laravel",
+        "routing-engine",
+        "biuradphp",
+        "php7"
+    ],
     "homepage": "https://www.biurad.com",
     "license": "BSD-3-Clause",
     "authors": [
@@ -17,28 +24,29 @@
     ],
     "require": {
         "php": "^7.1.3",
-        "biurad/support-manager": "^0.1",
+        "biurad/biurad-helpers": "^0.1",
         "fig/http-message-util": "^1.1",
         "psr/http-factory": "^1.0",
-        "zendframework/zend-stratigility": "^3.2"
+        "laminas/laminas-stratigility": "^3.2"
     },
     "require-dev": {
+        "phpunit/phpunit": "~7.0"
     },
     "autoload": {
-        "psr-4": { "Flight\\Routing\\": "src/" },
+        "psr-4": {
+            "Flight\\Routing\\": "src/"
+        },
         "exclude-from-classmap": [
             "/Tests/"
         ]
     },
-	"autoload-dev": {
+    "autoload-dev": {
         "psr-4": {
             "Flight\\Routing\\Tests\\": "Tests/"
         }
     },
     "minimum-stability": "dev",
     "suggest": {
-        "biurad/http-manager": "For managing request and response in browser",
-        "biurad/dependency-injection": "For autowiring the dependency in container",
-        "doctrine/annotations": "For annotation routing in controllers"
+        "biurad/biurad-http": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
     }
 }

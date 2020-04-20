@@ -21,17 +21,34 @@ namespace Flight\Routing;
 
 use Flight\Routing\Concerns\HttpMethods;
 use Psr\Http\Message\ServerRequestInterface;
-use Flight\Routing\Services\HttpPublisher;
 use BiuradPHP\Http\Exceptions\ClientExceptions;
-use BiuradPHP\Http\Interfaces\EmitterInterface;
 use Flight\Routing\RouteResource as Resource;
-use Flight\Routing\Interfaces\RouterInterface;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Psr\Http\Message\ResponseInterface;
-use Flight\Routing\Exceptions\InvalidControllerException;
-use Flight\Routing\Exceptions\InvalidMiddlewareException;
-use BiuradPHP\DependencyInjection\Interfaces\FactoryInterface;
+use Flight\Routing\Interfaces\CallableResolverInterface;
+use Flight\Routing\Interfaces\RouteCollectorInterface;
+use Flight\Routing\Interfaces\RouteGroupInterface;
+use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Interfaces\RouterInterface;
+use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
+
+use function file_exists;
+use function is_readable;
+use function is_writable;
+use function dirname;
+use function sprintf;
+use function array_push;
+use function http_build_query;
+use function str_replace;
+use function in_array;
+use function array_merge;
+use function array_walk;
+use function array_shift;
+use function mb_strpos;
 
 /**
  * Aggregate routes for the router.
@@ -45,74 +62,223 @@ use BiuradPHP\DependencyInjection\Interfaces\FactoryInterface;
  * - patch
  * - delete
  * - any
- * - match
+ * - map
  * - resource
  *
- * A general `match()` method allows specifying multiple request methods and/or
+ * A general `map()` method allows specifying multiple request methods and/or
  * arbitrary request methods when creating a path-based route.
  *
  * Internally, the class performs some checks for duplicate routes when
  * attaching via one of the exposed methods, and will raise an exception when a
  * collision occurs.
- *
- * TODO: Add url Query Support in next update
  */
-class RouteCollector
+class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareInterface
 {
-    use Concerns\RouteGroup, Concerns\RouteResolver;
-
-    /** @var @internal used by the `run` method */
-    private $arguments;
-
-    /** @var array|Route[]string */
-    private $routes = [];
-
-    /** @var RouterInterface */
-    private $collection;
-
-    /** @var array|string[] */
-    public $routeMiddlewares = [];
-
-    /** @var Route[]string */
-    private $nameList = [];
-
-    /** @var bool */
-    private $disableMiddlewares = false;
+    use LoggerAwareTrait;
 
     /**
-     * Characters that should not be URL encoded.
+     * @var array|RouteInterface[]string
+     */
+    protected $allRoutes = [];
+
+    /**
+     * List of all routes registered directly with the application.
+     *
+     * @var Route[]
+     */
+    private $routes = [];
+
+    /**
+     * @var RouteMiddleware
+     */
+    protected $middlewareDispatcher;
+
+    /**
+     * @var CallableResolverInterface
+     */
+    protected $callableResolver;
+
+    /**
+     * @var ServerRequestInterface
+     */
+    protected $request;
+
+    /**
+     * @var ContainerInterface|null
+     */
+    protected $container;
+
+    /**
+     * The current route being used.
+     *
+     * @var RouteInterface
+     */
+    protected $currentRoute;
+
+    /**
+     * @var RouterInterface
+     */
+    protected $router;
+
+    /**
+     * @var RouteInterface[]|array
+     */
+    protected $nameList = [];
+
+    /**
+     * Base path used in pathFor()
+     *
+     * @var string
+     */
+    protected $basePath = null;
+
+    /**
+     * Path to fast route cache file. Set to false to disable route caching
+     *
+     * @var string|null
+     */
+    protected $cacheFile;
+
+    /**
+     * @var bool
+     */
+    protected $permanent = true;
+
+    /**
+     * Route groups
+     *
+     * @var RouteGroup[]
+     */
+    protected $routeGroups = [];
+
+    /**
+     * Route Group Options
      *
      * @var array
      */
-    public const DONT_ENCODE = [
-        '%2F' => '/',
-        '%40' => '@',
-        '%3A' => ':',
-        '%3B' => ';',
-        '%2C' => ',',
-        '%3D' => '=',
-        '%2B' => '+',
-        '%21' => '!',
-        '%2A' => '*',
-        '%7C' => '|',
-        '%3F' => '?',
-        '%26' => '&',
-        '%23' => '#',
-        '%25' => '%',
-    ];
+    protected $groupOptions = [];
 
     /**
-     * Router constructor.
+     * Route counter incrementer
      *
-     * @param ServerRequestInterface $request
-     * @param RouterInterface|null $router
-     * @param FactoryInterface|null $container
-     * @param EmitterInterface|null $emitter
+     * @var int
      */
-    public function __construct(ServerRequestInterface $request, RouterInterface $router = null, ?EmitterInterface $emitter = null, ?FactoryInterface $container = null)
+    protected $routeCounter = 0;
+
+    /**
+     * @var ResponseFactoryInterface
+     */
+    protected $responseFactory;
+
+    /**
+     * @param ServerRequestInterface     $request
+     * @param ResponseFactoryInterface   $responseFactory
+     * @param RouterInterface|null       $router
+     * @param CallableResolverInterface  $callableResolver
+     * @param ContainerInterface|null    $container
+     * @param string                     $cacheFile
+     */
+    public function __construct(
+        ServerRequestInterface $request,
+        ResponseFactoryInterface $responseFactory,
+        RouterInterface $router = null,
+        CallableResolverInterface $callableResolver = null,
+        ContainerInterface $container = null,
+        string $cacheFile = null
+    ) {
+        $this->request = $request;
+        $this->responseFactory = $responseFactory;
+        $this->router = $router ?? new Services\DefaultFlightRouter();
+
+        $this->container = $container;
+        $this->callableResolver = $callableResolver ?? new Concerns\CallableResolver($container);
+        $this->middlewareDispatcher = new RouteMiddleware([], $this->container);
+
+        if (null !== $cacheFile) {
+            $this->setCacheFile($cacheFile);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getCacheFile(): ?string
     {
-        $this->prepare($container, $request, $emitter);
-        $this->collection = $router ?: new RouteMatcher();
+        return $this->cacheFile;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setCacheFile(string $cacheFile): RouteCollectorInterface
+    {
+        if (file_exists($cacheFile) && !is_readable($cacheFile)) {
+            throw new \RuntimeException(
+                sprintf('Route collector cache file `%s` is not readable', $cacheFile)
+            );
+        }
+
+        if (!file_exists($cacheFile) && !is_writable(dirname($cacheFile))) {
+            throw new \RuntimeException(
+                sprintf('Route collector cache file directory `%s` is not writable', dirname($cacheFile))
+            );
+        }
+
+        $this->cacheFile = $cacheFile;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getBasePath(): string
+    {
+        $basePath = $this->basePath ?? dirname($this->request->getServerParams()['SCRIPT_NAME'] ?? '');
+
+        // For phpunit testing to be smooth.
+        if ('cli' === PHP_SAPI) {
+            $basePath = '';
+        }
+
+        return $basePath;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setBasePath(string $basePath): RouteCollectorInterface
+    {
+        $this->basePath = $basePath;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): RouteCollectorInterface
+    {
+        foreach ($parameters as $key => $regex) {
+            if (self::TYPE_DEFAULT == $type) {
+                $this->setGroupOption(RouteGroupInterface::DEFAULTS, [$key => $regex]);
+                break;
+            }
+
+            $this->setGroupOption(RouteGroupInterface::REQUIREMENTS, [$key => $regex]);
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setPermanentRedirection(bool $permanent = true): RouteCollectorInterface
+    {
+        $this->permanent = $permanent;
+
+        return $this;
     }
 
     /**
@@ -126,44 +292,18 @@ class RouteCollector
      */
     protected function createRoute($methods, $uri, $action)
     {
-        // Resolve prefix + uri.
-        if ($prefix = $this->currentPrefix) {
-            $uri = $this->normalizePrefix($uri, $prefix);
-        }
-
         $route = $this->newRoute($methods, $uri, $action);
 
         // Set the defualts for group routing.
         $defaults = [
-            'name' => $this->currentName,
-            'prefix' => $this->currentPrefix,
-            'domain' => $this->currentDomain,
-            'namespace' => $this->currentNamespace,
-            'middleware' => $this->currentMiddleware ?: [],
+            'namespace' => $this->getGroupOption(RouteGroupInterface::NAMESPACE),
+            'defaults'  => $this->getGroupOption(RouteGroupInterface::DEFAULTS),
+            'patterns'  => $this->getGroupOption(RouteGroupInterface::REQUIREMENTS),
         ];
 
         $route->fromArray($defaults);
 
         return $route;
-    }
-
-    /**
-     * Ensures that the right-most slash is trimmed for prefixes of more than
-     * one character, and that the prefix begins with a slash.
-     *
-     * @param string $uri
-     * @param mixed $prefix
-     */
-    protected function normalizePrefix(string $uri, $prefix)
-    {
-        $urls = [];
-        foreach (['&', '-', '_', '~', '@'] as $symbols) {
-            if (mb_strpos($prefix, $symbols) !== false) {
-                $urls[] = rtrim($prefix, '/') . $uri;
-            }
-        }
-
-        return $urls ? $urls[0] : rtrim($prefix, '/') . '/' . ltrim($uri, '/');
     }
 
     /**
@@ -177,7 +317,16 @@ class RouteCollector
      */
     protected function newRoute($methods, $uri, $action)
     {
-        $route = new Route($this, $methods, $uri, $action);
+        $route = new Route(
+            (array) $methods,
+            $uri,
+            $action,
+            $this->callableResolver,
+            $this->middlewareDispatcher,
+            $this->responseFactory->createResponse(),
+            $this->container,
+            $this->routeGroups
+        );
 
         return $route;
     }
@@ -194,142 +343,105 @@ class RouteCollector
      *
      * @return \Flight\Routing\Route
      *
-     * @throws RuntimeException when called after match() have been called.
+     * @throws \RuntimeException when called after match() have been called.
      */
     protected function addRoute($methods, $uri, $action)
     {
         $route = $this->createRoute($methods, $uri, $action);
-        $domainAndUri = $route->getDomain() . $route->getUri();
-
-        // Resolve method to array
-        $methods = $route->getMethod();
+        $domainAndUri = $route->getDomain() . $route->getPath();
 
         // Add the given route to the arrays of routes.
-        foreach ($methods as $method) {
-            $this->routes[$method][$domainAndUri] = $route;
+        foreach ($route->getMethods() as $method) {
+            $this->allRoutes[$method][$domainAndUri] = $route;
         }
 
         // Resolve Routing
-        $this->collection->addRoute($route);
+        array_push($this->routes, $route);
+        $this->router->addRoute($route);
 
         return $route;
     }
 
     /**
-     * Prepare router to dispatch routes.
-     *
-     * @param \BiuradPHP\DependencyInjection\Interfaces\FactoryInterface|null      $container
-     * @param \Psr\Http\Message\ServerRequestInterface    $request
-     * @param \BiuradPHP\Http\Interfaces\EmitterInterface $emitter
+     * {@inheritdoc}
      */
-    private function prepare(?FactoryInterface $container, ServerRequestInterface $request, EmitterInterface $emitter): void
+    public function getRoutes(): array
     {
-        $this->container = $container;
-
-        if ($this->request == null) {
-            $this->setRequest($request);
-        }
-
-        if ($this->emitter == null) {
-            $this->setEmitter($emitter);
-        }
-
-        if ($this->publisher == null) {
-            $this->setPublisher(new HttpPublisher());
-        }
+        return $this->routes;
     }
 
     /**
-     * Throw an not found error.
-     *
-     * @param null $matched
+     * {@inheritdoc}
      */
-    private function notFoundError($matched)
+    public function getRequest(): ServerRequestInterface
     {
-        if (is_null($matched)) {
-            throw new RouteNotFoundException(sprintf('No route detected on path ["%s"]', $this->request->getUri()->getPath()));
-        }
+        return $this->request;
     }
 
     /**
-     * Run the controller of the given route.
-     *
-     * @param Route|null $route
-     * @param array      $parameters
-     *
-     * @return mixed|ResponseInterface
-     *
-     * @throws InvalidControllerException
-     * @throws InvalidMiddlewareException
-     * @throws Throwable
+     * {@inheritdoc}
      */
-    private function run($route, ?array $parameters)
+    public function removeNamedRoute(string $name): RouteCollectorInterface
     {
-        // Controller and namspace.
-        $controller =   $route->getController();
-        $middlewares =  array_replace($this->currentMiddleware, $route->getMiddleware());
+        /** @var Route $route */
+        $route = $this->getNamedRoute($name);
+        unset($this->routes[$route->getName()]);
 
-        // Let's allow the developer to disable middlewares
-        if (false !== $this->disableMiddlewares) {
-            $middlewares = [];
-        } elseif (false !== $route->disabledMiddlewares()) {
-            $middlewares = [];
-        } elseif (in_array('off', $middlewares)) {
-            $middlewares = [];
-        }
-
-        if (count($middlewares) > 0) {
-            $controllerRunner = $this->resolveController($controller, $parameters);
-
-            return $this->runControllerThroughMiddleware($middlewares, $this->request, $controllerRunner);
-        }
-
-        return $this->runController($controller, $parameters, $this->request);
+        return $this;
     }
 
     /**
-     * This method is to allow middlewares or not in your application.
-     * Maybe you working on a small project which does not require middlewares.
-     * You can disable it by setting $all to true, or specify the middlewares
-     * for removal.
-     *
-     * NB: You only allowed to remove global and route global middlewares.
+     * {@inheritdoc}
      */
-    public function disableMiddlewares(bool $all = false, ...$middlewares)
+    public function getNamedRoute(string $name): RouteInterface
     {
-        if (false !== $all) {
-            return $this->disableMiddlewares = true;
-        }
-
-        if (is_array($middlewares[0])
-            && count($middlewares) === 1
-        ) {
-            $middlewares = array_shift($middlewares);
-        }
-
-        foreach ($middlewares as $middleware) {
-            if (array_key_exists($middleware, $this->routeMiddlewares)) {
-                unset($this->routeMiddlewares[$middleware]);
-            } elseif (array_key_exists($middleware, $this->currentMiddleware)) {
-                unset($this->currentMiddleware[$middleware]);
+        foreach ($this->routes as $route) {
+            if ($name === $route->getName()) {
+                return $route;
             }
         }
-
-        return true;
+        throw new \RuntimeException('Named route does not exist for name: ' . $name);
     }
 
     /**
-     * Refresh the name look-up table.
-     *
-     * This is done in case any names are fluently defined or if routes are overwritten.
-     *
-     * @param Route $route
+     * {@inheritdoc}
      */
-    public function nameLookup(Route $route)
+    public function addLookupRoute(RouteInterface $route): void
     {
-        if ($name = $route->getName()) {
-            $this->nameList[$name] = $route;
+        if (null === $name = $route->getName()) {
+            //throw new \RuntimeException('Route not found, looks like your route cache is stale.');
+            return;
         }
+
+        $this->nameList[$name] = $route;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function group(array $attributes = [], $callable): RouteGroupInterface
+    {
+        // Backup current properties
+        $oldGroupOption = $this->groupOptions;
+
+        $routeCollectorProxy = new RouterProxy($this->request, $this->responseFactory, $this->router, $this);
+        $prefixPattern = isset($attributes[RouteGroupInterface::PREFIX]) ? $attributes[RouteGroupInterface::PREFIX] : null;
+
+        // Register the Route Grouping
+        $routeGroup = new RouteGroup($prefixPattern, $attributes, $callable, $this->callableResolver, $routeCollectorProxy);
+
+        // Add goups to RouteCollection
+        $this->routeGroups[] = $routeGroup;
+        $this->groupOptions  = $this->resolveGlobals($routeGroup->getOptions());
+
+        // Returns routes on closure, file or on callble
+        $routeGroup->collectRoutes();
+        array_shift($this->routeGroups);
+
+        // Restore properties
+        $this->groupOptions = $oldGroupOption;
+
+        return $routeGroup;
     }
 
     /**
@@ -342,7 +454,7 @@ class RouteCollector
      */
     public function get($uri, $action = null)
     {
-        return $this->match([HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD], $uri, $action);
+        return $this->map([HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD], $uri, $action);
     }
 
     /**
@@ -355,7 +467,7 @@ class RouteCollector
      */
     public function post($uri, $action = null)
     {
-        return $this->match(HttpMethods::METHOD_POST, $uri, $action);
+        return $this->map([HttpMethods::METHOD_POST], $uri, $action);
     }
 
     /**
@@ -368,7 +480,7 @@ class RouteCollector
      */
     public function put($uri, $action = null)
     {
-        return $this->match(HttpMethods::METHOD_PUT, $uri, $action);
+        return $this->map([HttpMethods::METHOD_PUT], $uri, $action);
     }
 
     /**
@@ -381,7 +493,7 @@ class RouteCollector
      */
     public function patch($uri, $action = null)
     {
-        return $this->match(HttpMethods::METHOD_PATCH, $uri, $action);
+        return $this->map([HttpMethods::METHOD_PATCH], $uri, $action);
     }
 
     /**
@@ -394,7 +506,7 @@ class RouteCollector
      */
     public function delete($uri, $action = null)
     {
-        return $this->match(HttpMethods::METHOD_DELETE, $uri, $action);
+        return $this->map([HttpMethods::METHOD_DELETE], $uri, $action);
     }
 
     /**
@@ -407,7 +519,7 @@ class RouteCollector
      */
     public function options($uri, $action = null)
     {
-        return $this->match(HttpMethods::METHOD_OPTIONS, $uri, $action);
+        return $this->map([HttpMethods::METHOD_OPTIONS], $uri, $action);
     }
 
     /**
@@ -420,21 +532,16 @@ class RouteCollector
      */
     public function any($uri, $action = null)
     {
-        return $this->match(HttpMethods::HTTP_METHODS_STANDARD, $uri, $action);
+        return $this->map([HttpMethods::HTTP_METHODS_STANDARD], $uri, $action);
     }
 
     /**
-     * Register a new route with the given verbs.
-     *
-     * @param array|string               $methods
-     * @param string                     $uri
-     * @param \Closure|array|string|null $action
-     *
-     * @return \Flight\Routing\Route
+     * {@inheritdoc}
      */
-    public function match($methods, $uri, $action = null)
+    public function map(array $methods, $uri, $action = null): RouteInterface
     {
-        return $this->addRoute(array_map('mb_strtoupper', (array) $methods), $uri, $action);
+        $this->routeCounter++;
+        return $this->addRoute(array_map('mb_strtoupper', $methods), $uri, $action);
     }
 
     /**
@@ -472,14 +579,7 @@ class RouteCollector
     }
 
     /**
-     * Set the controller as Api Resource Controller.
-     *
-     * Router knows how to respond to resource controller
-     * request automatically
-     *
-     * @param string                  $uri
-     * @param Closure|callable|string $controller
-     * @param array                   $options
+     * {@inheritdoc}
      */
     public function resource($name, $controller, array $options = [])
     {
@@ -489,197 +589,193 @@ class RouteCollector
     }
 
     /**
-     * Set the global the middlewares stack attached to all routes.
-     *
-     * @param array|string|null $middleware
-     *
-     * @return $this|array
+     * {@inheritdoc}
      */
-    public function globalMiddlewares($middleware = [])
+    public function addMiddlewares($middleware = []): RouteCollectorInterface
     {
-        $middleware = array_diff($middleware, $this->currentMiddleware);
-
-        $this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+        $this->middlewareDispatcher->add($middleware);
 
         return $this;
     }
 
     /**
-     * Set the route middleware and call it as a method on route.
-     *
-     * @param array $middlewares
-     *
-     * @return $this|array
+     * {@inheritdoc}
      */
-    public function routeMiddlewares($middlewares = [])
+    public function routeMiddlewares($middlewares = []): RouteCollectorInterface
     {
-        foreach ($middlewares as $name => $action) {
-            $this->routeMiddlewares[$name] = $action;
-        }
+        $this->middlewareDispatcher->add(['routing' => $middlewares]);
 
         return $this;
     }
 
     /**
-     * Get the value of routeMiddlewares
-     *
-     * @return array|string
+     * {@inheritdoc}
      */
-    public function getRouteMiddleware(string $middleware)
-    {
-        return $this->routeMiddlewares[$middleware];
-    }
-
-    /**
-     * Set the root controller namespace.
-     *
-     * @param string $rootNamespace
-     *
-     * @return $this
-     */
-    public function namespace($rootNamespace = null)
+    public function setNamespace(?string $rootNamespace = null): RouteCollectorInterface
     {
         if (isset($rootNamespace)) {
-            $this->currentNamespace = $rootNamespace;
+            $this->setGroupOption(RouteGroupInterface::NAMESPACE, $rootNamespace);
         }
 
         return $this;
     }
 
     /**
-     * Get a route instance by its name.
-     *
-     * @param string $name
-     *
-     * @return \Flight\Routing\Route|null
+     * {@inheritdoc}
      */
-    public function getByName($name)
-    {
-        return isset($this->nameList[$name]) ? $this->nameList[$name] : null;
-    }
-
-    /**
-     * Generate a URI from the named route.
-     *
-     * Takes the named route and any parameters, and attempts to generate a
-     * URI from it. Additional router-dependent options may be passed.
-     *
-     * The URI generated MUST NOT be escaped. If you wish to escape any part of
-     * the URI, this should be performed afterwards.
-     *
-     * @param string         $routeName  route name
-     * @param string[]|array $parameters key => value option pairs to pass to the
-     *                                   router for purposes of generating a URI; takes precedence over options
-     *                                   present in route used to generate URI
-     *
-     * @return string URI path generated
-     *
-     * @throws UrlGenerationException if the route name is not known
-     *                                or a parameter value does not match its regex
-     */
-    public function generateUri(string $routeName, array $parameters = []): ?string
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string
     {
         if (isset($this->nameList[$routeName]) == false) {
             throw new UrlGenerationException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
         }
 
-        $uri = $this->getByName($routeName)->getUri();
-        $defaults = $this->getByName($routeName)->getDefault(null);
-
         // First we will construct the entire URI including the root. Once it
         // has been constructed, we'll pass the remaining for further parsing.
-        $uri = preg_replace_callback('/\??\{(.*?)\??\}/', function ($match) use (&$parameters, $defaults) {
-            if (isset($parameters[$match[1]])) {
-                return $parameters[$match[1]];
-            } elseif (array_key_exists($match[1], $defaults)) {
-                return $defaults[$match[1]];
-            }
-
-            return  $match[0];
-        }, $uri);
-
-        // We'll make sure we don't have any missing parameters or we
-        // will need to throw the exception to let the developers know one was not given.
-        $uri = preg_replace_callback('/\{(.*?)(\?)?\}/', function ($match) use (&$defaults, $routeName) {
-            if (! array_key_exists($match[1], $defaults)) {
-                throw UrlGenerationException::forMissingParameters($this->getByName($routeName));
-            }
-
-            return '';
-        }, $uri);
-
-        // Once we have ensured that there are no missing parameters in the URI we will encode
-        // the URI and prepare it for returning to the developer. If the URI is supposed to
-        // be absolute, we will return it as-is. Otherwise we will remove the URL's root.
-        $uri = strtr(rawurlencode($uri), self::DONT_ENCODE);
+        $uri = $this->router->generateUri($route = $this->getNamedRoute($routeName), $parameters);
         $uri = str_replace('/?', '', rtrim($uri, "/"));
+
+        // Resolve port and domain for better url generated from route by name.
         $domain = '.';
+        $requestUri = $this->request->getUri();
+
+        // Resolve domains with port enabled
+        if (null !== $requestUri->getPort() && !in_array($requestUri->getPort(), [80, 443], true)) {
+            $domain = "{$requestUri->getScheme()}://{$requestUri->getHost()}:{$requestUri->getPort()}";
+        }
 
         // Add the domain to the given route if necessary.
-        $scheme = $this->getRequest()->getUri()->getScheme();
-        if ($this->getByName($routeName)->getDomain()) {
-            $domain = "{$scheme}://{$domain}";
+        if ($routeDomain = $route->getDomain()) {
+            $domain = "{$requestUri->getScheme()}://{$routeDomain}";
         }
 
         // Making routing on sub-folders easier
         if (mb_strpos($uri, '/') !== 0) {
-            $domain = $domain . '/';
+            $domain .=  '/';
         }
 
-        return $domain.$uri;
+        // Incase query is added to uri.
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+
+        return $domain . $uri;
     }
 
     /**
-     * Get the current route.
-     *
-     * @return Route|null
+     * {@inheritdoc}
      */
-    public function currentRoute(): ?Route
+    public function currentRoute(): ?RouteInterface
     {
         return $this->currentRoute;
     }
 
     /**
-     * Get the RouteMatcher Collection
-     *
-     * @return RouterInterface
+     * {@inheritdoc}
      */
-    public function getCollection()
+    public function dispatch(): ResponseInterface
     {
-        return $this->collection;
+        $routes     = $this->getRoutes();
+        $uriPath    = $this->request->getUri()->getPath();
+
+        // Add Route Names RouteCollector.
+        array_walk($routes, [$this, 'addLookupRoute']);
+
+        $routingResults = $this->router->match($this->request);
+        $routeStatus    = $routingResults->getRouteStatus();
+
+        switch ($routeStatus) {
+            case RouteResults::FOUND:
+                if (null !== $this->logger) {
+                    $routingResults->setLogger($this->logger);
+                }
+
+                $this->currentRoute = $routingResults->getRouteIdentifier();
+                $response           = $routingResults->handle($this->request);
+
+                // Allow Redirection if exists.
+                if ($response->hasHeader('Location')) {
+                    $response = $response->withStatus($this->determineResponseCode($this->request));
+                }
+
+                return $response;
+
+            case RouteResults::NOT_FOUND:
+                $exception = new  RouteNotFoundException();
+                $exception::withMessage(sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $uriPath));
+
+                throw $exception;
+
+            case RouteResults::METHOD_NOT_ALLOWED:
+                throw new ClientExceptions\MethodNotAllowedException();
+
+            default:
+                throw new \DomainException('An unexpected error occurred while performing routing.');
+        }
     }
 
     /**
-     * Dispatch routes and run the application.
-     *
-     * @return $this
-     *
-     * @throws RouteNotFoundException
-     * @throws Throwable
+     * Determine the response code according with the method and the permanent config
      */
-    public function dispatch()
+    public function determineResponseCode(ServerRequestInterface $request): int
     {
-        $method = $this->request->getMethod();
-
-        if (!array_key_exists($method, $this->routes)) {
-            throw new ClientExceptions\MethodNotAllowedException();
+        if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'])) {
+            return $this->permanent ? 301 : 302;
         }
 
-        // check if route is defined without regex
-        [$matched] = $this->collection->match($this->request, $this);
+        return $this->permanent ? 308 : 307;
+    }
 
-        // Throw an exception if route not found
-        if (null === $matched) {
-            $this->notFoundError($matched);
-        }
+    /**
+     * Get Route The Group Option.
+     *
+     * @param string $name
+     * @return mixed
+     */
+    protected function getGroupOption(string $name)
+    {
+        return isset($this->groupOptions[$name]) ? $this->groupOptions[$name] : null;
+    }
 
-        $this->arguments = $matched[1];
-        $this->currentRoute = $matched[0];
+    /**
+     * Set the Route Group Option
+     *
+     * @param string $name
+     * @param mixed $value
+     */
+    protected function setGroupOption(string $name, $value): void
+    {
+        $this->groupOptions[$name] = $value;
+    }
 
-        $this->publisher->publish(
-            $this->run($this->currentRoute, $this->arguments), $this->getEmitter()
+    /**
+     * Resolving patterns and defaults to group
+     *
+     * @param array $groupOptions
+     */
+    private function resolveGlobals(array $groupOptions): array
+    {
+        $groupOptions[RouteGroup::REQUIREMENTS] = array_merge(
+            $this->getGroupOption(RouteGroup::REQUIREMENTS) ?? [],
+            $groupOptions[RouteGroup::REQUIREMENTS] ?? []
         );
 
-        return $this;
+        $groupOptions[RouteGroup::DEFAULTS] = array_merge(
+            $this->getGroupOption(RouteGroup::DEFAULTS) ?? [],
+            $groupOptions[RouteGroup::DEFAULTS] ?? []
+        );
+
+        return $groupOptions;
+    }
+
+    /**
+     * @return array
+     */
+    public function __debugInfo()
+    {
+        return [
+            'routes'    => $this->allRoutes,
+            'current'   => $this->currentRoute,
+            'counts'    => $this->routeCounter
+        ];
     }
 }
