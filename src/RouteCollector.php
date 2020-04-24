@@ -701,7 +701,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
             case RouteResults::NOT_FOUND:
                 $exception = new  RouteNotFoundException();
-                $exception::withMessage(sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $uriPath));
+                $exception->withMessage(sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $uriPath));
 
                 throw $exception;
 

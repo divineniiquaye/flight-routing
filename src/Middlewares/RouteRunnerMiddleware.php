@@ -83,17 +83,17 @@ class RouteRunnerMiddleware implements MiddlewareInterface
                 switch ($i) {
                     case 400:
                         $exception = new BadRequestException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 401:
                         $exception = new UnauthorizedException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 403:
                         $exception = new AccessDeniedException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 404:
@@ -104,47 +104,47 @@ class RouteRunnerMiddleware implements MiddlewareInterface
 
                     case 406:
                         $exception = new NotAcceptableException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 409:
                         $exception = new ConflictException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 410:
                         $exception = new GoneException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 411:
                         $exception = new LengthRequiredException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 412:
                         $exception = new PreconditionFailedException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 415:
                         $exception = new UnsupportedMediaTypeException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 422:
                         $exception = new UnprocessableEntityException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 428:
                         $exception = new PreconditionRequiredException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 429:
                         $exception = new TooManyRequestsException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     case 500:
@@ -152,7 +152,7 @@ class RouteRunnerMiddleware implements MiddlewareInterface
 
                     case 503:
                         $exception = new ServiceUnavailableException();
-                        $exception::withResponse($response);
+                        $exception->withResponse($response);
                         throw $exception;
 
                     default:

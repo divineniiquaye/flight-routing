@@ -33,7 +33,7 @@ use function substr;
 use function strlen;
 use function rawurldecode;
 use function array_merge;
-use function rtrim;
+use function trim;
 
 class DefaultFlightRouter implements RouterInterface
 {
@@ -98,7 +98,10 @@ class DefaultFlightRouter implements RouterInterface
             $basepath = '';
         }
 
+
+
         $finalisedPath = substr($request->getUri()->getPath(), strlen($basepath));
+
         $matched = $this->marshalMatchedRoute($method, $domain, rawurldecode($finalisedPath));
 
         // Get the request matching format.
@@ -122,7 +125,7 @@ class DefaultFlightRouter implements RouterInterface
      */
     private function marshalMatchedRoute(string $method, string $host, string $path): array
     {
-        $path = ('/' === $path || empty($path)) ? '/' : rtrim($path, '/');
+        $path = ('/' === $path || empty($path)) ? '/' : trim($path, '/');
 
         foreach ($this->routesToInject as $index => $route) {
             // Let's match the routes
