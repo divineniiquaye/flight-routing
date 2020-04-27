@@ -27,7 +27,6 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
 use function assert;
-use function sprintf;
 use function method_exists;
 use function rawurldecode;
 
@@ -231,21 +230,20 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
     private function logRoute(RouteInterface $route, ServerRequestInterface $request)
     {
-        $this->logger->info(
-            sprintf(
-                'Matched route "%s".', $route->getName() ?? $route->getPath()
-            ),
-            [
-                'route' => $route->getName() ?? $route->getPath(),
-                'client' => method_exists($request, 'getRemoteAddress')
-                    ? $request->getRemoteAddress()
-                    : $request->getServerParams()['REMOTE_ADDR'],
-                'arguments' => $route->getArguments(),
-                'request_uri' => method_exists($request, 'getUriForPath')
-                    ? $request->getUriForPath($request->getUri()->getPath())
-                    : $request->getUri()->getHost() . $request->getUri()->getPath(),
-                'method' => $request->getMethod()
-            ]
-        );
+        $requestUri = method_exists($request, 'getUriForPath')
+            ? $request->getUriForPath($request->getUri()->getPath())
+            : $request->getUri()->getHost() . $request->getUri()->getPath();
+
+        $requestIp = method_exists($request, 'getRemoteAddress')
+        ? $request->getRemoteAddress()
+        : $request->getServerParams()['REMOTE_ADDR'];
+
+        $this->logger->info('Matched route "{route}".', [
+            'route'             => $route->getName() ?? $route->getPath(),
+            'route_parameters'  => $route->getArguments(),
+            'request_uri'       => $requestUri,
+            'method'            => $request->getMethod(),
+            'client'            => $requestIp
+        ]);
     }
 }

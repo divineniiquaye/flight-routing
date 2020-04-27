@@ -32,7 +32,7 @@ use function dirname;
 use function substr;
 use function strlen;
 use function rawurldecode;
-use function array_merge;
+use function array_replace;
 use function trim;
 
 class DefaultFlightRouter implements RouterInterface
@@ -91,6 +91,11 @@ class DefaultFlightRouter implements RouterInterface
         $method = $request->getMethod();
         $domain = $request->getUri()->getHost();
 
+        // HEAD and GET are equivalent as per RFC
+        if ('HEAD' === $method = $request->getMethod()) {
+            $method = 'GET';
+        }
+
         $basepath = dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
 
         // For phpunit testing to be smooth.
@@ -98,34 +103,37 @@ class DefaultFlightRouter implements RouterInterface
             $basepath = '';
         }
 
-
-
         $finalisedPath = substr($request->getUri()->getPath(), strlen($basepath));
-
         $matched = $this->marshalMatchedRoute($method, $domain, rawurldecode($finalisedPath));
 
         // Get the request matching format.
         [$status, $parameters, $route] = $matched;
-        $finalised = new RouteResults($method, $finalisedPath, $status, array_slice($parameters, 1), $route);
+        $finalised = new RouteResults($method, $finalisedPath, $status, $parameters, $route);
 
-        // A feature adopted from Symfony routing, workaround for PHP 7.3 above
-        // NOTE: this feature causes too many redirects on webseerver, but works in cli-server mode.
+        // A feature adopted from Symfony routing, workaround fix.
         if (
             RouteResults::FOUND === $status &&
             null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalisedPath)
         ) {
-            $finalised->shouldRedirect('/' . $redirectedPath);
+            $prefix = strlen($basepath) > 1 ? $basepath . '' : '/';
+            $finalised->shouldRedirect($prefix . $redirectedPath);
         }
 
         return $finalised;
     }
 
     /**
-     * Marshals a route result based on the results of matching and the current HTTP method.
+     * Marshals a route result based on the results of matching URL from set of routes.
+     *
+     * @param string $method The current request method
+     * @param string $host The domain to be parsed
+     * @param string $path The path info to be parsed
+     *
+     * @return array An array of results.
      */
     private function marshalMatchedRoute(string $method, string $host, string $path): array
     {
-        $path = ('/' === $path || empty($path)) ? '/' : trim($path, '/');
+        $path = trim($path, '/') ?: '/';
 
         foreach ($this->routesToInject as $index => $route) {
             // Let's match the routes
@@ -141,7 +149,7 @@ class DefaultFlightRouter implements RouterInterface
                     return [RouteResults::METHOD_NOT_ALLOWED, [], null];
                 }
 
-                return [RouteResults::FOUND, array_merge($parameters, $HostParameters), $route];
+                return [RouteResults::FOUND, array_replace($parameters, $HostParameters), $route];
             }
         }
 

@@ -692,8 +692,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
                 $this->currentRoute = $routingResults->getRouteIdentifier();
                 $response           = $routingResults->handle($this->request);
 
-                // Allow Redirection if exists.
-                if ($response->hasHeader('Location')) {
+                // Allow Redirection if exists and avoid static request.
+                if ($response->hasHeader('Location') && null !== $routingResults->getRedirectLink()) {
                     $response = $response->withStatus($this->determineResponseCode($this->request));
                 }
 

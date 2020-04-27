@@ -32,7 +32,6 @@ use function is_object;
 use function method_exists;
 use function is_callable;
 use function is_string;
-use function count;
 use function get_class;
 use function class_exists;
 use function preg_match;
@@ -101,7 +100,7 @@ class CallableResolver implements CallableResolverInterface
 
         if (
             is_array($resolved) && !$resolved instanceof \Closure &&
-            is_countable($resolved) && count($toResolve) == 2 && is_string($toResolve[0])
+            is_countable($resolved) && is_string($toResolve[0])
         ) {
             $resolved = $this->resolveCallable($resolved[0], $resolved[1]);
         }

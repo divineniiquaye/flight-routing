@@ -86,9 +86,6 @@ trait RouteValidation
      */
     protected function compareRedirection(string $routeUri, string $requestUri): ?string
     {
-        if (PHP_VERSION_ID < 70300 || !in_array(php_sapi_name(), ['cli-server', 'cgi-fcgi'])) {
-            return null;
-        }
 
         // Resolve Request Uri.
         $newRequestUri  = '/' === $requestUri ? '/' : rtrim($requestUri, '/');
