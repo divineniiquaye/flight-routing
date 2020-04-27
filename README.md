@@ -1,5 +1,7 @@
 # Flight routing is a simple, fast PHP router that is easy to get integrated with other routers. Partially inspired by the Laravel router
 
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing?ref=badge_shield)
+
 The goal of this project is to create a router that is more or less 100% compatible with all php http routers, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority.
 
 First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
@@ -579,3 +581,5 @@ All pledges will be dedicated to allocating workforce on maintenance and new awe
 ## License
 
 The BSD-3-Clause . Please see [License File](LICENSE.md) for more information.
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing?ref=badge_large)
