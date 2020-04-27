@@ -141,7 +141,7 @@ In your ```index.php``` require your newly-created ```routes.php``` and call the
 
 It's not required, but you can set `namespace method paramter's value to '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
-Router uses [biurad-http](https://github.com/biurad/biurad-hhtp) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
+Router uses [biurad-http](https://github.com/biurad/biurad-http) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
 
 run this in command line if the package has not be added.
 
