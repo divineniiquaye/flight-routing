@@ -49,7 +49,7 @@ Nothing special is required for Apache to work. We've include the `.htaccess` fi
 
 #### .htaccess example
 
-Below is an example of an working `.htaccess` file used by simple-php-router.
+Below is an example of an working `.htaccess` file used by flight-routing.
 
 Simply create a new `.htaccess` file in your projects `public` directory and paste the contents below in your newly created file. This will redirect all requests to your `index.php` file (see Configuration section below).
 
