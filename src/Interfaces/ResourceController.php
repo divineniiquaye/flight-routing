@@ -19,7 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
 /**
@@ -30,7 +29,7 @@ interface ResourceController
     /**
      * Display a listing of the resource.
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function index();
 
@@ -40,23 +39,23 @@ interface ResourceController
      * @param Request $request
      * @param  int|mixed $id
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function show(Request $request, $id);
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param Request $request
+     * @param  \Psr\Http\Message\ServerRequestInterface  $request
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function store(Request $request);
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function create();
 
@@ -66,7 +65,7 @@ interface ResourceController
      * @param Request $request
      * @param  int|mixed $id
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function edit(Request $request, $id);
 
@@ -76,7 +75,7 @@ interface ResourceController
      * @param Request $request
      * @param int|mixed $id
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function update(Request $request, $id);
 
@@ -84,9 +83,9 @@ interface ResourceController
      * Remove the specified resource from storage.
      *
      * @param Request $request
-     * @param  string|mixed $id
+     * @param  id|mixed $id
      *
-     * @return ResponseInterface|string
+     * @return \Psr\Http\Message\ResponseInterface|string
      */
     public function destroy(Request $request, $id);
 

@@ -1,4 +1,4 @@
-<?php /** @noinspection PhpUnusedParameterInspection */
+<?php
 
 declare(strict_types=1);
 
@@ -37,7 +37,7 @@ class RouteResource
     /**
      * The router instance.
      *
-     * @var RouteCollector
+     * @var \Flight\Routing\RouteCollector
      */
     protected $router;
 
@@ -83,7 +83,7 @@ class RouteResource
     /**
      * Create a new resource registrar instance.
      *
-     * @param RouteCollectorInterface $router
+     * @param \Flight\Routing\RouteCollector $router
      */
     public function __construct(RouteCollectorInterface $router)
     {
@@ -97,7 +97,7 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      */
-    public function register($name, $controller, array $options = []): void
+    public function register($name, $controller, array $options = [])
     {
         if (isset($options['parameters']) && !isset($this->parameters)) {
             $this->parameters = $options['parameters'];
@@ -122,13 +122,11 @@ class RouteResource
      *
      * @return array
      */
-    protected function getResourceMethods($defaults, $options): array
+    protected function getResourceMethods($defaults, $options)
     {
         if (isset($options['only'])) {
             return array_intersect($defaults, (array) $options['only']);
-        }
-
-        if (isset($options['except'])) {
+        } elseif (isset($options['except'])) {
             return array_diff($defaults, (array) $options['except']);
         }
 
@@ -142,7 +140,7 @@ class RouteResource
      *
      * @return string
      */
-    public function getResourceUri($resource): string
+    public function getResourceUri($resource)
     {
         if (!mb_strpos($resource, '.')) {
             return $resource;
@@ -165,7 +163,7 @@ class RouteResource
      *
      * @return string
      */
-    protected function getNestedResourceUri(array $segments): string
+    protected function getNestedResourceUri(array $segments)
     {
         // We will spin through the segments and create a place-holder for each of the
         // resource segments, as well as the resource itself. Then we should get an
@@ -185,7 +183,7 @@ class RouteResource
      *
      * @return array
      */
-    protected function getResourceAction($resource, $controller, $method, $options): array
+    protected function getResourceAction($resource, $controller, $method, $options)
     {
         $name = $this->getResourceName($resource, $method, $options);
 
@@ -201,7 +199,7 @@ class RouteResource
      *
      * @return string
      */
-    protected function getResourceName($resource, $method, $options): string
+    protected function getResourceName($resource, $method, $options)
     {
         // If a global prefix has been assigned to all names for this resource, we will
         // grab that so we can prepend it onto the name when we create this name for
@@ -220,7 +218,7 @@ class RouteResource
      *
      * @return string
      */
-    protected function getGroupResourceName($prefix, $resource, $method): string
+    protected function getGroupResourceName($prefix, $resource, $method)
     {
         return trim("{$prefix}{$resource}.{$method}", '.');
     }
@@ -232,7 +230,7 @@ class RouteResource
      *
      * @return string
      */
-    public function getResourceWildcard($value): string
+    public function getResourceWildcard($value)
     {
         if (isset($this->parameters[$value])) {
             $value = $this->parameters[$value];
@@ -251,9 +249,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceIndex($name, $base, $controller, $options): RouteCollector
+    protected function addResourceIndex($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name);
         $action = $this->getResourceAction($name, $controller, 'index', $options);
@@ -269,9 +267,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceCreate($name, $base, $controller, $options): RouteCollector
+    protected function addResourceCreate($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name).'/'.static::$verbs['create'];
         $action = $this->getResourceAction($name, $controller, 'create', $options);
@@ -287,9 +285,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceStore($name, $base, $controller, $options): RouteCollector
+    protected function addResourceStore($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name);
         $action = $this->getResourceAction($name, $controller, 'store', $options);
@@ -305,9 +303,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceShow($name, $base, $controller, $options): RouteCollector
+    protected function addResourceShow($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
         $action = $this->getResourceAction($name, $controller, 'show', $options);
@@ -323,9 +321,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceEdit($name, $base, $controller, $options): RouteCollector
+    protected function addResourceEdit($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name).'/{'.$base.'}/'.static::$verbs['edit'];
         $action = $this->getResourceAction($name, $controller, 'edit', $options);
@@ -341,9 +339,9 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return Interfaces\RouteInterface
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceUpdate($name, $base, $controller, $options): Interfaces\RouteInterface
+    protected function addResourceUpdate($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
         $action = $this->getResourceAction($name, $controller, 'update', $options);
@@ -359,14 +357,14 @@ class RouteResource
      * @param string $controller
      * @param array  $options
      *
-     * @return RouteCollector
+     * @return \Flight\Routing\RouteCollector
      */
-    protected function addResourceDestroy($name, $base, $controller, $options): RouteCollector
+    protected function addResourceDestroy($name, $base, $controller, $options)
     {
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
 
         if (static::$verbs['destroy']) {
-            $uri .= '/' . static::$verbs['destroy'];
+            $uri = $uri.'/'.static::$verbs['destroy'];
         }
 
         $action = $this->getResourceAction($name, $controller, 'destroy', $options);
@@ -379,7 +377,7 @@ class RouteResource
      *
      * @return array
      */
-    public static function getParameters(): array
+    public static function getParameters()
     {
         return static::$parameterMap;
     }
@@ -389,7 +387,7 @@ class RouteResource
      *
      * @param array $parameters
      */
-    public static function setParameters(array $parameters = []): void
+    public static function setParameters(array $parameters = [])
     {
         static::$parameterMap = $parameters;
     }
@@ -401,12 +399,12 @@ class RouteResource
      *
      * @return array
      */
-    public static function verbs(array $verbs = []): ?array
+    public static function verbs(array $verbs = [])
     {
         if (empty($verbs)) {
             return static::$verbs;
+        } else {
+            static::$verbs = array_merge(static::$verbs, $verbs);
         }
-
-        static::$verbs = array_merge(static::$verbs, $verbs);
     }
 }

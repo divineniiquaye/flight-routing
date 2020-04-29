@@ -26,6 +26,8 @@ use function preg_match;
 use function strlen;
 use function substr;
 
+use const PHP_VERSION_ID;
+
 trait RouteValidation
 {
     /**
@@ -39,10 +41,10 @@ trait RouteValidation
     protected function compareMethod($routeMethod, string $requestMethod): bool
     {
         if (is_array($routeMethod)) {
-            return in_array($requestMethod, $routeMethod, true);
+            return in_array($requestMethod, $routeMethod);
         }
 
-        return $routeMethod === $requestMethod;
+        return $routeMethod == $requestMethod;
     }
 
     /**
@@ -56,7 +58,7 @@ trait RouteValidation
      */
     protected function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
     {
-        return ($routeDomain === null || empty($routeDomain)) || preg_match($routeDomain, $requestDomain, $parameters);
+        return ($routeDomain == null || empty($routeDomain)) || preg_match($routeDomain, $requestDomain, $parameters);
     }
 
     /**
@@ -66,7 +68,7 @@ trait RouteValidation
      * @param string $requestUri
      * @param array  $parameters
      *
-     * @return bool|int
+     * @return bool
      */
     protected function compareUri(string $routeUri, string $requestUri, array &$parameters)
     {
@@ -96,9 +98,7 @@ trait RouteValidation
 
         if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
             return $newRequestUri . $paths['route'];
-        }
-
-        if (empty($paths['route']) && $paths['route'] !== $paths['path']) {
+        } elseif (empty($paths['route']) && $paths['route'] !== $paths['path']) {
             return $newRequestUri;
         }
 

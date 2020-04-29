@@ -19,11 +19,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
-use DomainException;
+use BiuradPHP\Http\Exceptions\ClientExceptions\NotFoundException;
+use Flight\Routing\Interfaces\ExceptionInterface;
 
 /**
  * Class RouteNotFoundException
  */
-class RouteNotFoundException extends DomainException
+class RouteNotFoundException extends NotFoundException implements ExceptionInterface
 {
 }

@@ -1,4 +1,4 @@
-<?php /** @noinspection CallableParameterUseCaseInTypeContextInspection */
+<?php
 
 declare(strict_types=1);
 
@@ -19,10 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Closure;
-use ReflectionException;
-use Throwable;
-use RuntimeException;
 use BiuradPHP\Support\BoundMethod;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
@@ -44,6 +40,7 @@ use function rtrim;
 use function ltrim;
 use function mb_strpos;
 use function is_int;
+use function is_countable;
 
 /**
  * Value object representing a single route.
@@ -239,8 +236,8 @@ class Route implements RouteInterface, RequestHandlerInterface
                     }
                 }
             }
-        } catch (Throwable $exception) {
-            throw new RuntimeException($exception->getMessage());
+        } catch (\Throwable $exception) {
+            throw new \RuntimeException($exception->getMessage());
         }
     }
 
@@ -250,13 +247,11 @@ class Route implements RouteInterface, RequestHandlerInterface
      *
      * @param string $uri
      * @param mixed $prefix
-     *
-     * @return mixed|string
      */
     private function normalizePrefix(string $uri, $prefix)
     {
         // Allow homepage uri on prefix just like python dgango url style.
-        if (in_array($uri, ['', '/'], true)) {
+        if (in_array($uri, ['', '/'])) {
             return rtrim($prefix, '/') . $uri;
         }
 
@@ -275,7 +270,7 @@ class Route implements RouteInterface, RequestHandlerInterface
      *
      * @param string $pattern The path pattern
      *
-     * @return void
+     * @return $this
      */
     protected function setPath(string $pattern): void
     {
@@ -287,9 +282,7 @@ class Route implements RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * @param $controller
-     *
-     * @return void
+     * @return callable|string
      */
     protected function setController($controller): void
     {
@@ -302,7 +295,7 @@ class Route implements RouteInterface, RequestHandlerInterface
         ) {
             $controller = $namespace . $controller;
         } elseif (
-            is_array($controller) && !$controller instanceof Closure &&
+            is_array($controller) && !$controller instanceof \Closure &&
             !is_object($controller[0]) && !class_exists($controller[0]) && count($controller) === 2)
         {
             $controller[0] = $namespace . $controller[0];
@@ -312,22 +305,19 @@ class Route implements RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * @param array $groups
      * @return void
      */
     protected function appendGroupToRoute(array $groups): void
     {
-        if (empty($groups)) {
-            return;
-        }
-
+        if (empty($groups)) return;
         $this->groups = $groups[0]->getOptions();
+
         if (isset($this->groups[RouteGroupInterface::MIDDLEWARE])) {
-            $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARE]);
+            $this->middlewares = array_merge($this->groups[RouteGroupInterface::MIDDLEWARE], $this->middlewares);
         }
 
         if (isset($this->groups[RouteGroupInterface::DOMAIN])) {
-            $this->setDomain($this->groups[RouteGroupInterface::DOMAIN] ?? '');
+            $this->setDomain($this->groups[RouteGroupInterface::DOMAIN]);
         }
 
         $this->groupAppended = true;
@@ -439,7 +429,8 @@ class Route implements RouteInterface, RequestHandlerInterface
      */
     public function setName(?string $name): RouteInterface
     {
-        $current = $this->groups[RouteGroupInterface::NAME] ?? null;
+        $current = isset($this->groups[RouteGroupInterface::NAME])
+            ? $this->groups[RouteGroupInterface::NAME] : null;
         $definedName = null !== $current ? $current . $name : $name;
 
         if (null !== $current && mb_strpos($current, '.') === false) {
@@ -512,9 +503,9 @@ class Route implements RouteInterface, RequestHandlerInterface
     /**
      * {@inheritdoc}
      */
-    public function hasDefault($name): bool
+    public function hasDefault($name)
     {
-        return array_key_exists($name, $this->defaults);
+        return \array_key_exists($name, $this->defaults);
     }
 
     /**
@@ -551,9 +542,7 @@ class Route implements RouteInterface, RequestHandlerInterface
 
         // Add the arguments
         foreach ($arguments as $k => $v) {
-            if (is_int($k)) {
-                continue;
-            }
+            if (is_int($k)) continue;
 
             $this->setArgument($k, $v);
         }
@@ -563,7 +552,6 @@ class Route implements RouteInterface, RequestHandlerInterface
 
     /**
      * {@inheritdoc}
-     * @throws ReflectionException
      */
     public function run(ServerRequestInterface $request): ResponseInterface
     {
@@ -571,10 +559,7 @@ class Route implements RouteInterface, RequestHandlerInterface
         $middlewares = array_merge($this->middlewares, $this->middlewareDispatcher->getMiddlewareStack());
 
         // Allow Middlewares to be disabled
-        if (
-            in_array('off', $middlewares, true) ||
-            in_array('disable', $middlewares, true)
-        ) {
+        if (in_array('off', $middlewares) || in_array('disable', $middlewares)) {
             $middlewares = [];
         }
 
@@ -591,7 +576,7 @@ class Route implements RouteInterface, RequestHandlerInterface
                 // encountered from the map thus far. We'll save its current index plus its index
                 // from the priority map so we can compare against them on the next iterations.
                 return $middleware->process($request, $requestHandler);
-            }
+            };
         }
 
         return $this->handle($request);
@@ -599,7 +584,6 @@ class Route implements RouteInterface, RequestHandlerInterface
 
     /**
      * {@inheritdoc}
-     * @throws ReflectionException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -608,7 +592,10 @@ class Route implements RouteInterface, RequestHandlerInterface
         $response = null; // An empty response type.
 
         // If controller is instance of RequestHandlerInterface
-        if ($callable[0] instanceof RequestHandlerInterface) {
+        if (
+            is_countable($callable) && count($callable) === 2 &&
+            $callable[0] instanceof RequestHandlerInterface
+        ) {
             return $callable($request);
         }
 
@@ -640,7 +627,7 @@ class Route implements RouteInterface, RequestHandlerInterface
             $message = sprintf('Missing "%s" key in route collection', $key);
         }
 
-        throw new RuntimeException($message);
+        throw new \RuntimeException($message);
     }
 
     /**

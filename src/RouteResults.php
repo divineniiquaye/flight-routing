@@ -93,11 +93,11 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $routeArguments;
 
     /**
-     * @param string $method
-     * @param string $uri
-     * @param int $routeStatus
-     * @param array $routeArguments
-     * @param RouteInterface|null $routeIdentifier
+     * @param string              $method
+     * @param string              $uri
+     * @param int                 $routeStatus
+     * @param string|null         $routeIdentifier
+     * @param array               $routeArguments
      */
     public function __construct(
         string $method,
@@ -114,7 +114,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
-     * @param bool $urlDecode
      * @return RouteInterface|null
      */
     public function getRouteIdentifier(bool $urlDecode = true): ?RouteInterface
@@ -150,7 +149,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
-     * @return string|null
+     * @return bool
      */
     public function getRedirectLink(): ?string
     {
@@ -158,7 +157,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
-     * @param string $uriPath
      * @return $this|self
      */
     public function shouldRedirect(string $uriPath): RouteResults
@@ -189,8 +187,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      *
      * Otherwise, it processes the composed handle using the provide request
      * and handler.
-     * @param ServerRequestInterface $request
-     * @return ResponseInterface
      */
     public function handle(ServerRequestInterface $request) : ResponseInterface
     {

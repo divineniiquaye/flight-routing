@@ -77,7 +77,6 @@ class DefaultFlightRouter implements RouterInterface
      *
      * Uses Symfony routing style. Since it has been adopted
      * by many projects and framework including laravel framework.
-     * @param RouteInterface $route
      */
     public function addRoute(RouteInterface $route): void
     {
@@ -89,6 +88,7 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function match(ServerRequestInterface $request): RouteResults
     {
+        $method = $request->getMethod();
         $domain = $request->getUri()->getHost();
 
         // HEAD and GET are equivalent as per RFC
@@ -176,9 +176,7 @@ class DefaultFlightRouter implements RouterInterface
         $uri = preg_replace_callback('/\??\{(.*?)\??\}/', function ($match) use ($substitutions, $defaults) {
             if (isset($substitutions[$match[1]])) {
                 return $substitutions[$match[1]];
-            }
-
-            if (array_key_exists($match[1], $defaults)) {
+            } elseif (array_key_exists($match[1], $defaults)) {
                 return $defaults[$match[1]];
             }
 

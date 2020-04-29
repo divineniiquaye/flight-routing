@@ -19,8 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Closure;
-
 interface RouterProxyInterface
 {
     /**
@@ -136,9 +134,9 @@ interface RouterProxyInterface
      * Router knows how to respond to resource controller
      * request automatically
      *
-     * @param $name
+     * @param string                  $uri
      * @param Closure|callable|string $controller
-     * @param array $options
+     * @param array                   $options
      *
      * @return mixed
      */

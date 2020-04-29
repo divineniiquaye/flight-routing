@@ -88,7 +88,7 @@ class RouteMiddleware
     protected $container;
 
     /**
-     * @param array $routeMiddlewares
+     * @param RequestHandlerInterface $kernel
      * @param ContainerInterface|null $container
      */
     public function __construct(array $routeMiddlewares, ContainerInterface $container = null) {
@@ -146,7 +146,6 @@ class RouteMiddleware
      * Resolve a middleware so it can be used flexibly.
      *
      * @param MiddlewareInterface|string|callable $middleware
-     * @return MiddlewareInterface
      */
     public function resolve($middleware): MiddlewareInterface
     {

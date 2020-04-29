@@ -19,14 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Closure;
-use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
-use RuntimeException;
 
 interface RouteCollectorInterface
 {
@@ -71,8 +68,8 @@ interface RouteCollectorInterface
      * @param string $cacheFile
      * @return RouteCollectorInterface
      *
-     * @throws InvalidArgumentException
-     * @throws RuntimeException
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
      */
     public function setCacheFile(string $cacheFile): RouteCollectorInterface;
 
@@ -130,9 +127,6 @@ interface RouteCollectorInterface
 
     /**
      * Whether return a permanent redirect.
-     * @param bool $permanent
-     *
-     * @return RouteCollectorInterface
      */
     public function setPermanentRedirection(bool $permanent = true): RouteCollectorInterface;
 
@@ -143,7 +137,7 @@ interface RouteCollectorInterface
      *
      * @return RouteInterface
      *
-     * @throws RuntimeException   If named route does not exist
+     * @throws \RuntimeException   If named route does not exist
      */
     public function getNamedRoute(string $name): RouteInterface;
 
@@ -153,15 +147,18 @@ interface RouteCollectorInterface
      * @param string $name Route name
      * @return RouteCollectorInterface
      *
-     * @throws RuntimeException   If named route does not exist
+     * @throws \RuntimeException   If named route does not exist
      */
     public function removeNamedRoute(string $name): RouteCollectorInterface;
 
     /**
      * Lookup a route via the route's unique identifier
      *
-     * @param RouteInterface $route
-     * @return void
+     * @param string $identifier
+     *
+     * @return RouteInterface
+     *
+     * @throws \RuntimeException   If route of identifier does not exist
      */
     public function addLookupRoute(RouteInterface $route): void;
 
@@ -203,7 +200,6 @@ interface RouteCollectorInterface
      * This method implements a fluent interface.
      *
      * @param array $parameters The parameters
-     * @param int $type
      *
      * @return $this
      */
@@ -212,10 +208,8 @@ interface RouteCollectorInterface
     /**
      * Add route group
      *
-     * @param array $attributes
+     * @param array           $attributes
      * @param string|callable $callable
-     *
-     * @return RouteGroupInterface
      */
     public function group(array $attributes = [], $callable): RouteGroupInterface;
 
@@ -225,11 +219,11 @@ interface RouteCollectorInterface
      * Router knows how to respond to resource controller
      * request automatically
      *
-     * @param $name
+     * @param string                  $uri
      * @param Closure|callable|string $controller
-     * @param array $options
+     * @param array                   $options
      */
-    public function resource($name, $controller, array $options = []): void ;
+    public function resource($name, $controller, array $options = []);
 
     /**
      * Add route

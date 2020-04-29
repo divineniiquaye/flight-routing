@@ -29,8 +29,6 @@ use function array_key_exists;
 use function preg_replace;
 use function stripos;
 
-use const CASE_LOWER;
-
 /**
  * Set the cache control to no cache
  * Disable's caching of potentially sensitive data.
@@ -58,7 +56,7 @@ class CacheControlMiddleware implements MiddlewareInterface
         }
 
         // Fix protocol
-        if ('HTTP/1.0' !== $request->getServerParams()['SERVER_PROTOCOL']) {
+        if ('HTTP/1.0' != $request->getServerParams()['SERVER_PROTOCOL']) {
             $response = $response->withProtocolVersion('1.1');
         }
 
@@ -67,7 +65,7 @@ class CacheControlMiddleware implements MiddlewareInterface
 
         // Check if we need to send extra expire info headers
         if (
-            '1.0' === $response->getProtocolVersion() &&
+            '1.0' == $response->getProtocolVersion() &&
             false !== strpos($response->getHeaderLine('Cache-Control'), 'no-cache')
         ) {
             $response = $response
@@ -83,8 +81,8 @@ class CacheControlMiddleware implements MiddlewareInterface
         }
 
         if (
-            301 === $response->getStatusCode() &&
-            !array_key_exists('cache-control', array_change_key_case($response->getHeaders(), CASE_LOWER))
+            301 == $response->getStatusCode() &&
+            !array_key_exists('cache-control', array_change_key_case($response->getHeaders(), \CASE_LOWER))
         ) {
             $response = $response->withoutHeader('Cache-Control');
         }
@@ -98,18 +96,10 @@ class CacheControlMiddleware implements MiddlewareInterface
      * @see http://support.microsoft.com/kb/323308
      *
      * @final
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface $response
-     *
-     * @return ResponseInterface
      */
     protected function ensureIEOverSSLCompatibility(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        if (
-            false !== stripos($response->getHeaderLine('Content-Disposition'), 'attachment') &&
-            1 === preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'], $match) &&
-            array_key_exists('HTTPS', $request->getServerParams())
-        ) {
+        if (false !== stripos($response->getHeaderLine('Content-Disposition'), 'attachment') && 1 == preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'], $match) && true === $request->isSecure()) {
             if ((int) preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {
                 $response = $response->withoutHeader('Cache-Control');
             }
