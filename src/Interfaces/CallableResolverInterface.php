@@ -28,6 +28,7 @@ interface CallableResolverInterface
      * This instance added will be binded to CLosure
      *
      * @param object $instance
+     * @return CallableResolverInterface
      */
     public function addInstanceToClosure(object $instance): CallableResolverInterface;
 
@@ -53,6 +54,8 @@ interface CallableResolverInterface
      *
      * @param string|int|array|ResponseInterface $controllerResponse
      * @param ResponseInterface $response
+     *
+     * @return ResponseInterface
      */
     public function returnType($controllerResponse, ResponseInterface $response): ResponseInterface;
 }

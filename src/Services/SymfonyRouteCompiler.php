@@ -56,15 +56,15 @@ use function str_repeat;
  */
 class SymfonyRouteCompiler
 {
-    const REGEX_DELIMITER = '#';
-    const DEFAULT_DISPATCH_REGEX = '[^/]++';
+    public const REGEX_DELIMITER = '#';
+    public const DEFAULT_DISPATCH_REGEX = '[^/]++';
 
     /**
      * This string defines the characters that are automatically considered separators in front of
      * optional placeholders (with default and no static text following). Such a single separator
      * can be left out together with the optional placeholder from matching and generating URLs.
      */
-    const SEPARATORS = '/,;.:-_~+*=@|';
+    public const SEPARATORS = '/,;.:-_~+*=@|';
 
     /**
      * The maximum supported length of a PCRE subpattern name
@@ -72,7 +72,7 @@ class SymfonyRouteCompiler
      *
      * @internal
      */
-    const VARIABLE_MAXIMUM_LENGTH = 32;
+    public const VARIABLE_MAXIMUM_LENGTH = 32;
 
     private $variables;
     private $tokens;
@@ -88,6 +88,9 @@ class SymfonyRouteCompiler
      * Sets the pattern for the path.
      *
      * Based on https://github.com/symfony/routing/blob/master/Route.php by Fabien
+     * @param RouteInterface $route
+     * @param bool $isHost
+     * @return array
      */
     protected function fixRouteUri(RouteInterface $route, bool $isHost = false): array
     {
@@ -128,9 +131,10 @@ class SymfonyRouteCompiler
     /**
      * Get the route requirements.
      *
+     * @param array $requirements
      * @return  array
      */
-    protected function getRouteRequirements(array $requirements)
+    protected function getRouteRequirements(array $requirements): array
     {
         $newParamters = [];
         foreach ($requirements as $key => $regex) {
@@ -143,12 +147,8 @@ class SymfonyRouteCompiler
     /**
      * Match the RouteInterface instance and compiles the current route instance.
      *
-     * @throws InvalidArgumentException if a path variable is named _fragment
-     * @throws LogicException           if a variable is referenced more than once
-     * @throws DomainException          if a variable name starts with a digit or if it is too long to be successfully used as
-     *                                   a PCRE subpattern
-     * @throws LogicException           If the Route cannot be compiled because the
-     *                                   path or host pattern is invalid
+     * @param RouteInterface $route
+     * @return SymfonyRouteCompiler
      */
     public function compile(RouteInterface $route): self
     {
@@ -174,7 +174,7 @@ class SymfonyRouteCompiler
 
         foreach ($pathVariables as $pathParam) {
             if ('_fragment' === $pathParam) {
-                throw new \InvalidArgumentException(sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath()));
+                throw new InvalidArgumentException(sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath()));
             }
         }
 
@@ -195,7 +195,7 @@ class SymfonyRouteCompiler
      *
      * @return string The static prefix
      */
-    public function getStaticPrefix()
+    public function getStaticPrefix(): string
     {
         return $this->staticPrefix;
     }
@@ -205,7 +205,7 @@ class SymfonyRouteCompiler
      *
      * @return string The static regex
      */
-    public function getStaticRegex()
+    public function getStaticRegex(): string
     {
         return $this->staticRegex;
     }
@@ -215,7 +215,7 @@ class SymfonyRouteCompiler
      *
      * @return string The regex
      */
-    public function getRegex()
+    public function getRegex(): string
     {
         return $this->regex;
     }
@@ -225,7 +225,7 @@ class SymfonyRouteCompiler
      *
      * @return string|null The host regex or null
      */
-    public function getHostRegex()
+    public function getHostRegex(): ?string
     {
         return $this->hostRegex;
     }
@@ -235,7 +235,7 @@ class SymfonyRouteCompiler
      *
      * @return array The tokens
      */
-    public function getTokens()
+    public function getTokens(): array
     {
         return $this->tokens;
     }
@@ -245,7 +245,7 @@ class SymfonyRouteCompiler
      *
      * @return array The tokens
      */
-    public function getHostTokens()
+    public function getHostTokens(): array
     {
         return $this->hostTokens;
     }
@@ -255,7 +255,7 @@ class SymfonyRouteCompiler
      *
      * @return array The variables
      */
-    public function getVariables()
+    public function getVariables(): array
     {
         return array_unique($this->variables);
     }
@@ -265,7 +265,7 @@ class SymfonyRouteCompiler
      *
      * @return array The variables
      */
-    public function getPathVariables()
+    public function getPathVariables(): array
     {
         return $this->pathVariables;
     }
@@ -275,14 +275,14 @@ class SymfonyRouteCompiler
      *
      * @return array The variables
      */
-    public function getHostVariables()
+    public function getHostVariables(): array
     {
         return $this->hostVariables;
     }
 
     private function sanitizeRequirement(string $key, string $regex)
     {
-        if ('' !== $regex && '^' === $regex[0]) {
+        if ('' !== $regex && strpos($regex, '^') === 0) {
             $regex = (string) mb_substr($regex, 1); // returns false for a single character
         }
 
@@ -324,7 +324,7 @@ class SymfonyRouteCompiler
             $precedingText = substr($pattern, $pos, $match[0][1] - $pos);
             $pos = $match[0][1] + strlen($match[0][0]);
 
-            if (!strlen($precedingText)) {
+            if ($precedingText === '') {
                 $precedingChar = '';
             } elseif ($useUtf8) {
                 preg_match('/.$/u', $precedingText, $precedingChar);
@@ -339,7 +339,7 @@ class SymfonyRouteCompiler
             if (preg_match('/^\d/', $varName)) {
                 throw new DomainException(sprintf('Variable name "%s" cannot start with a digit in route pattern "%s". Please use a different name.', $varName, $pattern));
             }
-            if (in_array($varName, $variables)) {
+            if (in_array($varName, $variables, true)) {
                 throw new LogicException(sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $pattern, $varName));
             }
 
@@ -349,7 +349,7 @@ class SymfonyRouteCompiler
 
             if ($isSeparator && $precedingText !== $precedingChar) {
                 $tokens[] = ['text', substr($precedingText, 0, -strlen($precedingChar))];
-            } elseif (!$isSeparator && strlen($precedingText) > 0) {
+            } elseif (!$isSeparator && $precedingText !== '') {
                 $tokens[] = ['text', $precedingText];
             }
 
@@ -386,7 +386,7 @@ class SymfonyRouteCompiler
                 if (!$useUtf8 && $needsUtf8) {
                     throw new LogicException(sprintf('Cannot mix UTF-8 requirement with non-UTF-8 charset for variable "%s" in pattern "%s".', $varName, $pattern));
                 }
-                $regexp = self::transformCapturingGroupsToNonCapturings($regexp);
+                $regexp = $this->transformCapturingGroupsToNonCapturings($regexp);
             }
 
             if ($important) {
@@ -420,7 +420,7 @@ class SymfonyRouteCompiler
         // compute the matching regexp
         $regexp = '';
         for ($i = 0, $nbToken = count($tokens); $i < $nbToken; ++$i) {
-            $regexp .= self::computeRegexp($tokens, $i, $firstOptional);
+            $regexp .= $this->computeRegexp($tokens, $i, $firstOptional);
         }
         $regexp = self::REGEX_DELIMITER.'^'.$regexp.'$'.self::REGEX_DELIMITER.'sD'.($isHost ? 'i' : '');
 
@@ -435,7 +435,7 @@ class SymfonyRouteCompiler
         }
 
         return [
-            'staticPrefix' => self::determineStaticPrefix($route, $tokens),
+            'staticPrefix' => $this->determineStaticPrefix($route, $tokens),
             'regex' => $regexp,
             'tokens' => array_reverse($tokens),
             'variables' => $variables,
@@ -444,6 +444,9 @@ class SymfonyRouteCompiler
 
     /**
      * Determines the longest static prefix possible for a route.
+     * @param RouteInterface $route
+     * @param array $tokens
+     * @return string
      */
     private function determineStaticPrefix(RouteInterface $route, array $tokens): string
     {
@@ -457,15 +460,18 @@ class SymfonyRouteCompiler
             $prefix .= $tokens[1][1];
         }
 
-        return rtrim($prefix, "/");
+        return rtrim($prefix, '/');
     }
 
     /**
      * Returns the next static character in the Route pattern that will serve as a separator (or the empty string when none available).
+     * @param string $pattern
+     * @param bool $useUtf8
+     * @return string
      */
     private function findNextSeparator(string $pattern, bool $useUtf8): string
     {
-        if ('' == $pattern) {
+        if ('' === $pattern) {
             // return empty string if pattern is empty or false (false which can be returned by substr)
             return '';
         }
@@ -495,33 +501,32 @@ class SymfonyRouteCompiler
         if ('text' === $token[0]) {
             // Text tokens
             return preg_quote($token[1], self::REGEX_DELIMITER);
-        } else {
-            // Variable tokens
-            if (0 === $index && 0 === $firstOptional) {
-                // When the only token is an optional variable token, the separator is required
-                return sprintf('%s(?P<%s>%s)?', preg_quote($token[1], self::REGEX_DELIMITER), $token[3], $token[2]);
-            } else {
-                $regexp = sprintf('%s(?P<%s>%s)', preg_quote($token[1], self::REGEX_DELIMITER), $token[3], $token[2]);
-                if ($index >= $firstOptional) {
-                    // Enclose each optional token in a subpattern to make it optional.
-                    // "?:" means it is non-capturing, i.e. the portion of the subject string that
-                    // matched the optional subpattern is not passed back.
-                    $regexp = "(?:$regexp";
-                    $nbTokens = count($tokens);
-                    if ($nbTokens - 1 == $index) {
-                        // Close the optional subpatterns
-                        $regexp .= str_repeat(')?', $nbTokens - $firstOptional - (0 === $firstOptional ? 1 : 0));
-                    }
-                }
+        }
 
-                return $regexp;
+        if (0 === $index && 0 === $firstOptional) {
+            // When the only token is an optional variable token, the separator is required
+            return sprintf('%s(?P<%s>%s)?', preg_quote($token[1], self::REGEX_DELIMITER), $token[3], $token[2]);
+        }
+
+        $regexp = sprintf('%s(?P<%s>%s)', preg_quote($token[1], self::REGEX_DELIMITER), $token[3], $token[2]);
+        if ($index >= $firstOptional) {
+            // Enclose each optional token in a subpattern to make it optional.
+            // "?:" means it is non-capturing, i.e. the portion of the subject string that
+            // matched the optional subpattern is not passed back.
+            $regexp = "(?:$regexp";
+            $nbTokens = count($tokens);
+            if ($nbTokens - 1 === $index) {
+                // Close the optional subpatterns
+                $regexp .= str_repeat(')?', $nbTokens - $firstOptional - (0 === $firstOptional ? 1 : 0));
             }
         }
+
+        return $regexp;
     }
 
     private function transformCapturingGroupsToNonCapturings(string $regexp): string
     {
-        for ($i = 0; $i < strlen($regexp); ++$i) {
+        for ($i = 0, $iMax = strlen($regexp); $i < $iMax; ++$i) {
             if ('\\' === $regexp[$i]) {
                 ++$i;
                 continue;

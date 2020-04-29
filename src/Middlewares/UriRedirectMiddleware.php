@@ -28,12 +28,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 use function in_array;
 use function is_array;
-use function strlen;
 
 class UriRedirectMiddleware implements MiddlewareInterface
 {
     /**
-     * @var array|\ArrayAccess
+     * @var array|ArrayAccess
      */
     protected $redirects = [];
 
@@ -57,6 +56,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * @param array|ArrayAccess $redirects [from => to]
+     * @param array $options
      */
     public function __construct($redirects = [], array $options = self::DEFAUTLS)
     {
@@ -76,6 +76,8 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Whether return a permanent redirect.
+     * @param bool $permanent
+     * @return UriRedirectMiddleware
      */
     public function permanentRedirection(bool $permanent = true): self
     {
@@ -86,6 +88,8 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Whether include the query to search the url
+     * @param bool $query
+     * @return UriRedirectMiddleware
      */
     public function allowQueries(bool $query = true): self
     {
@@ -96,6 +100,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Process a request and return a response.
+     * @inheritDoc
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -104,7 +109,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
         $uri = $request->getUri()->getPath();
 
-        if ($this->query && strlen($query = $request->getUri()->getQuery()) > 0) {
+        if ($this->query && $query = $request->getUri()->getQuery() !== '') {
             $uri .= '?' . $query;
         }
 
@@ -119,6 +124,8 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Determine the response code according with the method and the permanent config
+     * @param ServerRequestInterface $request
+     * @return int
      */
     private function determineResponseCode(ServerRequestInterface $request): int
     {

@@ -114,6 +114,7 @@ interface RouteInterface
      *
      * @param string $name
      * @param string $value
+     * @param bool $includeInSavedArguments
      *
      * @return self
      */
@@ -131,13 +132,10 @@ interface RouteInterface
     /**
      * Gets a default value.
      *
-     * @param string $name A variable name
-     *
-     * @return string|null The default value or defaults when not given
-     *
      * @param string $name
      * @param string|null $default
-     * @return string|null
+     *
+     * @return string|null The default value or defaults when not given
      */
     public function getDefault(string $name, ?string $default = null): ?string;
 
@@ -166,7 +164,7 @@ interface RouteInterface
      *
      * @return bool true if the default value is set, false otherwise
      */
-    public function hasDefault(string $name);
+    public function hasDefault(string $name): bool;
 
     /**
      * Checks if route exists in a group

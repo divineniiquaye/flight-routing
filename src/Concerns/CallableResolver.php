@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpComposerExtensionStubsInspection */
 
 declare(strict_types=1);
 
@@ -19,6 +19,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
+use Closure;
+use RuntimeException;
+use stdClass;
 use TypeError;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -27,7 +30,6 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
-use function is_countable;
 use function is_object;
 use function method_exists;
 use function is_callable;
@@ -35,7 +37,6 @@ use function is_string;
 use function get_class;
 use function class_exists;
 use function preg_match;
-use function strpos;
 use function json_encode;
 use function stripos;
 
@@ -47,7 +48,7 @@ use function stripos;
  */
 class CallableResolver implements CallableResolverInterface
 {
-    const CALLABLE_PATTERN = '!^([^\:]+)(:|::|@)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)$!';
+    public const CALLABLE_PATTERN = '!^([^\:]+)(:|::|@)([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)$!';
 
     /**
      * @var ContainerInterface|null
@@ -57,7 +58,7 @@ class CallableResolver implements CallableResolverInterface
     /**
      * @var object|null
      */
-    protected $instance = null;
+    protected $instance;
 
     /**
      * @param ContainerInterface|null $container
@@ -84,32 +85,24 @@ class CallableResolver implements CallableResolverInterface
     {
         $resolved = $toResolve;
 
-        if (
-            is_object($toResolve) && method_exists($toResolve, '__invoke') &&
-            !$toResolve instanceof \Closure
-        ) {
-            $resolved = $this->resolveCallable($toResolve);
-        }
-
-        if (is_string($toResolve) && (!is_callable($toResolve) || false !== strpos($toResolve, '::'))) {
+        if (is_string($resolved) && preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
             // check for slim callable as "class:method", "class::method" and "class@method"
-            if (preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
-                $resolved = $this->resolveCallable($matches[1], $matches[3]);
-            }
+            $resolved = $this->resolveCallable($matches[1], $matches[3]);
         }
 
-        if (
-            is_array($resolved) && !$resolved instanceof \Closure &&
-            is_countable($resolved) && is_string($toResolve[0])
-        ) {
+        if (is_array($resolved) && !is_callable($resolved) && is_string($resolved[0])) {
             $resolved = $this->resolveCallable($resolved[0], $resolved[1]);
+        }
+
+        if (!$resolved instanceof Closure && method_exists($resolved, '__invoke')) {
+            $resolved = $this->resolveCallable($toResolve);
         }
 
         // Checks if indeed what wwe want to return is a callable.
         $resolved = $this->assertCallable($resolved);
 
         // Bind new Instance or $this->container to \Closure
-        if ($resolved instanceof \Closure) {
+        if ($resolved instanceof Closure) {
             if (null !== $binded = $this->instance) {
                 $resolved = $resolved->bindTo($binded);
             }
@@ -134,7 +127,7 @@ class CallableResolver implements CallableResolverInterface
 
         if (is_string($controllerResponse) || is_numeric($controllerResponse)) {
             $response->getBody()->write((string) $controllerResponse);
-        } elseif (is_array($controllerResponse) || $controllerResponse instanceof \stdClass) {
+        } elseif (is_array($controllerResponse) || $controllerResponse instanceof stdClass) {
             $response->getBody()->write(json_encode((array) $controllerResponse));
         }
 
@@ -172,10 +165,10 @@ class CallableResolver implements CallableResolverInterface
     {
         $instance = $class;
 
-        if ($this->container instanceof ContainerInterface && is_string($class)) {
+        if ($this->container instanceof ContainerInterface && is_string($instance)) {
             $instance = $this->container->get($class);
         } else {
-            if (is_string($class) && !class_exists($class)) {
+            if (!is_object($instance) && !class_exists($instance)) {
                 throw new InvalidControllerException(sprintf('Callable %s does not exist', $class));
             }
 
@@ -198,12 +191,13 @@ class CallableResolver implements CallableResolverInterface
     /**
      * @param Callable $callable
      *
-     * @throws \RuntimeException if the callable is not resolvable
+     * @return Callable
+     * @throws RuntimeException if the callable is not resolvable
      */
-    protected function assertCallable($callable)
+    protected function assertCallable($callable): callable
     {
         // Maybe could be a class object or RequestHandlerInterface instance
-        if (!$callable instanceof \Closure && is_object($callable) || is_string($callable)) {
+        if ((!$callable instanceof Closure && is_object($callable)) || is_string($callable)) {
             $callable = $this->resolveCallable($callable);
         }
 
@@ -225,7 +219,7 @@ class CallableResolver implements CallableResolverInterface
         }
         $stream->rewind();
 
-        json_decode($stream->getContents());
+        json_decode($stream->getContents(), true);
 
         return JSON_ERROR_NONE === json_last_error();
     }
