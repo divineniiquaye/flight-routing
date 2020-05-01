@@ -35,8 +35,17 @@ interface RouteInterface
 
     /**
      * Get the route patternised path.
+     *
+     * @return string
      */
     public function getPath(): string;
+
+    /**
+     * Get the Controller used on route.
+     *
+     * @return mixed
+     */
+    public function getController();
 
     /**
      * Set a regular expression requirement on the route.
@@ -55,6 +64,8 @@ interface RouteInterface
 
     /**
      * Get route domain, same as host.
+     *
+     * @return string
      */
     public function getDomain(): string;
 
@@ -63,7 +74,7 @@ interface RouteInterface
      *
      * @param string|null $domain
      *
-     * @return $this|string|null
+     * @return RouteInterface
      */
     public function setDomain(?string $domain = null): RouteInterface;
 
@@ -114,6 +125,7 @@ interface RouteInterface
      *
      * @param string $name
      * @param string $value
+     * @param bool $includeInSavedArguments
      *
      * @return self
      */
@@ -131,13 +143,10 @@ interface RouteInterface
     /**
      * Gets a default value.
      *
-     * @param string $name A variable name
-     *
-     * @return string|null The default value or defaults when not given
-     *
      * @param string $name
      * @param string|null $default
-     * @return string|null
+     *
+     * @return string|null The default value or defaults when not given
      */
     public function getDefault(string $name, ?string $default = null): ?string;
 
@@ -148,7 +157,7 @@ interface RouteInterface
      *
      * @param array $defaults The defaults
      *
-     * @return $this
+     * @return RouteInterface
      */
     public function addDefaults(array $defaults): RouteInterface;
 
@@ -166,14 +175,25 @@ interface RouteInterface
      *
      * @return bool true if the default value is set, false otherwise
      */
-    public function hasDefault(string $name);
+    public function hasDefault(string $name): bool;
 
     /**
      * Checks if route exists in a group
+     *
+     * @return bool
      */
     public function hasGroup(): bool;
 
     /**
+     * The group id, route belongs to.
+     *
+     * @return string|null
+     */
+    public function getGroupId(): ?string;
+
+    /**
+     * Add middlewares to route.
+     *
      * @param MiddlewareInterface|string|array|callable|RequestHandlerInterface $middleware
      * @return RouteInterface
      */

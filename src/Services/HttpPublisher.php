@@ -33,7 +33,7 @@ class HttpPublisher implements PublisherInterface
     /**
      * {@inheritdoc}
      *
-     * @throws \LogicException
+     * @throws LogicException
      */
     public function publish($content, ?EmitterInterface $emitter): bool
     {
@@ -57,6 +57,8 @@ class HttpPublisher implements PublisherInterface
 
     /**
      * Emit the message body.
+     * @param StreamInterface $body
+     * @return bool
      */
     private function emitStreamBody(StreamInterface $body) : bool
     {
@@ -78,6 +80,7 @@ class HttpPublisher implements PublisherInterface
 
     /**
      * Emit the response header.
+     * @param PsrResponseInterface $response
      */
     private function emitResponseHeaders(PsrResponseInterface $response) : void
     {
@@ -85,7 +88,7 @@ class HttpPublisher implements PublisherInterface
 
         foreach ($response->getHeaders() as $name => $values) {
             $name  = ucwords($name, '-'); // Filter a header name to wordcase
-            $first = $name === 'Set-Cookie' ? false : true;
+            $first = $name !== 'Set-Cookie';
 
             foreach ($values as $value) {
                 header(sprintf('%s: %s', $name, $value), $first, $statusCode);

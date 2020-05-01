@@ -23,7 +23,7 @@ use Laminas\Stratigility\MiddlewarePipe;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use BiuradPHP\Http\Exceptions\InvalidMiddlewareException;
+use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
 use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
 
@@ -88,7 +88,7 @@ class RouteMiddleware
     protected $container;
 
     /**
-     * @param RequestHandlerInterface $kernel
+     * @param array $routeMiddlewares
      * @param ContainerInterface|null $container
      */
     public function __construct(array $routeMiddlewares, ContainerInterface $container = null) {
@@ -146,6 +146,7 @@ class RouteMiddleware
      * Resolve a middleware so it can be used flexibly.
      *
      * @param MiddlewareInterface|string|callable $middleware
+     * @return MiddlewareInterface
      */
     public function resolve($middleware): MiddlewareInterface
     {

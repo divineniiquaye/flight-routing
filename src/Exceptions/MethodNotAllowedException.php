@@ -19,11 +19,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
-use DomainException;
-
 /**
- * Class RouteNotFoundException
+ * HTTP 405 exception.
  */
-class RouteNotFoundException extends DomainException
+class MethodNotAllowedException extends RouteNotFoundException
 {
 }
