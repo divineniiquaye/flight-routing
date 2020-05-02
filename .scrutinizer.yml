@@ -14,7 +14,6 @@ tools:
     php_cpd: true
     php_loc: true
     php_pdepend: true
-    php-scrutinizer-run: true
     external_code_coverage: true
 filter:
     paths:
