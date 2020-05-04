@@ -114,7 +114,7 @@ Simply create a new `web.config` file in your projects `public` directory and pa
 
 #### Troubleshooting
 
-If you do not have a `favicon.ico` file in your project, you can get a `NotFoundHttpException` (404 - not found).
+If you do not have a `favicon.ico` file in your project, you can get a `RouteNotFoundHttpException` (404 - not found).
 To add `favicon.ico` to the IIS ignore-list, add the following line to the `<conditions>` group:
 
 ```xml
