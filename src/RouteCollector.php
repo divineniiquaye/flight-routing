@@ -540,10 +540,10 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * {@inheritdoc}
      */
-    public function map(array $methods, $uri, $action = null): RouteInterface
+    public function map(array $methods, string $pattern, $handler = null): RouteInterface
     {
         $this->routeCounter++;
-        return $this->addRoute(array_map('mb_strtoupper', $methods), $uri, $action);
+        return $this->addRoute(array_map('mb_strtoupper', $methods), $pattern, $handler);
     }
 
     /**

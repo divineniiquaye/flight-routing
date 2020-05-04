@@ -70,7 +70,7 @@ class CallableResolver implements CallableResolverInterface
     /**
      * {@inheritdoc}
      */
-    public function addInstanceToClosure(object $instance): CallableResolverInterface
+    public function addInstanceToClosure($instance): CallableResolverInterface
     {
         $this->instance = $instance;
 

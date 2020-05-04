@@ -241,9 +241,9 @@ interface RouteCollectorInterface
     /**
      * Add route
      *
-     * @param string[]        $methods Array of HTTP methods
-     * @param string          $pattern The route pattern
-     * @param callable|string $handler The route callable
+     * @param string[]                       $methods Array of HTTP methods
+     * @param string                         $pattern The route pattern
+     * @param callable|string|Closure|object $handler The route callable
      *
      * @return RouteInterface
      */

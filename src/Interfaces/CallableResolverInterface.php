@@ -30,7 +30,7 @@ interface CallableResolverInterface
      * @param object $instance
      * @return CallableResolverInterface
      */
-    public function addInstanceToClosure(object $instance): CallableResolverInterface;
+    public function addInstanceToClosure($instance): CallableResolverInterface;
 
     /**
      * Resolve toResolve into a callable that the router can dispatch.
