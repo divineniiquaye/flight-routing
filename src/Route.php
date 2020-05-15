@@ -20,10 +20,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Closure;
-use ReflectionException;
-use Throwable;
-use RuntimeException;
-use BiuradPHP\Support\BoundMethod;
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
@@ -31,19 +28,21 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use ReflectionException;
+use RuntimeException;
+use Serializable;
+use Throwable;
 
-use function array_key_exists;
-use function is_numeric;
-use function str_replace;
-use function is_array;
-use function class_exists;
 use function array_merge;
-use function sprintf;
 use function in_array;
-use function rtrim;
 use function ltrim;
-use function mb_strpos;
-use function is_int;
+use function preg_match;
+use function rtrim;
+use function serialize;
+use function sprintf;
+use function strpbrk;
+use function strpos;
+use function unserialize;
 
 /**
  * Value object representing a single route.
@@ -60,8 +59,15 @@ use function is_int;
  * be provided after instantiation via the "defaults" property and related
  * addDefaults() method.
  */
-class Route implements RouteInterface, RequestHandlerInterface
+class Route implements Serializable, RouteInterface, RequestHandlerInterface
 {
+    use Traits\ArgumentsTrait;
+    use Traits\ControllersTrait;
+    use Traits\DefaultsTrait;
+    use Traits\DomainsTrait;
+    use Traits\MiddlewaresTrait;
+    use Traits\PatternsTrait;
+
     /**
      * HTTP methods supported by this route
      *
@@ -77,25 +83,16 @@ class Route implements RouteInterface, RequestHandlerInterface
     protected $name;
 
     /**
-     * Route parameters
+     * Route path pattern
      *
-     * @var array
+     * @var string
      */
-    protected $arguments = [];
+    protected $path;
 
     /**
-     * Route Middlewares
-     *
-     * @var array
+     * @var bool
      */
-    protected $middlewares = [];
-
-    /**
-     * Route arguments parameters
-     *
-     * @var array
-     */
-    protected $savedArguments = [];
+    protected $groupAppended = false;
 
     /**
      * Parent route groups
@@ -117,113 +114,117 @@ class Route implements RouteInterface, RequestHandlerInterface
     protected $container;
 
     /**
-     * @var RouteMiddleware
-     */
-    protected $middlewareDispatcher;
-
-    /**
-     * Route callable
-     *
-     * @var callable|string
-     */
-    protected $controller;
-
-    /**
      * @var CallableResolverInterface
      */
     protected $callableResolver;
 
     /**
-     * Route path pattern
-     *
-     * @var string
-     */
-    protected $path;
-
-    /**
-     * Route domain
-     *
-     * @var string
-     */
-    protected $domain = '';
-
-    /**
-     * Route Namespace
-     *
-     * @var string
-     */
-    protected $namespace;
-
-    /**
-     * Route Patterns
-     *
-     * @var array
-     */
-    protected $patterns = [];
-
-    /**
-     * Route defaults
-     *
-     * @var array
-     */
-    protected $defaults = [];
-
-    /**
-     * @var bool
-     */
-    protected $groupAppended = false;
-
-    /**
      * Create a new Route constructor.
      *
-     * @param string[]                         $methods    The route HTTP methods
-     * @param string                           $pattern    The route pattern
-     * @param callable|string                  $callable   The route callable
-     * @param RouteMiddleware                  $middleware
-     * @param ResponseInterface                $response
-     * @param CallableResolverInterface        $callableResolver
-     * @param ContainerInterface|null          $container
-     * @param RouteGroup[]                     $groups     The parent route groups
+     * @param string[] $methods The route HTTP methods
+     * @param string $pattern The route pattern
+     * @param callable|string|object|null $callable The route callable
+     * @param callable $response The HTTP response
+     * @param CallableResolverInterface $callableResolver
+     * @param ContainerInterface|null $container
+     * @param RouteGroup[] $groups The parent route groups
      */
     public function __construct(
-        array $methods, string $pattern, $callable,
+        array $methods,
+        string $pattern,
+        $callable,
+        callable $response,
         CallableResolverInterface $callableResolver,
-        RouteMiddleware $middleware, ResponseInterface $response,
-        ContainerInterface $container = null, array $groups = []
-    ) {
+        ContainerInterface $container = null,
+        array $groups = []
+    )
+    {
         $this->methods = $methods;
         $this->appendGroupToRoute($groups);
-        $this->setPath($pattern);
         $this->setController($callable);
+        $this->setPath($pattern);
 
-        $this->response             = $response;
-        $this->callableResolver     = $callableResolver;
-        $this->container            = $container;
-        $this->middlewareDispatcher = $middleware;
+        $this->response = $response;
+        $this->callableResolver = $callableResolver;
+        $this->container = $container;
     }
 
     /**
      * @return array
      */
-    public function toArray(): array
+    public function __serialize(): array
     {
         return [
-            'path'          => $this->getPath(),
-            'name'          => $this->getName(),
-            'methods'       => $this->getMethods(),
-            'domain'        => $this->getDomain(),
-            'controller'    => $this->container,
-            'middlewares'   => $this->middlewares,
-            'defaults'      => $this->getDefaults(),
-            'patterns'      => $this->getPatterns(),
-            'arguments'     => $this->getArguments(),
+            'path' => $this->path,
+            'host' => $this->domain,
+            'schemes' => $this->schemes,
+            'namespace' => $this->namespace,
+            'defaults' => $this->defaults,
+            'requirements' => $this->patterns,
+            'methods' => $this->methods,
+            'middlewares' => $this->middlewares,
+            'arguments' => $this->arguments,
+            'group' => $this->groups,
+            'response' => $this->response,
+            'callable' => $this->callableResolver,
+            'controller' => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
         ];
+    }
+
+    /**
+     * {@inheritdoc}
+     * @internal
+     */
+    final public function serialize(): string
+    {
+        return serialize($this->__serialize());
+    }
+
+    /**
+     * @param array $data
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->path = $data['path'];
+        $this->domain = $data['host'];
+        $this->defaults = $data['defaults'];
+        $this->schemes = $data['schemes'];
+        $this->patterns = $data['requirements'];
+        $this->methods = $data['methods'];
+        $this->controller = $data['controller'];
+        $this->response = $data['response'];
+        $this->callableResolver = $data['callable'];
+
+        if (isset($data['middlewares'])) {
+            $this->middlewares = $data['middlewares'];
+        }
+        if (isset($data['namespace'])) {
+            $this->namespace = $data['namespace'];
+        }
+        if (isset($data['group'])) {
+            $this->groups = $data['group'];
+        }
+        if (isset($data['arguments'])) {
+            $this->arguments = $data['arguments'];
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     * @internal
+     */
+    final public function unserialize($serialized)
+    {
+        $this->__unserialize(unserialize($serialized, null));
     }
 
     /**
      * @param array $values
      *
      * @throws RuntimeException
+     * @internal
+     *
      */
     public function fromArray(array $values): void
     {
@@ -262,7 +263,7 @@ class Route implements RouteInterface, RequestHandlerInterface
 
         $urls = [];
         foreach (['&', '-', '_', '~', '@'] as $symbols) {
-            if (mb_strpos($prefix, $symbols) !== false) {
+            if (strpos($prefix, $symbols) !== false) {
                 $urls[] = rtrim($prefix, '/') . $uri;
             }
         }
@@ -283,33 +284,30 @@ class Route implements RouteInterface, RequestHandlerInterface
             $pattern = $this->normalizePrefix($pattern, $this->groups[RouteGroupInterface::PREFIX]);
         }
 
-        $this->path = (empty($pattern) || '/' === $pattern) ? '/' : $pattern;
-    }
-
-    /**
-     * @param $controller
-     *
-     * @return void
-     */
-    protected function setController($controller): void
-    {
-        $namespace = $this->groups[RouteGroupInterface::NAMESPACE] ?? $this->namespace;
-
-        if (
-            is_string($controller) &&
-            null !== $namespace &&
-            false === mb_strpos($controller, $namespace)
-        ) {
-            $controller = $namespace . $controller;
-        } elseif (
-            is_array($controller) &&
-            !is_callable($controller) &&
-            !class_exists($controller[0])
-        ) {
-            $controller[0] = $namespace . $controller[0];
+        // Match for a domain
+        if (preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern, $matches)) {
+            $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
+            $pattern = preg_replace('@^(?:(https?):)?(//[^/]+)@i', '', $pattern);
         }
 
-        $this->controller = $controller;
+        if (
+            strpbrk($pattern, '<*') !== false &&
+            preg_match('/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i',
+                $pattern,
+                $matches
+            )
+        ) {
+            if (!isset($matches['route'])) {
+                throw new InvalidControllerException("Unable to locate route candidate for `{$pattern}`");
+            }
+
+            $pattern = $matches['route'];
+            if (isset($matches['controller'], $matches['action'])) {
+                $this->setController([$matches['controller'] ?: $this->controller, $matches['action']]);
+            }
+        }
+
+        $this->path = (empty($pattern) || '/' === $pattern) ? '/' : $pattern;
     }
 
     /**
@@ -322,24 +320,16 @@ class Route implements RouteInterface, RequestHandlerInterface
             return;
         }
 
-        $this->groups = $groups[0]->getOptions();
-        if (isset($this->groups[RouteGroupInterface::MIDDLEWARE])) {
-            $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARE]);
+        $this->groups = current($groups)->getOptions();
+        if (isset($this->groups[RouteGroupInterface::MIDDLEWARES])) {
+            $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
         }
 
         if (isset($this->groups[RouteGroupInterface::DOMAIN])) {
-            $this->setDomain($this->groups[RouteGroupInterface::DOMAIN] ?? '');
+            $this->domain = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
         }
 
         $this->groupAppended = true;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getController()
-    {
-        return $this->controller;
     }
 
     /**
@@ -379,79 +369,6 @@ class Route implements RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function setDomain(?string $domain = null): RouteInterface
-    {
-        if (null !== $domain) {
-            $this->domain = $domain;
-        }
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getDomain(): string
-    {
-        return str_replace(['http://', 'https://'], '', $this->domain);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setArgument(string $name, ?string $value, bool $includeInSavedArguments = true): RouteInterface
-    {
-        // Resolving the value with numbers.
-        $value = (null !== $value && is_numeric($value)) ? (int) $value : $value;
-
-        if ($includeInSavedArguments) {
-            $this->savedArguments[$name] = $value;
-        }
-
-        if (null !== $value) {
-            $this->arguments[$name] = $value;
-        }
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getArgument(string $name, ?string $default = null): ?string
-    {
-        if (array_key_exists($name, $this->arguments)) {
-            return $this->arguments[$name];
-        }
-
-        return $default;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getArguments(): array
-    {
-        return $this->arguments;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setArguments(array $arguments, bool $includeInSavedArguments = true): RouteInterface
-    {
-        if ($includeInSavedArguments) {
-            $this->savedArguments = $arguments;
-        }
-
-        $this->arguments = $arguments;
-
-        return $this;
-    }
-
-    /**
      * Add or change the route name.
      *
      * @param string $name
@@ -460,14 +377,12 @@ class Route implements RouteInterface, RequestHandlerInterface
      */
     public function setName(?string $name): RouteInterface
     {
-        $current = $this->groups[RouteGroupInterface::NAME] ?? null;
-        $definedName = null !== $current ? $current . $name : $name;
-
-        if (null !== $current && mb_strpos($current, '.') === false) {
-            $definedName = sprintf('%s.%s', $current, $name);
+        if (null === $name) {
+            return $this;
         }
 
-        $this->name = $definedName;
+        $current = $this->groups[RouteGroupInterface::NAME] ?? null;
+        $this->name = null !== $current ? $current.$name : $name;;
 
         return $this;
     }
@@ -482,144 +397,7 @@ class Route implements RouteInterface, RequestHandlerInterface
 
     /**
      * {@inheritdoc}
-     */
-    public function setPattern(string $name, string $expression = null): RouteInterface
-    {
-        $this->patterns = array_merge($this->parseWhere($name, $expression), $this->patterns);
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getPatterns(): array
-    {
-        return $this->patterns;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function addDefaults(array $defaults): RouteInterface
-    {
-        foreach ($defaults as $name => $default) {
-            $this->defaults[$name] = $default;
-        }
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefault(string $name, ?string $default = null): ?string
-    {
-        if (array_key_exists($name, $this->defaults)) {
-            return $this->defaults[$name];
-        }
-
-        return $default;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefaults(): array
-    {
-        return $this->defaults;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function hasDefault($name): bool
-    {
-        return array_key_exists($name, $this->defaults);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function whereArray(array $wheres = []): RouteInterface
-    {
-        foreach ($wheres as $name => $expression) {
-            $this->setPattern($name, $expression);
-        }
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function addMiddleware($middleware): RouteInterface
-    {
-        $this->middlewares = array_merge(
-            is_array($middleware) ? $middleware : [$middleware], $this->middlewares
-        );
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function prepare(array $arguments): RouteInterface
-    {
-        // Remove temp arguments
-        $this->setArguments($this->savedArguments);
-
-        // Add the arguments
-        foreach ($arguments as $k => $v) {
-            if (is_int($k)) {
-                continue;
-            }
-
-            $this->setArgument($k, $v);
-        }
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     * @throws ReflectionException
-     */
-    public function run(ServerRequestInterface $request): ResponseInterface
-    {
-        // Get all available middlewares
-        $middlewares = array_merge($this->middlewares, $this->middlewareDispatcher->getMiddlewareStack());
-
-        // Allow Middlewares to be disabled
-        if (
-            in_array('off', $middlewares, true) ||
-            in_array('disable', $middlewares, true)
-        ) {
-            $middlewares = [];
-        }
-
-        if (count($middlewares) > 0) {
-            // This middleware is in the priority map. If we have encountered another middleware
-            // that was also in the priority map and was at a lower priority than the current
-            // middleware, we will move this middleware to be above the previous encounter.
-            $middleware = $this->middlewareDispatcher->pipeline($middlewares);
-
-            try {
-                $requestHandler = $this->middlewareDispatcher->addhandler($this);
-            } finally {
-                // This middleware is in the priority map; but, this is the first middleware we have
-                // encountered from the map thus far. We'll save its current index plus its index
-                // from the priority map so we can compare against them on the next iterations.
-                return $middleware->process($request, $requestHandler);
-            }
-        }
-
-        return $this->handle($request);
-    }
-
-    /**
-     * {@inheritdoc}
+     *
      * @throws ReflectionException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -632,27 +410,7 @@ class Route implements RouteInterface, RequestHandlerInterface
             return $callable($request);
         }
 
-        return $this->callableResolver->returnType(
-            $this->handleController($callable, $request),
-            $this->response
-        );
-    }
-
-    /**
-     * Handles a callable controller served on a route
-     *
-     * @param callable $controller
-     * @param ServerRequestInterface $request
-     *
-     * @return mixed
-     */
-    protected function handleController(callable $controller, ServerRequestInterface $request)
-    {
-        if (class_exists(BoundMethod::class)) {
-            return BoundMethod::call($this->container, $controller, $this->arguments + [$request]);
-        }
-
-        return $controller($request, $this->response, $this->arguments);
+        return $this->handleController($callable, $request);
     }
 
     /**
@@ -674,18 +432,5 @@ class Route implements RouteInterface, RequestHandlerInterface
         }
 
         throw new RuntimeException($message);
-    }
-
-    /**
-     * Parse arguments to the where method into an array.
-     *
-     * @param array|string $name
-     * @param string       $expression
-     *
-     * @return array
-     */
-    private function parseWhere($name, $expression): array
-    {
-        return is_array($name) ? $name : [$name => $expression];
     }
 }

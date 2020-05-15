@@ -19,10 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
-use function rtrim;
 use function in_array;
 use function is_array;
+use function is_int;
 use function preg_match;
+use function rtrim;
 use function strlen;
 use function substr;
 
@@ -31,7 +32,7 @@ trait RouteValidation
     /**
      * Check if given request method matches given route method.
      *
-     * @param string|array|null $routeMethod
+     * @param string|array $routeMethod
      * @param string            $requestMethod
      *
      * @return bool
@@ -66,11 +67,28 @@ trait RouteValidation
      * @param string $requestUri
      * @param array  $parameters
      *
-     * @return bool|int
+     * @return bool
      */
-    protected function compareUri(string $routeUri, string $requestUri, array &$parameters)
+    protected function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
-        return preg_match($routeUri, $requestUri, $parameters);
+        return (bool) preg_match($routeUri, $requestUri, $parameters, PREG_UNMATCHED_AS_NULL);
+    }
+
+    /**
+     * Check if given request uri scheme matches given route scheme.
+     *
+     * @param string|array|null $routeScheme
+     * @param string            $requestScheme
+     *
+     * @return bool
+     */
+    protected function compareScheme($routeScheme, string $requestScheme): bool
+    {
+        if (is_array($routeScheme)) {
+            return in_array($requestScheme, $routeScheme, true);
+        }
+
+        return ($routeScheme === null || empty($routeScheme)) || $routeScheme === $requestScheme;
     }
 
     /**
@@ -102,5 +120,24 @@ trait RouteValidation
         }
 
         return null;
+    }
+
+    /**
+     * Get merged default parameters.
+     *
+     * @param array $params
+     * @param array $defaults
+     *
+     * @return array Merged default parameters
+     */
+    protected function mergeDefaults(array $params, array $defaults): array
+    {
+        foreach ($params as $key => $value) {
+            if (!is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
+                $defaults[$key] = $value;
+            }
+        }
+
+        return $defaults;
     }
 }

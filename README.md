@@ -4,6 +4,10 @@
 
 The goal of this project is to create a router that is more or less 100% compatible with all php http routers, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority.
 
+Human-friendly URLs (also more cool & prettier) are easier to remember and do help SEO (search engine optimalization). Flight Routing allows you to use any current trends of *router* implementation and fully meets developers' desires.
+
+The desired URL format is set by a *router*. The plainest implementation of the router is [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php). It can be used when there's no *router* for a specific URL format yet.
+
 First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
 
 **`Please note that this documentation is currently work-in-progress. Feel free to contribute.`**
@@ -29,7 +33,7 @@ The recommended way to install Url Routing is via Composer:
 composer require divineniiquaye/flight-routing
 ```
 
-It requires PHP version 7.0 and supports PHP up to 7.4. The dev-master version requires PHP 7.1.
+It requires PHP version 7.1 and supports PHP up to 7.4. The dev-master version requires PHP 7.1.
 
 ## How To Use
 
@@ -50,6 +54,7 @@ location / {
 Nothing special is required for Apache to work. We've include the `.htaccess` file in the `public` folder. If rewriting is not working for you, please check that the `mod_rewrite` module (htaccess support) is enabled in the Apache configuration.
 
 #### .htaccess example
+___
 
 Below is an example of an working `.htaccess` file used by flight-routing.
 
@@ -76,6 +81,7 @@ Simply create a new `.htaccess` file in your projects `public` directory and pas
 On IIS you have to add some lines your `web.config` file in the `public` folder or create a new one. If rewriting is not working for you, please check that your IIS version have included the `url rewrite` module or download and install them from Microsoft web site.
 
 #### web.config example
+___
 
 Below is an example of an working `web.config` file used by simple-php-router.
 
@@ -113,8 +119,9 @@ Simply create a new `web.config` file in your projects `public` directory and pa
 ```
 
 #### Troubleshooting
+___
 
-If you do not have a `favicon.ico` file in your project, you can get a `RouteNotFoundHttpException` (404 - not found).
+If you do not have a `favicon.ico` file in your project, you can get a `NotFoundHttpException` (404 - not found).
 To add `favicon.ico` to the IIS ignore-list, add the following line to the `<conditions>` group:
 
 ```xml
@@ -133,15 +140,11 @@ If you are using `$_SERVER['ORIG_PATH_INFO']`, you will get `\index.php\` as par
 /index.php/test/mypage.php
 ```
 
-### Configuration
+## Configuration
 
-Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
+Please note that the following snippets only covers how to this router in a project without an existing framework using [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php) *router*. If you are using a framework or/and a different *router* in your project, the implementation varies.
 
-**WARNING: NEVER PLACE YOUR ROUTES.PHP IN YOUR PUBLIC FOLDER!**
-
-In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->dispatch()``` method. This will trigger and do the actual routing of the requests.
-
-It's not required, but you can set `namespace method paramter's value to '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
+It's not required, but you can set `namespace method paramter's value to eg: '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
 Router uses [biurad-http](https://github.com/biurad/biurad-http) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
 
@@ -151,13 +154,15 @@ run this in command line if the package has not be added.
 composer require biurad/biurad-http
 ```
 
-Please note that this example only covers how to this router in a project without an existing framework. If you are using a framework in your project, the implementation varies.
+Flight routing allows you to call any controller action with namespace using`*<namepace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
 
-**This is an example of how your ```routes.php``` file shoud start:**
+> Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
+
+In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->dispatch()``` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) *publish* method. This will trigger and do the actual routing of the requests to response.
 
 ```php
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
-use BiuradPHP\Routing\RouteCollector as Router;
+use Flight\Routing\RouteCollector as Router;
 
 // Need th have extensive idea in php before using this dependency ,though it easy to use.
 $router = new Router(Psr17Factory::fromGlobalRequest(), new Psr17Factory);
@@ -173,7 +178,7 @@ $router->setNamespace('\Demo\Controllers');
 // All routers goes in this space of the file
 return $router;
 ```
-There are two ways of dipatching a router, either by using the default Flight\Routing\Services\HttpPublisher or BiuradPHP\Http\Response\EmitResponse to dispatch the router.
+There are two ways of dipatching a router, either by using the default [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) or [EmitResponse]((https://github.com/biurad/biurad-http/blob/master/src/Response/EmitResponse.php)) to dispatch the router.
 
 **This is an example of a basic ```index.php``` file:**
 
@@ -197,6 +202,10 @@ Remember the ```routes.php``` file you required in your ```index.php```? This fi
 
 > **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be abit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml, doesn't contain a <!doctype> or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
+> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callabe, invokable class, 
+> or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it
+> to be constructed on demand.
+
 ## Basic routing
 
 Below is a very basic example of setting up a route. First parameter is the url which the route should match - next parameter is a `Closure` or callback function that will be triggered once the route matches.
@@ -207,38 +216,60 @@ $router->get('/', function() {
 }); // $router from routes.php file.
 ```
 
-### Request
+## Closure Handler
+
+It is possible to pass the `closure` as route handler, in this case our function will receive two
+arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`.
+
+```php
+$router->get(
+    '/{name}',
+    function (ServerRequestInterface $request, ResponseInterface $response) {
+        $response->getBody()->write("hello world");
+
+        return $response;
+    }
+));
+```
+
+## Route Request
 
 You can catch the request object like this example:
 
 ```php
-use Zend\Diactoros\ServerRequest;
+use BiuradPHP\Http\ServerRequest;
 use BiuradPHP\Http\Response\EmptyResponse;
 use BiuradPHP\Http\Response\JsonResponse;
 
-$router->get('/', function (ServerRequest $request) {
-    return new JsonResponse([
-        'method' => $request->getMethod(),
-        'uri' => $request->getUri(),
-        'body' => $request->getBody(),
-        'parsedBody' => $request->getParsedBody(),
-        'headers' => $request->getHeaders(),
-        'queryParameters' => $request->getQueryParams(),
-        'attributes' => $request->getAttributes(),
-    ]);
-});
+$router->get(
+    '/',
+    function (ServerRequest $request) {
+        return new JsonResponse([
+            'method'            => $request->getMethod(),
+            'uri'               => $request->getUri(),
+            'body'              => $request->getBody(),
+            'parsedBody'        => $request->getParsedBody(),
+            'headers'           => $request->getHeaders(),
+            'queryParameters'   => $request->getQueryParams(),
+            'attributes'        => $request->getAttributes(),
+        ]);
+    }
+);
 
-$router->post('/blog/posts', function (ServerRequest $request) {
-    $post = new \Demo\Models\Post();
-    $post->title = $request->getQueryParams()['title'];
-    $post->content = $request->getQueryParams()['content'];
-    $post->save();
+$router->post(
+    '/blog/posts',
+    function (ServerRequest $request) {
+        $post           = new \Demo\Models\Post();
+        $post->title    = $request->getQueryParams()['title'];
+        $post->content  = $request->getQueryParams()['content'];
+        $post->save();
 
-    return new EmptyResponse(201);
-});
+        return new EmptyResponse(201);
+    }
+);
 ```
 
-### Response
+## Route Response
 
 The example below illustrates supported kinds of responses.
 
@@ -249,25 +280,44 @@ use BiuradPHP\Http\Response\JsonResponse;
 use BiuradPHP\Http\Response\TextResponse;
 
 $router
-    ->get('/html/1', function () {
-        return '<html>This is an HTML response</html>';
-    });
-    ->get('/html/2', function () {
-        return new HtmlResponse('<html>This is also an HTML response</html>', 200);
-    });
-    ->get('/json', function () {
-        return new JsonResponse(['message' => 'Unauthorized!'], 401);
-    });
-    ->get('/text', function () {
-        return new TextResponse('This is a plain text...');
-    });
-    ->get('/empty', function () {
-        return new EmptyResponse();
-    });
+    ->get(
+        '/html/1',
+        function () {
+            return '<html>This is an HTML response</html>';
+        }
+    );
+$router
+    ->get(
+        '/html/2',
+        function () {
+            return new HtmlResponse('<html>This is also an HTML response</html>', 200);
+        }
+    );
+$router
+    ->get(
+        '/json',
+        function () {
+            return new JsonResponse(['message' => 'Unauthorized!'], 401);
+        }
+    );
+$router
+    ->get(
+        '/text',
+        function () {
+            return new TextResponse('This is a plain text...');
+        }
+    );
+$router
+    ->get(
+        '/empty',
+        function () {
+            return new EmptyResponse();
+        }
+    );
 
 ```
 
-#### Redirection Response
+## Route Redirection Response
 
 In case of needing to redirecting user to another URL:
 
@@ -280,7 +330,7 @@ $router
     });
 ```
 
-### Available methods
+## Available Methods
 
 Here you can see how to declare different routes with different http methods:
 
@@ -289,21 +339,25 @@ $router
     ->get('/', function () {
         return '<b>GET method</b>';
     });
+$router
     ->post('/', function () {
         return '<b>POST method</b>';
     });
+$router
     ->patch('/', function () {
         return '<b>PATCH method</b>';
     });
+$router
     ->put('/', function () {
         return '<b>PUT method</b>';
     });
+$router
     ->delete('/', function () {
         return '<b>DELETE method</b>';
     });
 ```
 
-### Multiple HTTP-verbs
+## Multiple HTTP-Verbs
 
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
@@ -317,9 +371,15 @@ $router->any('foo', function() {
 });
 ```
 
-## Route parameters
+## Route Pattern and Parameters
 
-### Required parameters
+You can use route pattern to specify any number of required and optional parameters, these parameters will later be passed 
+to our route handler via `ServerRequestInterface` attribute `route`.
+
+Use the `{parameter_name:pattern}` form to define a route parameter, where pattern is a regexp friendly expression. You can 
+omit pattern and just use `{parameter_name}`, in this case the parameter will match `[^\/]+`.
+
+### Required Parameters
 
 You'll properly wondering by know how you parse parameters from your urls. For example, you might want to capture the users id from an url. You can do so by defining route-parameters.
 
@@ -337,25 +397,53 @@ $router->get('/posts/{postId}/comments/{commentId}', function ($postId, $comment
 });
 ```
 
-### Optional parameters
+### Optional Parameters
 
-Occasionally you may need to specify a route parameter, but make the presence of that route parameter optional. You may do so by placing a ? mark after the parameter name. Make sure to give the route's corresponding variable a default value:
+Occasionally you may need to specify a route parameter, but make the presence of that route parameter optional. Use `[]` to make a part of route (including the parameters) optional, for example:
 
 ```php
 // Optional parameter
-$router->get('/user/{name?}', function ($name = null) {
+$router->get('/user[/{name}]', function ($name = null) {
   return $name;
 });
-
-// Optional parameter with default value
-$router->get('/user/{name?}', function ($name = 'Simon') {
+//or
+$router->get('/user[/{name}]', function ($name) {
   return $name;
 });
 ```
 
+```php
+// Optional parameter with default value
+$router->get('/user/[{name}]', function ($name = 'Simon') {
+  return $name;
+});
+//or
+$router->get('/user/[{name=<Simon>}]', function ($name) {
+  return $name;
+});
+```
+
+Obviously, if a parameter is inside an optional sequence, it's optional too and defaults to `null`. Sequence should define it's surroundings, in this case a slash which must follow a parameter, if set. The technique may be used for example for optional language subdomains:
+
+```php
+$router->get('//[{lang=<en>}.]example.com/hello', ...);
+```
+
+Sequences may be freely nested and combined:
+
+```php
+$router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
+
+// Accepted URLs:
+//   /cs/hello
+//   /en-us/hello
+//   /hello
+//   /hello/page-12
+```
+
 **Note:** Route parameters are always encased within {} braces and should consist of alphabetic characters. Route parameters may not contain a - character. Use an underscore (_) instead.
 
-### Regular expression constraints
+### Regular Expression Constraints
 
 You may constrain the format of your route parameters using the where method on a route instance. The where method accepts the name of the parameter and a regular expression defining how the parameter should be constrained:
 
@@ -372,12 +460,12 @@ $router->get('/user/{id}/{name}', function (int $id, string $name) {
     //
 })->whereArray(['id' => '[0-9]+', 'name' => '[a-z]+']);
 
-$router->get('/user/{id<[0-9]+>}/{name<[a-z]+>}', function (int $id, string $name) {
+$router->get('/user/{id:[0-9]+}/{name:[a-z]+}', function (int $id, string $name) {
     //
 });
 ```
 
-## Named routes
+## Named Routes
 
 Named routes allow the convenient generation of URLs or redirects for specific routes. You may specify a name for a route by chaining the name method onto the route definition:
 
@@ -393,9 +481,11 @@ You can also specify names for Controller-actions:
 $router->get('/user/profile', 'UserController@profile')->setName('profile');
 ```
 
-### Generating URLs To Named Routes
+## Generating URLs To Named Routes
 
-Once you have assigned a name to a given route, you may use the route's name when generating URLs or redirects via the global `url` helper-function (see helpers section):
+URL generator tries to keep the URL as short as possible (while unique), so what can be omitted is not used. The behavior of generating urls from route depends on the respective parameters sequence given.
+
+Once you have assigned a name to a given route, you may use the route's name, its parameters and maybe add query, when generating URLs:
 
 ```php
 // Generating URLs...
@@ -409,16 +499,26 @@ $router->get('/user/{id}/profile', function ($id) {
     //
 })->setName('profile');
 
-$url = $router->generateUri('profile', ['id' => 1]);
+$url = $router->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
 ```
 
-## Router groups
+## Route Groups
 
-Route groups allow you to share route attributes, such as middleware or namespaces, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$router->group` method.
+Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$router->group` method.
 
-### Middleware
+```php
+use Flight\Routing\Interfaces\RouterProxyInterface;
+$router->group(
+    [...], // Add your group attributes
+    function (RouterProxyInterface $route) {
+        // Define your routes using $route...
+    }
+);
+```
 
-Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests.
+## Route Middlewares
+
+Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests. To associate route specific middleware use `addMiddleware`, you can access route parameters via `arguments` attribute of the request object:
 
 Here you can see the request lifecycle considering some middleware:
 
@@ -438,69 +538,70 @@ To declare a middleware, you must implements Middleware `Psr\Http\Server\Middlew
 
 Middleware must have a `process()` method that catches http request and a closure (which runs the next middleware or the controller) and it returns a response at the end. Middleware can break the lifecycle and return a response itself or it can run the `$handler` implementing `Psr\Http\Server\RequestHandlerInterface` to continue lifecycle.
 
-For example see the following snippet. In this snippet, if there was a `Authorization` header in the request,
-it passes the request to the next middleware or the controller (if there is no more middleware left) and if the header is absent it returns an empty response with `401 Authorization Failed` HTTP status code.
+For example see the following snippet. In this snippet, we will demonstrate how a mddlewares works:
 
 ```php
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use BiuradPHP\Http\Response\EmptyResponse;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
+$router->get(
+    '/{param}',
+    function (ServerRequestInterface $request, ResponseInterface $response) {
+        return $request->getAttribute('arguments');
+    }
+))
+->addMiddleware(\Demo\Middleware\ParamWatcher::class);
+```
 
-class AuthMiddleware implements Middleware
+where `ParamWatcher` is:
+
+```php
+namespace Demo\Middleware;
+
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use BiuradPHP\Http\Exceptions\ClientException\UnauthorizedException;
+
+class ParamWatcher implements MiddlewareInterface
 {
-    public function process(Request $request, RequestHandler $handler): ResponseInterface
+    public function process(Request $request, RequestHandlerInterface $handler): Response
     {
-        if ($request->getHeader('Authorization')) {
-            return $handler->handle($request);
+        if ($request->getAttribute('arguments')['param'] === 'forbidden') {
+           throw new UnauthorizedException();
         }
 
-        return new EmptyResponse(401);
+        return $handler->handle($request);
     }
 }
 ```
 
-To assign middleware to all routes within a group, you may use the middleware key in the group attribute array. Middleware are executed in the order they are listed in the array:
+This route will trigger Unauthorized exception on `/forbidden`.
+
+> You can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make scense to do so!
+
+## Multiple Routes
+
+Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
+
+This whole process is called *canonicalization*. Default (canonical) URL is the one router generates, that is the first route matches exactly Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
-$router->group(['middleware' => \Demo\Middleware\AuthMiddleware::class], function (RouterProxyInterface $route) {
-    $route->get('/', function ()    {
-        // Uses Auth Middleware
-    });
+$router->get(
+    '/{param}',
+    function (ServerRequestInterface $request, ResponseInterface $response) {
+        return $request->getAttribute('arguments');
+    }
+))
 
-    $route->get('/user/profile', function () {
-        // Uses Auth Middleware
-    });
-});
-
-// or
-
-$router->get('/auth', function () {
-   // Uses Auth Middleware
-})->addMiddleware(\Demo\Middleware\AuthMiddleware::class);
-
+// this route will never trigger
+$router->get(
+    '/hello',
+    function (ServerRequestInterface $request, ResponseInterface $response) {
+        return $request->getAttribute('arguments');
+    }
+))
 ```
 
-Middleware can be implemented using closures but it doesn’t make scense to do so!
-
-### Namespaces
-
-Another common use-case for route groups is assigning the same PHP namespace to a group of controllers using the `namespace` parameter in the group array:
-
-#### Note
-
-Group namespaces will only be added to routes with relative callbacks.
-For example if your route has an absolute callback like `\Demo\Controller\DefaultController@home`, the namespace from the route will not be prepended.
-To fix this you can make the callback relative by removing the `\` in the beginning of the callback.
-
-```php
-$router->group(['namespace' => 'Admin'], function (RouterProxyInterface $route) {
-    // Controllers Within The "App\Http\Controllers\Admin" Namespace
-});
-```
-
-### Subdomain-routing
+## Subdomain Routing
 
 Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
 
@@ -512,7 +613,7 @@ $router->get('/', 'Controller@method')->setDomain('domain.com');
 $router->get('/', 'Controller:method')->setDomain('server2.domain.com');
 
 // Subdomain regex pattern
-$router->get('/', ['Controller', 'method'])->setDomain('{accounts<.*>}.domain.com');
+$router->get('/', ['Controller', 'method'])->setDomain('{accounts:.*}.domain.com');
 
 $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface $route) {
     $route->get('/user/{id}', function ($id) {
@@ -521,16 +622,78 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 });
 ```
 
-### Route prefixes
+## Custom Router
 
-The `prefix` group attribute may be used to prefix each route in the group with a given url. For example, you may want to prefix all route urls within the group with `admin`:
+If these offered routes do not fit your needs, you may create your own router and add it to your *router collection*. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
 
 ```php
-$router->group(['prefix' => '/admin'], function ($route) {
-    $route->get('/users', function ()    {
-        // Matches The "/admin/users" URL
-    });
-});
+use ArrayIterator;
+use Psr\Http\Message\ServerRequestInterface;
+use Flight\Routing\Interfaces\RouterInterface;
+use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\RouteResults;
+
+class MyRouter implements RouterInterface
+{
+    /** @var array */
+    private $routes = [];
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addRoute(RouteInterface $route) : void
+    {
+        $this->routes[] = $route;
+    }
+
+	/**
+     * {@inheritdoc}
+     */
+    public function match(ServerRequestInterface $request): RouteResults
+	{
+		// ...
+	}
+
+    /**
+     * {@inheritdoc}
+     */
+	public function generateUri(RouteInterface $route, array $substitutions = []): string
+	{
+		// ...
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function __clone()
+    {
+        foreach ($this->routes as $name => $route) {
+            $this->routes[$name] = clone $route;
+        }
+    }
+
+    /**
+     * Gets the current RouterInterface as an Iterator that includes all routes.
+     *
+     * It implements IteratorAggregate.
+     *
+     * @return ArrayIterator|RouteInterface[] An \ArrayIterator object for iterating over routes
+     */
+    public function getIterator()
+    {
+        return new ArrayIterator($this->routes);
+    }
+
+    /**
+     * Gets the number of Routes in this collection.
+     *
+     * @return int The number of routes
+     */
+    public function count(): int
+    {
+        return count($this->routes);
+    }
+}
 ```
 
 ## Changelog

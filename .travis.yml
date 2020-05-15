@@ -8,6 +8,7 @@ matrix:
       env: COMPOSER_FLAGS="--prefer-lowest"
     - php: 7.2
     - php: 7.3
+    - php: 7.4
     - php: nightly
   allow_failures:
     - php: nightly
@@ -23,6 +24,7 @@ install:
 before_install:
     - composer self-update
     - phpenv config-rm xdebug.ini || true
+    - composer require biurad/biurad-http ^0.1
     - composer require phpunit/phpunit ^7.5
 
 before_script:

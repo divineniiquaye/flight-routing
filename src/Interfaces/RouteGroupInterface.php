@@ -21,13 +21,14 @@ namespace Flight\Routing\Interfaces;
 
 interface RouteGroupInterface
 {
-    public const MIDDLEWARE = 'middleware';
+    public const MIDDLEWARES = 'middlewares';
     public const PREFIX = 'prefix';
     public const NAMESPACE = 'namespace';
     public const DOMAIN = 'domain';
     public const NAME = 'name';
     public const DEFAULTS = 'defaults';
     public const REQUIREMENTS = 'patterns';
+    public const SCHEMES = 'schemes';
 
     /**
      * @return RouteGroupInterface

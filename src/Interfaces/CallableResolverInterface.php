@@ -20,7 +20,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\InvalidControllerException;
-use Psr\Http\Message\ResponseInterface;
 
 interface CallableResolverInterface
 {
@@ -46,16 +45,4 @@ interface CallableResolverInterface
      * @throws InvalidControllerException if the callable is not resolvable
      */
     public function resolve($toResolve): callable;
-
-    /**
-     * Resolves the return type of a route controller to
-     * PSR 7 ResponseInterface, with the best content-type.
-     * content-type fallback is text/html.
-     *
-     * @param string|int|array|ResponseInterface $controllerResponse
-     * @param ResponseInterface $response
-     *
-     * @return ResponseInterface
-     */
-    public function returnType($controllerResponse, ResponseInterface $response): ResponseInterface;
 }

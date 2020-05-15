@@ -19,9 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
+use Countable;
 use Flight\Routing\RouteResults;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use IteratorAggregate;
 
 /**
  * Interface defining required router capabilities.
@@ -33,7 +35,7 @@ use Flight\Routing\Exceptions\UrlGenerationException;
  *
  * @copyright Copyright (c) 2015-2017 Zend Technologies USA Inc. (https://www.zend.com)
  */
-interface RouterInterface
+interface RouterInterface extends IteratorAggregate, Countable
 {
     /**
      * Add a route.
@@ -89,4 +91,11 @@ interface RouterInterface
      *
      */
     public function generateUri(RouteInterface $route, array $substitutions = []) : string;
+
+    /**
+     * All added routes should be clonable.
+     *
+     * @return void
+     */
+    public function __clone();
 }

@@ -43,7 +43,6 @@ class RouterProxy implements RouterProxyInterface
      * @param RouteCollectorInterface    $routeCollector
      * @param CallableResolverInterface  $callableResolver
      * @param ContainerInterface|null    $container
-     * @param string                     $cacheFile
      */
     public function __construct(
         ServerRequestInterface $request,
@@ -51,11 +50,10 @@ class RouterProxy implements RouterProxyInterface
         RouterInterface $router,
         RouteCollectorInterface $routeCollector = null,
         CallableResolverInterface $callableResolver = null,
-        ContainerInterface $container = null,
-        string $cacheFile = null
+        ContainerInterface $container = null
     ) {
         $this->routeCollector = $routeCollector
-            ?? new RouteCollector($request, $responseFactory, $router, $callableResolver, $container, $cacheFile);
+            ?? new RouteCollector($request, $responseFactory, $router, $callableResolver, $container);
     }
 
     /**
@@ -64,14 +62,6 @@ class RouterProxy implements RouterProxyInterface
     public function getRouteCollector(): RouteCollectorInterface
     {
         return $this->routeCollector;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getBasePath(): string
-    {
-        return $this->routeCollector->getBasePath();
     }
 
     /**
@@ -141,16 +131,8 @@ class RouterProxy implements RouterProxyInterface
     /**
      * {@inheritdoc}
      */
-    public function group(array $attributes = [], $callable): RouteGroupInterface
+    public function group(array $attributes, $callable): RouteGroupInterface
     {
         return $this->routeCollector->group($attributes, $callable);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function resource($name, $controller, array $options = [])
-    {
-        $this->routeCollector->resource($name, $controller, $options);
     }
 }

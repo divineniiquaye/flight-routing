@@ -19,8 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -50,12 +48,12 @@ interface RouteInterface
     /**
      * Set a regular expression requirement on the route.
      *
-     * @param array|string $name
-     * @param string       $expression
+     * @param string $name
+     * @param string $expression
      *
      * @return $this
      */
-    public function setPattern(string $name, string $expression = null): RouteInterface;
+    public function addPattern(string $name, string $expression): RouteInterface;
 
     /**
      * Get route requirements
@@ -76,7 +74,7 @@ interface RouteInterface
      *
      * @return RouteInterface
      */
-    public function setDomain(?string $domain = null): RouteInterface;
+    public function addDomain(?string $domain): RouteInterface;
 
     /**
      * Get route name
@@ -112,7 +110,18 @@ interface RouteInterface
     public function getArguments(): array;
 
     /**
+     * Set a route arguments
+     *
+     * @param array $arguments
+     *
+     * @return self
+     */
+    public function addArguments(array $arguments): RouteInterface;
+
+    /**
      * Set a list of regular expression requirements on the route.
+     *
+     * @see addPattern() method
      *
      * @param array $wheres
      *
@@ -121,24 +130,22 @@ interface RouteInterface
     public function whereArray(array $wheres = []): RouteInterface;
 
     /**
-     * Set a route argument
+     * Returns the lowercased schemes this route is restricted to.
+     * So a null return means that any scheme is allowed.
      *
-     * @param string $name
-     * @param string $value
-     * @param bool $includeInSavedArguments
-     *
-     * @return self
+     * @return string[]|null The schemes
      */
-    public function setArgument(string $name, ?string $value, bool $includeInSavedArguments = true): RouteInterface;
+    public function getSchemes(): ?array;
 
     /**
-     * Replace route arguments
+     * Sets the schemes (e.g. 'https') this route is restricted to.
+     * So an empty array means that any scheme is allowed.
      *
-     * @param string[] $arguments
+     * @param string|string[] $schemes The scheme or an array of schemes
      *
-     * @return self
+     * @return $this
      */
-    public function setArguments(array $arguments): RouteInterface;
+    public function addSchemes($schemes): RouteInterface;
 
     /**
      * Gets a default value.
@@ -152,8 +159,6 @@ interface RouteInterface
 
     /**
      * Adds defaults.
-     *
-     * This method implements a fluent interface.
      *
      * @param array $defaults The defaults
      *
@@ -200,22 +205,9 @@ interface RouteInterface
     public function addMiddleware($middleware): RouteInterface;
 
     /**
-     * Prepare the route for use
+     * Get middlewares from stack.
      *
-     * @param array $arguments
-     * @return RouteInterface
+     * @return array
      */
-    public function prepare(array $arguments): RouteInterface;
-
-    /**
-     * Run route controller
-     *
-     * This method traverses the middleware stack, including the route's callable
-     * and captures the resultant HTTP response object. It then sends the response
-     * back to the Application.
-     *
-     * @param ServerRequestInterface $request
-     * @return ResponseInterface
-     */
-    public function run(ServerRequestInterface $request): ResponseInterface;
+    public function getMiddlewares(): array;
 }

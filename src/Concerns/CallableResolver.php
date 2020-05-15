@@ -20,24 +20,20 @@ declare(strict_types=1);
 namespace Flight\Routing\Concerns;
 
 use Closure;
-use RuntimeException;
-use stdClass;
-use TypeError;
+use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\Interfaces\CallableResolverInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Flight\Routing\Interfaces\CallableResolverInterface;
-use Flight\Routing\Exceptions\InvalidControllerException;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
+use RuntimeException;
+use TypeError;
 
-use function is_object;
-use function is_callable;
-use function is_string;
-use function get_class;
 use function class_exists;
-use function preg_match;
+use function get_class;
+use function is_callable;
+use function is_object;
+use function is_string;
 use function json_encode;
-use function stripos;
+use function preg_match;
 
 /**
  * This class resolves a string of the format 'class:method', 'class::method'
@@ -115,41 +111,6 @@ class CallableResolver implements CallableResolverInterface
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function returnType($controllerResponse, ResponseInterface $response): ResponseInterface
-    {
-        // Always return the response...
-        if ($controllerResponse instanceof ResponseInterface) {
-            return $controllerResponse;
-        }
-
-        if (is_string($controllerResponse) || is_numeric($controllerResponse)) {
-            $response->getBody()->write((string) $controllerResponse);
-        } elseif (is_array($controllerResponse) || $controllerResponse instanceof stdClass) {
-            $response->getBody()->write(json_encode((array) $controllerResponse));
-        }
-
-        if ($this->isJson($response->getBody())) {
-            return $response->withHeader('Content-Type', 'application/json');
-        }
-
-        if ($this->isXml($response->getBody())) {
-            return $response->withHeader('Content-Type', 'application/xml; charset=utf-8');
-        }
-
-        // Set content-type to plain text if string doesn't contain <html> tag.
-        if (
-            !preg_match('/(<\/html[^>]*>)/i', (string) $response->getBody()) ||
-            stripos((string) $response->getBody(), '<!doctype') === false
-        ) {
-            return $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
-        }
-
-        return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
-    }
-
-    /**
      * Check if string is something in the DIC
      * that's callable or is a class name which has an __invoke() method.
      *
@@ -209,31 +170,5 @@ class CallableResolver implements CallableResolverInterface
 
         // Maybe could be an object
         return $callable;
-    }
-
-    private function isJson(StreamInterface $stream): bool
-    {
-        if (!function_exists('json_decode')) {
-            return false;
-        }
-        $stream->rewind();
-
-        json_decode($stream->getContents(), true);
-
-        return JSON_ERROR_NONE === json_last_error();
-    }
-
-    private function isXml(StreamInterface $stream): bool
-    {
-        if (!function_exists('simplexml_load_string')) {
-            return false;
-        }
-        $stream->rewind();
-
-        $previousValue = libxml_use_internal_errors(true);
-        $isXml = simplexml_load_string($stream->getContents());
-        libxml_use_internal_errors($previousValue);
-
-        return false !== $isXml;
     }
 }

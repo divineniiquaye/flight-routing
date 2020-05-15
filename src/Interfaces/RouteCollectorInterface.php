@@ -20,10 +20,10 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Closure;
-use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Middlewares\MiddlewareDisptcher;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use RuntimeException;
@@ -59,42 +59,11 @@ interface RouteCollectorInterface
     ];
 
     /**
-     * Get path to FastRoute cache file
-     *
-     * @return null|string
-     */
-    public function getCacheFile(): ?string;
-
-    /**
-     * Set path to FastRoute cache file
-     *
-     * @param string $cacheFile
-     * @return RouteCollectorInterface
-     *
-     * @throws InvalidArgumentException
-     * @throws RuntimeException
-     */
-    public function setCacheFile(string $cacheFile): RouteCollectorInterface;
-
-    /**
-     *
-     * @return string
-     */
-    public function getBasePath(): string;
-
-    /**
-     *
-     * @param string $basePath
-     * @return RouteCollectorInterface
-     */
-    public function setBasePath(string $basePath): RouteCollectorInterface;
-
-    /**
      * Get route objects
      *
-     * @return RouteInterface[]|array
+     * @return RouteInterface[]|iterable
      */
-    public function getRoutes(): array;
+    public function getRoutes(): iterable;
 
     /**
      * Generate a URI from the named route.
@@ -127,14 +96,6 @@ interface RouteCollectorInterface
      * @return $this
      */
     public function setNamespace(?string $rootNamespace = null): RouteCollectorInterface;
-
-    /**
-     * Whether return a permanent redirect.
-     * @param bool $permanent
-     *
-     * @return RouteCollectorInterface
-     */
-    public function setPermanentRedirection(bool $permanent = true): RouteCollectorInterface;
 
     /**
      * Get named route object
@@ -173,6 +134,16 @@ interface RouteCollectorInterface
     public function currentRoute(): ?RouteInterface;
 
     /**
+     * Add this to keep the HTTP method when redirecting.
+     *
+     * redirections are temporary by default (code 302)
+     *
+     * @param bool $status
+     * @return RouteCollectorInterface
+     */
+    public function keepRequestMethod(bool $status = false): RouteCollectorInterface;
+
+    /**
      * Get current http request instance.
      *
      * @return ServerRequestInterface
@@ -180,11 +151,27 @@ interface RouteCollectorInterface
     public function getRequest(): ServerRequestInterface;
 
     /**
+     * Change the current request. Can be useful for
+     * forward response.
+     *
+     * @param ServerRequestInterface $request
+     * @return RouteCollectorInterface
+     */
+    public function setRequest(ServerRequestInterface $request): RouteCollectorInterface;
+
+    /**
      * Ge the current router used.
      *
      * @return RouterInterface
      */
     public function getRouter(): RouterInterface;
+
+    /**
+     * Get the Middlewares Dispatcher
+     *
+     * @return MiddlewareDisptcher
+     */
+    public function getMiddlewareDispatcher(): MiddlewareDisptcher;
 
     /**
      * Set the global the middlewares stack attached to all routes.
@@ -203,6 +190,13 @@ interface RouteCollectorInterface
      * @return $this|array
      */
     public function routeMiddlewares($middlewares = []): RouteCollectorInterface;
+
+    /**
+     * Get all middlewares from stack
+     *
+     * @return array
+     */
+    public function getMiddlewaresStack(): array;
 
     /**
      * Adds parameters.
@@ -224,19 +218,7 @@ interface RouteCollectorInterface
      *
      * @return RouteGroupInterface
      */
-    public function group(array $attributes = [], $callable): RouteGroupInterface;
-
-    /**
-     * Set the controller as Api Resource Controller.
-     *
-     * Router knows how to respond to resource controller
-     * request automatically
-     *
-     * @param $name
-     * @param Closure|callable|string $controller
-     * @param array $options
-     */
-    public function resource($name, $controller, array $options = []): void ;
+    public function group(array $attributes, $callable): RouteGroupInterface;
 
     /**
      * Add route
@@ -250,7 +232,24 @@ interface RouteCollectorInterface
     public function map(array $methods, string $pattern, $handler = null): RouteInterface;
 
     /**
-     * Dispatch routes and run the application.
+     * Same as to map(); method.
+     *
+     * @param RouteInterface $route
+     *
+     * @return void
+     */
+    public function setRoute(RouteInterface $route): void;
+
+    /**
+     * Dispatches a matched route response.
+     *
+     * Uses the composed router to match against the incoming request, and
+     * injects the request passed to the handler with the `RouteResulst` instance
+     * returned (using the `RouteResults` class name as the attribute name).
+     * If routing succeeds, injects the request passed to the handler with any
+     * matched parameters as well.
+     *
+     * @return ResponseInterface
      *
      * @throws RouteNotFoundException
      * @throws ExceptionInterface

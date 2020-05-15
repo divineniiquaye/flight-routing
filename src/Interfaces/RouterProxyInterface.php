@@ -29,17 +29,10 @@ interface RouterProxyInterface
     public function getRouteCollector(): RouteCollectorInterface;
 
     /**
-     * Get the RouterProxy's base path
-     *
-     * @return string
-     */
-    public function getBasePath(): string;
-
-    /**
      * Add GET route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -48,8 +41,8 @@ interface RouterProxyInterface
     /**
      * Add POST route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -58,8 +51,8 @@ interface RouterProxyInterface
     /**
      * Add PUT route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -68,8 +61,8 @@ interface RouterProxyInterface
     /**
      * Add PATCH route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -78,8 +71,8 @@ interface RouterProxyInterface
     /**
      * Add DELETE route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -88,8 +81,8 @@ interface RouterProxyInterface
     /**
      * Add OPTIONS route
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -98,8 +91,8 @@ interface RouterProxyInterface
     /**
      * Add route for any HTTP method
      *
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -108,9 +101,9 @@ interface RouterProxyInterface
     /**
      * Add route with multiple methods
      *
-     * @param  string[]        $methods  Numeric array of HTTP method names
-     * @param  string          $pattern  The route URI pattern
-     * @param  callable|string $callable The route callback routine
+     * @param  string[]                    $methods  Numeric array of HTTP method names
+     * @param  string                      $pattern  The route URI pattern
+     * @param  callable|string|object|null $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -123,24 +116,10 @@ interface RouterProxyInterface
      * declarations in the callback will be prepended by the group(s)
      * that it is in.
      *
-     * @param array           $attributes
-     * @param string|callable $callable
+     * @param array                  $attributes
+     * @param string|callable|object $callable
      *
      * @return RouteGroupInterface
      */
-    public function group(array $attributes = [], $callable): RouteGroupInterface;
-
-    /**
-     * Set the controller as Api Resource Controller.
-     *
-     * Router knows how to respond to resource controller
-     * request automatically
-     *
-     * @param $name
-     * @param Closure|callable|string $controller
-     * @param array $options
-     *
-     * @return mixed
-     */
-    public function resource($name, $controller, array $options = []);
+    public function group(array $attributes, $callable): RouteGroupInterface;
 }

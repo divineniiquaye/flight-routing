@@ -19,6 +19,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Flight\Routing\Exceptions\MethodNotAllowedException;
+use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Interfaces\RouteInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -26,9 +28,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
-use function assert;
-use function method_exists;
+use function is_int;
+use function is_numeric;
+use function is_string;
 use function rawurldecode;
+use function sprintf;
 
 /**
  * Value object representing the results of routing.
@@ -59,16 +63,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     public const METHOD_NOT_ALLOWED = 2;
 
     /**
-     * @var string
-     */
-    protected $method;
-
-    /**
-     * @var string
-     */
-    protected $uri;
-
-    /**
      * @var string|null
      */
     protected $redirectUri;
@@ -93,52 +87,25 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $routeArguments;
 
     /**
-     * @param string $method
-     * @param string $uri
+     * Add this to keep the HTTP method when redirecting.
+     *
+     * @var int
+     */
+    protected $keepRequestMethod = 302;
+
+    /**
      * @param int $routeStatus
      * @param array $routeArguments
      * @param RouteInterface|null $routeIdentifier
      */
     public function __construct(
-        string $method,
-        string $uri,
         int $routeStatus,
         array $routeArguments = [],
         ?RouteInterface $routeIdentifier = null
     ) {
-        $this->method = $method;
-        $this->uri = $uri;
         $this->routeStatus = $routeStatus;
         $this->routeArguments = $routeArguments;
         $this->routeIdentifier = $routeIdentifier;
-    }
-
-    /**
-     * @param bool $urlDecode
-     * @return RouteInterface|null
-     */
-    public function getRouteIdentifier(bool $urlDecode = true): ?RouteInterface
-    {
-        if (null !== $route = $this->routeIdentifier) {
-            $this->routeIdentifier = $route->prepare($this->getRouteArguments($urlDecode));
-        }
-        return $this->routeIdentifier;
-    }
-
-    /**
-     * @return string
-     */
-    public function getMethod(): string
-    {
-        return $this->method;
-    }
-
-    /**
-     * @return string
-     */
-    public function getUri(): string
-    {
-        return $this->uri;
     }
 
     /**
@@ -175,8 +142,8 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      */
     public function getAllowedMethods() : ?array
     {
-        if (null !== $this->getRouteIdentifier()) {
-            return $this->getRouteIdentifier()->getMethods();
+        if (null !== $this->routeIdentifier) {
+            return $this->routeIdentifier->getMethods();
         }
 
         return null;
@@ -184,31 +151,43 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
     /**
      * Process the result as requestHandler.
-     *
      * If the result represents a failure, it passes handling to the handler.
      *
      * Otherwise, it processes the composed handle using the provide request
      * and handler.
+     *
      * @param ServerRequestInterface $request
      * @return ResponseInterface
      */
     public function handle(ServerRequestInterface $request) : ResponseInterface
     {
+        if (self::METHOD_NOT_ALLOWED === $this->routeStatus) {
+            throw new MethodNotAllowedException(sprintf(
+                'Unfotunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid',
+                $request->getUri()->getPath(),
+                null !== $this->getAllowedMethods() ? implode(',', $this->getAllowedMethods()) : 'other',
+                $request->getMethod()
+            ));
+        }
+
         // Inject the actual route result, as well as return the response.
-        $route = $this->getRouteIdentifier();
-        assert($route instanceof RequestHandlerInterface);
+        if (false === $route = $this->getMatchedRoute()) {
+            throw new  RouteNotFoundException(
+                sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath())
+            );
+        }
 
         // Log the response, so developer can see results.
         if (null !== $this->logger) {
             $this->logRoute($route, $request);
         }
 
-        // The Route response.
-        $response = $route->run($request->withAttribute('routingResults', $this));
+        $response = $this->getMatchedRoute()->handle($request->withAttribute(__CLASS__, $this));
 
-        if (null !== $newUri = $this->getRedirectLink()) {
-            $response = $response->withStatus(301)
-                ->withAddedHeader('Location', $newUri);
+        // Allow Redirection if exists and avoid static request.
+        if (null !== $this->getRedirectLink()) {
+            return $response->withAddedHeader('Location', $this->getRedirectLink())
+                ->withStatus($this->keepRequestMethod);
         }
 
         return $response;
@@ -226,28 +205,67 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
         $routeArguments = [];
         foreach ($this->routeArguments as $key => $value) {
-            $routeArguments[$key] = rawurldecode($value);
+            if (is_int($key)) {
+                continue;
+            }
+
+            $value = is_numeric($value) ? (int) $value : $value;
+            $routeArguments[$key] = is_string($value) ? rawurldecode($value) : $value;
         }
 
         return $routeArguments;
     }
 
+    /**
+     * Retrieve the route that resulted in the route match.
+     *
+     * @param bool $urlDecode
+     *
+     * @return false|RouteInterface|RequestHandlerInterface false if representing a routing failure;
+     *     null if not created. Route instance otherwise.
+     */
+    public function getMatchedRoute(bool $urlDecode = true)
+    {
+        if (null !== $route = $this->routeIdentifier) {
+            // Add the arguments
+            $route = $route->addArguments($this->getRouteArguments($urlDecode));
+            $this->routeArguments = $route->getArguments();
+        }
+
+        return self::FOUND === $this->routeStatus ? $route : (bool) self::NOT_FOUND;
+    }
+
+    /**
+     * Determine the response code according with the method and the permanent config
+     *
+     * @param ServerRequestInterface $request
+     * @param bool status
+     */
+    public function determineResponseCode(ServerRequestInterface $request, bool $status): void
+    {
+        if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
+            $this->keepRequestMethod = $status ? 301 : 302;
+            return;
+        }
+
+        $this->keepRequestMethod = $status ? 308 : 307;
+    }
+
     private function logRoute(RouteInterface $route, ServerRequestInterface $request)
     {
-        $requestUri = method_exists($request, 'getUriForPath')
-            ? $request->getUriForPath($request->getUri()->getPath())
-            : $request->getUri()->getHost() . $request->getUri()->getPath();
-
-        $requestIp = method_exists($request, 'getRemoteAddress')
-        ? $request->getRemoteAddress()
-        : $request->getServerParams()['REMOTE_ADDR'];
+        $requestUri = sprintf(
+            '%s://%s%s',
+            $request->getUri()->getScheme(),
+            $request->getUri()->getHost(),
+            $request->getUri()->getPath()
+        );
 
         $this->logger->info('Matched route "{route}".', [
             'route'             => $route->getName() ?? $route->getPath(),
             'route_parameters'  => $route->getArguments(),
             'request_uri'       => $requestUri,
             'method'            => $request->getMethod(),
-            'client'            => $requestIp
+            'client'            => $request->getServerParams()['REMOTE_ADDR'] ?? '127.0.0.1'
         ]);
     }
 }
