@@ -38,7 +38,7 @@ before_script:
 script:
   - stty cols 120
   - mkdir -p build/logs
-  - vendor/bin/phpunit --coverage-clover=clover.xml
+  - vendor/bin/phpunit Tests --coverage-clover=clover.xml
 
 after_script:
   - if [ "$SCRUTINIZER" == 1 ]; then wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar code-coverage:upload --format=php-clover coverage.xml; fi
