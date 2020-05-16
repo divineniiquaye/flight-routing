@@ -26,6 +26,7 @@
     "require": {
         "php": "^7.1",
         "ext-libxml": "*",
+        "psr/log": "^1.1",
         "biurad/biurad-helpers": "^0.1",
         "psr/http-factory": "^1.0",
         "laminas/laminas-stratigility": "^3.2"
