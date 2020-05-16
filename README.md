@@ -178,7 +178,7 @@ $router->setNamespace('\Demo\Controllers');
 // All routers goes in this space of the file
 return $router;
 ```
-There are two ways of dipatching a router, either by using the default [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) or [EmitResponse]((https://github.com/biurad/biurad-http/blob/master/src/Response/EmitResponse.php)) to dispatch the router.
+There are two ways of dipatching a router, either by using the default [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) or [EmitResponse](https://github.com/biurad/biurad-http/blob/master/src/Response/EmitResponse.php) to dispatch the router.
 
 **This is an example of a basic ```index.php``` file:**
 
