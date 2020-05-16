@@ -489,7 +489,7 @@ You can also specify names for Controller-actions:
 $router->get('/user/profile', 'UserController@profile')->setName('profile');
 ```
 
-## Generating URLs To Named Routes
+## Generating URLs From Named Routes
 
 URL generator tries to keep the URL as short as possible (while unique), so what can be omitted is not used. The behavior of generating urls from route depends on the respective parameters sequence given.
 
