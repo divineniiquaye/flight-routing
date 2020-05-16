@@ -161,6 +161,8 @@ Flight routing allows you to call any controller action with namespace using`*<n
 In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->dispatch()``` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) *publish* method. This will trigger and do the actual routing of the requests to response.
 
 ```php
+<?php
+
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use Flight\Routing\RouteCollector as Router;
 
@@ -237,6 +239,8 @@ $router->get(
 You can catch the request object like this example:
 
 ```php
+<?php
+
 use BiuradPHP\Http\ServerRequest;
 use BiuradPHP\Http\Response\EmptyResponse;
 use BiuradPHP\Http\Response\JsonResponse;
@@ -274,6 +278,8 @@ $router->post(
 The example below illustrates supported kinds of responses.
 
 ```php
+<?php
+
 use BiuradPHP\Http\Response\EmptyResponse;
 use BiuradPHP\Http\Response\HtmlResponse;
 use BiuradPHP\Http\Response\JsonResponse;
@@ -322,6 +328,8 @@ $router
 In case of needing to redirecting user to another URL:
 
 ```php
+<?php
+
 use BiuradPHP\Http\Response\RedirectResponse;
 
 $router
@@ -507,7 +515,10 @@ $url = $router->generateUri('profile', ['id' => 1]); // will produce "user/1/pro
 Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$router->group` method.
 
 ```php
+<?php
+
 use Flight\Routing\Interfaces\RouterProxyInterface;
+
 $router->group(
     [...], // Add your group attributes
     function (RouterProxyInterface $route) {
@@ -541,18 +552,24 @@ Middleware must have a `process()` method that catches http request and a closur
 For example see the following snippet. In this snippet, we will demonstrate how a mddlewares works:
 
 ```php
+<?php
+
+use Demo\Middleware\ParamWatcher;
+
 $router->get(
     '/{param}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         return $request->getAttribute('arguments');
     }
 ))
-->addMiddleware(\Demo\Middleware\ParamWatcher::class);
+->addMiddleware(ParamWatcher::class);
 ```
 
 where `ParamWatcher` is:
 
 ```php
+<?php
+
 namespace Demo\Middleware;
 
 use Psr\Http\Message\ResponseInterface as Response;
@@ -627,6 +644,8 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 If these offered routes do not fit your needs, you may create your own router and add it to your *router collection*. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
 
 ```php
+<?php
+
 use ArrayIterator;
 use Psr\Http\Message\ServerRequestInterface;
 use Flight\Routing\Interfaces\RouterInterface;
