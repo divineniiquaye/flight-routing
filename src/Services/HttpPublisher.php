@@ -21,8 +21,9 @@ namespace Flight\Routing\Services;
 
 use Flight\Routing\Interfaces\PublisherInterface;
 use Laminas\HttpHandlerRunner\Emitter\EmitterInterface;
-use Psr\Http\Message\StreamInterface, LogicException;
+use LogicException;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Class StreamPublisher.
@@ -57,21 +58,24 @@ class HttpPublisher implements PublisherInterface
 
     /**
      * Emit the message body.
+     *
      * @param StreamInterface $body
+     *
      * @return bool
      */
-    private function emitStreamBody(StreamInterface $body) : bool
+    private function emitStreamBody(StreamInterface $body): bool
     {
         if ($body->isSeekable()) {
             $body->rewind();
         }
 
-        if (! $body->isReadable()) {
+        if (!$body->isReadable()) {
             echo $body;
+
             return true;
         }
 
-        while (! $body->eof()) {
+        while (!$body->eof()) {
             echo $body->read(8192);
         }
 
@@ -80,14 +84,15 @@ class HttpPublisher implements PublisherInterface
 
     /**
      * Emit the response header.
+     *
      * @param PsrResponseInterface $response
      */
-    private function emitResponseHeaders(PsrResponseInterface $response) : void
+    private function emitResponseHeaders(PsrResponseInterface $response): void
     {
         $statusCode = $response->getStatusCode();
 
         foreach ($response->getHeaders() as $name => $values) {
-            $name  = ucwords($name, '-'); // Filter a header name to wordcase
+            $name = ucwords($name, '-'); // Filter a header name to wordcase
             $first = $name !== 'Set-Cookie';
 
             foreach ($values as $value) {

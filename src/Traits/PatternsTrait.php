@@ -24,7 +24,7 @@ use Flight\Routing\Interfaces\RouteInterface;
 trait PatternsTrait
 {
     /**
-     * Route Patterns
+     * Route Patterns.
      *
      * @var array
      */

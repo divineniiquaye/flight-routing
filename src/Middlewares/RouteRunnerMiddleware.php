@@ -19,8 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use BiuradPHP\Http\Exceptions\ClientException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\AccessDeniedException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\BadRequestException;
@@ -38,10 +36,11 @@ use BiuradPHP\Http\Exceptions\ClientExceptions\TooManyRequestsException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\UnauthorizedException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\UnprocessableEntityException;
 use BiuradPHP\Http\Exceptions\ClientExceptions\UnsupportedMediaTypeException;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
-
 use function ini_set;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 
 /**
  * Default response dispatch middleware.
@@ -54,9 +53,9 @@ use function ini_set;
 class RouteRunnerMiddleware implements MiddlewareInterface
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      *
-     * @param Request $request
+     * @param Request        $request
      * @param RequestHandler $handler
      *
      * @return \Psr\Http\Message\ResponseInterface
@@ -77,88 +76,85 @@ class RouteRunnerMiddleware implements MiddlewareInterface
                 ->withoutHeader('Content-Length');
         }
 
-         // Handle Headers Error
-         if ($response->getStatusCode() >= 400) {
+        // Handle Headers Error
+        if ($response->getStatusCode() >= 400) {
             for ($i = 400; $i < 600; $i++) {
                 switch ($i) {
                     case 400:
                         $exception = new BadRequestException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 401:
                         $exception = new UnauthorizedException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 403:
                         $exception = new AccessDeniedException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 404:
                         throw new NotFoundException();
-
                     case 405:
                         throw new MethodNotAllowedException();
-
                     case 406:
                         $exception = new NotAcceptableException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 409:
                         $exception = new ConflictException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 410:
                         $exception = new GoneException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 411:
                         $exception = new LengthRequiredException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 412:
                         $exception = new PreconditionFailedException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 415:
                         $exception = new UnsupportedMediaTypeException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 422:
                         $exception = new UnprocessableEntityException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 428:
                         $exception = new PreconditionRequiredException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 429:
                         $exception = new TooManyRequestsException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     case 500:
                         throw new ServerErrorException();
-
                     case 503:
                         $exception = new ServiceUnavailableException();
                         $exception->withResponse($response);
-                        throw $exception;
 
+                        throw $exception;
                     default:
                         throw new ClientException($i);
                 }
-            };
+            }
         }
 
         // remove headers that MUST NOT be included with 304 Not Modified responses
@@ -166,9 +162,10 @@ class RouteRunnerMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Asserts response body is empty or status code is 204, 205 or 304
+     * Asserts response body is empty or status code is 204, 205 or 304.
      *
      * @param ResponseInterface $response
+     *
      * @return bool
      */
     private function isResponseEmpty(ResponseInterface $response): bool

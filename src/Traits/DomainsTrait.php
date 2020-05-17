@@ -24,14 +24,14 @@ use Flight\Routing\Interfaces\RouteInterface;
 trait DomainsTrait
 {
     /**
-     * HTTP schemes supported by this route
+     * HTTP schemes supported by this route.
      *
      * @var string[]|null
      */
     protected $schemes;
 
     /**
-     * Route domain
+     * Route domain.
      *
      * @var string
      */
@@ -78,7 +78,7 @@ trait DomainsTrait
         if (null === $schemes) {
             return $this;
         }
-        
+
         $this->schemes = array_map('strtolower', (array) $schemes);
 
         return $this;

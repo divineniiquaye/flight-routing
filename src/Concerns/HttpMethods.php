@@ -20,11 +20,10 @@ declare(strict_types=1);
 namespace Flight\Routing\Concerns;
 
 use Fig\Http\Message\RequestMethodInterface;
-
 use function strtoupper;
 
 /**
- * Class HttpMethods
+ * Class HttpMethods.
  */
 class HttpMethods implements RequestMethodInterface
 {
@@ -32,23 +31,24 @@ class HttpMethods implements RequestMethodInterface
      * Standard HTTP methods against which to test HEAD/OPTIONS requests.
      */
     public const HTTP_METHODS_STANDARD = [
-        HttpMethods::METHOD_HEAD,
-        HttpMethods::METHOD_GET,
-        HttpMethods::METHOD_POST,
-        HttpMethods::METHOD_PUT,
-        HttpMethods::METHOD_PATCH,
-        HttpMethods::METHOD_DELETE,
-        HttpMethods::METHOD_PURGE,
-        HttpMethods::METHOD_OPTIONS,
-        HttpMethods::METHOD_TRACE,
-        HttpMethods::METHOD_CONNECT,
+        self::METHOD_HEAD,
+        self::METHOD_GET,
+        self::METHOD_POST,
+        self::METHOD_PUT,
+        self::METHOD_PATCH,
+        self::METHOD_DELETE,
+        self::METHOD_PURGE,
+        self::METHOD_OPTIONS,
+        self::METHOD_TRACE,
+        self::METHOD_CONNECT,
     ];
 
     /**
      * Standardize custom http method name
-     * For the methods that are not defined in this enum
+     * For the methods that are not defined in this enum.
      *
      * @param string $method
+     *
      * @return string
      */
     public static function custom(string $method): string

@@ -23,7 +23,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * Class SampleController
+ * Class SampleController.
  */
 class SampleController
 {
@@ -37,6 +37,7 @@ class SampleController
 
     /**
      * @param ServerRequestInterface $request
+     *
      * @return string
      */
     public function homePageRequestString(ServerRequestInterface $request): string
@@ -46,6 +47,7 @@ class SampleController
 
     /**
      * @param ResponseInterface $response
+     *
      * @return ResponseInterface
      */
     public function homePageResponse(ResponseInterface $response): ResponseInterface
@@ -57,7 +59,7 @@ class SampleController
 
     /**
      * @param ServerRequestInterface $request
-     * @param ResponseInterface $response
+     * @param ResponseInterface      $response
      *
      * @return ResponseInterface
      */

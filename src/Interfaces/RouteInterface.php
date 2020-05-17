@@ -25,7 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 interface RouteInterface
 {
     /**
-     * Get route methods
+     * Get route methods.
      *
      * @return string[]
      */
@@ -53,10 +53,10 @@ interface RouteInterface
      *
      * @return $this
      */
-    public function addPattern(string $name, string $expression): RouteInterface;
+    public function addPattern(string $name, string $expression): self;
 
     /**
-     * Get route requirements
+     * Get route requirements.
      */
     public function getPatterns(): array;
 
@@ -74,26 +74,26 @@ interface RouteInterface
      *
      * @return RouteInterface
      */
-    public function addDomain(?string $domain): RouteInterface;
+    public function addDomain(?string $domain): self;
 
     /**
-     * Get route name
+     * Get route name.
      *
      * @return null|string
      */
     public function getName(): ?string;
 
     /**
-     * Set route name
+     * Set route name.
      *
      * @param string $name
      *
      * @return static
      */
-    public function setName(string $name): RouteInterface;
+    public function setName(string $name): self;
 
     /**
-     * Retrieve a specific route argument
+     * Retrieve a specific route argument.
      *
      * @param string      $name
      * @param string|null $default
@@ -103,20 +103,20 @@ interface RouteInterface
     public function getArgument(string $name, ?string $default = null): ?string;
 
     /**
-     * Get route arguments
+     * Get route arguments.
      *
      * @return string[]
      */
     public function getArguments(): array;
 
     /**
-     * Set a route arguments
+     * Set a route arguments.
      *
      * @param array $arguments
      *
      * @return self
      */
-    public function addArguments(array $arguments): RouteInterface;
+    public function addArguments(array $arguments): self;
 
     /**
      * Set a list of regular expression requirements on the route.
@@ -127,7 +127,7 @@ interface RouteInterface
      *
      * @return $this
      */
-    public function whereArray(array $wheres = []): RouteInterface;
+    public function whereArray(array $wheres = []): self;
 
     /**
      * Returns the lowercased schemes this route is restricted to.
@@ -145,12 +145,12 @@ interface RouteInterface
      *
      * @return $this
      */
-    public function addSchemes($schemes): RouteInterface;
+    public function addSchemes($schemes): self;
 
     /**
      * Gets a default value.
      *
-     * @param string $name
+     * @param string      $name
      * @param string|null $default
      *
      * @return string|null The default value or defaults when not given
@@ -164,10 +164,10 @@ interface RouteInterface
      *
      * @return RouteInterface
      */
-    public function addDefaults(array $defaults): RouteInterface;
+    public function addDefaults(array $defaults): self;
 
     /**
-     * Get route default options
+     * Get route default options.
      *
      * @return array
      */
@@ -183,7 +183,7 @@ interface RouteInterface
     public function hasDefault(string $name): bool;
 
     /**
-     * Checks if route exists in a group
+     * Checks if route exists in a group.
      *
      * @return bool
      */
@@ -200,9 +200,10 @@ interface RouteInterface
      * Add middlewares to route.
      *
      * @param MiddlewareInterface|string|array|callable|RequestHandlerInterface $middleware
+     *
      * @return RouteInterface
      */
-    public function addMiddleware($middleware): RouteInterface;
+    public function addMiddleware($middleware): self;
 
     /**
      * Get middlewares from stack.

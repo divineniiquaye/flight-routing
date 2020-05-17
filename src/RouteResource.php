@@ -1,4 +1,6 @@
-<?php /** @noinspection PhpUnusedParameterInspection */
+<?php
+
+/** @noinspection PhpUnusedParameterInspection */
 
 declare(strict_types=1);
 
@@ -19,16 +21,16 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use function array_intersect;
-use function ucfirst;
 use function array_diff;
+use function array_intersect;
+use function array_map;
+use function array_merge;
+use function explode;
+use function implode;
 use function mb_strpos;
 use function str_replace;
-use function explode;
-use function array_map;
-use function implode;
 use function trim;
-use function array_merge;
+use function ucfirst;
 
 class RouteResource
 {
@@ -73,9 +75,9 @@ class RouteResource
      * @var array
      */
     protected static $verbs = [
-        'create' => 'create',
+        'create'  => 'create',
         'destroy' => null,
-        'edit' => 'edit',
+        'edit'    => 'edit',
     ];
 
     /**
@@ -364,7 +366,7 @@ class RouteResource
         $uri = $this->getResourceUri($name).'/{'.$base.'}';
 
         if (static::$verbs['destroy']) {
-            $uri .= '/' . static::$verbs['destroy'];
+            $uri .= '/'.static::$verbs['destroy'];
         }
 
         $action = $this->getResourceAction($name, $controller, 'destroy', $options);

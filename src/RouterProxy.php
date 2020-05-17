@@ -37,12 +37,12 @@ class RouterProxy implements RouterProxyInterface
     protected $routeCollector;
 
     /**
-     * @param ServerRequestInterface     $request
-     * @param ResponseFactoryInterface   $responseFactory
-     * @param RouterInterface            $router
-     * @param RouteCollectorInterface    $routeCollector
-     * @param CallableResolverInterface  $callableResolver
-     * @param ContainerInterface|null    $container
+     * @param ServerRequestInterface    $request
+     * @param ResponseFactoryInterface  $responseFactory
+     * @param RouterInterface           $router
+     * @param RouteCollectorInterface   $routeCollector
+     * @param CallableResolverInterface $callableResolver
+     * @param ContainerInterface|null   $container
      */
     public function __construct(
         ServerRequestInterface $request,

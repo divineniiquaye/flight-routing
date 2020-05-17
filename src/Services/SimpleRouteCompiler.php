@@ -19,28 +19,27 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Services;
 
-use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Exceptions\UriHandlerException;
-use Serializable;
-
-use function substr;
-use function strtr;
-use function str_replace;
+use function array_fill_keys;
+use function array_map;
 use function array_merge;
+use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Interfaces\RouteInterface;
+use function implode;
+use function is_array;
+use function ltrim;
 use function preg_match_all;
 use function preg_replace;
+use function rtrim;
+use Serializable;
+use function serialize;
 use function sprintf;
+use function str_replace;
+use function stripslashes;
 use function strlen;
 use function strpos;
-use function rtrim;
-use function ltrim;
-use function implode;
-use function array_map;
-use function is_array;
-use function stripslashes;
-use function array_fill_keys;
+use function strtr;
+use function substr;
 use function substr_compare;
-use function serialize;
 use function unserialize;
 
 /**
@@ -52,7 +51,7 @@ use function unserialize;
  */
 class SimpleRouteCompiler implements Serializable
 {
-    private const DEFAULT_SEGMENT  = '[^\/]+';
+    private const DEFAULT_SEGMENT = '[^\/]+';
 
     /**
      * This string defines the characters that are automatically considered separators in front of
@@ -68,7 +67,7 @@ class SimpleRouteCompiler implements Serializable
     private const SEGMENT_TYPES = [
         'int'     => '\d+',
         'integer' => '\d+',
-        'uuid'    => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}'
+        'uuid'    => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
     ];
 
     /**
@@ -85,11 +84,13 @@ class SimpleRouteCompiler implements Serializable
     private $variables;
     private $pathVariables;
     private $hostVariables;
+
     /**
      * Get the route requirements.
      *
      * @param array $requirements
-     * @return  array
+     *
+     * @return array
      */
     protected function getRouteRequirements(array $requirements): array
     {
@@ -151,6 +152,7 @@ class SimpleRouteCompiler implements Serializable
     {
         return $this->template;
     }
+
     /**
      * Returns the regex.
      *
@@ -227,7 +229,7 @@ class SimpleRouteCompiler implements Serializable
 
         // correct [/ first occurrence]
         if (strpos($pattern, '[/') === 0) {
-            $pattern = '[' . substr($pattern, 2);
+            $pattern = '['.substr($pattern, 2);
         }
 
         if (preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, PREG_SET_ORDER)) {
@@ -259,8 +261,8 @@ class SimpleRouteCompiler implements Serializable
         $options = array_fill_keys($options, null);
 
         return [
-            'template' => stripslashes(str_replace('?', '', $template)),
-            'regex' => '{^'.$leadingChar.strtr($template, $replaces + self::PATTERN_REPLACES).'$}sD'.($isHost ? 'i' : ''),
+            'template'  => stripslashes(str_replace('?', '', $template)),
+            'regex'     => '{^'.$leadingChar.strtr($template, $replaces + self::PATTERN_REPLACES).'$}sD'.($isHost ? 'i' : ''),
             'variables' => $options,
         ];
     }
@@ -270,7 +272,7 @@ class SimpleRouteCompiler implements Serializable
      *
      * @param string $name
      * @param string $segment
-     * @param array $requirements
+     * @param array  $requirements
      *
      * @return string
      */
@@ -280,7 +282,7 @@ class SimpleRouteCompiler implements Serializable
             // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
             // variable would not be usable as a Controller action argument.
             if (preg_match('#\{(\d+)#', $segment)) {
-                $segment = $segment . '}';
+                $segment = $segment.'}';
             }
 
             return self::SEGMENT_TYPES[$segment] ?? $segment;
@@ -301,6 +303,7 @@ class SimpleRouteCompiler implements Serializable
 
     /**
      * @param string $segment
+     *
      * @return string
      */
     private function filterSegment(string $segment): string
@@ -311,12 +314,12 @@ class SimpleRouteCompiler implements Serializable
     public function __serialize(): array
     {
         return [
-            'vars' => $this->variables,
+            'vars'           => $this->variables,
             'template_regex' => $this->template,
-            'path_regex' => $this->compiled,
-            'path_vars' => $this->pathVariables,
-            'host_regex' => $this->hostRegex,
-            'host_vars' => $this->hostVariables,
+            'path_regex'     => $this->compiled,
+            'path_vars'      => $this->pathVariables,
+            'host_regex'     => $this->hostRegex,
+            'host_vars'      => $this->hostVariables,
         ];
     }
 
@@ -340,6 +343,7 @@ class SimpleRouteCompiler implements Serializable
 
     /**
      * @param $serialized
+     *
      * @internal
      */
     final public function unserialize($serialized): void

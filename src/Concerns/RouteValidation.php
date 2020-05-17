@@ -33,7 +33,7 @@ trait RouteValidation
      * Check if given request method matches given route method.
      *
      * @param string|array $routeMethod
-     * @param string            $requestMethod
+     * @param string       $requestMethod
      *
      * @return bool
      */
@@ -103,16 +103,16 @@ trait RouteValidation
     protected function compareRedirection(string $routeUri, string $requestUri): ?string
     {
         // Resolve Request Uri.
-        $newRequestUri  = '/' === $requestUri ? '/' : rtrim($requestUri, '/');
-        $newRouteUri    = '/' === $routeUri ? $routeUri : rtrim($routeUri, '/');
+        $newRequestUri = '/' === $requestUri ? '/' : rtrim($requestUri, '/');
+        $newRouteUri = '/' === $routeUri ? $routeUri : rtrim($routeUri, '/');
 
         $paths = [
             'path'      => substr($requestUri, strlen($newRequestUri)),
-            'route'     => substr($routeUri, strlen($newRouteUri))
+            'route'     => substr($routeUri, strlen($newRouteUri)),
         ];
 
         if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri . $paths['route'];
+            return $newRequestUri.$paths['route'];
         }
 
         if (empty($paths['route']) && $paths['route'] !== $paths['path']) {

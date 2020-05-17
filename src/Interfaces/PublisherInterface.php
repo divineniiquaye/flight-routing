@@ -24,15 +24,15 @@ use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 /**
  * Interface PublisherInterface
- * Publishers are responsible to publish the response provided by controllers
+ * Publishers are responsible to publish the response provided by controllers.
  */
 interface PublisherInterface
 {
     /**
-     * Publish the content
+     * Publish the content.
      *
      * @param PsrResponseInterface|string|mixed $content
-     * @param EmitterInterface|null $response
+     * @param EmitterInterface|null             $response
      *
      * @return bool
      */

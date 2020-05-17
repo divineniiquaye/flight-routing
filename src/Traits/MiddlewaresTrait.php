@@ -24,7 +24,7 @@ use Flight\Routing\Interfaces\RouteInterface;
 trait MiddlewaresTrait
 {
     /**
-     * Route Middlewares
+     * Route Middlewares.
      *
      * @var array
      */

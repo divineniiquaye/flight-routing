@@ -1,4 +1,6 @@
-<?php /** @noinspection CallableParameterUseCaseInTypeContextInspection */
+<?php
+
+/** @noinspection CallableParameterUseCaseInTypeContextInspection */
 
 declare(strict_types=1);
 
@@ -19,29 +21,28 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use function array_merge;
 use Closure;
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
+use function in_array;
+use function ltrim;
+use function preg_match;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use ReflectionException;
+use function rtrim;
 use RuntimeException;
 use Serializable;
-use Throwable;
-
-use function array_merge;
-use function in_array;
-use function ltrim;
-use function preg_match;
-use function rtrim;
 use function serialize;
 use function sprintf;
 use function strpbrk;
 use function strpos;
+use Throwable;
 use function unserialize;
 
 /**
@@ -69,21 +70,21 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     use Traits\PatternsTrait;
 
     /**
-     * HTTP methods supported by this route
+     * HTTP methods supported by this route.
      *
      * @var string[]
      */
     protected $methods = [];
 
     /**
-     * Route name
+     * Route name.
      *
      * @var null|string
      */
     protected $name;
 
     /**
-     * Route path pattern
+     * Route path pattern.
      *
      * @var string
      */
@@ -95,7 +96,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     protected $groupAppended = false;
 
     /**
-     * Parent route groups
+     * Parent route groups.
      *
      * @var RouteGroupInterface[]
      */
@@ -107,7 +108,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     protected $response;
 
     /**
-     * Container
+     * Container.
      *
      * @var ContainerInterface|null
      */
@@ -121,13 +122,13 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     /**
      * Create a new Route constructor.
      *
-     * @param string[] $methods The route HTTP methods
-     * @param string $pattern The route pattern
-     * @param callable|string|object|null $callable The route callable
-     * @param callable $response The HTTP response
-     * @param CallableResolverInterface $callableResolver
-     * @param ContainerInterface|null $container
-     * @param RouteGroup[] $groups The parent route groups
+     * @param string[]                    $methods          The route HTTP methods
+     * @param string                      $pattern          The route pattern
+     * @param callable|string|object|null $callable         The route callable
+     * @param callable                    $response         The HTTP response
+     * @param CallableResolverInterface   $callableResolver
+     * @param ContainerInterface|null     $container
+     * @param RouteGroup[]                $groups           The parent route groups
      */
     public function __construct(
         array $methods,
@@ -137,8 +138,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
         CallableResolverInterface $callableResolver,
         ContainerInterface $container = null,
         array $groups = []
-    )
-    {
+    ) {
         $this->methods = $methods;
         $this->appendGroupToRoute($groups);
         $this->setController($callable);
@@ -155,24 +155,25 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     public function __serialize(): array
     {
         return [
-            'path' => $this->path,
-            'host' => $this->domain,
-            'schemes' => $this->schemes,
-            'namespace' => $this->namespace,
-            'defaults' => $this->defaults,
+            'path'         => $this->path,
+            'host'         => $this->domain,
+            'schemes'      => $this->schemes,
+            'namespace'    => $this->namespace,
+            'defaults'     => $this->defaults,
             'requirements' => $this->patterns,
-            'methods' => $this->methods,
-            'middlewares' => $this->middlewares,
-            'arguments' => $this->arguments,
-            'group' => $this->groups,
-            'response' => $this->response,
-            'callable' => $this->callableResolver,
-            'controller' => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
+            'methods'      => $this->methods,
+            'middlewares'  => $this->middlewares,
+            'arguments'    => $this->arguments,
+            'group'        => $this->groups,
+            'response'     => $this->response,
+            'callable'     => $this->callableResolver,
+            'controller'   => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
         ];
     }
 
     /**
      * {@inheritdoc}
+     *
      * @internal
      */
     final public function serialize(): string
@@ -182,6 +183,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
 
     /**
      * @param array $data
+     *
      * @return void
      */
     public function __unserialize(array $data): void
@@ -212,6 +214,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
 
     /**
      * {@inheritdoc}
+     *
      * @internal
      */
     final public function unserialize($serialized)
@@ -223,8 +226,8 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
      * @param array $values
      *
      * @throws RuntimeException
-     * @internal
      *
+     * @internal
      */
     public function fromArray(array $values): void
     {
@@ -250,7 +253,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
      * one character, and that the prefix begins with a slash.
      *
      * @param string $uri
-     * @param mixed $prefix
+     * @param mixed  $prefix
      *
      * @return mixed|string
      */
@@ -258,17 +261,17 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     {
         // Allow homepage uri on prefix just like python dgango url style.
         if (in_array($uri, ['', '/'], true)) {
-            return rtrim($prefix, '/') . $uri;
+            return rtrim($prefix, '/').$uri;
         }
 
         $urls = [];
         foreach (['&', '-', '_', '~', '@'] as $symbols) {
             if (strpos($prefix, $symbols) !== false) {
-                $urls[] = rtrim($prefix, '/') . $uri;
+                $urls[] = rtrim($prefix, '/').$uri;
             }
         }
 
-        return $urls ? $urls[0] : rtrim($prefix, '/') . '/' . ltrim($uri, '/');
+        return $urls ? $urls[0] : rtrim($prefix, '/').'/'.ltrim($uri, '/');
     }
 
     /**
@@ -292,7 +295,8 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
 
         if (
             strpbrk($pattern, '<*') !== false &&
-            preg_match('/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i',
+            preg_match(
+                '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i',
                 $pattern,
                 $matches
             )
@@ -312,6 +316,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
 
     /**
      * @param array $groups
+     *
      * @return void
      */
     protected function appendGroupToRoute(array $groups): void
@@ -382,7 +387,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
         }
 
         $current = $this->groups[RouteGroupInterface::NAME] ?? null;
-        $this->name = null !== $current ? $current.$name : $name;;
+        $this->name = null !== $current ? $current.$name : $name;
 
         return $this;
     }
@@ -414,12 +419,11 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * @param array $data
-     * @param string $key
+     * @param array       $data
+     * @param string      $key
      * @param string|null $message
      *
      * @return mixed
-     *
      */
     private function getValueFromKey(array $data, string $key, string $message = null)
     {

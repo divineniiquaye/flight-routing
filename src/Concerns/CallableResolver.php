@@ -1,4 +1,6 @@
-<?php /** @noinspection PhpComposerExtensionStubsInspection */
+<?php
+
+/** @noinspection PhpComposerExtensionStubsInspection */
 
 declare(strict_types=1);
 
@@ -19,21 +21,20 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
+use function class_exists;
 use Closure;
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
-use Psr\Container\ContainerInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use RuntimeException;
-use TypeError;
-
-use function class_exists;
 use function get_class;
 use function is_callable;
 use function is_object;
 use function is_string;
 use function json_encode;
 use function preg_match;
+use Psr\Container\ContainerInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use RuntimeException;
+use TypeError;
 
 /**
  * This class resolves a string of the format 'class:method', 'class::method'
@@ -115,11 +116,12 @@ class CallableResolver implements CallableResolverInterface
      * that's callable or is a class name which has an __invoke() method.
      *
      * @param string|object $class
-     * @param string $method
-     * @return callable
+     * @param string        $method
      *
      * @throws InvalidControllerException if the callable does not exist
-     * @throws TypeError if does not return a callable
+     * @throws TypeError                  if does not return a callable
+     *
+     * @return callable
      */
     protected function resolveCallable($class, $method = '__invoke'): callable
     {
@@ -149,10 +151,11 @@ class CallableResolver implements CallableResolverInterface
     }
 
     /**
-     * @param Callable $callable
+     * @param callable $callable
      *
-     * @return Callable
      * @throws RuntimeException if the callable is not resolvable
+     *
+     * @return callable
      */
     protected function assertCallable($callable): callable
     {

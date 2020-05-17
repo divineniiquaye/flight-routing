@@ -22,15 +22,14 @@ namespace Flight\Routing;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Interfaces\RouteInterface;
+use function is_int;
+use function is_numeric;
+use function is_string;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-
-use function is_int;
-use function is_numeric;
-use function is_string;
 use function rawurldecode;
 use function sprintf;
 
@@ -69,10 +68,10 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
     /**
      * @var int
-     * The status is one of the constants shown above
-     * NOT_FOUND = 0
-     * FOUND = 1
-     * METHOD_NOT_ALLOWED = 2
+     *          The status is one of the constants shown above
+     *          NOT_FOUND = 0
+     *          FOUND = 1
+     *          METHOD_NOT_ALLOWED = 2
      */
     protected $routeStatus;
 
@@ -94,8 +93,8 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $keepRequestMethod = 302;
 
     /**
-     * @param int $routeStatus
-     * @param array $routeArguments
+     * @param int                 $routeStatus
+     * @param array               $routeArguments
      * @param RouteInterface|null $routeIdentifier
      */
     public function __construct(
@@ -126,9 +125,10 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
     /**
      * @param string $uriPath
+     *
      * @return $this|self
      */
-    public function shouldRedirect(string $uriPath): RouteResults
+    public function shouldRedirect(string $uriPath): self
     {
         $this->redirectUri = $uriPath;
 
@@ -140,7 +140,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      *
      * @return null|string[] HTTP methods allowed
      */
-    public function getAllowedMethods() : ?array
+    public function getAllowedMethods(): ?array
     {
         if (null !== $this->routeIdentifier) {
             return $this->routeIdentifier->getMethods();
@@ -157,9 +157,10 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      * and handler.
      *
      * @param ServerRequestInterface $request
+     *
      * @return ResponseInterface
      */
-    public function handle(ServerRequestInterface $request) : ResponseInterface
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if (self::METHOD_NOT_ALLOWED === $this->routeStatus) {
             throw new MethodNotAllowedException(sprintf(
@@ -195,6 +196,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
     /**
      * @param bool $urlDecode
+     *
      * @return array
      */
     public function getRouteArguments(bool $urlDecode = true): array
@@ -222,7 +224,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      * @param bool $urlDecode
      *
      * @return false|RouteInterface|RequestHandlerInterface false if representing a routing failure;
-     *     null if not created. Route instance otherwise.
+     *                                                      null if not created. Route instance otherwise.
      */
     public function getMatchedRoute(bool $urlDecode = true)
     {
@@ -236,7 +238,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
-     * Determine the response code according with the method and the permanent config
+     * Determine the response code according with the method and the permanent config.
      *
      * @param ServerRequestInterface $request
      * @param bool status
@@ -245,6 +247,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     {
         if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
             $this->keepRequestMethod = $status ? 301 : 302;
+
             return;
         }
 
@@ -265,7 +268,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             'route_parameters'  => $route->getArguments(),
             'request_uri'       => $requestUri,
             'method'            => $request->getMethod(),
-            'client'            => $request->getServerParams()['REMOTE_ADDR'] ?? '127.0.0.1'
+            'client'            => $request->getServerParams()['REMOTE_ADDR'] ?? '127.0.0.1',
         ]);
     }
 }

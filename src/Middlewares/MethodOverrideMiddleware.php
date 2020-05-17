@@ -19,19 +19,19 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
+use function is_array;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-
 use function strtoupper;
-use function is_array;
 
 class MethodOverrideMiddleware implements MiddlewareInterface
 {
     /**
      * @param ServerRequestInterface  $request
      * @param RequestHandlerInterface $handler
+     *
      * @return ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface

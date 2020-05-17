@@ -1,4 +1,6 @@
-<?php /** @noinspection PhpComposerExtensionStubsInspection */
+<?php
+
+/** @noinspection PhpComposerExtensionStubsInspection */
 
 declare(strict_types=1);
 
@@ -19,28 +21,26 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
-use JsonSerializable;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Message\StreamInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use stdClass;
-use Throwable;
-
 use function function_exists;
 use function is_array;
 use function json_decode;
+use const JSON_ERROR_NONE;
 use function json_last_error;
+use JsonSerializable;
 use function libxml_use_internal_errors;
 use function ob_get_clean;
 use function ob_get_level;
 use function ob_start;
 use function preg_match;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use function simplexml_load_string;
+use stdClass;
 use function strpos;
-
-use const JSON_ERROR_NONE;
+use Throwable;
 
 /**
  * Provides ability to invoke any handler and write it's response into ResponseInterface.
@@ -54,8 +54,8 @@ final class CallableHandler implements RequestHandlerInterface
     private $responseFactory;
 
     /**
-     * @param callable              $callable
-     * @param ResponseInterface     $responseFactory
+     * @param callable          $callable
+     * @param ResponseInterface $responseFactory
      */
     public function __construct(callable $callable, ResponseInterface $responseFactory)
     {
@@ -82,17 +82,18 @@ final class CallableHandler implements RequestHandlerInterface
             $result = ($this->callable)($request, $response);
         } catch (Throwable $e) {
             ob_get_clean();
+
             throw $e;
         } finally {
             while (ob_get_level() > $outputLevel + 1) {
-                $output = ob_get_clean() . $output;
+                $output = ob_get_clean().$output;
             }
         }
 
         return $this->wrapResponse(
             $response,
             $result,
-            ob_get_clean() . $output
+            ob_get_clean().$output
         );
     }
 
@@ -103,7 +104,7 @@ final class CallableHandler implements RequestHandlerInterface
      * @param Response $response Initial pipeline response.
      * @param mixed    $result   Generated endpoint output.
      * @param string   $output   Buffer output.
-
+     *
      * @return Response
      */
     private function wrapResponse(Response $response, $result = null, string $output = ''): Response

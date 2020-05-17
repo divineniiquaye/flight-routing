@@ -22,7 +22,7 @@ namespace Flight\Routing\Exceptions;
 use DomainException;
 
 /**
- * Class RouteNotFoundException
+ * Class RouteNotFoundException.
  */
 class RouteNotFoundException extends DomainException
 {
