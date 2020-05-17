@@ -20,14 +20,13 @@ declare(strict_types=1);
 namespace Flight\Routing\Middlewares;
 
 use ArrayAccess;
+use function in_array;
 use InvalidArgumentException;
+use function is_array;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-
-use function in_array;
-use function is_array;
 
 class UriRedirectMiddleware implements MiddlewareInterface
 {
@@ -41,7 +40,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     protected const DEFAUTLS = [
         'permanent' => true,
-        'query' => true,
+        'query'     => true,
     ];
 
     /**
@@ -56,7 +55,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * @param array|ArrayAccess $redirects [from => to]
-     * @param array $options
+     * @param array             $options
      */
     public function __construct($redirects = [], array $options = self::DEFAUTLS)
     {
@@ -76,7 +75,9 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Whether return a permanent redirect.
+     *
      * @param bool $permanent
+     *
      * @return UriRedirectMiddleware
      */
     public function permanentRedirection(bool $permanent = true): self
@@ -87,8 +88,10 @@ class UriRedirectMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Whether include the query to search the url
+     * Whether include the query to search the url.
+     *
      * @param bool $query
+     *
      * @return UriRedirectMiddleware
      */
     public function allowQueries(bool $query = true): self
@@ -100,7 +103,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * Process a request and return a response.
-     * @inheritDoc
+     * {@inheritdoc}
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -110,7 +113,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
         $uri = $request->getUri()->getPath();
 
         if ($this->query && $query = $request->getUri()->getQuery() !== '') {
-            $uri .= '?' . $query;
+            $uri .= '?'.$query;
         }
 
         if (!isset($this->redirects[$uri])) {
@@ -123,8 +126,10 @@ class UriRedirectMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Determine the response code according with the method and the permanent config
+     * Determine the response code according with the method and the permanent config.
+     *
      * @param ServerRequestInterface $request
+     *
      * @return int
      */
     private function determineResponseCode(ServerRequestInterface $request): int

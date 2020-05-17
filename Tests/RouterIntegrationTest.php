@@ -34,6 +34,7 @@ use Flight\Routing\RouteResults;
 use Flight\Routing\Tests\Fixtures\SampleController;
 use Flight\Routing\Tests\Fixtures\SampleMiddleware;
 use Generator;
+use function implode;
 use Laminas\Stratigility\Next;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
@@ -43,8 +44,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-
-use function implode;
 
 /**
  * Base class for testing adapter integrations.
@@ -57,7 +56,7 @@ use function implode;
  */
 abstract class RouterIntegrationTest extends TestCase
 {
-    abstract public function getRouter() : RouterInterface;
+    abstract public function getRouter(): RouterInterface;
 
     abstract public function psrServerResponseFactory(): array;
 
@@ -68,14 +67,14 @@ abstract class RouterIntegrationTest extends TestCase
         return new RouteCollector($serverRequest, $responseFactory, $this->getRouter(), null, $container);
     }
 
-    public function createInvalidResponseFactory() : callable
+    public function createInvalidResponseFactory(): callable
     {
         return function () {
             Assert::fail('Response generated when it should not have been');
         };
     }
 
-    public function method() : Generator
+    public function method(): Generator
     {
         yield 'HEAD: head, post' => [
             HttpMethods::METHOD_HEAD,
@@ -126,7 +125,7 @@ abstract class RouterIntegrationTest extends TestCase
         $router = $this->getRouteCollection();
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
 
-        $finalResponse = (new $responseFactory)->createResponse();
+        $finalResponse = (new $responseFactory())->createResponse();
         $finalResponse = $finalResponse->withHeader('foo-bar', 'baz');
         $finalResponse->getBody()->write('FOO BAR BODY');
 
@@ -252,7 +251,7 @@ abstract class RouterIntegrationTest extends TestCase
      *        header => {header}
      *     ]
      */
-    abstract public function implicitRoutesAndRequests() : Generator;
+    abstract public function implicitRoutesAndRequests(): Generator;
 
     /**
      * @dataProvider implicitRoutesAndRequests
@@ -262,7 +261,7 @@ abstract class RouterIntegrationTest extends TestCase
         $router = $this->getRouteCollection();
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
 
-        $finalResponse = (new $responseFactory)->createResponse();
+        $finalResponse = (new $responseFactory())->createResponse();
         $finalResponse = $finalResponse->withHeader('foo-bar', 'baz');
 
         $middleware = $this->prophesize(MiddlewareInterface::class);
@@ -342,7 +341,6 @@ abstract class RouterIntegrationTest extends TestCase
         $this->assertInstanceOf(RouteInterface::class, $router->currentRoute());
     }
 
-
     public function testWithImplicitRouteGroup()
     {
         $router = $this->getRouteCollection();
@@ -350,12 +348,12 @@ abstract class RouterIntegrationTest extends TestCase
         $path = $serverRequest->getUri()->withPath('/group/test');
 
         $router->group([
-            RouteGroupInterface::NAME => 'group',
-            RouteGroupInterface::PREFIX => 'group',
+            RouteGroupInterface::NAME         => 'group',
+            RouteGroupInterface::PREFIX       => 'group',
             RouteGroupInterface::REQUIREMENTS => [],
-            RouteGroupInterface::DEFAULTS => ['how' => 'What to do?'],
-            RouteGroupInterface::MIDDLEWARES => [SampleMiddleware::class],
-            RouteGroupInterface::SCHEMES => null,
+            RouteGroupInterface::DEFAULTS     => ['how' => 'What to do?'],
+            RouteGroupInterface::MIDDLEWARES  => [SampleMiddleware::class],
+            RouteGroupInterface::SCHEMES      => null,
         ], function (RouterProxyInterface $route): void {
             $route->get('/test*<homePageRequestString>', SampleController::class)->setName('_hello');
         });

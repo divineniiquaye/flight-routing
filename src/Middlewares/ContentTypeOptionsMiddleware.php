@@ -25,7 +25,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Prevent content sniffing (MIME sniffing)
+ * Prevent content sniffing (MIME sniffing).
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
@@ -34,6 +34,7 @@ class ContentTypeOptionsMiddleware implements MiddlewareInterface
     /**
      * @param ServerRequestInterface  $request
      * @param RequestHandlerInterface $handler
+     *
      * @return ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -44,8 +45,7 @@ class ContentTypeOptionsMiddleware implements MiddlewareInterface
         // prevent content sniffing (MIME sniffing)
         if (!$response->hasHeader('X-Content-Type-Options')) {
             $response = $response
-                ->withAddedHeader('X-Content-Type-Options', 'nosniff')
-            ;
+                ->withAddedHeader('X-Content-Type-Options', 'nosniff');
         }
 
         return $response;

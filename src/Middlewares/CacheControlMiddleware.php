@@ -19,17 +19,15 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
+use function array_change_key_case;
+use function array_key_exists;
+use const CASE_LOWER;
+use function preg_replace;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-
-use function array_change_key_case;
-use function array_key_exists;
-use function preg_replace;
 use function stripos;
-
-use const CASE_LOWER;
 
 /**
  * Set the cache control to no cache
@@ -42,6 +40,7 @@ class CacheControlMiddleware implements MiddlewareInterface
     /**
      * @param ServerRequestInterface  $request
      * @param RequestHandlerInterface $handler
+     *
      * @return ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -53,8 +52,7 @@ class CacheControlMiddleware implements MiddlewareInterface
         // disable caching of potentially sensitive data
         if (!$response->hasHeader('Cache-Control')) {
             $response = $response
-                ->withHeader('Cache-Control', 'private, no-cache, must-revalidate, no-store')
-            ;
+                ->withHeader('Cache-Control', 'private, no-cache, must-revalidate, no-store');
         }
 
         // Fix protocol
@@ -98,8 +96,9 @@ class CacheControlMiddleware implements MiddlewareInterface
      * @see http://support.microsoft.com/kb/323308
      *
      * @final
+     *
      * @param ServerRequestInterface $request
-     * @param ResponseInterface $response
+     * @param ResponseInterface      $response
      *
      * @return ResponseInterface
      */

@@ -25,19 +25,19 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Class InvalidMiddlewareException
+ * Class InvalidMiddlewareException.
  */
 class InvalidMiddlewareException extends DomainException implements ExceptionInterface
 {
     /**
      * @param mixed $middleware The middleware that does not fulfill the
-     *     expectations of MiddlewarePipe::pipe
+     *                          expectations of MiddlewarePipe::pipe
      */
-    public static function forMiddleware($middleware) : self
+    public static function forMiddleware($middleware): self
     {
         return new self(sprintf(
             'Middleware "%s" is neither a string service name, a PHP callable,'
-            . ' a %s instance, a %s instance, or an array of such arguments',
+            .' a %s instance, a %s instance, or an array of such arguments',
             is_object($middleware) ? get_class($middleware) : gettype($middleware),
             MiddlewareInterface::class,
             RequestHandlerInterface::class

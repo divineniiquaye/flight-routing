@@ -19,21 +19,20 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Services;
 
+use function array_key_exists;
+use function array_replace;
 use ArrayIterator;
 use Closure;
+use function dirname;
 use Flight\Routing\Concerns\RouteValidation;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouterInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Flight\Routing\RouteResults;
-use Traversable;
-
-use function array_key_exists;
-use function dirname;
-use function substr;
-use function strlen;
+use Psr\Http\Message\ServerRequestInterface;
 use function rawurldecode;
-use function array_replace;
+use function strlen;
+use function substr;
+use Traversable;
 use function trim;
 
 class DefaultFlightRouter implements RouterInterface
@@ -46,7 +45,7 @@ class DefaultFlightRouter implements RouterInterface
         '['   => '',
         ']'   => '',
         '://' => '://',
-        '//'  => '/'
+        '//'  => '/',
     ];
 
     /**
@@ -78,8 +77,8 @@ class DefaultFlightRouter implements RouterInterface
      * - A SimpleRouteCompiler instance will parse the routes and return
      *   the absolute matched route.
      *
-     * @param callable|null $compiler    if not provided, a default is used
-     *                                               implementation will be used
+     * @param callable|null $compiler if not provided, a default is used
+     *                                implementation will be used
      */
     public function __construct(callable $compiler = null)
     {
@@ -91,6 +90,7 @@ class DefaultFlightRouter implements RouterInterface
      *
      * Uses Symfony routing style. Since it has been adopted
      * by many projects and framework including laravel framework.
+     *
      * @param RouteInterface $route
      */
     public function addRoute(RouteInterface $route): void
@@ -126,8 +126,8 @@ class DefaultFlightRouter implements RouterInterface
             RouteResults::FOUND === $status &&
             null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalisedPath)
         ) {
-            $prefix = strlen($basePath) > 1 ? $basePath . '' : '/';
-            $finalised->shouldRedirect($prefix . $redirectedPath);
+            $prefix = strlen($basePath) > 1 ? $basePath.'' : '/';
+            $finalised->shouldRedirect($prefix.$redirectedPath);
         }
 
         return $finalised;
@@ -138,8 +138,8 @@ class DefaultFlightRouter implements RouterInterface
      *
      * @param string $method The current request method
      * @param string $scheme The current uri scheme
-     * @param string $host The domain to be parsed
-     * @param string $path The path info to be parsed
+     * @param string $host   The domain to be parsed
+     * @param string $path   The path info to be parsed
      *
      * @return array An array of results.
      */
@@ -246,7 +246,7 @@ class DefaultFlightRouter implements RouterInterface
     private function createDispatcherCallback(): callable
     {
         return function (RouteInterface $route) {
-            return (new SimpleRouteCompiler)->compile($route);
+            return (new SimpleRouteCompiler())->compile($route);
         };
     }
 
@@ -263,7 +263,7 @@ class DefaultFlightRouter implements RouterInterface
         $replaces = [];
         foreach ($values as $key => $value) {
             $value = (is_array($value) || $value instanceof Closure) ? '' : $value;
-            $replaces["<{$key}>"] = is_object($value) ? (string)$value : $value;
+            $replaces["<{$key}>"] = is_object($value) ? (string) $value : $value;
         }
 
         return strtr($string, $replaces + self::URI_FIXERS);
@@ -273,8 +273,8 @@ class DefaultFlightRouter implements RouterInterface
      * Fetch uri segments and query parameters.
      *
      * @param Traversable|array $parameters
-     * @param array $allowed
-     * @param array|null         $query Query parameters.
+     * @param array             $allowed
+     * @param array|null        $query      Query parameters.
      *
      * @return array
      */

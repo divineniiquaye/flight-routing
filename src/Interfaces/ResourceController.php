@@ -37,8 +37,8 @@ interface ResourceController
     /**
      * Display the specified resource.
      *
-     * @param Request $request
-     * @param  int|mixed $id
+     * @param Request   $request
+     * @param int|mixed $id
      *
      * @return ResponseInterface|string
      */
@@ -63,8 +63,8 @@ interface ResourceController
     /**
      * Show the form for editing the specified resource.
      *
-     * @param Request $request
-     * @param  int|mixed $id
+     * @param Request   $request
+     * @param int|mixed $id
      *
      * @return ResponseInterface|string
      */
@@ -73,7 +73,7 @@ interface ResourceController
     /**
      * Update the specified resource in storage.
      *
-     * @param Request $request
+     * @param Request   $request
      * @param int|mixed $id
      *
      * @return ResponseInterface|string
@@ -83,11 +83,10 @@ interface ResourceController
     /**
      * Remove the specified resource from storage.
      *
-     * @param Request $request
-     * @param  string|mixed $id
+     * @param Request      $request
+     * @param string|mixed $id
      *
      * @return ResponseInterface|string
      */
     public function destroy(Request $request, $id);
-
 }

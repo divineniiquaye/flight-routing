@@ -24,7 +24,7 @@ use Flight\Routing\Interfaces\RouteInterface;
 trait DefaultsTrait
 {
     /**
-     * Route defaults
+     * Route defaults.
      *
      * @var array
      */

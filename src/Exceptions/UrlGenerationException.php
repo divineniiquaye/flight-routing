@@ -27,7 +27,8 @@ class UrlGenerationException extends \DomainException implements ExceptionInterf
     /**
      * Create a new exception for missing route parameters.
      *
-     * @param  \BiuradPHP\Routing\Route  $route
+     * @param \BiuradPHP\Routing\Route $route
+     *
      * @return static
      */
     public static function forMissingParameters(RouteInterface $route)

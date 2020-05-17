@@ -19,25 +19,24 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Exceptions\InvalidMiddlewareException;
-use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
-use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
-use Laminas\Stratigility\MiddlewarePipe;
-use Psr\Container\ContainerInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-
 use function array_filter;
 use function array_merge;
 use function array_shift;
 use function array_values;
 use function count;
 use function explode;
+use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use function is_array;
 use function is_callable;
 use function is_string;
 use function is_subclass_of;
+use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
+use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
+use Laminas\Stratigility\MiddlewarePipe;
 use function method_exists;
+use Psr\Container\ContainerInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use function sprintf;
 use function strpos;
 
@@ -88,10 +87,11 @@ class MiddlewareDisptcher
     protected $container;
 
     /**
-     * @param array $routeMiddlewares
+     * @param array                   $routeMiddlewares
      * @param ContainerInterface|null $container
      */
-    public function __construct(array $routeMiddlewares, ContainerInterface $container = null) {
+    public function __construct(array $routeMiddlewares, ContainerInterface $container = null)
+    {
         $this->routeMiddlewares = $routeMiddlewares;
         $this->container = $container;
     }
@@ -124,6 +124,7 @@ class MiddlewareDisptcher
             }
 
             $this->middlewares = array_merge($middleware, $this->middlewares);
+
             return;
         }
 
@@ -133,7 +134,7 @@ class MiddlewareDisptcher
     }
 
     /**
-     * Get all middlewares stack
+     * Get all middlewares stack.
      *
      * @return array<string, MiddlewareInterface>
      */
@@ -146,6 +147,7 @@ class MiddlewareDisptcher
      * Resolve a middleware so it can be used flexibly.
      *
      * @param MiddlewareInterface|string|callable $middleware
+     *
      * @return MiddlewareInterface
      */
     public function resolve($middleware): MiddlewareInterface
@@ -167,8 +169,7 @@ class MiddlewareDisptcher
 
             $middleware = !$this->container instanceof ContainerInterface
                 ? new $middleware() // Incase $container is set null. Let's create a new instance
-                : $this->container->get($middleware)
-            ;
+                : $this->container->get($middleware);
 
             if ($middleware instanceof RequestHandlerInterface) {
                 $middleware = $this->addHandler($middleware);
@@ -196,7 +197,7 @@ class MiddlewareDisptcher
     }
 
     /**
-     * Add a new middleware to the stack
+     * Add a new middleware to the stack.
      *
      * Middleware are organized as a stack. That means middleware
      * that have been added before will be executed after the newly
@@ -204,9 +205,10 @@ class MiddlewareDisptcher
      *
      * @param string|array|callable|MiddlewareInterface|RequestHandlerInterface $middleware
      *
-     * @return MiddlewareInterface
      * @throws InvalidMiddlewareException if argument is not one of
-     *                                              the specified types
+     *                                    the specified types
+     *
+     * @return MiddlewareInterface
      */
     public function prepare($middleware): MiddlewareInterface
     {
@@ -233,7 +235,9 @@ class MiddlewareDisptcher
 
     /**
      * Decorate callable standards-signature middleware via a CallableMiddlewareDecorator.
+     *
      * @param callable $middleware
+     *
      * @return CallableMiddlewareDecorator
      */
     public function addCallable(callable $middleware): CallableMiddlewareDecorator
@@ -243,7 +247,9 @@ class MiddlewareDisptcher
 
     /**
      * Decorate a RequestHandlerInterface as middleware via RequestHandlerMiddleware.
+     *
      * @param RequestHandlerInterface $handler
+     *
      * @return RequestHandlerMiddleware
      */
     public function addHandler(RequestHandlerInterface $handler): RequestHandlerMiddleware
@@ -264,6 +270,7 @@ class MiddlewareDisptcher
      * MiddlewarePipe instance the method returns.
      *
      * @param string|array|MiddlewarePipe $middleware
+     *
      * @return MiddlewarePipe
      */
     public function pipeline(...$middleware): MiddlewarePipe

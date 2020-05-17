@@ -19,12 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use function array_filter;
 use Closure;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouterProxyInterface;
-
-use function array_filter;
 
 class RouteGroup implements RouteGroupInterface
 {
@@ -54,11 +53,11 @@ class RouteGroup implements RouteGroupInterface
     protected $attributes = [];
 
     /**
-     * @param string|null $pattern
-     * @param array $attributes
-     * @param callable|string $callable
+     * @param string|null               $pattern
+     * @param array                     $attributes
+     * @param callable|string           $callable
      * @param CallableResolverInterface $callableResolver
-     * @param RouterProxyInterface $routeProxy
+     * @param RouterProxyInterface      $routeProxy
      */
     public function __construct(?string $pattern, array $attributes, $callable, CallableResolverInterface $callableResolver, RouterProxyInterface $routeProxy)
     {
@@ -80,7 +79,7 @@ class RouteGroup implements RouteGroupInterface
     }
 
     /**
-     * Set the Route Group Options
+     * Set the Route Group Options.
      *
      * @param array $attributes self::CONSTANT => $values
      */
@@ -119,6 +118,7 @@ class RouteGroup implements RouteGroupInterface
     protected function loadGroupRoutes(&$routes)
     {
         $callable = $this->callableResolver->resolve($routes);
+
         return $callable($this->routeProxy);
     }
 }

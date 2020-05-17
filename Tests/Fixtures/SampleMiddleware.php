@@ -25,7 +25,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Class SampleMiddleware
+ * Class SampleMiddleware.
  */
 class SampleMiddleware implements MiddlewareInterface
 {
@@ -52,7 +52,7 @@ class SampleMiddleware implements MiddlewareInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

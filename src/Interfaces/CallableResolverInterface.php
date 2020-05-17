@@ -24,12 +24,13 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 interface CallableResolverInterface
 {
     /**
-     * This instance added will be binded to CLosure
+     * This instance added will be binded to CLosure.
      *
      * @param object $instance
+     *
      * @return CallableResolverInterface
      */
-    public function addInstanceToClosure($instance): CallableResolverInterface;
+    public function addInstanceToClosure($instance): self;
 
     /**
      * Resolve toResolve into a callable that the router can dispatch.
@@ -39,10 +40,11 @@ interface CallableResolverInterface
      * otherwise instantiate it and then dispatch 'method'.
      *
      * @param mixed $toResolve
-     * @return callable
      *
      * @throws InvalidControllerException if the callable does not exist
      * @throws InvalidControllerException if the callable is not resolvable
+     *
+     * @return callable
      */
     public function resolve($toResolve): callable;
 }

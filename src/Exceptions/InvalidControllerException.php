@@ -23,7 +23,7 @@ use DomainException;
 use Flight\Routing\Interfaces\ExceptionInterface;
 
 /**
- * Class InvalidControllerException
+ * Class InvalidControllerException.
  */
 class InvalidControllerException extends DomainException implements ExceptionInterface
 {

@@ -28,14 +28,14 @@ use ReflectionException;
 trait ControllersTrait
 {
     /**
-     * Route Default Namespace
+     * Route Default Namespace.
      *
      * @var string
      */
     protected $namespace;
 
     /**
-     * Route callable
+     * Route callable.
      *
      * @var callable|string
      */
@@ -68,26 +68,27 @@ trait ControllersTrait
             null !== $namespace &&
             false === strpos($controller, $namespace)
         ) {
-            $controller = $namespace . $controller;
+            $controller = $namespace.$controller;
         } elseif (
             is_array($controller) &&
             !is_callable($controller) &&
             !class_exists($controller[0])
         ) {
-            $controller[0] = $namespace . $controller[0];
+            $controller[0] = $namespace.$controller[0];
         }
 
         $this->controller = $controller;
     }
 
     /**
-     * Handles a callable controller served on a route
+     * Handles a callable controller served on a route.
      *
-     * @param callable $controller
+     * @param callable               $controller
      * @param ServerRequestInterface $request
      *
-     * @return mixed
      * @throws ReflectionException
+     *
+     * @return mixed
      */
     protected function handleController(callable $controller, ServerRequestInterface $request)
     {

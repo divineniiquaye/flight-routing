@@ -24,7 +24,7 @@ use Flight\Routing\Interfaces\RouteInterface;
 trait ArgumentsTrait
 {
     /**
-     * Route parameters
+     * Route parameters.
      *
      * @var array
      */
@@ -60,4 +60,3 @@ trait ArgumentsTrait
         return $this->arguments;
     }
 }
-

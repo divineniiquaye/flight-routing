@@ -33,10 +33,10 @@ interface RouteGroupInterface
     /**
      * @return RouteGroupInterface
      */
-    public function collectRoutes(): RouteGroupInterface;
+    public function collectRoutes(): self;
 
     /**
-     * Get the RouteGroup's pattern
+     * Get the RouteGroup's pattern.
      *
      * @return string
      */

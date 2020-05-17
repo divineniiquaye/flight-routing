@@ -19,7 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use function array_merge;
+use function array_shift;
+use function array_walk;
 use Closure;
+use function count;
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
@@ -27,6 +31,8 @@ use Flight\Routing\Interfaces\RouteCollectorInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouterInterface;
+use function http_build_query;
+use function in_array;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -35,16 +41,9 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use RuntimeException;
 use SplObjectStorage;
-
-use function array_merge;
-use function array_shift;
-use function array_walk;
-use function count;
-use function http_build_query;
-use function in_array;
-use function strpos;
 use function sprintf;
 use function str_replace;
+use function strpos;
 
 /**
  * Aggregate routes for the router.
@@ -122,14 +121,14 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $nameList = [];
 
     /**
-     * Route groups
+     * Route groups.
      *
      * @var RouteGroup[]
      */
     protected $routeGroups = [];
 
     /**
-     * Route Group Options
+     * Route Group Options.
      *
      * @var array
      */
@@ -148,11 +147,11 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $responseFactory;
 
     /**
-     * @param ServerRequestInterface     $request
-     * @param ResponseFactoryInterface   $responseFactory
-     * @param RouterInterface|null       $router
-     * @param CallableResolverInterface  $callableResolver
-     * @param ContainerInterface|null    $container
+     * @param ServerRequestInterface    $request
+     * @param ResponseFactoryInterface  $responseFactory
+     * @param RouterInterface|null      $router
+     * @param CallableResolverInterface $callableResolver
+     * @param ContainerInterface|null   $container
      */
     public function __construct(
         ServerRequestInterface $request,
@@ -164,7 +163,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         $this->request = $request;
         $this->responseFactory = $responseFactory;
 
-        $this->routes = new SplObjectStorage;
+        $this->routes = new SplObjectStorage();
         $this->router = $router ?? new Services\DefaultFlightRouter();
 
         $this->container = $container;
@@ -207,7 +206,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             'namespace' => $this->getGroupOption(RouteGroupInterface::NAMESPACE),
             'defaults'  => $this->getGroupOption(RouteGroupInterface::DEFAULTS),
             'patterns'  => $this->getGroupOption(RouteGroupInterface::REQUIREMENTS),
-            'schemes'  => $this->getGroupOption(RouteGroupInterface::SCHEMES),
+            'schemes'   => $this->getGroupOption(RouteGroupInterface::SCHEMES),
         ];
 
         $route->fromArray($defaults);
@@ -245,18 +244,18 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Accepts a combination of a path, controller, domain and requesthandler,
      * and optionally the HTTP methods allowed.
      *
-     * @param array|array                $methods HTTP method to accept
-     * @param string|null                $uri     the uri of the route
+     * @param array|array               $methods HTTP method to accept
+     * @param string|null               $uri     the uri of the route
      * @param Closure|array|string|null $action  a requesthandler or controller
      *
-     * @return Route
-     *
      * @throws RuntimeException when called after match() have been called.
+     *
+     * @return Route
      */
     protected function addRoute($methods, $uri, $action): Route
     {
         $route = $this->createRoute($methods, $uri, $action);
-        $domainAndUri = $route->getDomain() . $route->getPath();
+        $domainAndUri = $route->getDomain().$route->getPath();
 
         // Add the given route to the arrays of routes.
         foreach ($route->getMethods() as $method) {
@@ -338,7 +337,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
                 return $route;
             }
         }
-        throw new RuntimeException('Named route does not exist for name: ' . $name);
+
+        throw new RuntimeException('Named route does not exist for name: '.$name);
     }
 
     /**
@@ -370,7 +370,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Add goups to RouteCollection
         $this->routeGroups[] = $routeGroup;
-        $this->groupOptions  = $this->resolveGlobals($routeGroup->getOptions());
+        $this->groupOptions = $this->resolveGlobals($routeGroup->getOptions());
 
         // Returns routes on closure, file or on callble
         $routeGroup->collectRoutes();
@@ -385,7 +385,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new GET route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -398,7 +398,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new POST route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -411,7 +411,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new PUT route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -424,7 +424,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new PATCH route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -437,7 +437,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new DELETE route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -450,7 +450,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new OPTIONS route with the router.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -463,7 +463,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new route responding to all verbs.
      *
-     * @param string                     $uri
+     * @param string                    $uri
      * @param Closure|array|string|null $action
      *
      * @return RouteInterface
@@ -493,7 +493,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             'namespace' => $this->getGroupOption(RouteGroupInterface::NAMESPACE),
             'defaults'  => $this->getGroupOption(RouteGroupInterface::DEFAULTS),
             'patterns'  => $this->getGroupOption(RouteGroupInterface::REQUIREMENTS),
-            'schemes'  => $this->getGroupOption(RouteGroupInterface::SCHEMES),
+            'schemes'   => $this->getGroupOption(RouteGroupInterface::SCHEMES),
         ];
 
         $route->fromArray($defaults);
@@ -568,16 +568,16 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Making routing on sub-folders easier
         if (strpos($uri, '/') !== 0) {
-            $domain .=  '/';
+            $domain .= '/';
         }
 
         // Incase query is added to uri.
         if (!empty($queryParams)) {
             $separator = ini_get('arg_separator.input');
-            $uri .= '?' . http_build_query($queryParams, '', $separator ? $separator[0] : '&');
+            $uri .= '?'.http_build_query($queryParams, '', $separator ? $separator[0] : '&');
         }
 
-        return $domain . $uri;
+        return $domain.$uri;
     }
 
     /**
@@ -605,7 +605,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         $routes = $this->getRoutes();
         array_walk($routes, [$this, 'addLookupRoute']);
 
-        $routingResults     = $this->router->match($this->request);
+        $routingResults = $this->router->match($this->request);
         $this->currentRoute = $route = $routingResults->getMatchedRoute();
 
         // Get all available middlewares
@@ -643,6 +643,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Get Route The Group Option.
      *
      * @param string $name
+     *
      * @return mixed
      */
     protected function getGroupOption(string $name)
@@ -651,10 +652,10 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     }
 
     /**
-     * Set the Route Group Option
+     * Set the Route Group Option.
      *
      * @param string $name
-     * @param mixed $value
+     * @param mixed  $value
      */
     protected function setGroupOption(string $name, $value): void
     {
@@ -662,9 +663,10 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     }
 
     /**
-     * Resolving patterns and defaults to group
+     * Resolving patterns and defaults to group.
      *
      * @param array $groupOptions
+     *
      * @return array
      */
     protected function resolveGlobals(array $groupOptions): array
@@ -690,7 +692,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         return [
             'routes'    => $this->allRoutes,
             'current'   => $this->currentRoute,
-            'counts'    => count($this->getRouter())
+            'counts'    => count($this->getRouter()),
         ];
     }
 }

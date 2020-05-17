@@ -20,10 +20,10 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Closure;
-use Psr\Http\Message\ResponseInterface;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Middlewares\MiddlewareDisptcher;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use RuntimeException;
@@ -59,7 +59,7 @@ interface RouteCollectorInterface
     ];
 
     /**
-     * Get route objects
+     * Get route objects.
      *
      * @return RouteInterface[]|iterable
      */
@@ -75,16 +75,16 @@ interface RouteCollectorInterface
      * the URI and prepare it for returning to the user. If the URI is supposed to
      * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
      *
-     * @param string         $routeName  route name
-     * @param string[]|array $parameters key => value option pairs to pass to the
-     *                                   router for purposes of generating a URI; takes precedence over options
-     *                                   present in route used to generate URI
-     * @param array         $queryParams Optional query string parameters
-     *
-     * @return string of fully qualified URL for named route.
+     * @param string         $routeName   route name
+     * @param string[]|array $parameters  key => value option pairs to pass to the
+     *                                    router for purposes of generating a URI; takes precedence over options
+     *                                    present in route used to generate URI
+     * @param array          $queryParams Optional query string parameters
      *
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
+     *
+     * @return string of fully qualified URL for named route.
      */
     public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string;
 
@@ -95,33 +95,35 @@ interface RouteCollectorInterface
      *
      * @return $this
      */
-    public function setNamespace(?string $rootNamespace = null): RouteCollectorInterface;
+    public function setNamespace(?string $rootNamespace = null): self;
 
     /**
-     * Get named route object
+     * Get named route object.
      *
      * @param string $name Route name
      *
-     * @return RouteInterface
+     * @throws RuntimeException If named route does not exist
      *
-     * @throws RuntimeException   If named route does not exist
+     * @return RouteInterface
      */
     public function getNamedRoute(string $name): RouteInterface;
 
     /**
-     * Remove named route
+     * Remove named route.
      *
      * @param string $name Route name
-     * @return RouteCollectorInterface
      *
-     * @throws RuntimeException   If named route does not exist
+     * @throws RuntimeException If named route does not exist
+     *
+     * @return RouteCollectorInterface
      */
-    public function removeNamedRoute(string $name): RouteCollectorInterface;
+    public function removeNamedRoute(string $name): self;
 
     /**
-     * Lookup a route via the route's unique identifier
+     * Lookup a route via the route's unique identifier.
      *
      * @param RouteInterface $route
+     *
      * @return void
      */
     public function addLookupRoute(RouteInterface $route): void;
@@ -139,9 +141,10 @@ interface RouteCollectorInterface
      * redirections are temporary by default (code 302)
      *
      * @param bool $status
+     *
      * @return RouteCollectorInterface
      */
-    public function keepRequestMethod(bool $status = false): RouteCollectorInterface;
+    public function keepRequestMethod(bool $status = false): self;
 
     /**
      * Get current http request instance.
@@ -155,9 +158,10 @@ interface RouteCollectorInterface
      * forward response.
      *
      * @param ServerRequestInterface $request
+     *
      * @return RouteCollectorInterface
      */
-    public function setRequest(ServerRequestInterface $request): RouteCollectorInterface;
+    public function setRequest(ServerRequestInterface $request): self;
 
     /**
      * Ge the current router used.
@@ -167,7 +171,7 @@ interface RouteCollectorInterface
     public function getRouter(): RouterInterface;
 
     /**
-     * Get the Middlewares Dispatcher
+     * Get the Middlewares Dispatcher.
      *
      * @return MiddlewareDisptcher
      */
@@ -180,7 +184,7 @@ interface RouteCollectorInterface
      *
      * @return $this|array
      */
-    public function addMiddlewares($middleware = []): RouteCollectorInterface;
+    public function addMiddlewares($middleware = []): self;
 
     /**
      * Set the route middleware and call it as a method on route.
@@ -189,10 +193,10 @@ interface RouteCollectorInterface
      *
      * @return $this|array
      */
-    public function routeMiddlewares($middlewares = []): RouteCollectorInterface;
+    public function routeMiddlewares($middlewares = []): self;
 
     /**
-     * Get all middlewares from stack
+     * Get all middlewares from stack.
      *
      * @return array
      */
@@ -204,16 +208,16 @@ interface RouteCollectorInterface
      * This method implements a fluent interface.
      *
      * @param array $parameters The parameters
-     * @param int $type
+     * @param int   $type
      *
      * @return $this
      */
-    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): RouteCollectorInterface;
+    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): self;
 
     /**
-     * Add route group
+     * Add route group.
      *
-     * @param array $attributes
+     * @param array           $attributes
      * @param string|callable $callable
      *
      * @return RouteGroupInterface
@@ -221,7 +225,7 @@ interface RouteCollectorInterface
     public function group(array $attributes, $callable): RouteGroupInterface;
 
     /**
-     * Add route
+     * Add route.
      *
      * @param string[]                       $methods Array of HTTP methods
      * @param string                         $pattern The route pattern
@@ -249,10 +253,10 @@ interface RouteCollectorInterface
      * If routing succeeds, injects the request passed to the handler with any
      * matched parameters as well.
      *
-     * @return ResponseInterface
-     *
      * @throws RouteNotFoundException
      * @throws ExceptionInterface
+     *
+     * @return ResponseInterface
      */
     public function dispatch(): ResponseInterface;
 }

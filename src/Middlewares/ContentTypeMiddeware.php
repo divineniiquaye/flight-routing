@@ -19,12 +19,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
+use function in_array;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-
-use function in_array;
 use function stripos;
 
 /**
@@ -37,6 +36,7 @@ class ContentTypeMiddeware implements MiddlewareInterface
     /**
      * @param ServerRequestInterface  $request
      * @param RequestHandlerInterface $handler
+     *
      * @return ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -51,7 +51,6 @@ class ContentTypeMiddeware implements MiddlewareInterface
         ) {
             $request = $request->withParsedBody($_POST);
         }
-
 
         /** @var ResponseInterface $response */
         $response = $handler->handle($request);
