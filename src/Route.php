@@ -21,29 +21,16 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use function array_merge;
 use Closure;
-use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
-use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use function in_array;
-use function ltrim;
-use function preg_match;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use ReflectionException;
-use function rtrim;
 use RuntimeException;
 use Serializable;
-use function serialize;
-use function sprintf;
-use function strpbrk;
-use function strpos;
 use Throwable;
-use function unserialize;
 
 /**
  * Value object representing a single route.
@@ -66,7 +53,9 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     use Traits\ControllersTrait;
     use Traits\DefaultsTrait;
     use Traits\DomainsTrait;
+    use Traits\GroupsTrait;
     use Traits\MiddlewaresTrait;
+    use Traits\PathsTrait;
     use Traits\PatternsTrait;
 
     /**
@@ -84,35 +73,9 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     protected $name;
 
     /**
-     * Route path pattern.
-     *
-     * @var string
-     */
-    protected $path;
-
-    /**
-     * @var bool
-     */
-    protected $groupAppended = false;
-
-    /**
-     * Parent route groups.
-     *
-     * @var RouteGroupInterface[]
-     */
-    protected $groups;
-
-    /**
      * @var ResponseInterface
      */
     protected $response;
-
-    /**
-     * Container.
-     *
-     * @var ContainerInterface|null
-     */
-    protected $container;
 
     /**
      * @var CallableResolverInterface
@@ -127,7 +90,6 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
      * @param callable|string|object|null $callable         The route callable
      * @param callable                    $response         The HTTP response
      * @param CallableResolverInterface   $callableResolver
-     * @param ContainerInterface|null     $container
      * @param RouteGroup[]                $groups           The parent route groups
      */
     public function __construct(
@@ -136,17 +98,22 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
         $callable,
         callable $response,
         CallableResolverInterface $callableResolver,
-        ContainerInterface $container = null,
         array $groups = []
     ) {
         $this->methods = $methods;
+
+        // TODO: Use a different method of setting namespace before $callable...
+        if (isset($groups['namespace'])) {
+            $this->namespace = $groups['namespace'];
+            unset($groups['namespace']);
+        }
+
         $this->appendGroupToRoute($groups);
         $this->setController($callable);
         $this->setPath($pattern);
 
         $this->response = $response;
         $this->callableResolver = $callableResolver;
-        $this->container = $container;
     }
 
     /**
@@ -155,19 +122,21 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     public function __serialize(): array
     {
         return [
-            'path'         => $this->path,
-            'host'         => $this->domain,
-            'schemes'      => $this->schemes,
-            'namespace'    => $this->namespace,
-            'defaults'     => $this->defaults,
-            'requirements' => $this->patterns,
-            'methods'      => $this->methods,
-            'middlewares'  => $this->middlewares,
-            'arguments'    => $this->arguments,
-            'group'        => $this->groups,
-            'response'     => $this->response,
-            'callable'     => $this->callableResolver,
-            'controller'   => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
+            'path'          => $this->path,
+            'prefix'        => $this->prefix,
+            'host'          => $this->domain,
+            'schemes'       => $this->schemes,
+            'namespace'     => $this->namespace,
+            'defaults'      => $this->defaults,
+            'requirements'  => $this->patterns,
+            'methods'       => $this->methods,
+            'middlewares'   => $this->middlewares,
+            'arguments'     => $this->arguments,
+            'group'         => $this->groups,
+            'group_append'  => $this->groupAppended,
+            'response'      => $this->response,
+            'callable'      => $this->callableResolver,
+            'controller'    => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
         ];
     }
 
@@ -189,6 +158,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     public function __unserialize(array $data): void
     {
         $this->path = $data['path'];
+        $this->prefix = $data['prefix'];
         $this->domain = $data['host'];
         $this->defaults = $data['defaults'];
         $this->schemes = $data['schemes'];
@@ -196,6 +166,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
         $this->methods = $data['methods'];
         $this->controller = $data['controller'];
         $this->response = $data['response'];
+        $this->groupAppended = $data['group_append'];
         $this->callableResolver = $data['callable'];
 
         if (isset($data['middlewares'])) {
@@ -249,123 +220,6 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * Ensures that the right-most slash is trimmed for prefixes of more than
-     * one character, and that the prefix begins with a slash.
-     *
-     * @param string $uri
-     * @param mixed  $prefix
-     *
-     * @return mixed|string
-     */
-    private function normalizePrefix(string $uri, $prefix)
-    {
-        // Allow homepage uri on prefix just like python dgango url style.
-        if (in_array($uri, ['', '/'], true)) {
-            return rtrim($prefix, '/').$uri;
-        }
-
-        $urls = [];
-        foreach (['&', '-', '_', '~', '@'] as $symbols) {
-            if (strpos($prefix, $symbols) !== false) {
-                $urls[] = rtrim($prefix, '/').$uri;
-            }
-        }
-
-        return $urls ? $urls[0] : rtrim($prefix, '/').'/'.ltrim($uri, '/');
-    }
-
-    /**
-     * Sets the pattern for the path.
-     *
-     * @param string $pattern The path pattern
-     *
-     * @return void
-     */
-    protected function setPath(string $pattern): void
-    {
-        if (isset($this->groups[RouteGroupInterface::PREFIX])) {
-            $pattern = $this->normalizePrefix($pattern, $this->groups[RouteGroupInterface::PREFIX]);
-        }
-
-        // Match for a domain
-        if (preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern, $matches)) {
-            $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
-            $pattern = preg_replace('@^(?:(https?):)?(//[^/]+)@i', '', $pattern);
-        }
-
-        if (
-            strpbrk($pattern, '<*') !== false &&
-            preg_match(
-                '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i',
-                $pattern,
-                $matches
-            )
-        ) {
-            if (!isset($matches['route'])) {
-                throw new InvalidControllerException("Unable to locate route candidate for `{$pattern}`");
-            }
-
-            $pattern = $matches['route'];
-            if (isset($matches['controller'], $matches['action'])) {
-                $this->setController([$matches['controller'] ?: $this->controller, $matches['action']]);
-            }
-        }
-
-        $this->path = (empty($pattern) || '/' === $pattern) ? '/' : $pattern;
-    }
-
-    /**
-     * @param array $groups
-     *
-     * @return void
-     */
-    protected function appendGroupToRoute(array $groups): void
-    {
-        if (empty($groups)) {
-            return;
-        }
-
-        $this->groups = current($groups)->getOptions();
-        if (isset($this->groups[RouteGroupInterface::MIDDLEWARES])) {
-            $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
-        }
-
-        if (isset($this->groups[RouteGroupInterface::DOMAIN])) {
-            $this->domain = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
-        }
-
-        $this->groupAppended = true;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function hasGroup(): bool
-    {
-        return $this->groupAppended;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getGroupId(): ?string
-    {
-        if (!$this->hasGroup()) {
-            return null;
-        }
-
-        return md5(serialize($this->groups));
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getPath(): string
-    {
-        return $this->path;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getMethods(): array
@@ -386,8 +240,7 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
             return $this;
         }
 
-        $current = $this->groups[RouteGroupInterface::NAME] ?? null;
-        $this->name = null !== $current ? $current.$name : $name;
+        null !== $this->name ? $this->name .= $name : $this->name = $name;
 
         return $this;
     }

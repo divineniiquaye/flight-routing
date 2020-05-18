@@ -36,9 +36,9 @@ interface RouteGroupInterface
     public function collectRoutes(): self;
 
     /**
-     * Get the RouteGroup's pattern.
+     * Get The Route Group Options.
      *
-     * @return string
+     * @return array
      */
-    public function getPattern(): ?string;
+    public function getOptions(): array;
 }

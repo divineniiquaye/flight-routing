@@ -19,28 +19,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Services;
 
-use function array_fill_keys;
-use function array_map;
-use function array_merge;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
-use function implode;
-use function is_array;
-use function ltrim;
-use function preg_match_all;
-use function preg_replace;
-use function rtrim;
 use Serializable;
-use function serialize;
-use function sprintf;
-use function str_replace;
-use function stripslashes;
-use function strlen;
-use function strpos;
-use function strtr;
-use function substr;
-use function substr_compare;
-use function unserialize;
 
 /**
  * RouteCompiler compiles Route instances to regex.
@@ -81,6 +62,7 @@ class SimpleRouteCompiler implements Serializable
     private $template;
     private $compiled;
     private $hostRegex;
+    private $hostTemplate;
     private $variables;
     private $pathVariables;
     private $hostVariables;
@@ -114,6 +96,7 @@ class SimpleRouteCompiler implements Serializable
         $hostVariables = [];
         $variables = [];
         $hostRegex = null;
+        $hostTemplate = null;
 
         if ('' !== $host = $route->getDomain()) {
             $result = $this->compilePattern($route, $host, true);
@@ -122,6 +105,7 @@ class SimpleRouteCompiler implements Serializable
             $variables = $hostVariables;
 
             $hostRegex = $result['regex'];
+            $hostTemplate = $result['template'];
         }
 
         $result = $this->compilePattern($route, $route->getPath(), false);
@@ -137,6 +121,7 @@ class SimpleRouteCompiler implements Serializable
         $this->template = $result['template'];
         $this->pathVariables = $pathVariables;
         $this->hostRegex = $hostRegex;
+        $this->hostTemplate = $hostTemplate;
         $this->hostVariables = $hostVariables;
         $this->variables = array_merge($variables, $pathVariables);
 
@@ -146,10 +131,15 @@ class SimpleRouteCompiler implements Serializable
     /**
      * The template regex for matching.
      *
+     * @param bool $host Either host or path tempalte.
+     *
      * @return string The static regex
      */
-    public function getStaticRegex(): string
+    public function getRegexTemplate(bool $host = true): ?string
     {
+        if (true === $host) {
+            return $this->hostTemplate;
+        }
         return $this->template;
     }
 
@@ -316,6 +306,7 @@ class SimpleRouteCompiler implements Serializable
         return [
             'vars'           => $this->variables,
             'template_regex' => $this->template,
+            'host_template'  => $this->hostTemplate,
             'path_regex'     => $this->compiled,
             'path_vars'      => $this->pathVariables,
             'host_regex'     => $this->hostRegex,
@@ -338,6 +329,7 @@ class SimpleRouteCompiler implements Serializable
         $this->compiled = $data['path_regex'];
         $this->pathVariables = $data['path_vars'];
         $this->hostRegex = $data['host_regex'];
+        $this->hostTemplate = $data['host_template'];
         $this->hostVariables = $data['host_vars'];
     }
 

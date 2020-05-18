@@ -19,26 +19,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use function array_filter;
-use function array_merge;
-use function array_shift;
-use function array_values;
-use function count;
-use function explode;
 use Flight\Routing\Exceptions\InvalidMiddlewareException;
-use function is_array;
-use function is_callable;
-use function is_string;
-use function is_subclass_of;
 use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
 use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
 use Laminas\Stratigility\MiddlewarePipe;
-use function method_exists;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use function sprintf;
-use function strpos;
+use ReflectionClass;
 
 /**
  * Marshal middleware for use in the application.
@@ -175,7 +163,7 @@ class MiddlewareDisptcher
                 $middleware = $this->addHandler($middleware);
             }
 
-            if (is_subclass_of($middleware, MiddlewareInterface::class)) {
+            if ((new ReflectionClass($middleware))->implementsInterface(MiddlewareInterface::class)) {
                 // Allowing parameters to be passed to middleware
                 if (method_exists($middleware, 'setOptions')) {
                     $middleware->setOptions(...array_values($arguments));

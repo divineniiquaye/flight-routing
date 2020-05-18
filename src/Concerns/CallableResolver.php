@@ -21,16 +21,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
-use function class_exists;
 use Closure;
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
-use function get_class;
-use function is_callable;
-use function is_object;
-use function is_string;
-use function json_encode;
-use function preg_match;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
@@ -62,6 +55,16 @@ class CallableResolver implements CallableResolverInterface
     public function __construct(ContainerInterface $container = null)
     {
         $this->container = $container;
+    }
+
+    /**
+     * @internal Used in ControllersTrait
+     *
+     * @return  ContainerInterface|null
+     */
+    public function getContainer(): ?ContainerInterface
+    {
+        return $this->container;
     }
 
     /**

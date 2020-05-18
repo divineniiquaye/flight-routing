@@ -19,7 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use function array_filter;
 use Closure;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
@@ -43,25 +42,18 @@ class RouteGroup implements RouteGroupInterface
     protected $routeProxy;
 
     /**
-     * @var string
-     */
-    protected $pattern;
-
-    /**
      * @var array
      */
     protected $attributes = [];
 
     /**
-     * @param string|null               $pattern
      * @param array                     $attributes
-     * @param callable|string           $callable
+     * @param callable|string|object    $callable
      * @param CallableResolverInterface $callableResolver
      * @param RouterProxyInterface      $routeProxy
      */
-    public function __construct(?string $pattern, array $attributes, $callable, CallableResolverInterface $callableResolver, RouterProxyInterface $routeProxy)
+    public function __construct(array $attributes, $callable, CallableResolverInterface $callableResolver, RouterProxyInterface $routeProxy)
     {
-        $this->pattern = $pattern;
         $this->attributes = $attributes;
         $this->callable = $callable;
         $this->routeProxy = $routeProxy;
@@ -79,33 +71,11 @@ class RouteGroup implements RouteGroupInterface
     }
 
     /**
-     * Set the Route Group Options.
-     *
-     * @param array $attributes self::CONSTANT => $values
-     */
-    public function addOptions(array $attributes): void
-    {
-        foreach ($attributes as $name => $values) {
-            $this->attributes[$name] = $values;
-        }
-    }
-
-    /**
-     * Get Route The Group Option.
-     *
-     * @return mixed
+     * {@inheritdoc}
      */
     public function getOptions(): array
     {
         return array_filter($this->attributes);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getPattern(): ?string
-    {
-        return $this->pattern;
     }
 
     /**

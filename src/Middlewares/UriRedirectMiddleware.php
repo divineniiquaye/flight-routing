@@ -20,9 +20,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Middlewares;
 
 use ArrayAccess;
-use function in_array;
 use InvalidArgumentException;
-use function is_array;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;

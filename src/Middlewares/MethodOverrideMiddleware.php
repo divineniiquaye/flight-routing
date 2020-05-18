@@ -19,12 +19,10 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use function is_array;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use function strtoupper;
 
 class MethodOverrideMiddleware implements MiddlewareInterface
 {

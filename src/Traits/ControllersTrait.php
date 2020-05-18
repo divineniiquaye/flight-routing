@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Traits;
 
 use BiuradPHP\Support\BoundMethod;
+use Closure;
 use Flight\Routing\Concerns\CallableHandler;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -35,7 +36,7 @@ trait ControllersTrait
     protected $namespace;
 
     /**
-     * Route callable.
+     * Route callable
      *
      * @var callable|string
      */
@@ -63,32 +64,36 @@ trait ControllersTrait
 
         $namespace = $this->groups[RouteGroupInterface::NAMESPACE] ?? $this->namespace;
 
+        // Append a group namespace starting with a "\" to main namespace.
+        if (null !== $namespace && '\\' === $namespace[0]) {
+            $namespace = $this->namespace . ltrim($namespace, '\\') . '\\';
+        }
+
         if (
-            is_string($controller) &&
-            null !== $namespace &&
-            false === strpos($controller, $namespace)
+            (is_string($controller) && !class_exists($controller)) &&
+            (null !== $namespace && false === strpos($controller, $namespace)
+        )) {
+            $controller = $namespace . $controller;
+        }
+
+        if (
+            (!$controller instanceof Closure && is_array($controller)) &&
+            (!is_object($controller[0]) && !class_exists($controller[0]))
         ) {
-            $controller = $namespace.$controller;
-        } elseif (
-            is_array($controller) &&
-            !is_callable($controller) &&
-            !class_exists($controller[0])
-        ) {
-            $controller[0] = $namespace.$controller[0];
+            $controller[0] = $namespace . $controller[0];
         }
 
         $this->controller = $controller;
     }
 
     /**
-     * Handles a callable controller served on a route.
+     * Handles a callable controller served on a route
      *
-     * @param callable               $controller
+     * @param callable $controller
      * @param ServerRequestInterface $request
      *
-     * @throws ReflectionException
-     *
      * @return mixed
+     * @throws ReflectionException
      */
     protected function handleController(callable $controller, ServerRequestInterface $request)
     {
@@ -96,7 +101,7 @@ trait ControllersTrait
             function ($request, $response) use ($controller) {
                 if (class_exists(BoundMethod::class)) {
                     return BoundMethod::call(
-                        $this->container,
+                        $this->callableResolver->getContainer(),
                         $controller,
                         $this->arguments + [$request, $response]
                     );

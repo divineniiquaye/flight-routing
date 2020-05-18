@@ -22,16 +22,11 @@ namespace Flight\Routing;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Interfaces\RouteInterface;
-use function is_int;
-use function is_numeric;
-use function is_string;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use function rawurldecode;
-use function sprintf;
 
 /**
  * Value object representing the results of routing.
@@ -163,12 +158,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if (self::METHOD_NOT_ALLOWED === $this->routeStatus) {
-            throw new MethodNotAllowedException(sprintf(
-                'Unfotunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid',
-                $request->getUri()->getPath(),
-                null !== $this->getAllowedMethods() ? implode(',', $this->getAllowedMethods()) : 'other',
-                $request->getMethod()
-            ));
+            throw new MethodNotAllowedException($this->getAllowedMethods() ?? ['other'], $request->getUri()->getPath(), $request->getMethod());
         }
 
         // Inject the actual route result, as well as return the response.

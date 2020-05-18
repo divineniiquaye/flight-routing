@@ -19,11 +19,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use function array_merge;
-use function array_shift;
-use function array_walk;
 use Closure;
-use function count;
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
@@ -31,8 +27,6 @@ use Flight\Routing\Interfaces\RouteCollectorInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouterInterface;
-use function http_build_query;
-use function in_array;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -41,9 +35,6 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use RuntimeException;
 use SplObjectStorage;
-use function sprintf;
-use function str_replace;
-use function strpos;
 
 /**
  * Aggregate routes for the router.
@@ -58,7 +49,6 @@ use function strpos;
  * - delete
  * - any
  * - map
- * - resource
  *
  * A general `map()` method allows specifying multiple request methods and/or
  * arbitrary request methods when creating a path-based route.
@@ -231,7 +221,6 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             $action,
             [$this->responseFactory, 'createResponse'],
             $this->callableResolver,
-            $this->container,
             $this->routeGroups
         );
 
@@ -361,23 +350,22 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         // Backup current properties
         $oldGroupOption = $this->groupOptions;
-
-        $routeCollectorProxy = new RouterProxy($this->request, $this->responseFactory, $this->router, $this);
-        $prefixPattern = $attributes[RouteGroupInterface::PREFIX] ?? null;
+        $oldGroups      = $this->routeGroups;
 
         // Register the Route Grouping
-        $routeGroup = new RouteGroup($prefixPattern, $attributes, $callable, $this->callableResolver, $routeCollectorProxy);
+        $routeCollectorProxy = new RouterProxy($this->request, $this->responseFactory, $this->router, $this);
+        $routeGroup = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
 
         // Add goups to RouteCollection
-        $this->routeGroups[] = $routeGroup;
-        $this->groupOptions = $this->resolveGlobals($routeGroup->getOptions());
+        $this->routeGroups[]    = $routeGroup;
+        $this->groupOptions     = $this->resolveGlobals($routeGroup->getOptions());
 
         // Returns routes on closure, file or on callble
         $routeGroup->collectRoutes();
-        array_shift($this->routeGroups);
 
         // Restore properties
         $this->groupOptions = $oldGroupOption;
+        $this->routeGroups  = $oldGroups;
 
         return $routeGroup;
     }
@@ -537,6 +525,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     public function setNamespace(?string $rootNamespace = null): RouteCollectorInterface
     {
         if (isset($rootNamespace)) {
+            $this->routeGroups['namespace'] = $rootNamespace;
             $this->setGroupOption(RouteGroupInterface::NAMESPACE, $rootNamespace);
         }
 
@@ -552,22 +541,17 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             throw new UrlGenerationException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
         }
 
-        // First we will construct the entire URI including the root. Once it
-        // has been constructed, we'll pass the remaining for further parsing.
-        $uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters);
-        $uri = str_replace('/?', '', rtrim($uri, '/'));
-
         // Resolve port and domain for better url generated from route by name.
-        $domain = '.';
         $requestUri = $this->request->getUri();
+        $domain     = sprintf('%s://%s', $requestUri->getScheme(), $requestUri->getHost());
 
         // Resolve domains with port enabled
         if (null !== $requestUri->getPort() && !in_array($requestUri->getPort(), [80, 443], true)) {
-            $domain = "{$requestUri->getScheme()}://{$requestUri->getHost()}:{$requestUri->getPort()}";
+            $domain .= ':'.$requestUri->getPort();
         }
 
         // Making routing on sub-folders easier
-        if (strpos($uri, '/') !== 0) {
+        if (strpos($uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters), '/') !== 0) {
             $domain .= '/';
         }
 
@@ -577,7 +561,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             $uri .= '?'.http_build_query($queryParams, '', $separator ? $separator[0] : '&');
         }
 
-        return $domain.$uri;
+        return rtrim(strpos($uri, '://') !== false ? $uri : $domain.$uri, '/');
     }
 
     /**
@@ -602,7 +586,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     public function dispatch(): ResponseInterface
     {
         // Add Route Names RouteCollector.
-        $routes = $this->getRoutes();
+        $routes = iterator_to_array($this->getRoutes());
         array_walk($routes, [$this, 'addLookupRoute']);
 
         $routingResults = $this->router->match($this->request);
@@ -613,30 +597,40 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         $middlewares = array_merge($route ? $route->getMiddlewares() : [], $this->getMiddlewaresStack());
 
         // Allow Middlewares to be disabled
-        if (
-            in_array('off', $middlewares, true) ||
-            in_array('disable', $middlewares, true)
-        ) {
+        if (in_array('off', $middlewares, true) || in_array('disable', $middlewares, true)) {
             $middlewares = [];
         }
 
         if (count($middlewares) > 0) {
-            // This middleware is in the priority map. If we have encountered another middleware
-            // that was also in the priority map and was at a lower priority than the current
-            // middleware, we will move this middleware to be above the previous encounter.
-            $middleware = $this->middlewareDispatcher->pipeline($middlewares);
-
-            try {
-                $requestHandler = $this->middlewareDispatcher->addhandler($routingResults);
-            } finally {
-                // This middleware is in the priority map; but, this is the first middleware we have
-                // encountered from the map thus far. We'll save its current index plus its index
-                // from the priority map so we can compare against them on the next iterations.
-                return $middleware->process($this->request, $requestHandler);
-            }
+            return $this->dispatchMiddlewares($middlewares, $routingResults);
         }
 
         return $routingResults->handle($this->request);
+    }
+
+    /**
+     * Dispatch Middlewares on ROuteResults
+     *
+     * @param array $middlewares
+     * @param RouteResults $routeResults
+     *
+     * @return ResponseInterface
+     */
+    protected function dispatchMiddlewares(array $middlewares, RouteResults $routeResults): ResponseInterface
+    {
+        // This middleware is in the priority map. If we have encountered another middleware
+        // that was also in the priority map and was at a lower priority than the current
+        // middleware, we will move this middleware to be above the previous encounter.
+        $middleware = $this->middlewareDispatcher->pipeline($middlewares);
+
+        try {
+            $requestHandler = $this->middlewareDispatcher->addhandler($routeResults);
+        } finally {
+            // This middleware is in the priority map; but, this is the first middleware we have
+            // encountered from the map thus far. We'll save its current index plus its index
+            // from the priority map so we can compare against them on the next iterations.
+            return $middleware->process($this->request, $requestHandler);
+        }
     }
 
     /**

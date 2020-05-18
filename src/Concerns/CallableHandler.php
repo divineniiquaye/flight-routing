@@ -21,25 +21,13 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Concerns;
 
-use function function_exists;
-use function is_array;
-use function json_decode;
-use const JSON_ERROR_NONE;
-use function json_last_error;
 use JsonSerializable;
-use function libxml_use_internal_errors;
-use function ob_get_clean;
-use function ob_get_level;
-use function ob_start;
-use function preg_match;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use function simplexml_load_string;
 use stdClass;
-use function strpos;
 use Throwable;
 
 /**

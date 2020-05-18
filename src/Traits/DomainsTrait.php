@@ -42,8 +42,8 @@ trait DomainsTrait
      */
     public function addDomain(?string $domain): RouteInterface
     {
-        if (preg_match('#(?:(https?):)?(//.*)#A', $domain ?? '', $maches)) {
-            [, $scheme, $domain] = $maches;
+        if (preg_match('#(?:(https?):)?(//.*)#A', $domain ?? '', $matches)) {
+            [, $scheme, $domain] = $matches;
 
             if (!empty($scheme)) {
                 $this->addSchemes($scheme);

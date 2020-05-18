@@ -2,6 +2,23 @@
 
 All notable changes to `divineniiquaye/flight-routing` will be documented in this file.
 
+## 0.2.4 - 2020-05-18
+
+- Fixed minor issues with `route grouping`
+- Fixed minor issues with `route uri generator`
+- Improved code quality, applied psr fixtures, and routing performance
+- Deleted *RouteMiddleware* class, and use *MiddlewareDispatcher* aS replacements
+- Deleted *RouteResource* class, it will be replaced in the future
+- Deleted *ResourceController* interface
+- Deleted *RouteRunnerMiddleware* middleware class
+- Removed some `use function` statements from codebase
+- Removed some methods from *Route* class into new traits
+- Removed argument ['6'] from *Route* class
+- Added *tests* for `route group`, `route uri generator` and more
+- Added *PathsTrait* and *GroupsTrait* traits to *Route* class
+- Updated *MethodNotAllowedException* class
+- Updated `handle` method in *RouteResults* class
+
 ## 0.2.0 - 2020-05-16
 
 - Improved how routes are handled and dispatched

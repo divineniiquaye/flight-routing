@@ -19,15 +19,10 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use function array_change_key_case;
-use function array_key_exists;
-use const CASE_LOWER;
-use function preg_replace;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use function stripos;
 
 /**
  * Set the cache control to no cache

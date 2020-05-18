@@ -24,4 +24,10 @@ namespace Flight\Routing\Exceptions;
  */
 class MethodNotAllowedException extends RouteNotFoundException
 {
+    public function  __construct(array $methods, string $path, string $method)
+    {
+        $message = 'Unfotunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid';
+
+        parent::__construct(sprintf($message, $path, implode(',', $methods), $method));
+    }
 }

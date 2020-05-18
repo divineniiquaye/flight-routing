@@ -24,6 +24,7 @@ use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Interfaces\RouterInterface;
 use Flight\Routing\Services\DefaultFlightRouter;
 use Flight\Routing\Services\SimpleRouteCompiler;
+use Flight\Routing\Tests\Fixtures\SampleController;
 use Generator;
 
 class DefaultRouterTest extends RouterIntegrationTest
@@ -50,6 +51,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['content-type' => 'text/plain; charset=utf-8'],
         ];
+
         yield 'Root Route Html: get, callable'                  => [
             '/',
             '/',
@@ -57,9 +59,16 @@ class DefaultRouterTest extends RouterIntegrationTest
             function () {
                 return '<html><body><h1>Hello World</h1></body></html>';
             },
-            [],
-            ['content-type' => 'text/html; charset=utf-8'],
+            [
+                'name' => 'homepage',
+                'generate' => [[], ['test' => 'fine']],
+            ],
+            [
+                'generate' => 'http://localhost/?test=fine',
+                'content-type' => 'text/html; charset=utf-8',
+            ],
         ];
+
         yield 'Root Route XML: get, callable'                   => [
             '/',
             '/',
@@ -70,6 +79,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['content-type' => 'application/xml; charset=utf-8'],
         ];
+
         yield 'Root Route JSON: get, callable'                  => [
             '/',
             '/',
@@ -80,12 +90,28 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['content-type' => 'application/json'],
         ];
-        yield 'Route Controller: post, nullable'                => [
+
+        yield 'Route Controller & Action: post, nullable'       => [
             '/test*<Flight\Routing\Tests\Fixtures\SampleController@homePageRequestResponse>',
             '/test',
             HttpMethods::METHOD_POST,
             null,
         ];
+
+        yield 'Route Action: get, string'                       => [
+            '/test*<homePageRequestResponse>',
+            '/test',
+            HttpMethods::METHOD_GET,
+            SampleController::class,
+        ];
+
+        yield 'Route Action: get, object'                       => [
+            '/test*<homePageRequestResponse>',
+            '/test',
+            HttpMethods::METHOD_GET,
+            new SampleController,
+        ];
+
         yield 'Basic Route: get, callable'                      => [
             '/test',
             '/test',
@@ -94,6 +120,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return 'Hello, this is a basic test route';
             },
         ];
+
         yield 'Basic Route Redirection: get, callable'          => [
             '/test',
             '/test/',
@@ -104,6 +131,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['status' => 302],
         ];
+
         yield 'Paramter Route: get, callable'                   => [
             '/test/{home}',
             '/test/cool',
@@ -112,6 +140,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return 'Hello, this is a basic test route on subpage '.$home;
             },
         ];
+
         yield 'Paramter & Default Route: get, callable'         => [
             '/test/{home}',
             '/test/cool',
@@ -122,6 +151,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             ['defaults' => ['id' => 233]],
             ['body'     => 'cool233'],
         ];
+
         yield 'Optional Paramter Route: get, callable'          => [
             '/test[/{home}]',
             '/test',
@@ -132,6 +162,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['body' => 'Hello, this is a basic test route on subpage '],
         ];
+
         yield 'Optional Paramter Route: path, get, callable'    => [
             '/test[/{home}]',
             '/test/cool',
@@ -142,6 +173,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['body' => 'Hello, this is a basic test route on subpage cool'],
         ];
+
         yield 'Route Domain: get, callable'                     => [
             '//example.com/test',
             '/test',
@@ -151,6 +183,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             },
             ['domain' => 'example.com'],
         ];
+
         yield 'Route Domain Regex: get, callable'               => [
             '//{id:int}.example.com/test',
             '/test',
@@ -158,8 +191,32 @@ class DefaultRouterTest extends RouterIntegrationTest
             function () {
                 return 'Hello World';
             },
-            ['domain' => '99.example.com'],
+            [
+                'name' => 'domainpage',
+                'domain' => '99.example.com',
+                'generate' => [['id' => '23'], []],
+            ],
+            ['generate' => 'http://23.example.com/test'],
         ];
+        yield 'Route Domain Regex & Scheme: get, callable'      => [
+            'https://{id:int}.example.com/{action}',
+            '/tests',
+            HttpMethods::METHOD_GET,
+            function (string $action) {
+                return 'Hello World'. $action;
+            },
+            [
+                'name' => 'domain_scheme_page',
+                'domain' => '99.example.com',
+                'scheme' => 'https',
+                'generate' => [['id' => '23', 'action' => 'okay'], []],
+            ],
+            [
+                'scheme' => 'https',
+                'generate' => 'https://23.example.com/okay',
+            ]
+        ];
+
         yield 'Nested Optional Paramter Route 1: get, callable' => [
             '/[{action}/[{id}]]',
             '/test/',
@@ -170,6 +227,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['status' => 302],
         ];
+
         yield 'Nested Optional Paramter Route 2: get, callable' => [
             '/[{action}/[{id}]]',
             '/test/id',
@@ -177,9 +235,16 @@ class DefaultRouterTest extends RouterIntegrationTest
             function (?string $action) {
                 return $action;
             },
-            [],
-            ['status' => 200],
+            [
+                'name' => 'nested',
+                'generate' => [['action' => 'yes_we_can'], []],
+            ],
+            [
+                'status' => 200,
+                'generate' => 'http://localhost/yes_we_can'
+            ],
         ];
+
         yield 'Regex Paramter Route : get, callable'            => [
             '/user/{id:[0-9-]+}',
             'user/23',
@@ -188,6 +253,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return $id;
             },
         ];
+
         yield 'Complex Paramter Route 1: get, callable'         => [
             '/[{lang:[a-z]{2}}/]hello',
             '/hello',
@@ -196,6 +262,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return $lang;
             },
         ];
+
         yield 'Complex Paramter Route 2: get, callable'         => [
             '/[{lang:[a-z]{2}}/]{name}',
             '/en/download',
@@ -204,6 +271,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return $lang.$name;
             },
         ];
+
         yield 'Complex Paramter Route 3: get, callable'         => [
             '[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
             '/download',
@@ -214,6 +282,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['body' => '-download0'],
         ];
+
         yield 'Complex Paramter Route 4: get, callable'         => [
             '[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
             '/en-us/download',
@@ -224,6 +293,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             [],
             ['body' => 'en-usdownload0'],
         ];
+
         yield 'Complex Paramter Route 5: get, callable'         => [
             '[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
             '/en-us/download/page-12',

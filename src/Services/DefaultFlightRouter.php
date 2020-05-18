@@ -19,21 +19,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Services;
 
-use function array_key_exists;
-use function array_replace;
 use ArrayIterator;
 use Closure;
-use function dirname;
 use Flight\Routing\Concerns\RouteValidation;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouterInterface;
 use Flight\Routing\RouteResults;
 use Psr\Http\Message\ServerRequestInterface;
-use function rawurldecode;
-use function strlen;
-use function substr;
 use Traversable;
-use function trim;
 
 class DefaultFlightRouter implements RouterInterface
 {
@@ -150,8 +143,6 @@ class DefaultFlightRouter implements RouterInterface
         foreach ($this as $index => $route) {
             // Let's match the routes
             $match = ($this->compiler)($route);
-            assert($match instanceof SimpleRouteCompiler);
-
             [$parameters, $HostParameters] = [[], []];
 
             if (
@@ -164,7 +155,7 @@ class DefaultFlightRouter implements RouterInterface
                     return [RouteResults::METHOD_NOT_ALLOWED, [], $route];
                 }
 
-                if (empty($arguments = array_intersect_key(array_replace($parameters, $HostParameters), $match->getVariables()))) {
+                if (empty($arguments = $this->fetchOptions(array_replace($parameters, $HostParameters), $match->getVariables()))) {
                     $arguments = $match->getVariables();
                 }
 
@@ -188,24 +179,20 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function generateUri(RouteInterface $route, array $substitutions = []): string
     {
-        $match = ($this->compiler)($route->getPath());
-        assert($match instanceof SimpleRouteCompiler);
+        $match = ($this->compiler)($route);
 
         $parameters = array_merge(
             $match->getVariables(),
             $route->getDefaults(),
-            $this->fetchOptions($substitutions, array_keys($match->getVariables()), $query)
+            $this->fetchOptions($substitutions, array_keys($match->getVariables()))
         );
 
         //Uri without empty blocks (pretty stupid implementation)
-        $path = $this->interpolate($match->getStaticRegex(), $parameters);
+        if ($path = $this->interpolate($match->getRegexTemplate() ?? '', $parameters)) {
+            $path = sprintf('%s://%s/', $route->getSchemes() ? current($route->getSchemes()) : 'http', trim($path, '.'));
+        }
 
-        //Uri with added prefix
-        //$uri = $this->uriFactory->createUri(($this->matchHost ? '' : $this->prefix) . trim($path, '/'));
-
-        //return empty($query) ? $uri : $uri->withQuery(http_build_query($query));
-
-        return $path; // Return generated path
+        return $path .= $this->interpolate($match->getRegexTemplate(false), $parameters); // Return generated path
     }
 
     /**
@@ -274,32 +261,25 @@ class DefaultFlightRouter implements RouterInterface
      *
      * @param Traversable|array $parameters
      * @param array             $allowed
-     * @param array|null        $query      Query parameters.
      *
      * @return array
      */
-    private function fetchOptions($parameters, array $allowed, &$query): array
+    private function fetchOptions($parameters, array $allowed): array
     {
-        //$allowed = array_keys($this->options);
-
         $result = [];
         foreach ($parameters as $key => $parameter) {
             if (is_numeric($key) && isset($allowed[$key])) {
                 // this segment fetched keys from given parameters either by name or by position
                 $key = $allowed[$key];
-            } elseif (!array_key_exists($key, $this->options) && is_array($parameters)) {
-                // all additional parameters given in array form can be glued to query string
-                $query[$key] = $parameter;
-                continue;
             }
 
             //String must be normalized here
             if (is_string($parameter) && !preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
-                $result[$key] = strtolower($parameter);
+                $result[$key] = htmlspecialchars((string) $parameter);
                 continue;
             }
 
-            $result[$key] = (string) $parameter;
+            $result[$key] = $parameter;
         }
 
         return $result;

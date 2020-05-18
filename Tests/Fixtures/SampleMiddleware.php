@@ -57,6 +57,7 @@ class SampleMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         static::$output[] = $this->content;
+        $request = $request->withAttribute(__CLASS__, $this->content);
 
         return $handler->handle($request);
     }

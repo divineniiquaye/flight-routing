@@ -34,7 +34,6 @@ use Flight\Routing\RouteResults;
 use Flight\Routing\Tests\Fixtures\SampleController;
 use Flight\Routing\Tests\Fixtures\SampleMiddleware;
 use Generator;
-use function implode;
 use Laminas\Stratigility\Next;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
@@ -236,6 +235,7 @@ abstract class RouterIntegrationTest extends TestCase
      * - array route options (if any/required): selected keys:
      *   - [
      *        name => {subject},
+     *        generate => [$params, $query]
      *        domain => {host}, (for ServerRequest instance)
      *        scheme => {scheme}, (for ServerRequest instance)
      *  	  scheme => {scheme},
@@ -246,6 +246,8 @@ abstract class RouterIntegrationTest extends TestCase
      * - array of asserts options (if any/required): selected keys:
      *   - [
      *        body => {contents},
+     *        generate => {$path}
+     *        scheme => {scheme}
      *        status => {code},
      *        content-type => {content-type},
      *        header => {header}
@@ -338,41 +340,117 @@ abstract class RouterIntegrationTest extends TestCase
         }
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertInstanceOf(RouteInterface::class, $router->currentRoute());
+        $this->assertInstanceOf(RouteInterface::class, $route = $router->currentRoute());
+
+        if (isset($asserts['scheme'])) {
+            $this->assertTrue(in_array($asserts['scheme'], $route->getSchemes()));
+        }
+        if (isset($asserts['generate'], $routeOptions['generate'], $routeOptions['name'])) {
+            $generated = call_user_func([$router, 'generateUri'], $routeOptions['name'], ...$routeOptions['generate']);
+
+            $this->assertEquals($asserts['generate'], $generated);
+        }
     }
 
-    public function testWithImplicitRouteGroup()
+    public function groups(): Generator
+    {
+        yield 'Group: Simple Grouping'          => [
+            [
+                RouteGroupInterface::NAME           => 'group',
+                RouteGroupInterface::PREFIX         => 'group',
+                RouteGroupInterface::REQUIREMENTS   => [],
+                RouteGroupInterface::DOMAIN         => '',
+                RouteGroupInterface::DEFAULTS       => ['how' => 'What to do?'],
+                RouteGroupInterface::MIDDLEWARES    => [SampleMiddleware::class],
+                RouteGroupInterface::SCHEMES        => null,
+            ],
+            [
+                'path' => 'group/test',
+                'default' => 'how',
+                'middleware' => SampleMiddleware::class
+            ]
+        ];
+
+        yield 'Group: Prefix Grouping'          => [
+            [
+                RouteGroupInterface::PREFIX         => 'group/',
+            ],
+            [
+                'path' => 'group/test'
+            ]
+        ];
+
+        yield 'Group: Namespace Grouping'       => [
+            [
+                RouteGroupInterface::PREFIX         => 'group_',
+                RouteGroupInterface::DEFAULTS       => ['how' => 'What to do?'],
+                RouteGroupInterface::NAMESPACE         => '\\Fixtures',
+            ],
+            [
+                'path' => 'group_test',
+                'namespace' => true
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider groups
+     */
+    public function testWithImplicitRouteGroup(array $groupAttributes, array $asserts = [])
     {
         $router = $this->getRouteCollection();
-        [$serverRequest,] = $this->psrServerResponseFactory();
-        $path = $serverRequest->getUri()->withPath('/group/test');
+        $router->setNamespace('Flight\\Routing\\Tests\\');
 
-        $router->group([
-            RouteGroupInterface::NAME         => 'group',
-            RouteGroupInterface::PREFIX       => 'group',
-            RouteGroupInterface::REQUIREMENTS => [],
-            RouteGroupInterface::DEFAULTS     => ['how' => 'What to do?'],
-            RouteGroupInterface::MIDDLEWARES  => [SampleMiddleware::class],
-            RouteGroupInterface::SCHEMES      => null,
-        ], function (RouterProxyInterface $route): void {
-            $route->get('/test*<homePageRequestString>', SampleController::class)->setName('_hello');
+        [$serverRequest,] = $this->psrServerResponseFactory();
+        $path = $serverRequest->getUri()->withPath('/'.$asserts['path'] ?? 'group/test');
+
+        $router->group($groupAttributes, function (RouterProxyInterface $route) use ($asserts): void {
+            $route->get(
+                'test*<homePageRequestResponse>',
+                isset($asserts['namespace']) ? 'SampleController' : SampleController::class
+            )
+            ->setName('_hello');
         });
 
         $router->setRequest($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
         $router->dispatch();
 
         $this->assertInstanceOf(RouteInterface::class, $route = $router->currentRoute());
-        $this->assertTrue($route->hasDefault('how'));
-        $this->assertEquals('group_hello', $route->getName());
-        $this->assertTrue(in_array(SampleMiddleware::class, $route->getMiddlewares(), true));
+        if (isset($asserts['default'])) {
+            $this->assertTrue($route->hasDefault($asserts['default']));
+        }
+        if (isset($asserts['path'])) {
+            $this->assertEquals($asserts['path'], $route->getPath());
+        }
+        if (isset($asserts['middleware'])) {
+            $this->assertTrue(in_array($asserts['middleware'], $route->getMiddlewares(), true));
+        }
+        if ('_hello' !== $route->getName()) {
+            $this->assertEquals('group_hello', $route->getName());
+        }
+
+
         $this->assertTrue($route->hasGroup());
-        $this->assertEquals('group/test', $route->getPath());
     }
 
     public function testImplicitRouteNotFound()
     {
         $router = $this->getRouteCollection();
         [$serverRequest,] = $this->psrServerResponseFactory();
+
+        $router->map([HttpMethods::METHOD_GET], '/error', function () {
+            return 'This is an error page';
+        })->setName('error');
+
+        $path = $serverRequest->getUri()->withPath('/error');
+        $router->setRequest($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
+        $router->dispatch();
+
+        $this->assertInstanceOf(RouteInterface::class, $router->getNamedRoute('error'));
+        $this->assertNotEmpty($router->getRoutes());
+
+        $router->removeNamedRoute('error');
+        $this->assertCount(0, $router->getRoutes());
 
         $this->expectException(RouteNotFoundException::class);
 
