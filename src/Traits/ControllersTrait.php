@@ -92,7 +92,7 @@ trait ControllersTrait
      * @param callable $controller
      * @param ServerRequestInterface $request
      *
-     * @return mixed
+     * @return \Psr\Http\Message\ResponseInterface
      * @throws ReflectionException
      */
     protected function handleController(callable $controller, ServerRequestInterface $request)
