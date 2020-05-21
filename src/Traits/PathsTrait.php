@@ -116,7 +116,7 @@ trait PathsTrait
      * @param string $uri
      * @param mixed $prefix
      *
-     * @return mixed|string
+     * @return string
      */
     private function normalizePrefix(string $uri, $prefix)
     {
