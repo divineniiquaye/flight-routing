@@ -55,10 +55,28 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 abstract class RouterIntegrationTest extends TestCase
 {
+    /**
+     * Delegate dispatcher selection to routing functionality
+     * Based on implemented Router.
+     *
+     * @return RouterInterface
+     */
     abstract public function getRouter(): RouterInterface;
 
+    /**
+     * Delegate psr factories on selected router.
+     *
+     * @see getRouter() method.
+     * @return array
+     */
     abstract public function psrServerResponseFactory(): array;
 
+    /**
+     * The Delegate RouteCollector
+     *
+     * @param ContainerInterface $container
+     * @return RouteCollectorInterface
+     */
     public function getRouteCollection(ContainerInterface $container = null): RouteCollectorInterface
     {
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
@@ -95,6 +113,21 @@ abstract class RouterIntegrationTest extends TestCase
             [HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD],
         ];
 
+        yield 'PUT: put, patch' => [
+            HttpMethods::METHOD_PATCH,
+            [HttpMethods::METHOD_PUT, HttpMethods::METHOD_PATCH],
+        ];
+
+        yield 'PATCH: patch, put' => [
+            HttpMethods::METHOD_PUT,
+            [HttpMethods::METHOD_PUT, HttpMethods::METHOD_PATCH],
+        ];
+
+        yield 'DELETE: patch, delete' => [
+            HttpMethods::METHOD_DELETE,
+            [HttpMethods::METHOD_DELETE, HttpMethods::METHOD_PATCH],
+        ];
+
         yield 'OPTIONS: options, post' => [
             HttpMethods::METHOD_OPTIONS,
             [HttpMethods::METHOD_OPTIONS, HttpMethods::METHOD_POST],
@@ -119,12 +152,12 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider method
      */
-    public function testExplicitRequest(string $method, array $routes)
+    public function testExplicitWithRouteCollector(string $method, array $routes)
     {
         $router = $this->getRouteCollection();
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
 
-        $finalResponse = (new $responseFactory())->createResponse();
+        $finalResponse = $responseFactory->createResponse();
         $finalResponse = $finalResponse->withHeader('foo-bar', 'baz');
         $finalResponse->getBody()->write('FOO BAR BODY');
 
@@ -167,6 +200,38 @@ abstract class RouterIntegrationTest extends TestCase
         $this->assertSame('FOO BAR BODY', (string) $response->getBody());
         $this->assertTrue($response->hasHeader('foo-bar'));
         $this->assertSame('baz', $response->getHeaderLine('foo-bar'));
+    }
+
+    /**
+     * @dataProvider method
+     */
+    public function testExplicitWithoutCollector(string $method, array $routes)
+    {
+        $router = $this->getRouter();
+        [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
+
+        $finalHandler = $this->prophesize(RequestHandlerInterface::class);
+        $finalHandler->handle(Argument::any())->shouldNotBeCalled();
+
+        foreach ($routes as $routeMethod) {
+            $route = new Route(
+                [$routeMethod],
+                '/api/v1/me',
+                $finalHandler->reveal(),
+                [$responseFactory, 'createResponse'],
+                new CallableResolver()
+            );
+
+            if ($routeMethod === $method) {
+                $router->addRoute($route);
+            }
+        }
+
+        $path = $serverRequest->getUri()->withPath('/api/v1/me');
+        $results = $router->match($serverRequest->withMethod($method)->withUri($path));
+
+        $this->assertTrue($results::FOUND === $results->getRouteStatus());
+        $this->assertNotFalse($results->getMatchedRoute());
     }
 
     public function withoutImplicitMiddleware()
@@ -402,7 +467,7 @@ abstract class RouterIntegrationTest extends TestCase
         $router->setNamespace('Flight\\Routing\\Tests\\');
 
         [$serverRequest,] = $this->psrServerResponseFactory();
-        $path = $serverRequest->getUri()->withPath('/'.$asserts['path'] ?? 'group/test');
+        $path = $serverRequest->getUri()->withPath('/'.($asserts['path'] ?? 'group/test'));
 
         $router->group($groupAttributes, function (RouterProxyInterface $route) use ($asserts): void {
             $route->get(

@@ -358,7 +358,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Add goups to RouteCollection
         $this->routeGroups[]    = $routeGroup;
-        $this->groupOptions     = $this->resolveGlobals($routeGroup->getOptions());
+        $this->groupOptions     = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
 
         // Returns routes on closure, file or on callble
         $routeGroup->collectRoutes();
@@ -660,20 +660,44 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Resolving patterns and defaults to group.
      *
      * @param array $groupOptions
+     * @param array $previousOptions
      *
      * @return array
      */
-    protected function resolveGlobals(array $groupOptions): array
+    protected function resolveGlobals(array $groupOptions, array $previousOptions): array
     {
         $groupOptions[RouteGroup::REQUIREMENTS] = array_merge(
+            $previousOptions[RouteGroup::REQUIREMENTS] ?? [],
             $this->getGroupOption(RouteGroup::REQUIREMENTS) ?? [],
             $groupOptions[RouteGroup::REQUIREMENTS] ?? []
         );
 
         $groupOptions[RouteGroup::DEFAULTS] = array_merge(
+            $previousOptions[RouteGroup::DEFAULTS] ?? [],
             $this->getGroupOption(RouteGroup::DEFAULTS) ?? [],
             $groupOptions[RouteGroup::DEFAULTS] ?? []
         );
+
+        $groupOptions[RouteGroup::MIDDLEWARES] = array_merge(
+            $previousOptions[RouteGroup::MIDDLEWARES] ?? [],
+            $groupOptions[RouteGroup::MIDDLEWARES] ?? []
+        );
+
+        if (isset($previousOptions[RouteGroup::SCHEMES], $groupOptions[RouteGroup::SCHEMES])) {
+            $groupOptions[RouteGroup::SCHEMES] = array_merge(
+                $previousOptions[RouteGroup::SCHEMES] ?? [],
+                $groupOptions[RouteGroup::SCHEMES] ?? []
+            );
+        }
+        if (isset($previousOptions[RouteGroup::NAME], $groupOptions[RouteGroup::NAME])) {
+            $groupOptions[RouteGroup::NAME] = $previousOptions[RouteGroup::NAME].$groupOptions[RouteGroup::NAME];
+        }
+        if (isset($previousOptions[RouteGroup::PREFIX], $groupOptions[RouteGroup::PREFIX])) {
+            $groupOptions[RouteGroup::PREFIX] = $previousOptions[RouteGroup::PREFIX].$groupOptions[RouteGroup::PREFIX];
+        }
+        if (isset($previousOptions[RouteGroup::NAMESPACE], $groupOptions[RouteGroup::NAMESPACE])) {
+            $groupOptions[RouteGroup::NAMESPACE] = $previousOptions[RouteGroup::NAMESPACE].$groupOptions[RouteGroup::NAMESPACE];
+        }
 
         return $groupOptions;
     }
