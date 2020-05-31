@@ -34,7 +34,6 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use RuntimeException;
-use SplObjectStorage;
 
 /**
  * Aggregate routes for the router.
@@ -62,18 +61,6 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     use LoggerAwareTrait;
 
     /**
-     * @var array|RouteInterface[]string
-     */
-    protected $allRoutes = [];
-
-    /**
-     * List of all routes registered directly with the application.
-     *
-     * @var Route[]|SplObjectStorage
-     */
-    private $routes;
-
-    /**
      * @var Middlewares\MiddlewareDisptcher
      */
     protected $middlewareDispatcher;
@@ -84,14 +71,14 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $callableResolver;
 
     /**
-     * @var ServerRequestInterface
-     */
-    protected $request;
-
-    /**
      * @var ContainerInterface|null
      */
     protected $container;
+
+    /**
+     * @var ResponseFactoryInterface
+     */
+    protected $responseFactory;
 
     /**
      * The current route being used.
@@ -113,9 +100,16 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Route groups.
      *
-     * @var RouteGroup[]
+     * @var RouteGroup
      */
-    protected $routeGroups = [];
+    protected $routeGroup;
+
+    /**
+     * Route Default Namespace
+     *
+     * @var string
+     */
+    protected $namespace;
 
     /**
      * Route Group Options.
@@ -132,28 +126,18 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $keepRequestMethod = false;
 
     /**
-     * @var ResponseFactoryInterface
-     */
-    protected $responseFactory;
-
-    /**
-     * @param ServerRequestInterface    $request
      * @param ResponseFactoryInterface  $responseFactory
      * @param RouterInterface|null      $router
      * @param CallableResolverInterface $callableResolver
      * @param ContainerInterface|null   $container
      */
     public function __construct(
-        ServerRequestInterface $request,
         ResponseFactoryInterface $responseFactory,
         RouterInterface $router = null,
         CallableResolverInterface $callableResolver = null,
         ContainerInterface $container = null
     ) {
-        $this->request = $request;
         $this->responseFactory = $responseFactory;
-
-        $this->routes = new SplObjectStorage();
         $this->router = $router ?? new Services\DefaultFlightRouter();
 
         $this->container = $container;
@@ -168,11 +152,11 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         foreach ($parameters as $key => $regex) {
             if (self::TYPE_DEFAULT === $type) {
-                $this->setGroupOption(RouteGroupInterface::DEFAULTS, [$key => $regex]);
-                break;
+                $this->groupOptions[RouteGroupInterface::DEFAULTS] = [$key => $regex];
+                continue;
             }
 
-            $this->setGroupOption(RouteGroupInterface::REQUIREMENTS, [$key => $regex]);
+            $this->groupOptions[RouteGroupInterface::REQUIREMENTS] = [$key => $regex];
         }
 
         return $this;
@@ -187,16 +171,15 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      *
      * @return Route
      */
-    protected function createRoute($methods, $uri, $action): Route
+    private function createRoute($methods, $uri, $action): Route
     {
         $route = $this->newRoute($methods, $uri, $action);
 
         // Set the defualts for group routing.
         $defaults = [
-            'namespace' => $this->getGroupOption(RouteGroupInterface::NAMESPACE),
-            'defaults'  => $this->getGroupOption(RouteGroupInterface::DEFAULTS),
-            'patterns'  => $this->getGroupOption(RouteGroupInterface::REQUIREMENTS),
-            'schemes'   => $this->getGroupOption(RouteGroupInterface::SCHEMES),
+            RouteGroup::NAMESPACE       => $this->namespace,
+            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
+            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
         ];
 
         $route->fromArray($defaults);
@@ -215,16 +198,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     protected function newRoute($methods, $uri, $action): Route
     {
-        $route = new Route(
-            (array) $methods,
-            $uri,
-            $action,
-            [$this->responseFactory, 'createResponse'],
-            $this->callableResolver,
-            $this->routeGroups
-        );
-
-        return $route;
+        return new Route((array) $methods, $uri, $action, $this->routeGroup);
     }
 
     /**
@@ -237,61 +211,39 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * @param string|null               $uri     the uri of the route
      * @param Closure|array|string|null $action  a requesthandler or controller
      *
-     * @throws RuntimeException when called after match() have been called.
-     *
      * @return Route
+     * @throws RuntimeException when called after match() have been called.
      */
-    protected function addRoute($methods, $uri, $action): Route
+    private function addRoute($methods, $uri, $action): Route
     {
-        $route = $this->createRoute($methods, $uri, $action);
-        $domainAndUri = $route->getDomain().$route->getPath();
-
-        // Add the given route to the arrays of routes.
-        foreach ($route->getMethods() as $method) {
-            $this->allRoutes[$method][$domainAndUri] = $route;
-        }
-
-        // Resolve Routing
-        $this->routes->attach($route);
-        $this->router->addRoute($route);
+        // Add Route to a parsing Router.
+        $this->router->addRoute($route = $this->createRoute($methods, $uri, $action));
 
         return $route;
     }
 
     /**
-     * {@inheritdoc}
+     * Lookup a route via the route's unique identifier.
+     *
+     * @param RouteInterface $route
+     *
+     * @return void
      */
-    public function getRoutes(): iterable
+    private function addLookupRoute(RouteInterface $route): void
     {
-        foreach ($this->routes as $route) {
-            yield $route;
+        if (null === $name = $route->getName()) {
+            return;
         }
+
+        $this->nameList[$name] = $route;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getRequest(): ServerRequestInterface
+    public function getRoutes(): array
     {
-        return $this->request;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getMiddlewareDispatcher(): Middlewares\MiddlewareDisptcher
-    {
-        return $this->middlewareDispatcher;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setRequest(ServerRequestInterface $request): RouteCollectorInterface
-    {
-        $this->request = $request;
-
-        return $this;
+        return iterator_to_array($this->getRouter());
     }
 
     /**
@@ -307,21 +259,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * {@inheritdoc}
      */
-    public function removeNamedRoute(string $name): RouteCollectorInterface
-    {
-        /** @var Route $route */
-        $route = $this->getNamedRoute($name);
-        $this->routes->detach($route);
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function getNamedRoute(string $name): RouteInterface
     {
-        foreach ($this->routes as $route) {
+        foreach ($this->router as $route) {
             if ($name === $route->getName()) {
                 return $route;
             }
@@ -333,31 +273,18 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * {@inheritdoc}
      */
-    public function addLookupRoute(RouteInterface $route): void
-    {
-        if (null === $name = $route->getName()) {
-            //throw new RuntimeException('Route not found, looks like your route cache is stale.');
-            return;
-        }
-
-        $this->nameList[$name] = $route;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function group(array $attributes, $callable): RouteGroupInterface
     {
         // Backup current properties
         $oldGroupOption = $this->groupOptions;
-        $oldGroups      = $this->routeGroups;
+        $oldGroup       = $this->routeGroup;
 
         // Register the Route Grouping
-        $routeCollectorProxy = new RouterProxy($this->request, $this->responseFactory, $this->router, $this);
+        $routeCollectorProxy = new RouterProxy($this->responseFactory, $this->router, $this);
         $routeGroup = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
 
         // Add goups to RouteCollection
-        $this->routeGroups[]    = $routeGroup;
+        $this->routeGroup       = $routeGroup->mergeBackupAttributes($oldGroup);
         $this->groupOptions     = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
 
         // Returns routes on closure, file or on callble
@@ -365,7 +292,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Restore properties
         $this->groupOptions = $oldGroupOption;
-        $this->routeGroups  = $oldGroups;
+        $this->routeGroup   = $oldGroup;
 
         return $routeGroup;
     }
@@ -478,16 +405,12 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Configure route with needed dependencies.
         $defaults = [
-            'namespace' => $this->getGroupOption(RouteGroupInterface::NAMESPACE),
-            'defaults'  => $this->getGroupOption(RouteGroupInterface::DEFAULTS),
-            'patterns'  => $this->getGroupOption(RouteGroupInterface::REQUIREMENTS),
-            'schemes'   => $this->getGroupOption(RouteGroupInterface::SCHEMES),
+            RouteGroup::NAMESPACE       => $this->namespace,
+            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
+            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
         ];
 
         $route->fromArray($defaults);
-
-        // Resolve Routing
-        $this->routes->attach($route);
         $this->router->addRoute($route);
     }
 
@@ -522,12 +445,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * {@inheritdoc}
      */
-    public function setNamespace(?string $rootNamespace = null): RouteCollectorInterface
+    public function setNamespace(string $rootNamespace): RouteCollectorInterface
     {
-        if (isset($rootNamespace)) {
-            $this->routeGroups['namespace'] = $rootNamespace;
-            $this->setGroupOption(RouteGroupInterface::NAMESPACE, $rootNamespace);
-        }
+        $this->namespace = $rootNamespace;
 
         return $this;
     }
@@ -541,27 +461,19 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             throw new UrlGenerationException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
         }
 
-        // Resolve port and domain for better url generated from route by name.
-        $requestUri = $this->request->getUri();
-        $domain     = sprintf('%s://%s', $requestUri->getScheme(), $requestUri->getHost());
-
-        // Resolve domains with port enabled
-        if (null !== $requestUri->getPort() && !in_array($requestUri->getPort(), [80, 443], true)) {
-            $domain .= ':'.$requestUri->getPort();
-        }
+        $prefix = '.'; // Append missing "." at the beginning of the $uri.
 
         // Making routing on sub-folders easier
         if (strpos($uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters), '/') !== 0) {
-            $domain .= '/';
+            $prefix .= '/';
         }
 
         // Incase query is added to uri.
         if (!empty($queryParams)) {
-            $separator = ini_get('arg_separator.input');
-            $uri .= '?'.http_build_query($queryParams, '', $separator ? $separator[0] : '&');
+            $uri .= '?'.http_build_query($queryParams);
         }
 
-        return rtrim(strpos($uri, '://') !== false ? $uri : $domain.$uri, '/');
+        return rtrim(strpos($uri, '://') !== false ? $uri : $prefix.$uri, '/');
     }
 
     /**
@@ -583,77 +495,36 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * {@inheritdoc}
      */
-    public function dispatch(): ResponseInterface
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // Add Route Names RouteCollector.
-        $routes = iterator_to_array($this->getRoutes());
+        $routes = $this->getRoutes();
         array_walk($routes, [$this, 'addLookupRoute']);
 
-        $routingResults = $this->router->match($this->request);
+        $routingResults = $this->router->match($request);
         $this->currentRoute = $route = $routingResults->getMatchedRoute();
+        $routingResults->bindTo($request, $this->keepRequestMethod, $this->callableResolver, $this->responseFactory);
 
         // Get all available middlewares
-        $routingResults->determineResponseCode($this->request, $this->keepRequestMethod);
-        $middlewares = array_merge($route ? $route->getMiddlewares() : [], $this->getMiddlewaresStack());
-
-        // Allow Middlewares to be disabled
-        if (in_array('off', $middlewares, true) || in_array('disable', $middlewares, true)) {
-            $middlewares = [];
-        }
+        $middlewares = array_filter(
+            array_replace($route ? $route->getMiddlewares() : [], $this->getMiddlewaresStack()),
+            function ($middleware) {
+                return !in_array($middleware, ['off', 'disable'], true);
+            }
+        );
 
         if (count($middlewares) > 0) {
-            return $this->dispatchMiddlewares($middlewares, $routingResults);
+            try {
+                $middleware = $this->middlewareDispatcher->pipeline($middlewares);
+            } finally {
+                // This middleware is in the priority map; but, this is the first middleware we have
+                // encountered from the map thus far. We'll save its current index plus its index
+                // from the priority map so we can compare against them on the next iterations.
+                return $middleware->process($request, $routingResults);
+            }
         }
 
-        return $routingResults->handle($this->request);
-    }
-
-    /**
-     * Dispatch Middlewares on ROuteResults
-     *
-     * @param array $middlewares
-     * @param RouteResults $routeResults
-     *
-     * @return ResponseInterface
-     */
-    protected function dispatchMiddlewares(array $middlewares, RouteResults $routeResults): ResponseInterface
-    {
-        // This middleware is in the priority map. If we have encountered another middleware
-        // that was also in the priority map and was at a lower priority than the current
-        // middleware, we will move this middleware to be above the previous encounter.
-        $middleware = $this->middlewareDispatcher->pipeline($middlewares);
-
-        try {
-            $requestHandler = $this->middlewareDispatcher->addhandler($routeResults);
-        } finally {
-            // This middleware is in the priority map; but, this is the first middleware we have
-            // encountered from the map thus far. We'll save its current index plus its index
-            // from the priority map so we can compare against them on the next iterations.
-            return $middleware->process($this->request, $requestHandler);
-        }
-    }
-
-    /**
-     * Get Route The Group Option.
-     *
-     * @param string $name
-     *
-     * @return mixed
-     */
-    protected function getGroupOption(string $name)
-    {
-        return $this->groupOptions[$name] ?? null;
-    }
-
-    /**
-     * Set the Route Group Option.
-     *
-     * @param string $name
-     * @param mixed  $value
-     */
-    protected function setGroupOption(string $name, $value): void
-    {
-        $this->groupOptions[$name] = $value;
+        return $routingResults->handle($request);
     }
 
     /**
@@ -666,40 +537,22 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     protected function resolveGlobals(array $groupOptions, array $previousOptions): array
     {
-        $groupOptions[RouteGroup::REQUIREMENTS] = array_merge(
+        $groupOptions[RouteGroup::REQUIREMENTS] = array_replace(
+            $this->groupOptions[RouteGroup::REQUIREMENTS] ?? [],
             $previousOptions[RouteGroup::REQUIREMENTS] ?? [],
-            $this->getGroupOption(RouteGroup::REQUIREMENTS) ?? [],
             $groupOptions[RouteGroup::REQUIREMENTS] ?? []
         );
 
-        $groupOptions[RouteGroup::DEFAULTS] = array_merge(
+        $groupOptions[RouteGroup::DEFAULTS] = array_replace(
+            $this->groupOptions[RouteGroup::DEFAULTS] ?? [],
             $previousOptions[RouteGroup::DEFAULTS] ?? [],
-            $this->getGroupOption(RouteGroup::DEFAULTS) ?? [],
             $groupOptions[RouteGroup::DEFAULTS] ?? []
         );
 
-        $groupOptions[RouteGroup::MIDDLEWARES] = array_merge(
-            $previousOptions[RouteGroup::MIDDLEWARES] ?? [],
-            $groupOptions[RouteGroup::MIDDLEWARES] ?? []
+        return array_intersect_key(
+            array_filter($groupOptions),
+            array_flip([RouteGroup::DEFAULTS, RouteGroup::REQUIREMENTS])
         );
-
-        if (isset($previousOptions[RouteGroup::SCHEMES], $groupOptions[RouteGroup::SCHEMES])) {
-            $groupOptions[RouteGroup::SCHEMES] = array_merge(
-                $previousOptions[RouteGroup::SCHEMES] ?? [],
-                $groupOptions[RouteGroup::SCHEMES] ?? []
-            );
-        }
-        if (isset($previousOptions[RouteGroup::NAME], $groupOptions[RouteGroup::NAME])) {
-            $groupOptions[RouteGroup::NAME] = $previousOptions[RouteGroup::NAME].$groupOptions[RouteGroup::NAME];
-        }
-        if (isset($previousOptions[RouteGroup::PREFIX], $groupOptions[RouteGroup::PREFIX])) {
-            $groupOptions[RouteGroup::PREFIX] = $previousOptions[RouteGroup::PREFIX].$groupOptions[RouteGroup::PREFIX];
-        }
-        if (isset($previousOptions[RouteGroup::NAMESPACE], $groupOptions[RouteGroup::NAMESPACE])) {
-            $groupOptions[RouteGroup::NAMESPACE] = $previousOptions[RouteGroup::NAMESPACE].$groupOptions[RouteGroup::NAMESPACE];
-        }
-
-        return $groupOptions;
     }
 
     /**
@@ -708,7 +561,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     public function __debugInfo()
     {
         return [
-            'routes'    => $this->allRoutes,
+            'routes'    => $this->getRoutes(),
             'current'   => $this->currentRoute,
             'counts'    => count($this->getRouter()),
         ];

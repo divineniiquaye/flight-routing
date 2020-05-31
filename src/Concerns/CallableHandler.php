@@ -78,11 +78,7 @@ final class CallableHandler implements RequestHandlerInterface
             }
         }
 
-        return $this->wrapResponse(
-            $response,
-            $result,
-            ob_get_clean().$output
-        );
+        return $this->wrapResponse($response, $result, ob_get_clean().$output);
     }
 
     /**
@@ -112,10 +108,15 @@ final class CallableHandler implements RequestHandlerInterface
             $response->getBody()->write((string) $result);
         }
 
-        //Always glue buffered output
+
+        //Always detect response anf glue buffered output
+        return $this->detectResponse($response, $output);
+    }
+
+    private function detectResponse(ResponseInterface $response, $output)
+    {
         $response->getBody()->write($output);
 
-        //
         if ($this->isJson($response->getBody())) {
             return $response->withHeader('Content-Type', 'application/json');
         }

@@ -64,7 +64,7 @@ class DefaultRouterTest extends RouterIntegrationTest
                 'generate' => [[], ['test' => 'fine']],
             ],
             [
-                'generate' => 'http://localhost/?test=fine',
+                'generate' => './?test=fine',
                 'content-type' => 'text/html; charset=utf-8',
             ],
         ];
@@ -241,7 +241,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             ],
             [
                 'status' => 200,
-                'generate' => 'http://localhost/yes_we_can'
+                'generate' => './yes_we_can'
             ],
         ];
 

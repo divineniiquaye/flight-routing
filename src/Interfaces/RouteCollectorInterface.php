@@ -20,50 +20,24 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Closure;
-use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Middlewares\MiddlewareDisptcher;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
 
-interface RouteCollectorInterface
+interface RouteCollectorInterface extends RequestHandlerInterface
 {
     public const TYPE_REQUIREMENT = 1;
     public const TYPE_DEFAULT = 0;
 
     /**
-     * Characters that should not be URL encoded.
-     *
-     * @var array
-     */
-    public const DONT_ENCODE = [
-        // RFC 3986 explicitly allows those in the query/fragment to reference other URIs unencoded
-        '%2F' => '/',
-        '%3F' => '?',
-        // reserved chars that have no special meaning for HTTP URIs in a query or fragment
-        // this excludes esp. "&", "=" and also "+" because PHP would treat it as a space (form-encoded)
-        '%40' => '@',
-        '%3A' => ':',
-        '%21' => '!',
-        '%3B' => ';',
-        '%2C' => ',',
-        '%2A' => '*',
-        '%3D' => '=',
-        '%2B' => '+',
-        '%7C' => '|',
-        '%26' => '&',
-        '%23' => '#',
-        '%25' => '%',
-    ];
-
-    /**
      * Get route objects.
      *
-     * @return RouteInterface[]|iterable
+     * @return RouteInterface[]|array
      */
-    public function getRoutes(): iterable;
+    public function getRoutes(): array;
 
     /**
      * Generate a URI from the named route.
@@ -93,9 +67,9 @@ interface RouteCollectorInterface
      *
      * @param string $rootNamespace
      *
-     * @return $this
+     * @return RouteCollectorInterface
      */
-    public function setNamespace(?string $rootNamespace = null): self;
+    public function setNamespace(string $rootNamespace): self;
 
     /**
      * Get named route object.
@@ -107,26 +81,6 @@ interface RouteCollectorInterface
      * @return RouteInterface
      */
     public function getNamedRoute(string $name): RouteInterface;
-
-    /**
-     * Remove named route.
-     *
-     * @param string $name Route name
-     *
-     * @throws RuntimeException If named route does not exist
-     *
-     * @return RouteCollectorInterface
-     */
-    public function removeNamedRoute(string $name): self;
-
-    /**
-     * Lookup a route via the route's unique identifier.
-     *
-     * @param RouteInterface $route
-     *
-     * @return void
-     */
-    public function addLookupRoute(RouteInterface $route): void;
 
     /**
      * Get the current route.
@@ -147,23 +101,6 @@ interface RouteCollectorInterface
     public function keepRequestMethod(bool $status = false): self;
 
     /**
-     * Get current http request instance.
-     *
-     * @return ServerRequestInterface
-     */
-    public function getRequest(): ServerRequestInterface;
-
-    /**
-     * Change the current request. Can be useful for
-     * forward response.
-     *
-     * @param ServerRequestInterface $request
-     *
-     * @return RouteCollectorInterface
-     */
-    public function setRequest(ServerRequestInterface $request): self;
-
-    /**
      * Ge the current router used.
      *
      * @return RouterInterface
@@ -171,18 +108,11 @@ interface RouteCollectorInterface
     public function getRouter(): RouterInterface;
 
     /**
-     * Get the Middlewares Dispatcher.
-     *
-     * @return MiddlewareDisptcher
-     */
-    public function getMiddlewareDispatcher(): MiddlewareDisptcher;
-
-    /**
      * Set the global the middlewares stack attached to all routes.
      *
      * @param array|string|callable|MiddlewareInterface $middleware
      *
-     * @return $this|array
+     * @return RouteCollectorInterface
      */
     public function addMiddlewares($middleware = []): self;
 
@@ -191,7 +121,7 @@ interface RouteCollectorInterface
      *
      * @param array $middlewares [name => $middlewares ?? [$middlewares]]
      *
-     * @return $this|array
+     * @return RouteCollectorInterface
      */
     public function routeMiddlewares($middlewares = []): self;
 
@@ -210,7 +140,7 @@ interface RouteCollectorInterface
      * @param array $parameters The parameters
      * @param int   $type
      *
-     * @return $this
+     * @return RouteCollectorInterface
      */
     public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): self;
 
@@ -253,10 +183,11 @@ interface RouteCollectorInterface
      * If routing succeeds, injects the request passed to the handler with any
      * matched parameters as well.
      *
-     * @throws RouteNotFoundException
-     * @throws ExceptionInterface
+     * @param ServerRequestInterface $request
      *
      * @return ResponseInterface
+     * @throws RouteNotFoundException
+     * @throws ExceptionInterface
      */
-    public function dispatch(): ResponseInterface;
+    public function handle(ServerRequestInterface $request): ResponseInterface;
 }

@@ -26,7 +26,6 @@ use Laminas\Stratigility\MiddlewarePipe;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use ReflectionClass;
 
 /**
  * Marshal middleware for use in the application.
@@ -136,52 +135,27 @@ class MiddlewareDisptcher
      *
      * @param MiddlewareInterface|string|callable $middleware
      *
-     * @return MiddlewareInterface
+     * @return MiddlewareInterface|RequestHandlerInterface|callable
      */
-    public function resolve($middleware): MiddlewareInterface
+    public function resolve($middleware)
     {
-        if ($middleware instanceof MiddlewareInterface) {
-            return $middleware;
-        }
-
         if (is_string($middleware)) {
-            $arguments = [];
-            if (false !== strpos($middleware, ':')) {
-                [$middleware, $args] = explode(':', $middleware);
-                $arguments = false !== strpos($args, ',') ? explode(',', $args) : [$args];
-            }
-
             if (array_key_exists($middleware, $this->routeMiddlewares)) {
                 $middleware = $this->routeMiddlewares[$middleware];
             }
 
-            $middleware = !$this->container instanceof ContainerInterface
-                ? new $middleware() // Incase $container is set null. Let's create a new instance
-                : $this->container->get($middleware);
-
-            if ($middleware instanceof RequestHandlerInterface) {
-                $middleware = $this->addHandler($middleware);
+            if (null !== $this->container && $this->container->has($middleware)) {
+                $middleware = $this->container->get($middleware);
             }
 
-            if ((new ReflectionClass($middleware))->implementsInterface(MiddlewareInterface::class)) {
-                // Allowing parameters to be passed to middleware
-                if (method_exists($middleware, 'setOptions')) {
-                    $middleware->setOptions(...array_values($arguments));
-                }
-
-                return $middleware;
+            if (is_string($middleware) && !class_exists($middleware)) {
+                throw InvalidMiddlewareException::forMiddleware($middleware);
             }
 
-            throw new InvalidMiddlewareException(sprintf('%s is not resolvable', $middleware));
+            return is_object($middleware) ? $middleware : new $middleware();
         }
 
-        if ($middleware instanceof RequestHandlerInterface) {
-            return $this->addHandler($middleware);
-        }
-
-        if (is_callable($middleware)) {
-            return $this->addCallable($middleware);
-        }
+        return $middleware;
     }
 
     /**

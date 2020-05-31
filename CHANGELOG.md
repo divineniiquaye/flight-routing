@@ -2,12 +2,28 @@
 
 All notable changes to `divineniiquaye/flight-routing` will be documented in this file.
 
+## 0.2.7 - 2020-05-28
+
+- Added psr-15 *RequestHandlerInterface* to *RouteCollectorInterface*
+- Added methods from deleted *ArgumentsTrait* to *ControllersTrait*
+- Improved code complexity to add some extra performance
+- Removed two extra arguments from *Route* class
+- Removed ['request'] arguments from *RouterProxy* and *RouteCollector* classes
+- Removed some unnecessary methods from *RouteCollector* class
+- Removed namespace key in *$groups* variable
+- Renamed `dispatch()` method to `handle` method requiring psr-7 *ServerRequestInterface*
+- Deleted *ArgumentsTrait* trait from Traits folder
+- Fixed issues with setting and getting `$namespace` in *Route* class
+- Fixed issues with performing a `route grouping`
+- Updated *$namespace* parameter to public static
+- Updated REAME.md file
+
 ## 0.2.4 - 2020-05-18
 
 - Fixed minor issues with `route grouping`
 - Fixed minor issues with `route uri generator`
 - Improved code quality, applied psr fixtures, and routing performance
-- Deleted *RouteMiddleware* class, and use *MiddlewareDispatcher* aS replacements
+- Deleted *RouteMiddleware* class, and use *MiddlewareDispatcher* as replacements
 - Deleted *RouteResource* class, it will be replaced in the future
 - Deleted *ResourceController* interface
 - Deleted *RouteRunnerMiddleware* middleware class
@@ -40,7 +56,7 @@ All notable changes to `divineniiquaye/flight-routing` will be documented in thi
 ## 0.1.1 - 2020-05-04
 
 - Added improvement for routes handling
-- Added support for php 7.1 t0 php 8.0
+- Added support for php 7.1 to php 8.0
 - Update README.md file
 
 ## 0.1.0 - 2020-02-21

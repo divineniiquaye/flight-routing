@@ -19,7 +19,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Flight\Routing\Concerns\CallableResolver;
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
@@ -79,9 +78,9 @@ abstract class RouterIntegrationTest extends TestCase
      */
     public function getRouteCollection(ContainerInterface $container = null): RouteCollectorInterface
     {
-        [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
+        [, $responseFactory] = $this->psrServerResponseFactory();
 
-        return new RouteCollector($serverRequest, $responseFactory, $this->getRouter(), null, $container);
+        return new RouteCollector($responseFactory, $this->getRouter(), null, $container);
     }
 
     public function createInvalidResponseFactory(): callable
@@ -179,13 +178,7 @@ abstract class RouterIntegrationTest extends TestCase
             ->shouldBeCalledTimes(1);
 
         foreach ($routes as $routeMethod) {
-            $route = new Route(
-                [$routeMethod],
-                '/api/v1/me',
-                $finalHandler->reveal(),
-                [$responseFactory, 'createResponse'],
-                new CallableResolver()
-            );
+            $route = new Route([$routeMethod], '/api/v1/me', $finalHandler->reveal());
 
             if ($routeMethod === $method) {
                 $router->setRoute($route);
@@ -193,8 +186,7 @@ abstract class RouterIntegrationTest extends TestCase
         }
 
         $path = $serverRequest->getUri()->withPath('/api/v1/me');
-        $router->setRequest($serverRequest->withMethod($method)->withUri($path));
-        $response = $router->dispatch();
+        $response = $router->handle($serverRequest->withMethod($method)->withUri($path));
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertSame('FOO BAR BODY', (string) $response->getBody());
@@ -208,19 +200,13 @@ abstract class RouterIntegrationTest extends TestCase
     public function testExplicitWithoutCollector(string $method, array $routes)
     {
         $router = $this->getRouter();
-        [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
+        [$serverRequest,] = $this->psrServerResponseFactory();
 
         $finalHandler = $this->prophesize(RequestHandlerInterface::class);
         $finalHandler->handle(Argument::any())->shouldNotBeCalled();
 
         foreach ($routes as $routeMethod) {
-            $route = new Route(
-                [$routeMethod],
-                '/api/v1/me',
-                $finalHandler->reveal(),
-                [$responseFactory, 'createResponse'],
-                new CallableResolver()
-            );
+            $route = new Route([$routeMethod], '/api/v1/me', $finalHandler->reveal());
 
             if ($routeMethod === $method) {
                 $router->addRoute($route);
@@ -257,7 +243,7 @@ abstract class RouterIntegrationTest extends TestCase
     public function testWithoutImplicitMiddleware(string $requestMethod, array $allowedMethods)
     {
         $router = $this->getRouteCollection();
-        [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
+        [$serverRequest,] = $this->psrServerResponseFactory();
 
         $finalResponse = $this->prophesize(ResponseInterface::class);
         $finalResponse->withStatus(405)->will([$finalResponse, 'reveal']);
@@ -267,15 +253,11 @@ abstract class RouterIntegrationTest extends TestCase
         $finalHandler->handle(Argument::any())->shouldNotBeCalled();
 
         foreach ($allowedMethods as $routeMethod) {
-            $route = (new Route(
-                [$routeMethod],
-                '/api/v1/me',
-                $finalHandler->reveal(),
-                [$responseFactory, 'createResponse'],
-                new CallableResolver()
-            ))->addMiddleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
-                return $handler->handle($request);
-            });
+            $route = (new Route([$routeMethod], '/api/v1/me', $finalHandler->reveal()))
+                ->addMiddleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+                    return $handler->handle($request);
+                }
+            );
 
             $router->setRoute($route);
         }
@@ -283,8 +265,7 @@ abstract class RouterIntegrationTest extends TestCase
         $this->expectException(MethodNotAllowedException::class);
 
         $path = $serverRequest->getUri()->withPath('/api/v1/me');
-        $router->setRequest($serverRequest->withMethod($requestMethod)->withUri($path));
-        $router->dispatch();
+        $router->handle($serverRequest->withMethod($requestMethod)->withUri($path));
     }
 
     /**
@@ -358,8 +339,7 @@ abstract class RouterIntegrationTest extends TestCase
             $path = $path->withScheme($routeOptions['scheme']);
         }
 
-        $router->setRequest($serverRequest->withMethod($requestMethod)->withUri($path));
-        $response = $router->dispatch();
+        $response = $router->handle($serverRequest->withMethod($requestMethod)->withUri($path));
 
         $this->assertSame($finalResponse, $response);
         $this->assertEquals('baz', $response->getHeaderLine('foo-bar'));
@@ -388,8 +368,7 @@ abstract class RouterIntegrationTest extends TestCase
             $path = $path->withScheme($routeOptions['scheme']);
         }
 
-        $router->setRequest($serverRequest->withMethod($requestMethod)->withUri($path));
-        $response = $router->dispatch();
+        $response = $router->handle($serverRequest->withMethod($requestMethod)->withUri($path));
 
         if (isset($asserts['status'])) {
             $this->assertSame($asserts['status'], $response->getStatusCode());
@@ -477,8 +456,7 @@ abstract class RouterIntegrationTest extends TestCase
             ->setName('_hello');
         });
 
-        $router->setRequest($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
-        $router->dispatch();
+        $router->handle($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
 
         $this->assertInstanceOf(RouteInterface::class, $route = $router->currentRoute());
         if (isset($asserts['default'])) {
@@ -508,19 +486,15 @@ abstract class RouterIntegrationTest extends TestCase
         })->setName('error');
 
         $path = $serverRequest->getUri()->withPath('/error');
-        $router->setRequest($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
-        $router->dispatch();
+        $router->handle($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
 
         $this->assertInstanceOf(RouteInterface::class, $router->getNamedRoute('error'));
         $this->assertNotEmpty($router->getRoutes());
-
-        $router->removeNamedRoute('error');
-        $this->assertCount(0, $router->getRoutes());
+        $this->assertCount(1, $router->getRoutes());
 
         $this->expectException(RouteNotFoundException::class);
 
         $path = $serverRequest->getUri()->withPath('/not-found');
-        $router->setRequest($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
-        $router->dispatch();
+        $router->handle($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
     }
 }

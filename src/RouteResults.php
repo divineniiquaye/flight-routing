@@ -19,9 +19,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Flight\Routing\Concerns\CallableHandler;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
+use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -71,11 +74,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $routeStatus;
 
     /**
-     * @var RouteInterface|string
-     */
-    protected $routeIdentifier;
-
-    /**
      * @var array
      */
     protected $routeArguments;
@@ -88,15 +86,27 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $keepRequestMethod = 302;
 
     /**
+     * @var RouteInterface|string
+     */
+    protected $routeIdentifier;
+
+    /**
+     * @var ResponseFactoryInterface
+     */
+    protected $response;
+
+    /**
+     * @var CallableResolverInterface
+     */
+    protected $callableResolver;
+
+    /**
      * @param int                 $routeStatus
      * @param array               $routeArguments
      * @param RouteInterface|null $routeIdentifier
      */
-    public function __construct(
-        int $routeStatus,
-        array $routeArguments = [],
-        ?RouteInterface $routeIdentifier = null
-    ) {
+    public function __construct(int $routeStatus, array $routeArguments = [], ?RouteInterface $routeIdentifier = null)
+    {
         $this->routeStatus = $routeStatus;
         $this->routeArguments = $routeArguments;
         $this->routeIdentifier = $routeIdentifier;
@@ -173,7 +183,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             $this->logRoute($route, $request);
         }
 
-        $response = $this->getMatchedRoute()->handle($request->withAttribute(__CLASS__, $this));
+        $response = $this->dispatchRoute($this->getMatchedRoute(), $request);
 
         // Allow Redirection if exists and avoid static request.
         if (null !== $this->getRedirectLink()) {
@@ -191,10 +201,6 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      */
     public function getRouteArguments(bool $urlDecode = true): array
     {
-        if (!$urlDecode) {
-            return $this->routeArguments;
-        }
-
         $routeArguments = [];
         foreach ($this->routeArguments as $key => $value) {
             if (is_int($key)) {
@@ -202,7 +208,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             }
 
             $value = is_numeric($value) ? (int) $value : $value;
-            $routeArguments[$key] = is_string($value) ? rawurldecode($value) : $value;
+            $routeArguments[$key] = (is_string($value) && $urlDecode ) ? rawurldecode($value) : $value;
         }
 
         return $routeArguments;
@@ -228,12 +234,58 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
+     * Create a RouteCollector binding for a given callback.
+     *
+     * @param ServerRequestInterface $request
+     * @param boolean $status
+     * @param CallableResolverInterface $callableResolver
+     * @param ResponseFactoryInterface $responseFactory
+     * @return void
+     */
+    public function bindTo(
+        ServerRequestInterface $request, bool $status,
+        CallableResolverInterface $callableResolver,
+        ResponseFactoryInterface $responseFactory
+    ) {
+        $this->determineRedirectCode($request, $status);
+
+        $this->callableResolver = $callableResolver;
+        $this->response = [$responseFactory, 'createResponse'];
+    }
+
+    /**
+     * Handles a request and produces a response.
+     *
+     * @param RouteInterface $route
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface
+     */
+    private function dispatchRoute(RouteInterface $route, ServerRequestInterface $request): ResponseInterface
+    {
+        $callableResolver = clone $this->callableResolver;
+        $callable = $callableResolver->resolve($route->getController());
+
+        $request = $request
+            ->withAttribute(__CLASS__, $this)
+            ->withAttribute('arguments', $route->getArguments())
+        ;
+
+        // If controller is instance of RequestHandlerInterface
+        if (!$callable instanceof \Closure && $callable[0] instanceof RequestHandlerInterface) {
+            return $callable($request);
+        }
+
+        return (new CallableHandler($route->handle($callable, $callableResolver), ($this->response)()))->handle($request);
+    }
+
+    /**
      * Determine the response code according with the method and the permanent config.
      *
      * @param ServerRequestInterface $request
      * @param bool status
      */
-    public function determineResponseCode(ServerRequestInterface $request, bool $status): void
+    private function determineRedirectCode(ServerRequestInterface $request, bool $status): void
     {
         if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
             $this->keepRequestMethod = $status ? 301 : 302;

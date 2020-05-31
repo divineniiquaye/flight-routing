@@ -164,7 +164,7 @@ class CallableResolver implements CallableResolverInterface
     {
         // Maybe could be a class object or RequestHandlerInterface instance
         if ((!$callable instanceof Closure && is_object($callable)) || is_string($callable)) {
-            $callable = $this->resolveCallable($callable);
+            $callable = is_callable($callable) ? $callable : $this->resolveCallable($callable);
         }
 
         if (!is_callable($callable)) {

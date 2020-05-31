@@ -27,7 +27,6 @@ use Flight\Routing\Interfaces\RouterInterface;
 use Flight\Routing\Interfaces\RouterProxyInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ServerRequestInterface;
 
 class RouterProxy implements RouterProxyInterface
 {
@@ -37,7 +36,6 @@ class RouterProxy implements RouterProxyInterface
     protected $routeCollector;
 
     /**
-     * @param ServerRequestInterface    $request
      * @param ResponseFactoryInterface  $responseFactory
      * @param RouterInterface           $router
      * @param RouteCollectorInterface   $routeCollector
@@ -45,7 +43,6 @@ class RouterProxy implements RouterProxyInterface
      * @param ContainerInterface|null   $container
      */
     public function __construct(
-        ServerRequestInterface $request,
         ResponseFactoryInterface $responseFactory,
         RouterInterface $router,
         RouteCollectorInterface $routeCollector = null,
@@ -53,7 +50,7 @@ class RouterProxy implements RouterProxyInterface
         ContainerInterface $container = null
     ) {
         $this->routeCollector = $routeCollector
-            ?? new RouteCollector($request, $responseFactory, $router, $callableResolver, $container);
+            ?? new RouteCollector($responseFactory, $router, $callableResolver, $container);
     }
 
     /**

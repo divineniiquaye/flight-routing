@@ -155,11 +155,11 @@ run this in command line if the package has not be added.
 composer require biurad/biurad-http
 ```
 
-Flight routing allows you to call any controller action with namespace using`*<namepace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
+Flight routing allows you to call any controller action with namespace using `*<namepace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
 
 > Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
 
-In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->dispatch()``` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) *publish* method. This will trigger and do the actual routing of the requests to response.
+In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->handle()``` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) *publish* method, passing an instance of [PSR-7](https://www.php-fig.org/psr/psr-7) *ServerRequestInterface*. This will trigger and do the actual routing of the requests to response.
 
 ```php
 <?php
@@ -167,8 +167,8 @@ In your ```index.php``` require your newly-created ```routes.php``` and call the
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use Flight\Routing\RouteCollector as Router;
 
-// Need th have extensive idea in php before using this dependency ,though it easy to use.
-$router = new Router(Psr17Factory::fromGlobalRequest(), new Psr17Factory);
+// Need to have an idea about php before using this dependency, though it easy to use.
+$router = new Router(new Psr17Factory);
 
 /**
  * The default namespace for route-callbacks, so we don't have to specify it each time.
@@ -190,15 +190,16 @@ There are two ways of dipatching a router, either by using the default [HttpPubl
 
 use Flight\Routing\Services\HttpPublisher;
 use BiuradPHP\Http\Response\EmitResponse;
+use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
 /* Load external routes file */
-$router = require_once 'routes.php';
+$router = require_once __DIR__.'/routes.php';
 assert($router instanceof BiuradPHP\Routing\RouteCollector);
 
 // Start the routing
-return (new EmitResponse)->emit($router->dispatch());
+return (new EmitResponse)->emit($router->handle(Psr17Factory::fromGlobalRequest()));
 // or 
-return (new HttpPublisher)->publish($router->dispatch(), new EmitResponse);
+return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()), new EmitResponse);
 ```
 
 Remember the ```routes.php``` file you required in your ```index.php```? This file be where you place all your custom rules for routing.
@@ -600,7 +601,7 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
 
-This whole process is called *canonicalization*. Default (canonical) URL is the one router generates, that is the first route matches exactly Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
+This whole process is called *canonicalization*. Default (canonical) URL is the one router generates, that is, the first route matches exactly. Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
 $router->get(

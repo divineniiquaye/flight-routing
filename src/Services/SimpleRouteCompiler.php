@@ -213,26 +213,18 @@ class SimpleRouteCompiler implements Serializable
     private function compilePattern(RouteInterface $route, string $uriPattern, bool $isHost): array
     {
         $options = $replaces = [];
-        $pos = 0;
         $pattern = rtrim(ltrim($uriPattern, ':/'), '/') ?: '/';
-        $leadingChar = 0 === substr_compare($uriPattern, $pattern, $pos) ? '' : '/?';
+        $leadingChar = 0 === substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
 
         // correct [/ first occurrence]
         if (strpos($pattern, '[/') === 0) {
             $pattern = '['.substr($pattern, 2);
         }
 
-        if (preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, PREG_SET_ORDER)) {
-            foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
-                $pattern = str_replace($match, $parameter, $pattern);
+        // Add defaults and requirements found on given $pattern to $route
+        $this->prepareRoute($route, $pattern);
 
-                $route->addDefaults([$parameter => $name]);
-                if (!empty($regex)) {
-                    $route->addPattern($parameter, $regex);
-                }
-            }
-        }
-
+        // Match all variables enclosed in "{}" and iterate over them...
         if (preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
             $variables = array_combine($matches[1], $matches[2]);
 
@@ -248,13 +240,35 @@ class SimpleRouteCompiler implements Serializable
         }
 
         $template = str_replace(['{', '}'], '', preg_replace('/{(\w+):?.*?}/', '<\1>', $pattern));
-        $options = array_fill_keys($options, null);
 
         return [
             'template'  => stripslashes(str_replace('?', '', $template)),
             'regex'     => '{^'.$leadingChar.strtr($template, $replaces + self::PATTERN_REPLACES).'$}sD'.($isHost ? 'i' : ''),
-            'variables' => $options,
+            'variables' => array_fill_keys($options, null),
         ];
+    }
+
+    /**
+     * Prepare Route by adding defaults and requirements found,
+     * on the given $pattern.
+     *
+     * @param RouteInterface $route
+     * @param string $pattern
+     *
+     * @return void
+     */
+    private function prepareRoute(RouteInterface $route, string &$pattern): void
+    {
+        if (preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
+                $pattern = str_replace($match, $parameter, $pattern);
+
+                $route->addDefaults([$parameter => $name]);
+                if (!empty($regex)) {
+                    $route->addPattern($parameter, $regex);
+                }
+            }
+        }
     }
 
     /**
@@ -269,8 +283,7 @@ class SimpleRouteCompiler implements Serializable
     private function prepareSegment(string $name, string $segment, array $requirements): string
     {
         if ($segment !== '') {
-            // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
-            // variable would not be usable as a Controller action argument.
+            // If PCRE subpattern name starts with a digit. Append the missing symbol "}"
             if (preg_match('#\{(\d+)#', $segment)) {
                 $segment = $segment.'}';
             }

@@ -22,12 +22,8 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Closure;
-use Flight\Routing\Interfaces\CallableResolverInterface;
+use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use ReflectionException;
 use RuntimeException;
 use Serializable;
 use Throwable;
@@ -47,9 +43,8 @@ use Throwable;
  * be provided after instantiation via the "defaults" property and related
  * addDefaults() method.
  */
-class Route implements Serializable, RouteInterface, RequestHandlerInterface
+class Route implements Serializable, RouteInterface
 {
-    use Traits\ArgumentsTrait;
     use Traits\ControllersTrait;
     use Traits\DefaultsTrait;
     use Traits\DomainsTrait;
@@ -73,47 +68,20 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     protected $name;
 
     /**
-     * @var ResponseInterface
-     */
-    protected $response;
-
-    /**
-     * @var CallableResolverInterface
-     */
-    protected $callableResolver;
-
-    /**
      * Create a new Route constructor.
      *
      * @param string[]                    $methods          The route HTTP methods
      * @param string                      $pattern          The route pattern
      * @param callable|string|object|null $callable         The route callable
-     * @param callable                    $response         The HTTP response
-     * @param CallableResolverInterface   $callableResolver
-     * @param RouteGroup[]                $groups           The parent route groups
+     * @param RouteGroupInterface|null    $group            The parent route group
      */
-    public function __construct(
-        array $methods,
-        string $pattern,
-        $callable,
-        callable $response,
-        CallableResolverInterface $callableResolver,
-        array $groups = []
-    ) {
+    public function __construct(array $methods, string $pattern, $callable, ?RouteGroupInterface $group = null)
+    {
         $this->methods = $methods;
 
-        // TODO: Use a different method of setting namespace before $callable...
-        if (isset($groups['namespace'])) {
-            $this->namespace = $groups['namespace'];
-            unset($groups['namespace']);
-        }
-
-        $this->appendGroupToRoute($groups);
+        $this->appendGroupToRoute($group);
         $this->setController($callable);
         $this->setPath($pattern);
-
-        $this->response = $response;
-        $this->callableResolver = $callableResolver;
     }
 
     /**
@@ -134,8 +102,6 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
             'arguments'     => $this->arguments,
             'group'         => $this->groups,
             'group_append'  => $this->groupAppended,
-            'response'      => $this->response,
-            'callable'      => $this->callableResolver,
             'controller'    => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
         ];
     }
@@ -165,15 +131,13 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
         $this->patterns = $data['requirements'];
         $this->methods = $data['methods'];
         $this->controller = $data['controller'];
-        $this->response = $data['response'];
         $this->groupAppended = $data['group_append'];
-        $this->callableResolver = $data['callable'];
 
         if (isset($data['middlewares'])) {
             $this->middlewares = $data['middlewares'];
         }
         if (isset($data['namespace'])) {
-            $this->namespace = $data['namespace'];
+            $this->snamespace = $data['namespace'];
         }
         if (isset($data['group'])) {
             $this->groups = $data['group'];
@@ -254,40 +218,17 @@ class Route implements Serializable, RouteInterface, RequestHandlerInterface
     }
 
     /**
-     * {@inheritdoc}
-     *
-     * @throws ReflectionException
-     */
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        $callable = $this->callableResolver->resolve($this->controller);
-        $request = $request->withAttribute('arguments', $this->arguments);
-
-        // If controller is instance of RequestHandlerInterface
-        if (!$callable instanceof Closure && $callable[0] instanceof RequestHandlerInterface) {
-            return $callable($request);
-        }
-
-        return $this->handleController($callable, $request);
-    }
-
-    /**
-     * @param array       $data
-     * @param string      $key
-     * @param string|null $message
+     * @param array     $data
+     * @param string    $key
      *
      * @return mixed
      */
-    private function getValueFromKey(array $data, string $key, string $message = null)
+    private function getValueFromKey(array $data, string $key)
     {
         if (isset($data[$key])) {
             return $data[$key];
         }
 
-        if (null === $message) {
-            $message = sprintf('Missing "%s" key in route collection', $key);
-        }
-
-        throw new RuntimeException($message);
+        throw new RuntimeException(sprintf('Missing "%s" paramter in route instance', $key));
     }
 }

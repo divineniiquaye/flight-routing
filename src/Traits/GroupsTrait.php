@@ -56,33 +56,26 @@ trait GroupsTrait
     }
 
     /**
-     * @param RouteGroupInterface[]|array $groups
+     * @param RouteGroupInterface $group
      * @return void
      */
-    protected function appendGroupToRoute(array $groups): void
+    protected function appendGroupToRoute(?RouteGroupInterface $group): void
     {
-        if (empty($groups)) {
+        if (null === $group) {
             return;
         }
 
-        // If Groups are more, move to the next group, else stick to current group.
-        $this->groups = count($groups) > 1 ? next($groups)->getOptions() : current($groups)->getOptions();
+        // If Groups, stick to current group.
+        $this->groups = $group->getOptions();
 
         if (isset($this->groups[RouteGroupInterface::MIDDLEWARES])) {
             $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
         }
 
-        if (isset($this->groups[RouteGroupInterface::DOMAIN])) {
-            $this->domain = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
-        }
-
-        if (isset($this->groups[RouteGroupInterface::NAME])) {
-            $this->name = $this->groups[RouteGroupInterface::NAME] ?? null;
-        }
-
-        if (isset($this->groups[RouteGroupInterface::PREFIX])) {
-            $this->prefix = $this->groups[RouteGroupInterface::PREFIX] ?? null;
-        }
+        $this->domain   = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
+        $this->name     = $this->groups[RouteGroupInterface::NAME] ?? null;
+        $this->prefix   = $this->groups[RouteGroupInterface::PREFIX] ?? null;
+        $this->schemes  = $this->groups[RouteGroupInterface::SCHEMES] ?? null;
 
         $this->groupAppended = true;
     }

@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Services;
 
 use ArrayIterator;
+use CachingIterator;
 use Closure;
 use Flight\Routing\Concerns\RouteValidation;
 use Flight\Routing\Interfaces\RouteInterface;
@@ -63,7 +64,7 @@ class DefaultFlightRouter implements RouterInterface
      * important methods.
      * - compile(); This generates the matching regex.
      * - getRegex(); The generated regex
-     * - getStaticRegex(); The template for generated regex
+     * - getRegexTemplate(); The template for generated regex
      * - getVariables(): The matched variables in regex.
      *
      * If either is not provided defaults will be used:
@@ -119,8 +120,7 @@ class DefaultFlightRouter implements RouterInterface
             RouteResults::FOUND === $status &&
             null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalisedPath)
         ) {
-            $prefix = strlen($basePath) > 1 ? $basePath.'' : '/';
-            $finalised->shouldRedirect($prefix.$redirectedPath);
+            $finalised->shouldRedirect((strlen($basePath) > 1 ? $basePath.'' : '/').$redirectedPath);
         }
 
         return $finalised;
@@ -169,8 +169,8 @@ class DefaultFlightRouter implements RouterInterface
     /**
      * Generate a URI based on a given route.
      *
-     * Replacements in FlightCaption are written as `{name}` or `{name<pattern>}`;
-     * this method will automatedly search for the best route
+     * Replacements are written as `{name}`, `{name:pattern}` or `{name=<default>}`;.
+     * This method will automatedly search for the best route, then
      * match based on the available substitutions and generates a uri.
      *
      * {@inheritdoc}
@@ -214,7 +214,9 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function getIterator()
     {
-        return new ArrayIterator($this->routesToInject);
+        $iterator = new ArrayIterator($this->routesToInject);
+
+        return new CachingIterator($iterator, CachingIterator::FULL_CACHE);
     }
 
     /**
