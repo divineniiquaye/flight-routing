@@ -46,8 +46,13 @@ class CacheControlMiddleware implements MiddlewareInterface
         // Set the cache control to no cache
         // disable caching of potentially sensitive data
         if (!$response->hasHeader('Cache-Control')) {
-            $response = $response
-                ->withHeader('Cache-Control', 'private, no-cache, must-revalidate, no-store');
+            $cacheControl = 'no-cache, private'; // conservative by default
+
+            if ($response->hasHeader('Last-Modified') || $response->hasHeader('Expires')) {
+                $cacheControl = 'private, must-revalidate'; // allows for heuristic expiration (RFC 7234 Section 4.2.2) in the case of "Last-Modified"
+            }
+
+            $response = $response->withHeader('Cache-Control', $cacheControl);
         }
 
         // Fix protocol
