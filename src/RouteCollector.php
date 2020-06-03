@@ -506,21 +506,16 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         $routingResults->bindTo($request, $this->keepRequestMethod, $this->callableResolver, $this->responseFactory);
 
         // Get all available middlewares
-        $middlewares = array_filter(
-            array_replace($route ? $route->getMiddlewares() : [], $this->getMiddlewaresStack()),
-            function ($middleware) {
-                return !in_array($middleware, ['off', 'disable'], true);
-            }
-        );
+        if (count($middlewares = $this->getMiddlewares($route ? $route->getMiddlewares() : [])) > 0) {
+            $middleware = $this->middlewareDispatcher->pipeline($middlewares);
 
-        if (count($middlewares) > 0) {
             try {
-                $middleware = $this->middlewareDispatcher->pipeline($middlewares);
+                $requestHandler = $this->middlewareDispatcher->addHandler($routingResults);
             } finally {
                 // This middleware is in the priority map; but, this is the first middleware we have
                 // encountered from the map thus far. We'll save its current index plus its index
                 // from the priority map so we can compare against them on the next iterations.
-                return $middleware->process($request, $routingResults);
+                return $middleware->process($request, $requestHandler);
             }
         }
 
@@ -552,6 +547,23 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         return array_intersect_key(
             array_filter($groupOptions),
             array_flip([RouteGroup::DEFAULTS, RouteGroup::REQUIREMENTS])
+        );
+    }
+
+    /**
+     * Merge route middlewares with Router Middlewares.
+     *
+     * @param array $middlewares
+     * 
+     * @return array
+     */
+    protected function getMiddlewares(array $middlewares): array
+    {
+        return array_filter(
+            array_replace($middlewares, $this->getMiddlewaresStack()),
+            function ($middleware) {
+                return !in_array($middleware, ['off', 'disable'], true);
+            }
         );
     }
 
