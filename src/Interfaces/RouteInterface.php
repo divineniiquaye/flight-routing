@@ -213,13 +213,14 @@ interface RouteInterface
     public function getMiddlewares(): array;
 
     /**
-     * Handles a callable controller served on a route
+     * Handles a callable controller served on a route.
      *
-     * @param callable $controller
+     * @param callable                  $controller
      * @param CallableResolverInterface $callableResolver
      *
-     * @return callable
      * @throws ReflectionException
+     *
+     * @return callable
      */
     public function handle(callable $controller, CallableResolverInterface $callableResolver): callable;
 }

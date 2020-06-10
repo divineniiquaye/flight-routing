@@ -66,14 +66,16 @@ abstract class RouterIntegrationTest extends TestCase
      * Delegate psr factories on selected router.
      *
      * @see getRouter() method.
+     *
      * @return array
      */
     abstract public function psrServerResponseFactory(): array;
 
     /**
-     * The Delegate RouteCollector
+     * The Delegate RouteCollector.
      *
      * @param ContainerInterface $container
+     *
      * @return RouteCollectorInterface
      */
     public function getRouteCollection(ContainerInterface $container = null): RouteCollectorInterface
@@ -254,10 +256,11 @@ abstract class RouterIntegrationTest extends TestCase
 
         foreach ($allowedMethods as $routeMethod) {
             $route = (new Route([$routeMethod], '/api/v1/me', $finalHandler->reveal()))
-                ->addMiddleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+                ->addMiddleware(
+                    function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
                     return $handler->handle($request);
                 }
-            );
+                );
 
             $router->setRoute($route);
         }
@@ -409,10 +412,10 @@ abstract class RouterIntegrationTest extends TestCase
                 RouteGroupInterface::SCHEMES        => null,
             ],
             [
-                'path' => 'group/test',
-                'default' => 'how',
-                'middleware' => SampleMiddleware::class
-            ]
+                'path'       => 'group/test',
+                'default'    => 'how',
+                'middleware' => SampleMiddleware::class,
+            ],
         ];
 
         yield 'Group: Prefix Grouping'          => [
@@ -420,20 +423,20 @@ abstract class RouterIntegrationTest extends TestCase
                 RouteGroupInterface::PREFIX         => 'group/',
             ],
             [
-                'path' => 'group/test'
-            ]
+                'path' => 'group/test',
+            ],
         ];
 
         yield 'Group: Namespace Grouping'       => [
             [
-                RouteGroupInterface::PREFIX         => 'group_',
-                RouteGroupInterface::DEFAULTS       => ['how' => 'What to do?'],
+                RouteGroupInterface::PREFIX            => 'group_',
+                RouteGroupInterface::DEFAULTS          => ['how' => 'What to do?'],
                 RouteGroupInterface::NAMESPACE         => '\\Fixtures',
             ],
             [
-                'path' => 'group_test',
-                'namespace' => true
-            ]
+                'path'      => 'group_test',
+                'namespace' => true,
+            ],
         ];
     }
 
@@ -471,7 +474,6 @@ abstract class RouterIntegrationTest extends TestCase
         if ('_hello' !== $route->getName()) {
             $this->assertEquals('group_hello', $route->getName());
         }
-
 
         $this->assertTrue($route->hasGroup());
     }

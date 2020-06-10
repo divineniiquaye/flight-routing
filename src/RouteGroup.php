@@ -95,7 +95,7 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Merge route groups into a new array.
      *
-     * @param  array  $oldGroups
+     * @param array $oldGroups
      */
     public function mergeBackupAttributes(?RouteGroupInterface $group): self
     {
@@ -107,14 +107,16 @@ class RouteGroup implements RouteGroupInterface
         }
 
         $newAttributes = array_merge(
-            $this->formatName($new, $old), [
-            self::NAMESPACE     => $this->formatNamespace($new, $old),
-            self::PREFIX        => $this->formatPrefix($new, $old),
-            self::DEFAULTS      => $this->formatAttributes(self::DEFAULTS, $new, $old),
-            self::MIDDLEWARES   => $this->formatAttributes(self::MIDDLEWARES, $new, $old),
-            self::REQUIREMENTS  => $this->formatAttributes(self::REQUIREMENTS, $new, $old),
-            self::SCHEMES       => $this->formatSchemes($new, $old),
-        ]);
+            $this->formatName($new, $old),
+            [
+                self::NAMESPACE     => $this->formatNamespace($new, $old),
+                self::PREFIX        => $this->formatPrefix($new, $old),
+                self::DEFAULTS      => $this->formatAttributes(self::DEFAULTS, $new, $old),
+                self::MIDDLEWARES   => $this->formatAttributes(self::MIDDLEWARES, $new, $old),
+                self::REQUIREMENTS  => $this->formatAttributes(self::REQUIREMENTS, $new, $old),
+                self::SCHEMES       => $this->formatSchemes($new, $old),
+            ]
+        );
 
         $this->attributes = array_filter($newAttributes);
 
@@ -124,8 +126,8 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the namespace for the new group attributes.
      *
-     * @param  array  $new
-     * @param  array  $old
+     * @param array $new
+     * @param array $old
      *
      * @return string|null
      */
@@ -145,8 +147,9 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the prefix for the new group attributes.
      *
-     * @param  array  $new
-     * @param  array  $old
+     * @param array $new
+     * @param array $old
+     *
      * @return string|null
      */
     protected function formatPrefix($new, $old): ?string
@@ -159,8 +162,9 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the "wheres" for the new group attributes.
      *
-     * @param  array  $new
-     * @param  array  $old
+     * @param array $new
+     * @param array $old
+     *
      * @return array|null
      */
     protected function formatSchemes(array $new, array $old): ?array
@@ -176,8 +180,9 @@ class RouteGroup implements RouteGroupInterface
      * Format for the new group attributes.
      *
      * @param string $old
-     * @param  array  $new
-     * @param  array  $old
+     * @param array  $new
+     * @param array  $old
+     *
      * @return array
      */
     protected function formatAttributes(string $key, array $new, array $old): array
@@ -188,8 +193,9 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the "name" clause of the new group attributes.
      *
-     * @param  array  $new
-     * @param  array  $old
+     * @param array $new
+     * @param array $old
+     *
      * @return array
      */
     protected function formatName(array $new, array $old): array
