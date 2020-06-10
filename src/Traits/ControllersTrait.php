@@ -123,7 +123,7 @@ trait ControllersTrait
      *
      * @throws ReflectionException
      *
-     * @return callable
+     * @return Closure
      */
     public function handle(callable $controller, CallableResolverInterface $callableResolver): callable
     {
@@ -146,7 +146,7 @@ trait ControllersTrait
      * @param callable|string|object|null $controller
      * @param string|null                 $namespace
      *
-     * @return mixed
+     * @return callable|null
      */
     private function appendNamespace($controller, ?string $namespace)
     {

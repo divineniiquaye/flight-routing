@@ -23,8 +23,7 @@ namespace Flight\Routing\Concerns;
 
 use JsonSerializable;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use stdClass;
@@ -56,7 +55,7 @@ final class CallableHandler implements RequestHandlerInterface
      *
      * @throws Throwable
      */
-    public function handle(Request $request): Response
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $outputLevel = ob_get_level();
         ob_start();
@@ -85,16 +84,16 @@ final class CallableHandler implements RequestHandlerInterface
      * Convert endpoint result into valid PSR 7 response.
      * content-type fallback is "text/html; charset=utf-8".
      *
-     * @param Response $response Initial pipeline response.
-     * @param mixed    $result   Generated endpoint output.
-     * @param string   $output   Buffer output.
+     * @param ResponseInterface $response Initial pipeline response.
+     * @param mixed             $result   Generated endpoint output.
+     * @param string            $output   Buffer output.
      *
-     * @return Response
+     * @return ResponseInterface
      */
-    private function wrapResponse(Response $response, $result = null, string $output = ''): Response
+    private function wrapResponse(ResponseInterface $response, $result = null, string $output = ''): ResponseInterface
     {
         // Always return the response...
-        if ($result instanceof Response) {
+        if ($result instanceof ResponseInterface) {
             if (!empty($output) && $result->getBody()->isWritable()) {
                 $result->getBody()->write($output);
             }

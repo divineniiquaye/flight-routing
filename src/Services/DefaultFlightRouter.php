@@ -210,7 +210,7 @@ class DefaultFlightRouter implements RouterInterface
      *
      * It implements IteratorAggregate.
      *
-     * @return ArrayIterator|RouteInterface[] An \ArrayIterator object for iterating over routes
+     * @return CachingIterator An \ArrayIterator object for iterating over routes
      */
     public function getIterator()
     {
