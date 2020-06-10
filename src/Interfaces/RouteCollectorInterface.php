@@ -185,9 +185,10 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      *
      * @param ServerRequestInterface $request
      *
-     * @return ResponseInterface
      * @throws RouteNotFoundException
      * @throws ExceptionInterface
+     *
+     * @return ResponseInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface;
 }

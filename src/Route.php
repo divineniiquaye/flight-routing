@@ -70,10 +70,10 @@ class Route implements Serializable, RouteInterface
     /**
      * Create a new Route constructor.
      *
-     * @param string[]                    $methods          The route HTTP methods
-     * @param string                      $pattern          The route pattern
-     * @param callable|string|object|null $callable         The route callable
-     * @param RouteGroupInterface|null    $group            The parent route group
+     * @param string[]                    $methods  The route HTTP methods
+     * @param string                      $pattern  The route pattern
+     * @param callable|string|object|null $callable The route callable
+     * @param RouteGroupInterface|null    $group    The parent route group
      */
     public function __construct(array $methods, string $pattern, $callable, ?RouteGroupInterface $group = null)
     {
@@ -218,8 +218,8 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @param array     $data
-     * @param string    $key
+     * @param array  $data
+     * @param string $key
      *
      * @return mixed
      */

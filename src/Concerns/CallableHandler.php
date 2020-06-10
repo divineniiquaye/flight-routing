@@ -108,7 +108,6 @@ final class CallableHandler implements RequestHandlerInterface
             $response->getBody()->write((string) $result);
         }
 
-
         //Always detect response anf glue buffered output
         return $this->detectResponse($response, $output);
     }

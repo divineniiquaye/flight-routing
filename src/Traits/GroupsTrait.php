@@ -29,7 +29,7 @@ trait GroupsTrait
     protected $groupAppended = false;
 
     /**
-     * Parent route groups
+     * Parent route groups.
      *
      * @var RouteGroupInterface[]|array
      */
@@ -57,6 +57,7 @@ trait GroupsTrait
 
     /**
      * @param RouteGroupInterface $group
+     *
      * @return void
      */
     protected function appendGroupToRoute(?RouteGroupInterface $group): void
@@ -72,10 +73,10 @@ trait GroupsTrait
             $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
         }
 
-        $this->domain   = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
-        $this->name     = $this->groups[RouteGroupInterface::NAME] ?? null;
-        $this->prefix   = $this->groups[RouteGroupInterface::PREFIX] ?? null;
-        $this->schemes  = $this->groups[RouteGroupInterface::SCHEMES] ?? null;
+        $this->domain = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
+        $this->name = $this->groups[RouteGroupInterface::NAME] ?? null;
+        $this->prefix = $this->groups[RouteGroupInterface::PREFIX] ?? null;
+        $this->schemes = $this->groups[RouteGroupInterface::SCHEMES] ?? null;
 
         $this->groupAppended = true;
     }

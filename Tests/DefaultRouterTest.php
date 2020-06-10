@@ -60,11 +60,11 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return '<html><body><h1>Hello World</h1></body></html>';
             },
             [
-                'name' => 'homepage',
+                'name'     => 'homepage',
                 'generate' => [[], ['test' => 'fine']],
             ],
             [
-                'generate' => './?test=fine',
+                'generate'     => './?test=fine',
                 'content-type' => 'text/html; charset=utf-8',
             ],
         ];
@@ -109,7 +109,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/test*<homePageRequestResponse>',
             '/test',
             HttpMethods::METHOD_GET,
-            new SampleController,
+            new SampleController(),
         ];
 
         yield 'Basic Route: get, callable'                      => [
@@ -192,8 +192,8 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return 'Hello World';
             },
             [
-                'name' => 'domainpage',
-                'domain' => '99.example.com',
+                'name'     => 'domainpage',
+                'domain'   => '99.example.com',
                 'generate' => [['id' => '23'], []],
             ],
             ['generate' => 'http://23.example.com/test'],
@@ -203,18 +203,18 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/tests',
             HttpMethods::METHOD_GET,
             function (string $action) {
-                return 'Hello World'. $action;
+                return 'Hello World'.$action;
             },
             [
-                'name' => 'domain_scheme_page',
-                'domain' => '99.example.com',
-                'scheme' => 'https',
+                'name'     => 'domain_scheme_page',
+                'domain'   => '99.example.com',
+                'scheme'   => 'https',
                 'generate' => [['id' => '23', 'action' => 'okay'], []],
             ],
             [
-                'scheme' => 'https',
+                'scheme'   => 'https',
                 'generate' => 'https://23.example.com/okay',
-            ]
+            ],
         ];
 
         yield 'Nested Optional Paramter Route 1: get, callable' => [
@@ -236,12 +236,12 @@ class DefaultRouterTest extends RouterIntegrationTest
                 return $action;
             },
             [
-                'name' => 'nested',
+                'name'     => 'nested',
                 'generate' => [['action' => 'yes_we_can'], []],
             ],
             [
-                'status' => 200,
-                'generate' => './yes_we_can'
+                'status'   => 200,
+                'generate' => './yes_we_can',
             ],
         ];
 

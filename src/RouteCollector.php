@@ -105,7 +105,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $routeGroup;
 
     /**
-     * Route Default Namespace
+     * Route Default Namespace.
      *
      * @var string
      */
@@ -211,8 +211,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * @param string|null               $uri     the uri of the route
      * @param Closure|array|string|null $action  a requesthandler or controller
      *
-     * @return Route
      * @throws RuntimeException when called after match() have been called.
+     *
+     * @return Route
      */
     private function addRoute($methods, $uri, $action): Route
     {
@@ -277,22 +278,22 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         // Backup current properties
         $oldGroupOption = $this->groupOptions;
-        $oldGroup       = $this->routeGroup;
+        $oldGroup = $this->routeGroup;
 
         // Register the Route Grouping
         $routeCollectorProxy = new RouterProxy($this->responseFactory, $this->router, $this);
         $routeGroup = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
 
         // Add goups to RouteCollection
-        $this->routeGroup       = $routeGroup->mergeBackupAttributes($oldGroup);
-        $this->groupOptions     = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
+        $this->routeGroup = $routeGroup->mergeBackupAttributes($oldGroup);
+        $this->groupOptions = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
 
         // Returns routes on closure, file or on callble
         $routeGroup->collectRoutes();
 
         // Restore properties
         $this->groupOptions = $oldGroupOption;
-        $this->routeGroup   = $oldGroup;
+        $this->routeGroup = $oldGroup;
 
         return $routeGroup;
     }
@@ -554,7 +555,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Merge route middlewares with Router Middlewares.
      *
      * @param array $middlewares
-     * 
+     *
      * @return array
      */
     protected function getMiddlewares(array $middlewares): array

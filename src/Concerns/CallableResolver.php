@@ -60,7 +60,7 @@ class CallableResolver implements CallableResolverInterface
     /**
      * @internal Used in ControllersTrait
      *
-     * @return  ContainerInterface|null
+     * @return ContainerInterface|null
      */
     public function getContainer(): ?ContainerInterface
     {

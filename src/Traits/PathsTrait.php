@@ -24,14 +24,14 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 trait PathsTrait
 {
     /**
-     * Route path pattern
+     * Route path pattern.
      *
      * @var string
      */
     protected $path;
 
     /**
-     * Route path prefix
+     * Route path prefix.
      *
      * @var string
      */
@@ -78,12 +78,13 @@ trait PathsTrait
      * Locates appropriate route by name. Support dynamic route allocation using following pattern:
      * Pattern route:   `pattern/*<controller@action>`
      * Default route: `*<controller@action>`
-     * Only action:   `pattern/*<action>`
+     * Only action:   `pattern/*<action>`.
      *
      * @param string $route
-     * @return string
      *
      * @throws InvalidControllerException
+     *
+     * @return string
      */
     protected function castRoute(string $route): ?string
     {
@@ -114,7 +115,7 @@ trait PathsTrait
      * one character, and that the prefix begins with a slash.
      *
      * @param string $uri
-     * @param mixed $prefix
+     * @param mixed  $prefix
      *
      * @return string
      */
@@ -122,13 +123,13 @@ trait PathsTrait
     {
         // Allow homepage uri on prefix just like python dgango url style.
         if (in_array($uri, ['', '/'], true)) {
-            return rtrim($prefix, '/') . $uri;
+            return rtrim($prefix, '/').$uri;
         }
 
         if (preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
-            $newPattern = rtrim($prefix, $matches[2]) . $matches[2] . $uri;
+            $newPattern = rtrim($prefix, $matches[2]).$matches[2].$uri;
         }
 
-        return !empty($newPattern) ? $newPattern : rtrim($prefix, '/') . '/' . ltrim($uri, '/');
+        return !empty($newPattern) ? $newPattern : rtrim($prefix, '/').'/'.ltrim($uri, '/');
     }
 }

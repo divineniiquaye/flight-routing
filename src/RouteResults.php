@@ -208,7 +208,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             }
 
             $value = is_numeric($value) ? (int) $value : $value;
-            $routeArguments[$key] = (is_string($value) && $urlDecode ) ? rawurldecode($value) : $value;
+            $routeArguments[$key] = (is_string($value) && $urlDecode) ? rawurldecode($value) : $value;
         }
 
         return $routeArguments;
@@ -236,14 +236,16 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     /**
      * Create a RouteCollector binding for a given callback.
      *
-     * @param ServerRequestInterface $request
-     * @param boolean $status
+     * @param ServerRequestInterface    $request
+     * @param bool                      $status
      * @param CallableResolverInterface $callableResolver
-     * @param ResponseFactoryInterface $responseFactory
+     * @param ResponseFactoryInterface  $responseFactory
+     *
      * @return void
      */
     public function bindTo(
-        ServerRequestInterface $request, bool $status,
+        ServerRequestInterface $request,
+        bool $status,
         CallableResolverInterface $callableResolver,
         ResponseFactoryInterface $responseFactory
     ) {
@@ -256,7 +258,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     /**
      * Handles a request and produces a response.
      *
-     * @param RouteInterface $route
+     * @param RouteInterface         $route
      * @param ServerRequestInterface $request
      *
      * @return ResponseInterface
@@ -268,8 +270,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 
         $request = $request
             ->withAttribute(__CLASS__, $this)
-            ->withAttribute('arguments', $route->getArguments())
-        ;
+            ->withAttribute('arguments', $route->getArguments());
 
         // If controller is instance of RequestHandlerInterface
         if (!$callable instanceof \Closure && $callable[0] instanceof RequestHandlerInterface) {

@@ -38,7 +38,7 @@ trait ControllersTrait
     protected $namespace;
 
     /**
-     * Route callable
+     * Route callable.
      *
      * @var callable|string
      */
@@ -90,7 +90,7 @@ trait ControllersTrait
 
         // Append a group namespace starting with a "\" to main namespace.
         if (null !== $namespace && '\\' === $namespace[0]) {
-            $namespace = $this->namespace . ltrim($namespace, '\\') . '\\';
+            $namespace = $this->namespace.ltrim($namespace, '\\').'\\';
         }
 
         if (is_string(($controller = $this->controller)) || is_array($controller)) {
@@ -116,13 +116,14 @@ trait ControllersTrait
     }
 
     /**
-     * Handles a callable controller served on a route
+     * Handles a callable controller served on a route.
      *
-     * @param callable $controller
+     * @param callable                  $controller
      * @param CallableResolverInterface $callableResolver
      *
-     * @return callable
      * @throws ReflectionException
+     *
+     * @return callable
      */
     public function handle(callable $controller, CallableResolverInterface $callableResolver): callable
     {
@@ -143,7 +144,7 @@ trait ControllersTrait
 
     /**
      * @param callable|string|object|null $controller
-     * @param string|null $namespace
+     * @param string|null                 $namespace
      *
      * @return mixed
      */
@@ -151,16 +152,17 @@ trait ControllersTrait
     {
         if (
             (is_string($controller) && !class_exists($controller)) &&
-            (null !== $namespace && false === strpos($controller, $namespace)
-        )) {
-            $controller = is_callable($controller) ? $controller : $namespace . $controller;
+            (
+                null !== $namespace && false === strpos($controller, $namespace)
+            )) {
+            $controller = is_callable($controller) ? $controller : $namespace.$controller;
         }
 
         if (
             (!$controller instanceof Closure && is_array($controller)) &&
             (!is_object($controller[0]) && !class_exists($controller[0]))
         ) {
-            $controller[0] = $namespace . $controller[0];
+            $controller[0] = $namespace.$controller[0];
         }
 
         return $controller;

@@ -140,6 +140,7 @@ class SimpleRouteCompiler implements Serializable
         if (true === $host) {
             return $this->hostTemplate;
         }
+
         return $this->template;
     }
 
@@ -253,7 +254,7 @@ class SimpleRouteCompiler implements Serializable
      * on the given $pattern.
      *
      * @param RouteInterface $route
-     * @param string $pattern
+     * @param string         $pattern
      *
      * @return void
      */
