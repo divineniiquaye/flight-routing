@@ -150,11 +150,7 @@ trait ControllersTrait
      */
     private function appendNamespace($controller, ?string $namespace)
     {
-        if (
-            (is_string($controller) && !class_exists($controller)) &&
-            (
-                null !== $namespace && false === strpos($controller, $namespace)
-            )) {
+        if (is_string($controller) && (!class_exists($controller) && false === stripos($controller, (string) $namespace))) {
             $controller = is_callable($controller) ? $controller : $namespace.$controller;
         }
 

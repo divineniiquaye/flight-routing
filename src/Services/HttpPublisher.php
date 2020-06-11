@@ -53,7 +53,7 @@ class HttpPublisher implements PublisherInterface
             return $this->emitStreamBody($content);
         }
 
-        throw new LogicException('The response body must be instance of PsrResponseInterface\StreamInterface');
+        throw new LogicException('The response body must be instance of PsrResponseInterface or StreamInterface');
     }
 
     /**

@@ -20,7 +20,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Concerns;
 
 use Fig\Http\Message\RequestMethodInterface;
-use function strtoupper;
 
 /**
  * Class HttpMethods.

@@ -95,7 +95,7 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Merge route groups into a new array.
      *
-     * @param array $oldGroups
+     * @param RouteGroup $group
      */
     public function mergeBackupAttributes(?RouteGroupInterface $group): self
     {
