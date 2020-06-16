@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Traits;
@@ -49,8 +47,6 @@ trait PathsTrait
      * Sets the pattern for the path.
      *
      * @param string $pattern The path pattern
-     *
-     * @return void
      */
     protected function setPath(string $pattern): void
     {
@@ -59,8 +55,8 @@ trait PathsTrait
         }
 
         // Match domain + scheme from pattern...
-        if (preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
-            $pattern = preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function ($matches) {
+        if (\preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
+            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function ($matches) {
                 $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
 
                 return '';
@@ -88,14 +84,7 @@ trait PathsTrait
      */
     protected function castRoute(string $route): ?string
     {
-        if (
-            strpbrk($route, '*') !== false &&
-            preg_match(
-                '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i',
-                $route,
-                $matches
-            )
-        ) {
+        if (false !== \strpbrk($route, '*') && \preg_match(self::RCA_PATTERN, $route, $matches)) {
             if (!isset($matches['route'])) {
                 throw new InvalidControllerException("Unable to locate route candidate for `{$route}`");
             }
@@ -122,14 +111,14 @@ trait PathsTrait
     private function normalizePrefix(string $uri, $prefix)
     {
         // Allow homepage uri on prefix just like python dgango url style.
-        if (in_array($uri, ['', '/'], true)) {
-            return rtrim($prefix, '/').$uri;
+        if (\in_array($uri, ['', '/'], true)) {
+            return \rtrim($prefix, '/') . $uri;
         }
 
-        if (preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
-            $newPattern = rtrim($prefix, $matches[2]).$matches[2].$uri;
+        if (\preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
+            $newPattern = \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
         }
 
-        return !empty($newPattern) ? $newPattern : rtrim($prefix, '/').'/'.ltrim($uri, '/');
+        return !empty($newPattern) ? $newPattern : \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');
     }
 }

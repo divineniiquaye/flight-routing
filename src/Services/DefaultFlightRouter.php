@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Services;
@@ -71,12 +69,22 @@ class DefaultFlightRouter implements RouterInterface
      * - A SimpleRouteCompiler instance will parse the routes and return
      *   the absolute matched route.
      *
-     * @param callable|null $compiler if not provided, a default is used
+     * @param null|callable $compiler if not provided, a default is used
      *                                implementation will be used
      */
     public function __construct(callable $compiler = null)
     {
         $this->compiler = $compiler ?? $this->createDispatcherCallback();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function __clone()
+    {
+        foreach ($this->routesToInject as $name => $route) {
+            $this->routesToInject[$name] = clone $route;
+        }
     }
 
     /**
@@ -101,69 +109,29 @@ class DefaultFlightRouter implements RouterInterface
         $scheme = $request->getUri()->getScheme();
         $method = $request->getMethod();
 
-        $basePath = dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
+        $basePath = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
 
         // For phpunit testing to be smooth.
-        if ('cli' === PHP_SAPI) {
+        if ('cli' === \PHP_SAPI) {
             $basePath = '';
         }
 
-        $finalisedPath = substr($request->getUri()->getPath(), strlen($basePath));
-        $matched = $this->marshalMatchedRoute($method, $scheme, $domain, rawurldecode($finalisedPath));
+        $finalisedPath = \substr($request->getUri()->getPath(), \strlen($basePath));
+        $matched       = $this->marshalMatchedRoute($method, $scheme, $domain, \rawurldecode($finalisedPath));
 
         // Get the request matching format.
         [$status, $parameters, $route] = $matched;
-        $finalised = new RouteResults($status, $parameters, $route);
+        $finalised                     = new RouteResults($status, $parameters, $route);
 
         // A feature adopted from Symfony routing, workaround fix.
         if (
             RouteResults::FOUND === $status &&
             null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalisedPath)
         ) {
-            $finalised->shouldRedirect((strlen($basePath) > 1 ? $basePath.'' : '/').$redirectedPath);
+            $finalised->shouldRedirect((\strlen($basePath) > 1 ? $basePath . '' : '/') . $redirectedPath);
         }
 
         return $finalised;
-    }
-
-    /**
-     * Marshals a route result based on the results of matching URL from set of routes.
-     *
-     * @param string $method The current request method
-     * @param string $scheme The current uri scheme
-     * @param string $host   The domain to be parsed
-     * @param string $path   The path info to be parsed
-     *
-     * @return array An array of results.
-     */
-    private function marshalMatchedRoute(string $method, string $scheme, string $host, string $path): array
-    {
-        $path = trim($path, '/') ?: '/';
-
-        foreach ($this as $index => $route) {
-            // Let's match the routes
-            $match = ($this->compiler)($route);
-            [$parameters, $HostParameters] = [[], []];
-
-            if (
-                $this->compareDomain($match->getHostRegex(), $host, $HostParameters) &&
-                $this->compareUri($match->getRegex(), $path, $parameters) &&
-                $this->compareScheme($route->getSchemes(), $scheme)
-            ) {
-                // Throw and exception if url is not found no request method.
-                if (!$this->compareMethod($route->getMethods(), $method)) {
-                    return [RouteResults::METHOD_NOT_ALLOWED, [], $route];
-                }
-
-                if (empty($arguments = $this->fetchOptions(array_replace($parameters, $HostParameters), $match->getVariables()))) {
-                    $arguments = $match->getVariables();
-                }
-
-                return [RouteResults::FOUND, $this->mergeDefaults($arguments, $route->getDefaults()), $route];
-            }
-        }
-
-        return [RouteResults::NOT_FOUND, [], null];
     }
 
     /**
@@ -181,28 +149,22 @@ class DefaultFlightRouter implements RouterInterface
     {
         $match = ($this->compiler)($route);
 
-        $parameters = array_merge(
+        $parameters = \array_merge(
             $match->getVariables(),
             $route->getDefaults(),
-            $this->fetchOptions($substitutions, array_keys($match->getVariables()))
+            $this->fetchOptions($substitutions, \array_keys($match->getVariables()))
         );
 
         //Uri without empty blocks (pretty stupid implementation)
         if ($path = $this->interpolate($match->getRegexTemplate() ?? '', $parameters)) {
-            $path = sprintf('%s://%s/', $route->getSchemes() ? current($route->getSchemes()) : 'http', trim($path, '.'));
+            $path = \sprintf(
+                '%s://%s/',
+                $route->getSchemes() ? \current($route->getSchemes()) : 'http',
+                \trim($path, '.')
+            );
         }
 
         return $path .= $this->interpolate($match->getRegexTemplate(false), $parameters); // Return generated path
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function __clone()
-    {
-        foreach ($this->routesToInject as $name => $route) {
-            $this->routesToInject[$name] = clone $route;
-        }
     }
 
     /**
@@ -226,7 +188,48 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function count(): int
     {
-        return count($this->routesToInject);
+        return \count($this->routesToInject);
+    }
+
+    /**
+     * Marshals a route result based on the results of matching URL from set of routes.
+     *
+     * @param string $method The current request method
+     * @param string $scheme The current uri scheme
+     * @param string $host   The domain to be parsed
+     * @param string $path   The path info to be parsed
+     *
+     * @return array an array of results
+     */
+    private function marshalMatchedRoute(string $method, string $scheme, string $host, string $path): array
+    {
+        $path = \trim($path, '/') ?: '/';
+
+        foreach ($this as $index => $route) {
+            // Let's match the routes
+            $match                         = ($this->compiler)($route);
+            [$parameters, $HostParameters] = [[], []];
+
+            if (
+                $this->compareDomain($match->getHostRegex(), $host, $HostParameters) &&
+                $this->compareUri($match->getRegex(), $path, $parameters) &&
+                $this->compareScheme($route->getSchemes(), $scheme)
+            ) {
+                // Throw and exception if url is not found no request method.
+                if (!$this->compareMethod($route->getMethods(), $method)) {
+                    return [RouteResults::METHOD_NOT_ALLOWED, [], $route];
+                }
+                $arguments = $this->fetchOptions(\array_replace($parameters, $HostParameters), $match->getVariables());
+
+                if (empty($arguments)) {
+                    $arguments = $match->getVariables();
+                }
+
+                return [RouteResults::FOUND, $this->mergeDefaults($arguments, $route->getDefaults()), $route];
+            }
+        }
+
+        return [RouteResults::NOT_FOUND, [], null];
     }
 
     /**
@@ -250,18 +253,19 @@ class DefaultFlightRouter implements RouterInterface
     private function interpolate(string $string, array $values): string
     {
         $replaces = [];
+
         foreach ($values as $key => $value) {
-            $value = (is_array($value) || $value instanceof Closure) ? '' : $value;
-            $replaces["<{$key}>"] = is_object($value) ? (string) $value : $value;
+            $value                = (\is_array($value) || $value instanceof Closure) ? '' : $value;
+            $replaces["<{$key}>"] = \is_object($value) ? (string) $value : $value;
         }
 
-        return strtr($string, $replaces + self::URI_FIXERS);
+        return \strtr($string, $replaces + self::URI_FIXERS);
     }
 
     /**
      * Fetch uri segments and query parameters.
      *
-     * @param Traversable|array $parameters
+     * @param array|Traversable $parameters
      * @param array             $allowed
      *
      * @return array
@@ -269,15 +273,17 @@ class DefaultFlightRouter implements RouterInterface
     private function fetchOptions($parameters, array $allowed): array
     {
         $result = [];
+
         foreach ($parameters as $key => $parameter) {
-            if (is_numeric($key) && isset($allowed[$key])) {
+            if (\is_numeric($key) && isset($allowed[$key])) {
                 // this segment fetched keys from given parameters either by name or by position
                 $key = $allowed[$key];
             }
 
             //String must be normalized here
-            if (is_string($parameter) && !preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
-                $result[$key] = htmlspecialchars((string) $parameter);
+            if (\is_string($parameter) && !\preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
+                $result[$key] = \htmlspecialchars((string) $parameter);
+
                 continue;
             }
 

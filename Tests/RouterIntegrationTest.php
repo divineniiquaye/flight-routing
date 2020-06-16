@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Tests;
@@ -87,7 +85,7 @@ abstract class RouterIntegrationTest extends TestCase
 
     public function createInvalidResponseFactory(): callable
     {
-        return function () {
+        return function (): void {
             Assert::fail('Response generated when it should not have been');
         };
     }
@@ -153,9 +151,9 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider method
      */
-    public function testExplicitWithRouteCollector(string $method, array $routes)
+    public function testExplicitWithRouteCollector(string $method, array $routes): void
     {
-        $router = $this->getRouteCollection();
+        $router                            = $this->getRouteCollection();
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
 
         $finalResponse = $responseFactory->createResponse();
@@ -187,7 +185,7 @@ abstract class RouterIntegrationTest extends TestCase
             }
         }
 
-        $path = $serverRequest->getUri()->withPath('/api/v1/me');
+        $path     = $serverRequest->getUri()->withPath('/api/v1/me');
         $response = $router->handle($serverRequest->withMethod($method)->withUri($path));
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -199,9 +197,9 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider method
      */
-    public function testExplicitWithoutCollector(string $method, array $routes)
+    public function testExplicitWithoutCollector(string $method, array $routes): void
     {
-        $router = $this->getRouter();
+        $router           = $this->getRouter();
         [$serverRequest,] = $this->psrServerResponseFactory();
 
         $finalHandler = $this->prophesize(RequestHandlerInterface::class);
@@ -215,7 +213,7 @@ abstract class RouterIntegrationTest extends TestCase
             }
         }
 
-        $path = $serverRequest->getUri()->withPath('/api/v1/me');
+        $path    = $serverRequest->getUri()->withPath('/api/v1/me');
         $results = $router->match($serverRequest->withMethod($method)->withUri($path));
 
         $this->assertTrue($results::FOUND === $results->getRouteStatus());
@@ -227,11 +225,15 @@ abstract class RouterIntegrationTest extends TestCase
         // @codingStandardsIgnoreStart
         // request method, array of allowed methods for a route.
         yield 'HEAD: get'          => [HttpMethods::METHOD_HEAD, [HttpMethods::METHOD_GET]];
+
         yield 'HEAD: post'         => [HttpMethods::METHOD_HEAD, [HttpMethods::METHOD_POST]];
+
         yield 'HEAD: get, post'    => [HttpMethods::METHOD_HEAD, [HttpMethods::METHOD_GET, HttpMethods::METHOD_POST]];
 
         yield 'OPTIONS: get'       => [HttpMethods::METHOD_OPTIONS, [HttpMethods::METHOD_GET]];
+
         yield 'OPTIONS: post'      => [HttpMethods::METHOD_OPTIONS, [HttpMethods::METHOD_POST]];
+
         yield 'OPTIONS: get, post' => [HttpMethods::METHOD_OPTIONS, [HttpMethods::METHOD_GET, HttpMethods::METHOD_POST]];
         // @codingStandardsIgnoreEnd
     }
@@ -242,14 +244,14 @@ abstract class RouterIntegrationTest extends TestCase
      *
      * @dataProvider withoutImplicitMiddleware
      */
-    public function testWithoutImplicitMiddleware(string $requestMethod, array $allowedMethods)
+    public function testWithoutImplicitMiddleware(string $requestMethod, array $allowedMethods): void
     {
-        $router = $this->getRouteCollection();
+        $router           = $this->getRouteCollection();
         [$serverRequest,] = $this->psrServerResponseFactory();
 
         $finalResponse = $this->prophesize(ResponseInterface::class);
         $finalResponse->withStatus(405)->will([$finalResponse, 'reveal']);
-        $finalResponse->withHeader('Allow', implode(',', $allowedMethods))->will([$finalResponse, 'reveal']);
+        $finalResponse->withHeader('Allow', \implode(',', $allowedMethods))->will([$finalResponse, 'reveal']);
 
         $finalHandler = $this->prophesize(RequestHandlerInterface::class);
         $finalHandler->handle(Argument::any())->shouldNotBeCalled();
@@ -258,8 +260,8 @@ abstract class RouterIntegrationTest extends TestCase
             $route = (new Route([$routeMethod], '/api/v1/me', $finalHandler->reveal()))
                 ->addMiddleware(
                     function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
-                    return $handler->handle($request);
-                }
+                        return $handler->handle($request);
+                    }
                 );
 
             $router->setRoute($route);
@@ -287,7 +289,7 @@ abstract class RouterIntegrationTest extends TestCase
      *        generate => [$params, $query]
      *        domain => {host}, (for ServerRequest instance)
      *        scheme => {scheme}, (for ServerRequest instance)
-     *  	  scheme => {scheme},
+     *        scheme => {scheme},
      *        middlewares => [...],
      *        regex => [{param} => {pattern}...],
      *        defaults => [{$key} => {$value}...]
@@ -307,9 +309,15 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider implicitRoutesAndRequests
      */
-    public function testWithImplicitMiddleware(string $routePath, string $requestPath, string $requestMethod, $controller, array $routeOptions = [], array $asserts = [])
-    {
-        $router = $this->getRouteCollection();
+    public function testWithImplicitMiddleware(
+        string $routePath,
+        string $requestPath,
+        string $requestMethod,
+        $controller,
+        array $routeOptions = [],
+        array $asserts = []
+    ): void {
+        $router                            = $this->getRouteCollection();
         [$serverRequest, $responseFactory] = $this->psrServerResponseFactory();
 
         $finalResponse = (new $responseFactory())->createResponse();
@@ -323,21 +331,27 @@ abstract class RouterIntegrationTest extends TestCase
 
         $router->map([$requestMethod], $routePath, function () use ($finalResponse) {
             return $finalResponse;
-        })->addMiddleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($middleware, $requestMethod) {
-            Assert::assertEquals($requestMethod, $request->getMethod());
-            Assert::assertInstanceOf(Next::class, $handler);
+        })
+        ->addMiddleware(
+            function (ServerRequestInterface $req, RequestHandlerInterface $handle) use ($middleware, $requestMethod) {
+                Assert::assertEquals($requestMethod, $req->getMethod());
+                Assert::assertInstanceOf(Next::class, $handle);
 
-            return $middleware->reveal()->process($request, $handler);
-        })->addDomain($routeOptions['domain'] ?? '')
+                return $middleware->reveal()->process($req, $handle);
+            }
+        )
+        ->addDomain($routeOptions['domain'] ?? '')
         ->setName($routeOptions['name'] ?? null)
         ->whereArray($routeOptions['regex'] ?? [])
         ->addDefaults($routeOptions['defaults'] ?? [])
         ->addSchemes($routeOptions['scheme'] ?? null);
 
         $path = $serverRequest->getUri()->withPath($requestPath);
+
         if (isset($routeOptions['domain'])) {
             $path = $path->withHost($routeOptions['domain']);
         }
+
         if (isset($routeOptions['scheme'])) {
             $path = $path->withScheme($routeOptions['scheme']);
         }
@@ -351,9 +365,15 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider implicitRoutesAndRequests
      */
-    public function testWithImplicitRouteMatch(string $routePath, string $requestPath, string $requestMethod, $controller, array $routeOptions = [], array $asserts = [])
-    {
-        $router = $this->getRouteCollection();
+    public function testWithImplicitRouteMatch(
+        string $routePath,
+        string $requestPath,
+        string $requestMethod,
+        $controller,
+        array $routeOptions = [],
+        array $asserts = []
+    ): void {
+        $router           = $this->getRouteCollection();
         [$serverRequest,] = $this->psrServerResponseFactory();
 
         $router->map([$requestMethod], $routePath, $controller)
@@ -364,9 +384,11 @@ abstract class RouterIntegrationTest extends TestCase
         ->addSchemes($routeOptions['scheme'] ?? null);
 
         $path = $serverRequest->getUri()->withPath($requestPath);
+
         if (isset($routeOptions['domain'])) {
             $path = $path->withHost($routeOptions['domain']);
         }
+
         if (isset($routeOptions['scheme'])) {
             $path = $path->withScheme($routeOptions['scheme']);
         }
@@ -376,12 +398,15 @@ abstract class RouterIntegrationTest extends TestCase
         if (isset($asserts['status'])) {
             $this->assertSame($asserts['status'], $response->getStatusCode());
         }
+
         if (isset($asserts['body'])) {
             $this->assertEquals($asserts['body'], (string) $response->getBody());
         }
+
         if (isset($asserts['content-type'])) {
             $this->assertEquals($asserts['content-type'], $response->getHeaderLine('Content-Type'));
         }
+
         if (isset($asserts['header'])) {
             $this->assertTrue($response->hasHeader($asserts['header']));
         }
@@ -390,10 +415,15 @@ abstract class RouterIntegrationTest extends TestCase
         $this->assertInstanceOf(RouteInterface::class, $route = $router->currentRoute());
 
         if (isset($asserts['scheme'])) {
-            $this->assertTrue(in_array($asserts['scheme'], $route->getSchemes()));
+            $this->assertTrue(\in_array($asserts['scheme'], $route->getSchemes()));
         }
+
         if (isset($asserts['generate'], $routeOptions['generate'], $routeOptions['name'])) {
-            $generated = call_user_func([$router, 'generateUri'], $routeOptions['name'], ...$routeOptions['generate']);
+            $generated = \call_user_func(
+                [$router, 'generateUri'],
+                $routeOptions['name'],
+                ...$routeOptions['generate']
+            );
 
             $this->assertEquals($asserts['generate'], $generated);
         }
@@ -443,13 +473,13 @@ abstract class RouterIntegrationTest extends TestCase
     /**
      * @dataProvider groups
      */
-    public function testWithImplicitRouteGroup(array $groupAttributes, array $asserts = [])
+    public function testWithImplicitRouteGroup(array $groupAttributes, array $asserts = []): void
     {
         $router = $this->getRouteCollection();
         $router->setNamespace('Flight\\Routing\\Tests\\');
 
         [$serverRequest,] = $this->psrServerResponseFactory();
-        $path = $serverRequest->getUri()->withPath('/'.($asserts['path'] ?? 'group/test'));
+        $path             = $serverRequest->getUri()->withPath('/' . ($asserts['path'] ?? 'group/test'));
 
         $router->group($groupAttributes, function (RouterProxyInterface $route) use ($asserts): void {
             $route->get(
@@ -462,15 +492,19 @@ abstract class RouterIntegrationTest extends TestCase
         $router->handle($serverRequest->withMethod(HttpMethods::METHOD_GET)->withUri($path));
 
         $this->assertInstanceOf(RouteInterface::class, $route = $router->currentRoute());
+
         if (isset($asserts['default'])) {
             $this->assertTrue($route->hasDefault($asserts['default']));
         }
+
         if (isset($asserts['path'])) {
             $this->assertEquals($asserts['path'], $route->getPath());
         }
+
         if (isset($asserts['middleware'])) {
-            $this->assertTrue(in_array($asserts['middleware'], $route->getMiddlewares(), true));
+            $this->assertTrue(\in_array($asserts['middleware'], $route->getMiddlewares(), true));
         }
+
         if ('_hello' !== $route->getName()) {
             $this->assertEquals('group_hello', $route->getName());
         }
@@ -478,9 +512,9 @@ abstract class RouterIntegrationTest extends TestCase
         $this->assertTrue($route->hasGroup());
     }
 
-    public function testImplicitRouteNotFound()
+    public function testImplicitRouteNotFound(): void
     {
-        $router = $this->getRouteCollection();
+        $router           = $this->getRouteCollection();
         [$serverRequest,] = $this->psrServerResponseFactory();
 
         $router->map([HttpMethods::METHOD_GET], '/error', function () {

@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Interfaces;
@@ -70,7 +68,7 @@ interface RouteInterface
     /**
      * Get or set the domain for the route.
      *
-     * @param string|null $domain
+     * @param null|string $domain
      *
      * @return RouteInterface
      */
@@ -96,9 +94,9 @@ interface RouteInterface
      * Retrieve a specific route argument.
      *
      * @param string      $name
-     * @param string|null $default
+     * @param null|string $default
      *
-     * @return string|null
+     * @return null|string
      */
     public function getArgument(string $name, ?string $default = null): ?string;
 
@@ -133,7 +131,7 @@ interface RouteInterface
      * Returns the lowercased schemes this route is restricted to.
      * So a null return means that any scheme is allowed.
      *
-     * @return string[]|null The schemes
+     * @return null|string[] The schemes
      */
     public function getSchemes(): ?array;
 
@@ -151,9 +149,9 @@ interface RouteInterface
      * Gets a default value.
      *
      * @param string      $name
-     * @param string|null $default
+     * @param null|string $default
      *
-     * @return string|null The default value or defaults when not given
+     * @return null|string The default value or defaults when not given
      */
     public function getDefault(string $name, ?string $default = null): ?string;
 
@@ -192,14 +190,14 @@ interface RouteInterface
     /**
      * The group id, route belongs to.
      *
-     * @return string|null
+     * @return null|string
      */
     public function getGroupId(): ?string;
 
     /**
      * Add middlewares to route.
      *
-     * @param MiddlewareInterface|string|array|callable|RequestHandlerInterface $middleware
+     * @param array|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
      *
      * @return RouteInterface
      */

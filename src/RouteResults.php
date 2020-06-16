@@ -3,22 +3,21 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing;
 
+use Closure;
 use Flight\Routing\Concerns\CallableHandler;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
@@ -56,11 +55,13 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     use LoggerAwareTrait;
 
     public const NOT_FOUND = 0;
+
     public const FOUND = 1;
+
     public const METHOD_NOT_ALLOWED = 2;
 
     /**
-     * @var string|null
+     * @var null|string
      */
     protected $redirectUri;
 
@@ -103,12 +104,12 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     /**
      * @param int                 $routeStatus
      * @param array               $routeArguments
-     * @param RouteInterface|null $routeIdentifier
+     * @param null|RouteInterface $routeIdentifier
      */
     public function __construct(int $routeStatus, array $routeArguments = [], ?RouteInterface $routeIdentifier = null)
     {
-        $this->routeStatus = $routeStatus;
-        $this->routeArguments = $routeArguments;
+        $this->routeStatus     = $routeStatus;
+        $this->routeArguments  = $routeArguments;
         $this->routeIdentifier = $routeIdentifier;
     }
 
@@ -121,7 +122,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     }
 
     /**
-     * @return string|null
+     * @return null|string
      */
     public function getRedirectLink(): ?string
     {
@@ -168,13 +169,20 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if (self::METHOD_NOT_ALLOWED === $this->routeStatus) {
-            throw new MethodNotAllowedException($this->getAllowedMethods() ?? ['other'], $request->getUri()->getPath(), $request->getMethod());
+            throw new MethodNotAllowedException(
+                $this->getAllowedMethods() ?? ['other'],
+                $request->getUri()->getPath(),
+                $request->getMethod()
+            );
         }
 
         // Inject the actual route result, as well as return the response.
         if (false === $route = $this->getMatchedRoute()) {
             throw new  RouteNotFoundException(
-                sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath())
+                \sprintf(
+                    'Unable to find the controller for path "%s". The route is wrongly configured.',
+                    $request->getUri()->getPath()
+                )
             );
         }
 
@@ -202,13 +210,14 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     public function getRouteArguments(bool $urlDecode = true): array
     {
         $routeArguments = [];
+
         foreach ($this->routeArguments as $key => $value) {
-            if (is_int($key)) {
+            if (\is_int($key)) {
                 continue;
             }
 
-            $value = is_numeric($value) ? (int) $value : $value;
-            $routeArguments[$key] = (is_string($value) && $urlDecode) ? rawurldecode($value) : $value;
+            $value                = \is_numeric($value) ? (int) $value : $value;
+            $routeArguments[$key] = (\is_string($value) && $urlDecode) ? \rawurldecode($value) : $value;
         }
 
         return $routeArguments;
@@ -219,14 +228,14 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      *
      * @param bool $urlDecode
      *
-     * @return false|RouteInterface|RequestHandlerInterface false if representing a routing failure;
+     * @return false|RequestHandlerInterface|RouteInterface false if representing a routing failure;
      *                                                      null if not created. Route instance otherwise.
      */
     public function getMatchedRoute(bool $urlDecode = true)
     {
         if (null !== $route = $this->routeIdentifier) {
             // Add the arguments
-            $route = $route->addArguments($this->getRouteArguments($urlDecode));
+            $route                = $route->addArguments($this->getRouteArguments($urlDecode));
             $this->routeArguments = $route->getArguments();
         }
 
@@ -240,19 +249,17 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      * @param bool                      $status
      * @param CallableResolverInterface $callableResolver
      * @param ResponseFactoryInterface  $responseFactory
-     *
-     * @return void
      */
     public function bindTo(
         ServerRequestInterface $request,
         bool $status,
         CallableResolverInterface $callableResolver,
         ResponseFactoryInterface $responseFactory
-    ) {
+    ): void {
         $this->determineRedirectCode($request, $status);
 
         $this->callableResolver = $callableResolver;
-        $this->response = [$responseFactory, 'createResponse'];
+        $this->response         = [$responseFactory, 'createResponse'];
     }
 
     /**
@@ -266,18 +273,20 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     private function dispatchRoute(RouteInterface $route, ServerRequestInterface $request): ResponseInterface
     {
         $callableResolver = clone $this->callableResolver;
-        $callable = $callableResolver->resolve($route->getController());
+        $callable         = $callableResolver->resolve($route->getController());
 
         $request = $request
             ->withAttribute(__CLASS__, $this)
             ->withAttribute('arguments', $route->getArguments());
 
         // If controller is instance of RequestHandlerInterface
-        if (!$callable instanceof \Closure && $callable[0] instanceof RequestHandlerInterface) {
+        if (!$callable instanceof Closure && $callable[0] instanceof RequestHandlerInterface) {
             return $callable($request);
         }
 
-        return (new CallableHandler($route->handle($callable, $callableResolver), ($this->response)()))->handle($request);
+        $handler = new CallableHandler($route->handle($callable, $callableResolver), ($this->response)());
+
+        return $handler->handle($request);
     }
 
     /**
@@ -288,7 +297,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      */
     private function determineRedirectCode(ServerRequestInterface $request, bool $status): void
     {
-        if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
+        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
             $this->keepRequestMethod = $status ? 301 : 302;
 
             return;
@@ -297,9 +306,9 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
         $this->keepRequestMethod = $status ? 308 : 307;
     }
 
-    private function logRoute(RouteInterface $route, ServerRequestInterface $request)
+    private function logRoute(RouteInterface $route, ServerRequestInterface $request): void
     {
-        $requestUri = sprintf(
+        $requestUri = \sprintf(
             '%s://%s%s',
             $request->getUri()->getScheme(),
             $request->getUri()->getHost(),

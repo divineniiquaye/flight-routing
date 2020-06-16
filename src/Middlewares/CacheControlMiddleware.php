@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Middlewares;
@@ -48,8 +46,9 @@ class CacheControlMiddleware implements MiddlewareInterface
         if (!$response->hasHeader('Cache-Control')) {
             $cacheControl = 'no-cache, private'; // conservative by default
 
+            // allows for heuristic expiration (RFC 7234 Section 4.2.2) in the case of "Last-Modified"
             if ($response->hasHeader('Last-Modified') || $response->hasHeader('Expires')) {
-                $cacheControl = 'private, must-revalidate'; // allows for heuristic expiration (RFC 7234 Section 4.2.2) in the case of "Last-Modified"
+                $cacheControl = 'private, must-revalidate';
             }
 
             $response = $response->withHeader('Cache-Control', $cacheControl);
@@ -66,7 +65,7 @@ class CacheControlMiddleware implements MiddlewareInterface
         // Check if we need to send extra expire info headers
         if (
             '1.0' === $response->getProtocolVersion() &&
-            false !== strpos($response->getHeaderLine('Cache-Control'), 'no-cache')
+            false !== \strpos($response->getHeaderLine('Cache-Control'), 'no-cache')
         ) {
             $response = $response
                 ->withHeader('Pragma', 'no-cache')
@@ -82,7 +81,7 @@ class CacheControlMiddleware implements MiddlewareInterface
 
         if (
             301 === $response->getStatusCode() &&
-            !array_key_exists('cache-control', array_change_key_case($response->getHeaders(), CASE_LOWER))
+            !\array_key_exists('cache-control', \array_change_key_case($response->getHeaders(), \CASE_LOWER))
         ) {
             $response = $response->withoutHeader('Cache-Control');
         }
@@ -102,14 +101,16 @@ class CacheControlMiddleware implements MiddlewareInterface
      *
      * @return ResponseInterface
      */
-    protected function ensureIEOverSSLCompatibility(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
-    {
+    protected function ensureIEOverSSLCompatibility(
+        ServerRequestInterface $request,
+        ResponseInterface $response
+    ): ResponseInterface {
         if (
-            false !== stripos($response->getHeaderLine('Content-Disposition'), 'attachment') &&
-            1 === preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'], $match) &&
-            array_key_exists('HTTPS', $request->getServerParams())
+            false !== \stripos($response->getHeaderLine('Content-Disposition'), 'attachment') &&
+            1 === \preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'], $match) &&
+            \array_key_exists('HTTPS', $request->getServerParams())
         ) {
-            if ((int) preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {
+            if ((int) \preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {
                 $response = $response->withoutHeader('Cache-Control');
             }
         }

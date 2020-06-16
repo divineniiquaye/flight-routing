@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Traits;
@@ -35,7 +33,7 @@ trait DefaultsTrait
      */
     public function addDefaults(array $defaults): RouteInterface
     {
-        $this->defaults = array_merge($defaults, $this->defaults);
+        $this->defaults = \array_merge($defaults, $this->defaults);
 
         return $this;
     }
@@ -65,6 +63,6 @@ trait DefaultsTrait
      */
     public function hasDefault($name): bool
     {
-        return array_key_exists($name, $this->defaults);
+        return \array_key_exists($name, $this->defaults);
     }
 }

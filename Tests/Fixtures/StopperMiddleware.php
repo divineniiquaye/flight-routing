@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Tests\Fixtures;
@@ -35,12 +33,12 @@ class StopperMiddleware implements MiddlewareInterface
      */
     public $content;
 
-    private $response;
-
     /**
      * @var array
      */
     public static $output = [];
+
+    private $response;
 
     /**
      * SampleMiddleware constructor.
@@ -49,7 +47,7 @@ class StopperMiddleware implements MiddlewareInterface
      */
     public function __construct(ResponseFactoryInterface $responseHandler, string $content = null)
     {
-        $this->content = $content ?: mt_rand(1, 9999999);
+        $this->content  = $content ?: \mt_rand(1, 9999999);
         $this->response = $responseHandler->createResponse();
     }
 

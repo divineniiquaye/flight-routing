@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Services;
@@ -41,7 +39,13 @@ class HttpPublisher implements PublisherInterface
         $content = empty($content) ? '' : $content;
 
         if (null !== $emitter && $content instanceof PsrResponseInterface) {
-            return $emitter->emit($content);
+            try {
+                return $emitter->emit($content);
+            } finally {
+                if (\function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                }
+            }
         }
 
         if (null === $emitter && $content instanceof PsrResponseInterface) {
@@ -49,8 +53,16 @@ class HttpPublisher implements PublisherInterface
             $content = $content->getBody();
         }
 
+        \flush();
+
         if ($content instanceof StreamInterface) {
-            return $this->emitStreamBody($content);
+            try {
+                return $this->emitStreamBody($content);
+            } finally {
+                if (\function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                }
+            }
         }
 
         throw new LogicException('The response body must be instance of PsrResponseInterface or StreamInterface');
@@ -92,11 +104,11 @@ class HttpPublisher implements PublisherInterface
         $statusCode = $response->getStatusCode();
 
         foreach ($response->getHeaders() as $name => $values) {
-            $name = ucwords($name, '-'); // Filter a header name to wordcase
+            $name  = \ucwords($name, '-'); // Filter a header name to wordcase
             $first = $name !== 'Set-Cookie';
 
             foreach ($values as $value) {
-                header(sprintf('%s: %s', $name, $value), $first, $statusCode);
+                \header(\sprintf('%s: %s', $name, $value), $first, $statusCode);
                 $first = false;
             }
         }

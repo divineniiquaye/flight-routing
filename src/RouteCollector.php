@@ -3,24 +3,23 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing;
 
 use Closure;
 use Flight\Routing\Concerns\HttpMethods;
+use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteCollectorInterface;
@@ -71,7 +70,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $callableResolver;
 
     /**
-     * @var ContainerInterface|null
+     * @var null|ContainerInterface
      */
     protected $container;
 
@@ -93,7 +92,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     protected $router;
 
     /**
-     * @var RouteInterface[]|array
+     * @var array|RouteInterface[]
      */
     protected $nameList = [];
 
@@ -127,9 +126,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
     /**
      * @param ResponseFactoryInterface  $responseFactory
-     * @param RouterInterface|null      $router
+     * @param null|RouterInterface      $router
      * @param CallableResolverInterface $callableResolver
-     * @param ContainerInterface|null   $container
+     * @param null|ContainerInterface   $container
      */
     public function __construct(
         ResponseFactoryInterface $responseFactory,
@@ -138,11 +137,23 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         ContainerInterface $container = null
     ) {
         $this->responseFactory = $responseFactory;
-        $this->router = $router ?? new Services\DefaultFlightRouter();
+        $this->router          = $router ?? new Services\DefaultFlightRouter();
 
-        $this->container = $container;
-        $this->callableResolver = $callableResolver ?? new Concerns\CallableResolver($container);
+        $this->container            = $container;
+        $this->callableResolver     = $callableResolver ?? new Concerns\CallableResolver($container);
         $this->middlewareDispatcher = new Middlewares\MiddlewareDisptcher([], $this->container);
+    }
+
+    /**
+     * @return array
+     */
+    public function __debugInfo()
+    {
+        return [
+            'routes'    => $this->getRoutes(),
+            'current'   => $this->currentRoute,
+            'counts'    => \count($this->getRouter()),
+        ];
     }
 
     /**
@@ -153,6 +164,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         foreach ($parameters as $key => $regex) {
             if (self::TYPE_DEFAULT === $type) {
                 $this->groupOptions[RouteGroupInterface::DEFAULTS] = [$key => $regex];
+
                 continue;
             }
 
@@ -163,88 +175,11 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     }
 
     /**
-     * Create a new route instance.
-     *
-     * @param array|string $methods
-     * @param string       $uri
-     * @param mixed        $action
-     *
-     * @return Route
-     */
-    private function createRoute($methods, $uri, $action): Route
-    {
-        $route = $this->newRoute($methods, $uri, $action);
-
-        // Set the defualts for group routing.
-        $defaults = [
-            RouteGroup::NAMESPACE       => $this->namespace,
-            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
-            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
-        ];
-
-        $route->fromArray($defaults);
-
-        return $route;
-    }
-
-    /**
-     * Create a new Route object.
-     *
-     * @param array|string $methods
-     * @param string       $uri
-     * @param mixed        $action
-     *
-     * @return Route
-     */
-    protected function newRoute($methods, $uri, $action): Route
-    {
-        return new Route((array) $methods, $uri, $action, $this->routeGroup);
-    }
-
-    /**
-     * Add a route.
-     *
-     * Accepts a combination of a path, controller, domain and requesthandler,
-     * and optionally the HTTP methods allowed.
-     *
-     * @param array|array               $methods HTTP method to accept
-     * @param string|null               $uri     the uri of the route
-     * @param Closure|array|string|null $action  a requesthandler or controller
-     *
-     * @throws RuntimeException when called after match() have been called.
-     *
-     * @return Route
-     */
-    private function addRoute($methods, $uri, $action): Route
-    {
-        // Add Route to a parsing Router.
-        $this->router->addRoute($route = $this->createRoute($methods, $uri, $action));
-
-        return $route;
-    }
-
-    /**
-     * Lookup a route via the route's unique identifier.
-     *
-     * @param RouteInterface $route
-     *
-     * @return void
-     */
-    private function addLookupRoute(RouteInterface $route): void
-    {
-        if (null === $name = $route->getName()) {
-            return;
-        }
-
-        $this->nameList[$name] = $route;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getRoutes(): array
     {
-        return iterator_to_array($this->getRouter());
+        return \iterator_to_array($this->getRouter());
     }
 
     /**
@@ -268,7 +203,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
             }
         }
 
-        throw new RuntimeException('Named route does not exist for name: '.$name);
+        throw new RuntimeException('Named route does not exist for name: ' . $name);
     }
 
     /**
@@ -278,14 +213,14 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         // Backup current properties
         $oldGroupOption = $this->groupOptions;
-        $oldGroup = $this->routeGroup;
+        $oldGroup       = $this->routeGroup;
 
         // Register the Route Grouping
         $routeCollectorProxy = new RouterProxy($this->responseFactory, $this->router, $this);
-        $routeGroup = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
+        $routeGroup          = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
 
         // Add goups to RouteCollection
-        $this->routeGroup = $routeGroup->mergeBackupAttributes($oldGroup);
+        $this->routeGroup   = $routeGroup->mergeBackupAttributes($oldGroup);
         $this->groupOptions = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
 
         // Returns routes on closure, file or on callble
@@ -293,7 +228,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
 
         // Restore properties
         $this->groupOptions = $oldGroupOption;
-        $this->routeGroup = $oldGroup;
+        $this->routeGroup   = $oldGroup;
 
         return $routeGroup;
     }
@@ -302,7 +237,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new GET route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -315,7 +250,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new POST route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -328,7 +263,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new PUT route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -341,7 +276,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new PATCH route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -354,7 +289,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new DELETE route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -367,7 +302,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new OPTIONS route with the router.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -380,7 +315,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Register a new route responding to all verbs.
      *
      * @param string                    $uri
-     * @param Closure|array|string|null $action
+     * @param null|array|Closure|string $action
      *
      * @return RouteInterface
      */
@@ -394,7 +329,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     public function map(array $methods, string $pattern, $handler = null): RouteInterface
     {
-        return $this->addRoute(array_map('strtoupper', $methods), $pattern, $handler);
+        return $this->addRoute(\array_map('strtoupper', $methods), $pattern, $handler);
     }
 
     /**
@@ -402,7 +337,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     public function setRoute(RouteInterface $route): void
     {
-        assert($route instanceof Route);
+        \assert($route instanceof Route);
 
         // Configure route with needed dependencies.
         $defaults = [
@@ -459,22 +394,28 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string
     {
         if (isset($this->nameList[$routeName]) === false) {
-            throw new UrlGenerationException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
+            throw new UrlGenerationException(
+                \sprintf(
+                    'Unable to generate a URL for the named route "%s" as such route does not exist.',
+                    $routeName
+                ),
+                404
+            );
         }
 
         $prefix = '.'; // Append missing "." at the beginning of the $uri.
 
         // Making routing on sub-folders easier
-        if (strpos($uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters), '/') !== 0) {
+        if (\strpos($uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters), '/') !== 0) {
             $prefix .= '/';
         }
 
         // Incase query is added to uri.
         if (!empty($queryParams)) {
-            $uri .= '?'.http_build_query($queryParams);
+            $uri .= '?' . \http_build_query($queryParams);
         }
 
-        return rtrim(strpos($uri, '://') !== false ? $uri : $prefix.$uri, '/');
+        return \rtrim(\strpos($uri, '://') !== false ? $uri : $prefix . $uri, '/');
     }
 
     /**
@@ -500,14 +441,14 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         // Add Route Names RouteCollector.
         $routes = $this->getRoutes();
-        array_walk($routes, [$this, 'addLookupRoute']);
+        \array_walk($routes, [$this, 'addLookupRoute']);
 
-        $routingResults = $this->router->match($request);
+        $routingResults     = $this->router->match($request);
         $this->currentRoute = $route = $routingResults->getMatchedRoute();
         $routingResults->bindTo($request, $this->keepRequestMethod, $this->callableResolver, $this->responseFactory);
 
         // Get all available middlewares
-        if (count($middlewares = $this->getMiddlewares($route ? $route->getMiddlewares() : [])) > 0) {
+        if (\count($middlewares = $this->getMiddlewares($route ? $route->getMiddlewares() : [])) > 0) {
             $middleware = $this->middlewareDispatcher->pipeline($middlewares);
 
             try {
@@ -524,6 +465,20 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     }
 
     /**
+     * Create a new Route object.
+     *
+     * @param array|string $methods
+     * @param string       $uri
+     * @param mixed        $action
+     *
+     * @return Route
+     */
+    protected function newRoute($methods, $uri, $action): Route
+    {
+        return new Route((array) $methods, $uri, $action, $this->routeGroup);
+    }
+
+    /**
      * Resolving patterns and defaults to group.
      *
      * @param array $groupOptions
@@ -533,21 +488,21 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     protected function resolveGlobals(array $groupOptions, array $previousOptions): array
     {
-        $groupOptions[RouteGroup::REQUIREMENTS] = array_replace(
+        $groupOptions[RouteGroup::REQUIREMENTS] = \array_replace(
             $this->groupOptions[RouteGroup::REQUIREMENTS] ?? [],
             $previousOptions[RouteGroup::REQUIREMENTS] ?? [],
             $groupOptions[RouteGroup::REQUIREMENTS] ?? []
         );
 
-        $groupOptions[RouteGroup::DEFAULTS] = array_replace(
+        $groupOptions[RouteGroup::DEFAULTS] = \array_replace(
             $this->groupOptions[RouteGroup::DEFAULTS] ?? [],
             $previousOptions[RouteGroup::DEFAULTS] ?? [],
             $groupOptions[RouteGroup::DEFAULTS] ?? []
         );
 
-        return array_intersect_key(
-            array_filter($groupOptions),
-            array_flip([RouteGroup::DEFAULTS, RouteGroup::REQUIREMENTS])
+        return \array_intersect_key(
+            \array_filter($groupOptions),
+            \array_flip([RouteGroup::DEFAULTS, RouteGroup::REQUIREMENTS])
         );
     }
 
@@ -560,23 +515,113 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      */
     protected function getMiddlewares(array $middlewares): array
     {
-        return array_filter(
-            array_replace($middlewares, $this->getMiddlewaresStack()),
+        return \array_filter(
+            \array_replace($middlewares, $this->getMiddlewaresStack()),
             function ($middleware) {
-                return !in_array($middleware, ['off', 'disable'], true);
+                return !\in_array($middleware, ['off', 'disable'], true);
             }
         );
     }
 
     /**
-     * @return array
+     * Create a new route instance.
+     *
+     * @param array|string $methods
+     * @param string       $uri
+     * @param mixed        $action
+     *
+     * @return Route
      */
-    public function __debugInfo()
+    private function createRoute($methods, $uri, $action): Route
     {
-        return [
-            'routes'    => $this->getRoutes(),
-            'current'   => $this->currentRoute,
-            'counts'    => count($this->getRouter()),
+        $route = $this->newRoute($methods, $uri, $action);
+
+        // Set the defualts for group routing.
+        $defaults = [
+            RouteGroup::NAMESPACE       => $this->namespace,
+            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
+            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
         ];
+
+        $route->fromArray($defaults);
+
+        return $route;
+    }
+
+    /**
+     * Add a route.
+     *
+     * Accepts a combination of a path, controller, domain and requesthandler,
+     * and optionally the HTTP methods allowed.
+     *
+     * @param array|array               $methods HTTP method to accept
+     * @param null|string               $uri     the uri of the route
+     * @param null|array|Closure|string $action  a requesthandler or controller
+     *
+     * @throws RuntimeException when called after match() have been called
+     *
+     * @return Route
+     */
+    private function addRoute($methods, $uri, $action): Route
+    {
+        $this->checkForDuplicateRoute($uri, $methods);
+
+        // Add Route to a parsing Router.
+        $this->router->addRoute($route = $this->createRoute($methods, $uri, $action));
+
+        return $route;
+    }
+
+    /**
+     * Lookup a route via the route's unique identifier.
+     *
+     * @param RouteInterface $route
+     */
+    private function addLookupRoute(RouteInterface $route): void
+    {
+        if (null === $name = $route->getName()) {
+            return;
+        }
+
+        $this->nameList[$name] = $route;
+    }
+
+    /**
+     * Determine if the route is duplicated in the current list.
+     *
+     * Checks if a route with the same path exists already in the list;
+     * if so, and it responds to any of the $methods indicated, raises
+     * a DuplicateRouteException indicating a duplicate route.
+     *
+     * @throws DuplicateRouteException on duplicate route detection
+     */
+    private function checkForDuplicateRoute(string $path, array $methods): void
+    {
+        $allowed        = [];
+        $matches        = \array_filter($this->getRoutes(), function (Route $route) use ($path, $methods, $allowed) {
+            if ($path === $route->getPath()) {
+                foreach ($methods as $method) {
+                    if (\in_array($method, $route->getMethods(), true)) {
+                        $allowed[] = $method;
+
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return false;
+        });
+
+        if (!empty($matches)) {
+            throw new DuplicateRouteException(
+                \sprintf(
+                    'Duplicate route detected; path "%s" answering to methods [%s]',
+                    \reset($matches)->getPath(),
+                    \implode(',', $allowed ?: ['(any)'])
+                )
+            );
+        }
     }
 }

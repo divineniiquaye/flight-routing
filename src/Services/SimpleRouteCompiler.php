@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Services;
@@ -40,6 +38,7 @@ class SimpleRouteCompiler implements Serializable
      * can be left out together with the optional placeholder from matching and generating URLs.
      */
     private const PATTERN_REPLACES = ['/' => '\\/', '/[' => '/?(?:', '[' => '(?:', ']' => ')?', '.' => '\.'];
+
     private const SEGMENT_REPLACES = ['/' => '\\/', '.' => '\.'];
 
     /**
@@ -59,29 +58,49 @@ class SimpleRouteCompiler implements Serializable
      */
     private const VARIABLE_MAXIMUM_LENGTH = 32;
 
+    /** @var string */
     private $template;
+
+    /** @var string */
     private $compiled;
+
+    /** @var string */
     private $hostRegex;
+
+    /** @var string */
     private $hostTemplate;
+
+    /** @var array */
     private $variables;
+
+    /** @var array */
     private $pathVariables;
+
+    /** @var array */
     private $hostVariables;
 
-    /**
-     * Get the route requirements.
-     *
-     * @param array $requirements
-     *
-     * @return array
-     */
-    protected function getRouteRequirements(array $requirements): array
+    public function __serialize(): array
     {
-        $newParamters = [];
-        foreach ($requirements as $key => $regex) {
-            $newParamters[$key] = $this->sanitizeRequirement($key, $regex);
-        }
+        return [
+            'vars'           => $this->variables,
+            'template_regex' => $this->template,
+            'host_template'  => $this->hostTemplate,
+            'path_regex'     => $this->compiled,
+            'path_vars'      => $this->pathVariables,
+            'host_regex'     => $this->hostRegex,
+            'host_vars'      => $this->hostVariables,
+        ];
+    }
 
-        return $newParamters;
+    public function __unserialize(array $data): void
+    {
+        $this->variables     = $data['vars'];
+        $this->template      = $data['template_regex'];
+        $this->compiled      = $data['path_regex'];
+        $this->pathVariables = $data['path_vars'];
+        $this->hostRegex     = $data['host_regex'];
+        $this->hostTemplate  = $data['host_template'];
+        $this->hostVariables = $data['host_vars'];
     }
 
     /**
@@ -94,36 +113,38 @@ class SimpleRouteCompiler implements Serializable
     public function compile(RouteInterface $route): self
     {
         $hostVariables = [];
-        $variables = [];
-        $hostRegex = null;
-        $hostTemplate = null;
+        $variables     = [];
+        $hostRegex     = null;
+        $hostTemplate  = null;
 
         if ('' !== $host = $route->getDomain()) {
             $result = $this->compilePattern($route, $host, true);
 
             $hostVariables = $result['variables'];
-            $variables = $hostVariables;
+            $variables     = $hostVariables;
 
-            $hostRegex = $result['regex'];
+            $hostRegex    = $result['regex'];
             $hostTemplate = $result['template'];
         }
 
-        $result = $this->compilePattern($route, $route->getPath(), false);
+        $result        = $this->compilePattern($route, $route->getPath(), false);
         $pathVariables = $result['variables'];
 
         foreach ($pathVariables as $pathParam) {
             if ('_fragment' === $pathParam) {
-                throw new UriHandlerException(sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath()));
+                throw new UriHandlerException(
+                    \sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath())
+                );
             }
         }
 
-        $this->compiled = $result['regex'];
-        $this->template = $result['template'];
+        $this->compiled      = $result['regex'];
+        $this->template      = $result['template'];
         $this->pathVariables = $pathVariables;
-        $this->hostRegex = $hostRegex;
-        $this->hostTemplate = $hostTemplate;
+        $this->hostRegex     = $hostRegex;
+        $this->hostTemplate  = $hostTemplate;
         $this->hostVariables = $hostVariables;
-        $this->variables = array_merge($variables, $pathVariables);
+        $this->variables     = \array_merge($variables, $pathVariables);
 
         return $this;
     }
@@ -131,7 +152,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * The template regex for matching.
      *
-     * @param bool $host Either host or path tempalte.
+     * @param bool $host either host or path tempalte
      *
      * @return string The static regex
      */
@@ -157,7 +178,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the host regex.
      *
-     * @return string|null The host regex or null
+     * @return null|string The host regex or null
      */
     public function getHostRegex(): ?string
     {
@@ -194,18 +215,54 @@ class SimpleRouteCompiler implements Serializable
         return $this->hostVariables;
     }
 
-    private function sanitizeRequirement(string $key, string $regex)
+    /**
+     * @internal
+     */
+    final public function serialize(): string
     {
-        if ('' !== $regex && strpos($regex, '^') === 0) {
-            $regex = (string) substr($regex, 1); // returns false for a single character
+        return \serialize($this->__serialize());
+    }
+
+    /**
+     * @param $serialized
+     *
+     * @internal
+     */
+    final public function unserialize($serialized): void
+    {
+        $this->__unserialize(\unserialize($serialized, ['allowed_classes' => false]));
+    }
+
+    /**
+     * Get the route requirements.
+     *
+     * @param array $requirements
+     *
+     * @return array
+     */
+    protected function getRequirements(array $requirements): array
+    {
+        $newParamters = [];
+
+        foreach ($requirements as $key => $regex) {
+            $newParamters[$key] = $this->sanitizeRequirement($key, $regex);
         }
 
-        if ('$' === substr($regex, -1)) {
-            $regex = substr($regex, 0, -1);
+        return $newParamters;
+    }
+
+    private function sanitizeRequirement(string $key, string $regex)
+    {
+        if ('' !== $regex && \strpos($regex, '^') === 0) {
+            $regex = (string) \substr($regex, 1); // returns false for a single character
+        }
+
+        if ('$' === \substr($regex, -1)) {
+            $regex = \substr($regex, 0, -1);
         }
 
         if ('' === $regex) {
-            throw new UriHandlerException(sprintf('Routing requirement for "%s" cannot be empty.', $key));
+            throw new UriHandlerException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
         }
 
         return $regex;
@@ -213,40 +270,67 @@ class SimpleRouteCompiler implements Serializable
 
     private function compilePattern(RouteInterface $route, string $uriPattern, bool $isHost): array
     {
-        $options = $replaces = [];
-        $pattern = rtrim(ltrim($uriPattern, ':/'), '/') ?: '/';
-        $leadingChar = 0 === substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
+        $pattern     = \rtrim(\ltrim($uriPattern, ':/'), '/') ?: '/';
+        $leadingChar = 0 === \substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
 
         // correct [/ first occurrence]
-        if (strpos($pattern, '[/') === 0) {
-            $pattern = '['.substr($pattern, 2);
+        if (\strpos($pattern, '[/') === 0) {
+            $pattern = '[' . \substr($pattern, 2);
         }
 
         // Add defaults and requirements found on given $pattern to $route
         $this->prepareRoute($route, $pattern);
 
         // Match all variables enclosed in "{}" and iterate over them...
-        if (preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
-            $variables = array_combine($matches[1], $matches[2]);
-
-            foreach ($variables as $key => $segment) {
-                if (strlen($key) > self::VARIABLE_MAXIMUM_LENGTH) {
-                    throw new UriHandlerException(sprintf('Variable name "%s" cannot be longer than %s characters in route pattern "%s". Please use a shorter name.', $key, self::VARIABLE_MAXIMUM_LENGTH, $pattern));
-                }
-
-                $segment = $this->prepareSegment($key, $segment, $this->getRouteRequirements($route->getPatterns()));
-                $replaces["<$key>"] = sprintf('(?P<%s>(?U)%s)', $key, $segment);
-                $options[] = $key;
-            }
+        if (\preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
+            [$options, $replaces] = $this->computePattern(
+                \array_combine($matches[1], $matches[2]),
+                $pattern,
+                $route
+            );
         }
 
-        $template = str_replace(['{', '}'], '', preg_replace('/{(\w+):?.*?}/', '<\1>', $pattern));
+        $template = \str_replace(['{', '}'], '', \preg_replace('/{(\w+):?.*?}/', '<\1>', $pattern));
 
         return [
-            'template'  => stripslashes(str_replace('?', '', $template)),
-            'regex'     => '{^'.$leadingChar.strtr($template, $replaces + self::PATTERN_REPLACES).'$}sD'.($isHost ? 'i' : ''),
-            'variables' => array_fill_keys($options, null),
+            'template'  => \stripslashes(\str_replace('?', '', $template)),
+            'regex'     => '{^' . $leadingChar . \strtr($template, $replaces) . '$}sD' . ($isHost ? 'i' : ''),
+            'variables' => \array_fill_keys($options, null),
         ];
+    }
+
+    /**
+     * Compute preapred pattern and return it's replacements and arguments.
+     *
+     * @param array          $variables
+     * @param string         $pattern
+     * @param RouteInterface $route
+     *
+     * @return array
+     */
+    private function computePattern(array $variables, string $pattern, RouteInterface $route): array
+    {
+        $options = $replaces = [];
+
+        foreach ($variables as $key => $segment) {
+            if (\strlen($key) > self::VARIABLE_MAXIMUM_LENGTH) {
+                throw new UriHandlerException(
+                    \sprintf(
+                        'Variable name "%s" cannot be longer than %s characters in route pattern "%s".' .
+                        ' Please use a shorter name.',
+                        $key,
+                        self::VARIABLE_MAXIMUM_LENGTH,
+                        $pattern
+                    )
+                );
+            }
+
+            $segment            = $this->prepareSegment($key, $segment, $this->getRequirements($route->getPatterns()));
+            $replaces["<$key>"] = \sprintf('(?P<%s>(?U)%s)', $key, $segment);
+            $options[]          = $key;
+        }
+
+        return [$options, $replaces + self::PATTERN_REPLACES];
     }
 
     /**
@@ -255,16 +339,15 @@ class SimpleRouteCompiler implements Serializable
      *
      * @param RouteInterface $route
      * @param string         $pattern
-     *
-     * @return void
      */
     private function prepareRoute(RouteInterface $route, string &$pattern): void
     {
-        if (preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, PREG_SET_ORDER)) {
+        if (\preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, \PREG_SET_ORDER)) {
             foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
-                $pattern = str_replace($match, $parameter, $pattern);
+                $pattern = \str_replace($match, $parameter, $pattern);
 
                 $route->addDefaults([$parameter => $name]);
+
                 if (!empty($regex)) {
                     $route->addPattern($parameter, $regex);
                 }
@@ -285,8 +368,8 @@ class SimpleRouteCompiler implements Serializable
     {
         if ($segment !== '') {
             // If PCRE subpattern name starts with a digit. Append the missing symbol "}"
-            if (preg_match('#\{(\d+)#', $segment)) {
-                $segment = $segment.'}';
+            if (\preg_match('#\{(\d+)#', $segment)) {
+                $segment = $segment . '}';
             }
 
             return self::SEGMENT_TYPES[$segment] ?? $segment;
@@ -296,10 +379,10 @@ class SimpleRouteCompiler implements Serializable
             return self::DEFAULT_SEGMENT;
         }
 
-        if (is_array($requirements[$name])) {
-            $values = array_map([$this, 'filterSegment'], $requirements[$name]);
+        if (\is_array($requirements[$name])) {
+            $values = \array_map([$this, 'filterSegment'], $requirements[$name]);
 
-            return implode('|', $values);
+            return \implode('|', $values);
         }
 
         return $this->filterSegment((string) $requirements[$name]);
@@ -312,48 +395,6 @@ class SimpleRouteCompiler implements Serializable
      */
     private function filterSegment(string $segment): string
     {
-        return strtr($segment, self::SEGMENT_REPLACES);
-    }
-
-    public function __serialize(): array
-    {
-        return [
-            'vars'           => $this->variables,
-            'template_regex' => $this->template,
-            'host_template'  => $this->hostTemplate,
-            'path_regex'     => $this->compiled,
-            'path_vars'      => $this->pathVariables,
-            'host_regex'     => $this->hostRegex,
-            'host_vars'      => $this->hostVariables,
-        ];
-    }
-
-    /**
-     * @internal
-     */
-    final public function serialize(): string
-    {
-        return serialize($this->__serialize());
-    }
-
-    public function __unserialize(array $data): void
-    {
-        $this->variables = $data['vars'];
-        $this->template = $data['template_regex'];
-        $this->compiled = $data['path_regex'];
-        $this->pathVariables = $data['path_vars'];
-        $this->hostRegex = $data['host_regex'];
-        $this->hostTemplate = $data['host_template'];
-        $this->hostVariables = $data['host_vars'];
-    }
-
-    /**
-     * @param $serialized
-     *
-     * @internal
-     */
-    final public function unserialize($serialized): void
-    {
-        $this->__unserialize(unserialize($serialized, ['allowed_classes' => false]));
+        return \strtr($segment, self::SEGMENT_REPLACES);
     }
 }

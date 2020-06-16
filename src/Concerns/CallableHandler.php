@@ -1,22 +1,18 @@
 <?php
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Concerns;
@@ -46,7 +42,7 @@ final class CallableHandler implements RequestHandlerInterface
      */
     public function __construct(callable $callable, ResponseInterface $responseFactory)
     {
-        $this->callable = $callable;
+        $this->callable        = $callable;
         $this->responseFactory = $responseFactory;
     }
 
@@ -57,8 +53,8 @@ final class CallableHandler implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $outputLevel = ob_get_level();
-        ob_start();
+        $outputLevel = \ob_get_level();
+        \ob_start();
 
         $output = $result = null;
 
@@ -68,25 +64,25 @@ final class CallableHandler implements RequestHandlerInterface
         try {
             $result = ($this->callable)($request, $response);
         } catch (Throwable $e) {
-            ob_get_clean();
+            \ob_get_clean();
 
             throw $e;
         } finally {
-            while (ob_get_level() > $outputLevel + 1) {
-                $output = ob_get_clean().$output;
+            while (\ob_get_level() > $outputLevel + 1) {
+                $output = \ob_get_clean() . $output;
             }
         }
 
-        return $this->wrapResponse($response, $result, ob_get_clean().$output);
+        return $this->wrapResponse($response, $result, \ob_get_clean() . $output);
     }
 
     /**
      * Convert endpoint result into valid PSR 7 response.
      * content-type fallback is "text/html; charset=utf-8".
      *
-     * @param ResponseInterface $response Initial pipeline response.
-     * @param mixed             $result   Generated endpoint output.
-     * @param string            $output   Buffer output.
+     * @param ResponseInterface $response initial pipeline response
+     * @param mixed             $result   generated endpoint output
+     * @param string            $output   buffer output
      *
      * @return ResponseInterface
      */
@@ -101,8 +97,8 @@ final class CallableHandler implements RequestHandlerInterface
             return $result;
         }
 
-        if (is_array($result) || $result instanceof JsonSerializable || $result instanceof stdClass) {
-            $response->getBody()->write(json_encode($result));
+        if (\is_array($result) || $result instanceof JsonSerializable || $result instanceof stdClass) {
+            $response->getBody()->write(\json_encode($result));
         } else {
             $response->getBody()->write((string) $result);
         }
@@ -124,7 +120,7 @@ final class CallableHandler implements RequestHandlerInterface
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
-        if (!preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
+        if (!\preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
             return $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
         }
 
@@ -133,27 +129,27 @@ final class CallableHandler implements RequestHandlerInterface
 
     private function isJson(StreamInterface $stream): bool
     {
-        if (!function_exists('json_decode')) {
+        if (!\function_exists('json_decode')) {
             return false;
         }
         $stream->rewind();
 
-        json_decode($stream->getContents(), true);
+        \json_decode($stream->getContents(), true);
 
-        return JSON_ERROR_NONE === json_last_error();
+        return \JSON_ERROR_NONE === \json_last_error();
     }
 
     private function isXml(StreamInterface $stream): bool
     {
-        if (!function_exists('simplexml_load_string')) {
+        if (!\function_exists('simplexml_load_string')) {
             return false;
         }
         $stream->rewind();
 
-        $previousValue = libxml_use_internal_errors(true);
-        $isXml = simplexml_load_string($contents = $stream->getContents());
-        libxml_use_internal_errors($previousValue);
+        $previousValue = \libxml_use_internal_errors(true);
+        $isXml         = \simplexml_load_string($contents = $stream->getContents());
+        \libxml_use_internal_errors($previousValue);
 
-        return false !== $isXml && false !== strpos($contents, '<?xml');
+        return false !== $isXml && false !== \strpos($contents, '<?xml');
     }
 }

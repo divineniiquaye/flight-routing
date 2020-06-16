@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Traits;
@@ -26,7 +24,7 @@ trait DomainsTrait
     /**
      * HTTP schemes supported by this route.
      *
-     * @var string[]|null
+     * @var null|string[]
      */
     protected $schemes;
 
@@ -42,14 +40,14 @@ trait DomainsTrait
      */
     public function addDomain(?string $domain): RouteInterface
     {
-        if (preg_match('#(?:(https?):)?(//.*)#A', $domain ?? '', $matches)) {
+        if (\preg_match('#(?:(https?):)?(//.*)#A', $domain ?? '', $matches)) {
             [, $scheme, $domain] = $matches;
 
             if (!empty($scheme)) {
                 $this->addSchemes($scheme);
             }
         }
-        $this->domain = trim($domain ?? '', '//');
+        $this->domain = \trim($domain ?? '', '//');
 
         return $this;
     }
@@ -59,7 +57,7 @@ trait DomainsTrait
      */
     public function getDomain(): string
     {
-        return str_replace(['http://', 'https://'], '', $this->domain ?? '');
+        return \str_replace(['http://', 'https://'], '', $this->domain ?? '');
     }
 
     /**
@@ -79,7 +77,7 @@ trait DomainsTrait
             return $this;
         }
 
-        $this->schemes = array_map('strtolower', (array) $schemes);
+        $this->schemes = \array_map('strtolower', (array) $schemes);
 
         return $this;
     }

@@ -2,6 +2,14 @@
 
 All notable changes to `divineniiquaye/flight-routing` will be documented in this file.
 
+## 0.2.10 - 2020-06-16
+
+- Added a call to *flush()* within the *HttpPublisher*, This provide response to the browser more quickly.
+- Lifted php minnimum version to 7.2 to due new features prepared for router
+- Updated coding standard to psr-12 to minimize breaks changes
+- Updated *SimpleRouteCompiler* class for faster route compling and matching
+- Updated php files header doc
+
 ## 0.2.7 - 2020-05-28
 
 - Added psr-15 *RequestHandlerInterface* to *RouteCollectorInterface*

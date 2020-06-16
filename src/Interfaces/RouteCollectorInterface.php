@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Interfaces;
@@ -30,12 +28,13 @@ use RuntimeException;
 interface RouteCollectorInterface extends RequestHandlerInterface
 {
     public const TYPE_REQUIREMENT = 1;
+
     public const TYPE_DEFAULT = 0;
 
     /**
      * Get route objects.
      *
-     * @return RouteInterface[]|array
+     * @return array|RouteInterface[]
      */
     public function getRoutes(): array;
 
@@ -50,7 +49,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
      *
      * @param string         $routeName   route name
-     * @param string[]|array $parameters  key => value option pairs to pass to the
+     * @param array|string[] $parameters  key => value option pairs to pass to the
      *                                    router for purposes of generating a URI; takes precedence over options
      *                                    present in route used to generate URI
      * @param array          $queryParams Optional query string parameters
@@ -58,7 +57,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
      *
-     * @return string of fully qualified URL for named route.
+     * @return string of fully qualified URL for named route
      */
     public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string;
 
@@ -85,7 +84,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Get the current route.
      *
-     * @return RouteInterface|null
+     * @return null|RouteInterface
      */
     public function currentRoute(): ?RouteInterface;
 
@@ -110,7 +109,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Set the global the middlewares stack attached to all routes.
      *
-     * @param array|string|callable|MiddlewareInterface $middleware
+     * @param array|callable|MiddlewareInterface|string $middleware
      *
      * @return RouteCollectorInterface
      */
@@ -148,7 +147,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * Add route group.
      *
      * @param array           $attributes
-     * @param string|callable $callable
+     * @param callable|string $callable
      *
      * @return RouteGroupInterface
      */
@@ -159,7 +158,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      *
      * @param string[]                       $methods Array of HTTP methods
      * @param string                         $pattern The route pattern
-     * @param callable|string|Closure|object $handler The route callable
+     * @param callable|Closure|object|string $handler The route callable
      *
      * @return RouteInterface
      */
@@ -169,8 +168,6 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * Same as to map(); method.
      *
      * @param RouteInterface $route
-     *
-     * @return void
      */
     public function setRoute(RouteInterface $route): void;
 

@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing;
@@ -48,15 +46,19 @@ class RouteGroup implements RouteGroupInterface
 
     /**
      * @param array                     $attributes
-     * @param callable|string|object    $callable
+     * @param callable|object|string    $callable
      * @param CallableResolverInterface $callableResolver
      * @param RouterProxyInterface      $routeProxy
      */
-    public function __construct(array $attributes, $callable, CallableResolverInterface $callableResolver, RouterProxyInterface $routeProxy)
-    {
-        $this->attributes = $attributes;
-        $this->callable = $callable;
-        $this->routeProxy = $routeProxy;
+    public function __construct(
+        array $attributes,
+        $callable,
+        CallableResolverInterface $callableResolver,
+        RouterProxyInterface $routeProxy
+    ) {
+        $this->attributes       = $attributes;
+        $this->callable         = $callable;
+        $this->routeProxy       = $routeProxy;
         $this->callableResolver = $callableResolver->addInstanceToClosure($this->routeProxy);
     }
 
@@ -75,21 +77,7 @@ class RouteGroup implements RouteGroupInterface
      */
     public function getOptions(): array
     {
-        return array_filter($this->attributes);
-    }
-
-    /**
-     * Load the provided routes from group.
-     *
-     * @param Closure|callable|string $routes
-     *
-     * @return mixed
-     */
-    protected function loadGroupRoutes(&$routes)
-    {
-        $callable = $this->callableResolver->resolve($routes);
-
-        return $callable($this->routeProxy);
+        return \array_filter($this->attributes);
     }
 
     /**
@@ -106,7 +94,7 @@ class RouteGroup implements RouteGroupInterface
             unset($old[self::DOMAIN]);
         }
 
-        $newAttributes = array_merge(
+        $newAttributes = \array_merge(
             $this->formatName($new, $old),
             [
                 self::NAMESPACE     => $this->formatNamespace($new, $old),
@@ -118,9 +106,23 @@ class RouteGroup implements RouteGroupInterface
             ]
         );
 
-        $this->attributes = array_filter($newAttributes);
+        $this->attributes = \array_filter($newAttributes);
 
         return $this;
+    }
+
+    /**
+     * Load the provided routes from group.
+     *
+     * @param callable|Closure|string $routes
+     *
+     * @return mixed
+     */
+    protected function loadGroupRoutes(&$routes)
+    {
+        $callable = $this->callableResolver->resolve($routes);
+
+        return $callable($this->routeProxy);
     }
 
     /**
@@ -129,16 +131,16 @@ class RouteGroup implements RouteGroupInterface
      * @param array $new
      * @param array $old
      *
-     * @return string|null
+     * @return null|string
      */
     protected function formatNamespace($new, $old): ?string
     {
         if (isset($new[self::NAMESPACE])) {
-            if (isset($old[self::NAMESPACE]) && strpos($new[self::NAMESPACE], '\\') !== 0) {
-                return rtrim($old[self::NAMESPACE], '\\').'\\'.rtrim($new[self::NAMESPACE], '\\');
+            if (isset($old[self::NAMESPACE]) && \strpos($new[self::NAMESPACE], '\\') !== 0) {
+                return \rtrim($old[self::NAMESPACE], '\\') . '\\' . \rtrim($new[self::NAMESPACE], '\\');
             }
 
-            return rtrim($new[self::NAMESPACE], '\\');
+            return \rtrim($new[self::NAMESPACE], '\\');
         }
 
         return $old[self::NAMESPACE] ?? null;
@@ -150,13 +152,13 @@ class RouteGroup implements RouteGroupInterface
      * @param array $new
      * @param array $old
      *
-     * @return string|null
+     * @return null|string
      */
     protected function formatPrefix($new, $old): ?string
     {
         $old = $old[self::PREFIX] ?? null;
 
-        return isset($new[self::PREFIX]) ? $old.$new[self::PREFIX] : $old;
+        return isset($new[self::PREFIX]) ? $old . $new[self::PREFIX] : $old;
     }
 
     /**
@@ -165,7 +167,7 @@ class RouteGroup implements RouteGroupInterface
      * @param array $new
      * @param array $old
      *
-     * @return array|null
+     * @return null|array
      */
     protected function formatSchemes(array $new, array $old): ?array
     {
@@ -173,7 +175,7 @@ class RouteGroup implements RouteGroupInterface
             return null;
         }
 
-        return array_merge($old[self::SCHEMES] ?? [], $new[self::SCHEMES] ?? []);
+        return \array_merge($old[self::SCHEMES] ?? [], $new[self::SCHEMES] ?? []);
     }
 
     /**
@@ -187,7 +189,7 @@ class RouteGroup implements RouteGroupInterface
      */
     protected function formatAttributes(string $key, array $new, array $old): array
     {
-        return array_merge($old[$key] ?? [], $new[$key] ?? []);
+        return \array_merge($old[$key] ?? [], $new[$key] ?? []);
     }
 
     /**
@@ -201,7 +203,7 @@ class RouteGroup implements RouteGroupInterface
     protected function formatName(array $new, array $old): array
     {
         if (isset($old[self::NAME])) {
-            $new[self::NAME] = $old[self::NAME].($new[self::NAME] ?? '');
+            $new[self::NAME] = $old[self::NAME] . ($new[self::NAME] ?? '');
         }
 
         return $new;

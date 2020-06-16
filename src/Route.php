@@ -1,22 +1,18 @@
 <?php
 
-/** @noinspection CallableParameterUseCaseInTypeContextInspection */
-
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing;
@@ -54,6 +50,16 @@ class Route implements Serializable, RouteInterface
     use Traits\PatternsTrait;
 
     /**
+     * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
+     * Pattern route:   `pattern/*<controller@action>`
+     * Default route: `*<controller@action>`
+     * Only action:   `pattern/*<action>`.
+     *
+     * @var string
+     */
+    public const RCA_PATTERN = '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i';
+
+    /**
      * HTTP methods supported by this route.
      *
      * @var string[]
@@ -72,8 +78,8 @@ class Route implements Serializable, RouteInterface
      *
      * @param string[]                    $methods  The route HTTP methods
      * @param string                      $pattern  The route pattern
-     * @param callable|string|object|null $callable The route callable
-     * @param RouteGroupInterface|null    $group    The parent route group
+     * @param null|callable|object|string $callable The route callable
+     * @param null|RouteGroupInterface    $group    The parent route group
      */
     public function __construct(array $methods, string $pattern, $callable, ?RouteGroupInterface $group = null)
     {
@@ -107,41 +113,32 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * {@inheritdoc}
-     *
-     * @internal
-     */
-    final public function serialize(): string
-    {
-        return serialize($this->__serialize());
-    }
-
-    /**
      * @param array $data
-     *
-     * @return void
      */
     public function __unserialize(array $data): void
     {
-        $this->path = $data['path'];
-        $this->prefix = $data['prefix'];
-        $this->domain = $data['host'];
-        $this->defaults = $data['defaults'];
-        $this->schemes = $data['schemes'];
-        $this->patterns = $data['requirements'];
-        $this->methods = $data['methods'];
-        $this->controller = $data['controller'];
+        $this->path          = $data['path'];
+        $this->prefix        = $data['prefix'];
+        $this->domain        = $data['host'];
+        $this->defaults      = $data['defaults'];
+        $this->schemes       = $data['schemes'];
+        $this->patterns      = $data['requirements'];
+        $this->methods       = $data['methods'];
+        $this->controller    = $data['controller'];
         $this->groupAppended = $data['group_append'];
 
         if (isset($data['middlewares'])) {
             $this->middlewares = $data['middlewares'];
         }
+
         if (isset($data['namespace'])) {
             $this->snamespace = $data['namespace'];
         }
+
         if (isset($data['group'])) {
             $this->groups = $data['group'];
         }
+
         if (isset($data['arguments'])) {
             $this->arguments = $data['arguments'];
         }
@@ -152,9 +149,19 @@ class Route implements Serializable, RouteInterface
      *
      * @internal
      */
-    final public function unserialize($serialized)
+    final public function serialize(): string
     {
-        $this->__unserialize(unserialize($serialized, null));
+        return \serialize($this->__serialize());
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @internal
+     */
+    final public function unserialize($serialized): void
+    {
+        $this->__unserialize(\unserialize($serialized, null));
     }
 
     /**
@@ -229,6 +236,6 @@ class Route implements Serializable, RouteInterface
             return $data[$key];
         }
 
-        throw new RuntimeException(sprintf('Missing "%s" paramter in route instance', $key));
+        throw new RuntimeException(\sprintf('Missing "%s" paramter in route instance', $key));
     }
 }

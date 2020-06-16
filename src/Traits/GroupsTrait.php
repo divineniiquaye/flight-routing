@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Traits;
@@ -31,7 +29,7 @@ trait GroupsTrait
     /**
      * Parent route groups.
      *
-     * @var RouteGroupInterface[]|array
+     * @var array|RouteGroupInterface[]
      */
     protected $groups = [];
 
@@ -52,13 +50,11 @@ trait GroupsTrait
             return null;
         }
 
-        return md5(serialize($this->groups));
+        return \md5(\serialize($this->groups));
     }
 
     /**
      * @param RouteGroupInterface $group
-     *
-     * @return void
      */
     protected function appendGroupToRoute(?RouteGroupInterface $group): void
     {
@@ -70,12 +66,12 @@ trait GroupsTrait
         $this->groups = $group->getOptions();
 
         if (isset($this->groups[RouteGroupInterface::MIDDLEWARES])) {
-            $this->middlewares = array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
+            $this->middlewares = \array_merge($this->middlewares, $this->groups[RouteGroupInterface::MIDDLEWARES]);
         }
 
-        $this->domain = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
-        $this->name = $this->groups[RouteGroupInterface::NAME] ?? null;
-        $this->prefix = $this->groups[RouteGroupInterface::PREFIX] ?? null;
+        $this->domain  = $this->groups[RouteGroupInterface::DOMAIN] ?? '';
+        $this->name    = $this->groups[RouteGroupInterface::NAME] ?? null;
+        $this->prefix  = $this->groups[RouteGroupInterface::PREFIX] ?? null;
         $this->schemes = $this->groups[RouteGroupInterface::SCHEMES] ?? null;
 
         $this->groupAppended = true;

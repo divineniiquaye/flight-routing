@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Middlewares;
@@ -69,18 +67,18 @@ class MiddlewareDisptcher
     protected $routeMiddlewares = [];
 
     /**
-     * @var ContainerInterface|null
+     * @var null|ContainerInterface
      */
     protected $container;
 
     /**
      * @param array                   $routeMiddlewares
-     * @param ContainerInterface|null $container
+     * @param null|ContainerInterface $container
      */
     public function __construct(array $routeMiddlewares, ContainerInterface $container = null)
     {
         $this->routeMiddlewares = $routeMiddlewares;
-        $this->container = $container;
+        $this->container        = $container;
     }
 
     /**
@@ -100,17 +98,17 @@ class MiddlewareDisptcher
      *
      * $this->add([ProxyMiddleware::class]);
      *
-     * @param MiddlewareInterface|string|array|callable $middleware
+     * @param array|callable|MiddlewareInterface|string $middleware
      */
     public function add($middleware): void
     {
-        if (is_array($middleware)) {
+        if (\is_array($middleware)) {
             if (isset($middleware['routing'])) {
-                $this->routeMiddlewares = array_merge($middleware['routing'], $this->routeMiddlewares);
+                $this->routeMiddlewares = \array_merge($middleware['routing'], $this->routeMiddlewares);
                 unset($middleware['routing']);
             }
 
-            $this->middlewares = array_merge($middleware, $this->middlewares);
+            $this->middlewares = \array_merge($middleware, $this->middlewares);
 
             return;
         }
@@ -127,20 +125,20 @@ class MiddlewareDisptcher
      */
     public function getMiddlewareStack(): array
     {
-        return array_filter($this->middlewares);
+        return \array_filter($this->middlewares);
     }
 
     /**
      * Resolve a middleware so it can be used flexibly.
      *
-     * @param MiddlewareInterface|string|callable $middleware
+     * @param callable|MiddlewareInterface|string $middleware
      *
-     * @return MiddlewareInterface|RequestHandlerInterface|callable
+     * @return callable|MiddlewareInterface|RequestHandlerInterface
      */
     public function resolve($middleware)
     {
-        if (is_string($middleware)) {
-            if (array_key_exists($middleware, $this->routeMiddlewares)) {
+        if (\is_string($middleware)) {
+            if (\array_key_exists($middleware, $this->routeMiddlewares)) {
                 $middleware = $this->routeMiddlewares[$middleware];
             }
 
@@ -148,11 +146,11 @@ class MiddlewareDisptcher
                 $middleware = $this->container->get($middleware);
             }
 
-            if (is_string($middleware) && !class_exists($middleware)) {
+            if (\is_string($middleware) && !\class_exists($middleware)) {
                 throw InvalidMiddlewareException::forMiddleware($middleware);
             }
 
-            return is_object($middleware) ? $middleware : new $middleware();
+            return \is_object($middleware) ? $middleware : new $middleware();
         }
 
         return $middleware;
@@ -165,7 +163,7 @@ class MiddlewareDisptcher
      * that have been added before will be executed after the newly
      * added one (last in, first out).
      *
-     * @param string|array|callable|MiddlewareInterface|RequestHandlerInterface $middleware
+     * @param array|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
      *
      * @throws InvalidMiddlewareException if argument is not one of
      *                                    the specified types
@@ -182,15 +180,15 @@ class MiddlewareDisptcher
             return $this->addHandler($middleware);
         }
 
-        if (is_callable($middleware)) {
+        if (\is_callable($middleware)) {
             return $this->addCallable($middleware);
         }
 
-        if (is_array($middleware)) {
+        if (\is_array($middleware)) {
             return $this->pipeline(...$middleware);
         }
 
-        if (!is_string($middleware) || $middleware === '') {
+        if (!\is_string($middleware) || $middleware === '') {
             throw InvalidMiddlewareException::forMiddleware($middleware);
         }
     }
@@ -231,19 +229,20 @@ class MiddlewareDisptcher
      * Each item is passed to prepare() before being passed to the
      * MiddlewarePipe instance the method returns.
      *
-     * @param string|array|MiddlewarePipe $middleware
+     * @param array|MiddlewarePipe|string $middleware
      *
      * @return MiddlewarePipe
      */
     public function pipeline(...$middleware): MiddlewarePipe
     {
         // Allow passing arrays of middleware or individual lists of middleware
-        if (is_array($middleware[0]) && count($middleware) === 1) {
-            $middleware = array_shift($middleware);
+        if (\is_array($middleware[0]) && \count($middleware) === 1) {
+            $middleware = \array_shift($middleware);
         }
 
         $pipeline = new MiddlewarePipe();
-        foreach (array_map([$this, 'resolve'], $middleware) as $m) {
+
+        foreach (\array_map([$this, 'resolve'], $middleware) as $m) {
             $pipeline->pipe($this->prepare($m));
         }
 

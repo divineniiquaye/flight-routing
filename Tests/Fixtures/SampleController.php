@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Tests\Fixtures;
@@ -42,7 +40,7 @@ class SampleController
      */
     public function homePageRequestString(ServerRequestInterface $request): string
     {
-        return 'Hello, I\'m on a '.$request->getMethod().' method';
+        return 'Hello, I\'m on a ' . $request->getMethod() . ' method';
     }
 
     /**
@@ -63,9 +61,11 @@ class SampleController
      *
      * @return ResponseInterface
      */
-    public function homePageRequestResponse(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
-    {
-        $response->getBody()->write('Hello, I\'m on a '.$request->getMethod().' method');
+    public function homePageRequestResponse(
+        ServerRequestInterface $request,
+        ResponseInterface $response
+    ): ResponseInterface {
+        $response->getBody()->write('Hello, I\'m on a ' . $request->getMethod() . ' method');
 
         return $response;
     }

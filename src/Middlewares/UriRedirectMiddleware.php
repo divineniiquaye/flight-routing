@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Middlewares;
@@ -29,17 +27,17 @@ use Psr\Http\Server\RequestHandlerInterface;
 class UriRedirectMiddleware implements MiddlewareInterface
 {
     /**
-     * @var array|ArrayAccess
-     */
-    protected $redirects = [];
-
-    /**
      * @var array
      */
     protected const DEFAUTLS = [
         'permanent' => true,
         'query'     => true,
     ];
+
+    /**
+     * @var array|ArrayAccess
+     */
+    protected $redirects = [];
 
     /**
      * @var bool
@@ -57,7 +55,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     public function __construct($redirects = [], array $options = self::DEFAUTLS)
     {
-        if (!is_array($redirects) && !($redirects instanceof ArrayAccess)) {
+        if (!\is_array($redirects) && !($redirects instanceof ArrayAccess)) {
             throw new InvalidArgumentException(
                 'The redirects argument must be an array or implement the ArrayAccess interface'
             );
@@ -111,7 +109,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
         $uri = $request->getUri()->getPath();
 
         if ($this->query && $query = $request->getUri()->getQuery() !== '') {
-            $uri .= '?'.$query;
+            $uri .= '?' . $query;
         }
 
         if (!isset($this->redirects[$uri])) {
@@ -132,7 +130,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     private function determineResponseCode(ServerRequestInterface $request): int
     {
-        if (in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'])) {
+        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'])) {
             return $this->permanent ? 301 : 302;
         }
 

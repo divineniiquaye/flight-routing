@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Interfaces;
@@ -37,6 +35,11 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  */
 interface RouterInterface extends IteratorAggregate, Countable
 {
+    /**
+     * All added routes should be clonable.
+     */
+    public function __clone();
+
     /**
      * Add a route.
      *
@@ -79,8 +82,8 @@ interface RouterInterface extends IteratorAggregate, Countable
      * the URI, this should be performed afterwards; consider passing the URI
      * to league/uri to encode it.
      *
-     * @param RouteInterface $route         The Route instance name.
-     * @param string[]|array $substitutions key => value option pairs to pass to the
+     * @param RouteInterface $route         the Route instance name
+     * @param array|string[] $substitutions key => value option pairs to pass to the
      *                                      router for purposes of generating a URI; takes precedence over options
      *                                      present in route used to generate URI
      *
@@ -93,11 +96,4 @@ interface RouterInterface extends IteratorAggregate, Countable
      * @see https://docs.zendframework.com/zend-router/routing/
      */
     public function generateUri(RouteInterface $route, array $substitutions = []): string;
-
-    /**
-     * All added routes should be clonable.
-     *
-     * @return void
-     */
-    public function __clone();
 }

@@ -3,44 +3,34 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Concerns;
-
-use function in_array;
-use function is_array;
-use function is_int;
-use function preg_match;
-use function rtrim;
-use function strlen;
-use function substr;
 
 trait RouteValidation
 {
     /**
      * Check if given request method matches given route method.
      *
-     * @param string|array $routeMethod
+     * @param array|string $routeMethod
      * @param string       $requestMethod
      *
      * @return bool
      */
     protected function compareMethod($routeMethod, string $requestMethod): bool
     {
-        if (is_array($routeMethod)) {
-            return in_array($requestMethod, $routeMethod, true);
+        if (\is_array($routeMethod) && !empty($routeMethod)) {
+            return \in_array($requestMethod, $routeMethod, true);
         }
 
         return $routeMethod === $requestMethod;
@@ -49,7 +39,7 @@ trait RouteValidation
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param string|null $routeDomain
+     * @param null|string $routeDomain
      * @param string      $requestDomain
      * @param array       $parameters
      *
@@ -57,7 +47,8 @@ trait RouteValidation
      */
     protected function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
     {
-        return ($routeDomain === null || empty($routeDomain)) || preg_match($routeDomain, $requestDomain, $parameters);
+        return ($routeDomain === null || empty($routeDomain)) ||
+            \preg_match($routeDomain, $requestDomain, $parameters);
     }
 
     /**
@@ -71,21 +62,21 @@ trait RouteValidation
      */
     protected function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
-        return (bool) preg_match($routeUri, $requestUri, $parameters, PREG_UNMATCHED_AS_NULL);
+        return (bool) \preg_match($routeUri, $requestUri, $parameters, \PREG_UNMATCHED_AS_NULL);
     }
 
     /**
      * Check if given request uri scheme matches given route scheme.
      *
-     * @param string|array|null $routeScheme
+     * @param null|array|string $routeScheme
      * @param string            $requestScheme
      *
      * @return bool
      */
     protected function compareScheme($routeScheme, string $requestScheme): bool
     {
-        if (is_array($routeScheme)) {
-            return in_array($requestScheme, $routeScheme, true);
+        if (\is_array($routeScheme) && !empty($routeScheme)) {
+            return \in_array($requestScheme, $routeScheme, true);
         }
 
         return ($routeScheme === null || empty($routeScheme)) || $routeScheme === $requestScheme;
@@ -98,21 +89,21 @@ trait RouteValidation
      * @param string $routeUri
      * @param string $requestUri
      *
-     * @return string|null
+     * @return null|string
      */
     protected function compareRedirection(string $routeUri, string $requestUri): ?string
     {
         // Resolve Request Uri.
-        $newRequestUri = '/' === $requestUri ? '/' : rtrim($requestUri, '/');
-        $newRouteUri = '/' === $routeUri ? $routeUri : rtrim($routeUri, '/');
+        $newRequestUri = '/' === $requestUri ? '/' : \rtrim($requestUri, '/');
+        $newRouteUri   = '/' === $routeUri ? $routeUri : \rtrim($routeUri, '/');
 
         $paths = [
-            'path'      => substr($requestUri, strlen($newRequestUri)),
-            'route'     => substr($routeUri, strlen($newRouteUri)),
+            'path'      => \substr($requestUri, \strlen($newRequestUri)),
+            'route'     => \substr($routeUri, \strlen($newRouteUri)),
         ];
 
         if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri.$paths['route'];
+            return $newRequestUri . $paths['route'];
         }
 
         if (empty($paths['route']) && $paths['route'] !== $paths['path']) {
@@ -133,7 +124,7 @@ trait RouteValidation
     protected function mergeDefaults(array $params, array $defaults): array
     {
         foreach ($params as $key => $value) {
-            if (!is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
+            if (!\is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
                 $defaults[$key] = $value;
             }
         }

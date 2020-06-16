@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Tests;
@@ -137,7 +135,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/test/cool',
             HttpMethods::METHOD_GET,
             function (string $home) {
-                return 'Hello, this is a basic test route on subpage '.$home;
+                return 'Hello, this is a basic test route on subpage ' . $home;
             },
         ];
 
@@ -146,7 +144,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/test/cool',
             HttpMethods::METHOD_GET,
             function (string $home, int $id) {
-                return $home.$id;
+                return $home . $id;
             },
             ['defaults' => ['id' => 233]],
             ['body'     => 'cool233'],
@@ -157,7 +155,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/test',
             HttpMethods::METHOD_GET,
             function (?string $home) {
-                return 'Hello, this is a basic test route on subpage '.$home;
+                return 'Hello, this is a basic test route on subpage ' . $home;
             },
             [],
             ['body' => 'Hello, this is a basic test route on subpage '],
@@ -168,7 +166,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/test/cool',
             HttpMethods::METHOD_GET,
             function (?string $home) {
-                return 'Hello, this is a basic test route on subpage '.$home;
+                return 'Hello, this is a basic test route on subpage ' . $home;
             },
             [],
             ['body' => 'Hello, this is a basic test route on subpage cool'],
@@ -198,12 +196,13 @@ class DefaultRouterTest extends RouterIntegrationTest
             ],
             ['generate' => 'http://23.example.com/test'],
         ];
+
         yield 'Route Domain Regex & Scheme: get, callable'      => [
             'https://{id:int}.example.com/{action}',
             '/tests',
             HttpMethods::METHOD_GET,
             function (string $action) {
-                return 'Hello World'.$action;
+                return 'Hello World' . $action;
             },
             [
                 'name'     => 'domain_scheme_page',
@@ -268,7 +267,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/en/download',
             HttpMethods::METHOD_GET,
             function (?string $lang, string $name) {
-                return $lang.$name;
+                return $lang . $name;
             },
         ];
 
@@ -277,7 +276,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/download',
             HttpMethods::METHOD_GET,
             function (?string $lang, ?string $sublang, string $name, $page) {
-                return $lang.'-'.$sublang.$name.$page;
+                return $lang . '-' . $sublang . $name . $page;
             },
             [],
             ['body' => '-download0'],
@@ -288,7 +287,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/en-us/download',
             HttpMethods::METHOD_GET,
             function (?string $lang, ?string $sublang, string $name, $page) {
-                return $lang.'-'.$sublang.$name.$page;
+                return $lang . '-' . $sublang . $name . $page;
             },
             [],
             ['body' => 'en-usdownload0'],
@@ -299,7 +298,7 @@ class DefaultRouterTest extends RouterIntegrationTest
             '/en-us/download/page-12',
             HttpMethods::METHOD_GET,
             function (?string $lang, ?string $sublang, string $name, $page) {
-                return $lang.'-'.$sublang.$name.$page;
+                return $lang . '-' . $sublang . $name . $page;
             },
             [],
             ['body' => 'en-usdownload12'],

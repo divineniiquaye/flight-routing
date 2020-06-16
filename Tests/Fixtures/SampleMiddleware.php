@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Tests\Fixtures;
@@ -42,13 +40,13 @@ class SampleMiddleware implements MiddlewareInterface
     /**
      * SampleMiddleware constructor.
      *
-     * @param string|null $content
+     * @param null|string $content
      */
     public function __construct(string $content = null)
     {
         static::$output = [];
 
-        $this->content = $content ?: mt_rand(1, 9999999);
+        $this->content = $content ?: \mt_rand(1, 9999999);
     }
 
     /**
@@ -57,7 +55,7 @@ class SampleMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         static::$output[] = $this->content;
-        $request = $request->withAttribute(__CLASS__, $this->content);
+        $request          = $request->withAttribute(__CLASS__, $this->content);
 
         return $handler->handle($request);
     }

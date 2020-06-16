@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of Flight Routing.
  *
- * PHP version 7 and above required
- *
- * @category  RoutingManager
+ * PHP version 7.2 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/routingmanager
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace Flight\Routing\Traits;
@@ -24,8 +22,8 @@ use Closure;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
 use ReflectionException;
 
 trait ControllersTrait
@@ -56,7 +54,7 @@ trait ControllersTrait
      */
     public function addArguments(array $arguments): RouteInterface
     {
-        $this->arguments = array_merge($arguments, $this->arguments);
+        $this->arguments = \array_merge($arguments, $this->arguments);
 
         return $this;
     }
@@ -66,7 +64,7 @@ trait ControllersTrait
      */
     public function getArgument(string $name, ?string $default = null): ?string
     {
-        if (array_key_exists($name, $this->arguments)) {
+        if (\array_key_exists($name, $this->arguments)) {
             return $this->arguments[$name];
         }
 
@@ -90,29 +88,14 @@ trait ControllersTrait
 
         // Append a group namespace starting with a "\" to main namespace.
         if (null !== $namespace && '\\' === $namespace[0]) {
-            $namespace = $this->namespace.ltrim($namespace, '\\').'\\';
+            $namespace = $this->namespace . \ltrim($namespace, '\\') . '\\';
         }
 
-        if (is_string(($controller = $this->controller)) || is_array($controller)) {
+        if (\is_string(($controller = $this->controller)) || \is_array($controller)) {
             return $this->appendNamespace($controller, $namespace);
         }
 
         return $controller;
-    }
-
-    /**
-     * @param callable|string|object|null $controller
-     *
-     * @return void
-     */
-    protected function setController($controller): void
-    {
-        // Might find controller on route pattern.
-        if (null === $controller) {
-            return;
-        }
-
-        $this->controller = $controller;
     }
 
     /**
@@ -127,8 +110,8 @@ trait ControllersTrait
      */
     public function handle(callable $controller, CallableResolverInterface $callableResolver): callable
     {
-        $finalController = function (ServerRequestInterface $request, ResponseInterface $response) use ($controller, $callableResolver) {
-            if (class_exists(BoundMethod::class)) {
+        $finalController = function (Request $request, Response $response) use ($controller, $callableResolver) {
+            if (\class_exists(BoundMethod::class)) {
                 return BoundMethod::call(
                     $container = $callableResolver->getContainer(),
                     $controller,
@@ -143,22 +126,47 @@ trait ControllersTrait
     }
 
     /**
-     * @param callable|string|object|null $controller
-     * @param string|null                 $namespace
+     * @param null|callable|object|string $controller
+     */
+    protected function setController($controller): void
+    {
+        // Might find controller on route pattern.
+        if (null === $controller) {
+            return;
+        }
+
+        $this->controller = $controller;
+    }
+
+    /**
+     * @param null|callable|object|string $controller
+     * @param null|string                 $namespace
      *
-     * @return callable|null
+     * @return null|callable
      */
     private function appendNamespace($controller, ?string $namespace)
     {
-        if (is_string($controller) && (!class_exists($controller) && false === stripos($controller, (string) $namespace))) {
-            $controller = is_callable($controller) ? $controller : $namespace.$controller;
+        if (
+            \is_string($controller) &&
+            (
+                !\class_exists($controller) &&
+                false === \stripos($controller, (string) $namespace)
+            )
+        ) {
+            $controller = \is_callable($controller) ? $controller : $namespace . $controller;
         }
 
         if (
-            (!$controller instanceof Closure && is_array($controller)) &&
-            (!is_object($controller[0]) && !class_exists($controller[0]))
+            (
+                !$controller instanceof Closure &&
+                \is_array($controller)
+            ) &&
+            (
+                !\is_object($controller[0]) &&
+                !\class_exists($controller[0])
+            )
         ) {
-            $controller[0] = $namespace.$controller[0];
+            $controller[0] = $namespace . $controller[0];
         }
 
         return $controller;
