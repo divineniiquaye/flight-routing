@@ -47,6 +47,9 @@ class SimpleRouteCompiler implements Serializable
     private const SEGMENT_TYPES = [
         'int'     => '\d+',
         'integer' => '\d+',
+        'year'    => '[12][0-9]{3}',
+        'month'   => '0[1-9]|1[012]',
+        'day'     => '0[1-9]|[12][0-9]|3[01]',
         'uuid'    => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
     ];
 
