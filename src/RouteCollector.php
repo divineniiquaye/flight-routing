@@ -152,7 +152,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         return [
             'routes'    => $this->getRoutes(),
             'current'   => $this->currentRoute,
-            'counts'    => \count($this->getRouter()),
+            'counts'    => $this->getRouter()->count(),
         ];
     }
 

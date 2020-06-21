@@ -34,7 +34,7 @@ The recommended way to install Url Routing is via Composer:
 composer require divineniiquaye/flight-routing
 ```
 
-It requires PHP version 7.1 and supports PHP up to 7.4. The dev-master version requires PHP 7.1.
+It requires PHP version 7.2 and supports PHP up to 7.4. The dev-master version requires PHP 7.3.
 
 ## How To Use
 
@@ -445,10 +445,10 @@ Sequences may be freely nested and combined:
 $router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
 
 // Accepted URLs:
-//   /cs/hello
-//   /en-us/hello
-//   /hello
-//   /hello/page-12
+// /cs/hello
+// /en-us/hello
+// /hello
+// /hello/page-12
 ```
 
 **Note:** Route parameters are always encased within {} braces and should consist of alphabetic characters. Route parameters may not contain a - character. Use an underscore (_) instead.
@@ -698,7 +698,7 @@ class MyRouter implements RouterInterface
      *
      * It implements IteratorAggregate.
      *
-     * @return ArrayIterator|RouteInterface[] An \ArrayIterator object for iterating over routes
+     * @return ArrayIterator|RouteInterface[] An ArrayIterator object for iterating over routes
      */
     public function getIterator()
     {
