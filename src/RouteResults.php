@@ -32,23 +32,9 @@ use Psr\Log\LoggerAwareTrait;
 
 /**
  * Value object representing the results of routing.
+ * RouteResult instances are consumed by the RouteCollector instance.
  *
- * DispatcherInterface::dispatch() is defined as returning a RouteResult instance,
- * which will contain the following state:
- *
- * - On success, it will contain:
- *   - the matched route name (typically the path)
- *   - the matched route middleware
- *   - any parameters matched by routing
- *   - RouteInterface instance
- * - On failure:
- *   - This further qualifies a routing failure to indicate that it
- *     was due to using an HTTP method not allowed for the given path.
- *   - If the failure was not due to HTTP method negotiation, it will contain a
- *     not found exception thrown.
- *
- * RouteResult instances are consumed by the DispatcherInterface in the routing
- * RouteCollector instance.
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
 {
@@ -92,7 +78,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $routeIdentifier;
 
     /**
-     * @var ResponseFactoryInterface
+     * @var callable<ResponseInterface>
      */
     protected $response;
 

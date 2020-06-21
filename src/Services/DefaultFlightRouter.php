@@ -90,9 +90,6 @@ class DefaultFlightRouter implements RouterInterface
     /**
      * Add a route to the collection.
      *
-     * Uses Symfony routing style. Since it has been adopted
-     * by many projects and framework including laravel framework.
-     *
      * @param RouteInterface $route
      */
     public function addRoute(RouteInterface $route): void
