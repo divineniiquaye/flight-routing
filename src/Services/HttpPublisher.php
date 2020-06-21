@@ -26,6 +26,8 @@ use Psr\Http\Message\StreamInterface;
 /**
  * Class StreamPublisher.
  * StreamPublisher publishes the given response.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class HttpPublisher implements PublisherInterface
 {

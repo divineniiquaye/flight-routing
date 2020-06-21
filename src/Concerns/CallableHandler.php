@@ -27,6 +27,8 @@ use Throwable;
 
 /**
  * Provides ability to invoke any handler and write it's response into ResponseInterface.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class CallableHandler implements RequestHandlerInterface
 {

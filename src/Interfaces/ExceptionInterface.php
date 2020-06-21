@@ -19,6 +19,8 @@ namespace Flight\Routing\Interfaces;
 
 /**
  * Marker interface for package-specific exceptions.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 interface ExceptionInterface
 {

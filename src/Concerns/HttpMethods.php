@@ -21,6 +21,8 @@ use Fig\Http\Message\RequestMethodInterface;
 
 /**
  * Class HttpMethods.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class HttpMethods implements RequestMethodInterface
 {

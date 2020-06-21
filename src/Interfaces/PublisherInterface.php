@@ -19,18 +19,21 @@ namespace Flight\Routing\Interfaces;
 
 use Laminas\HttpHandlerRunner\Emitter\EmitterInterface;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Interface PublisherInterface
  * Publishers are responsible to publish the response provided by controllers.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 interface PublisherInterface
 {
     /**
      * Publish the content.
      *
-     * @param mixed|PsrResponseInterface|string $content
-     * @param null|EmitterInterface             $response
+     * @param PsrResponseInterface|StreamInterface $content
+     * @param null|EmitterInterface                $response
      *
      * @return bool
      */

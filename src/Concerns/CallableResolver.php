@@ -29,6 +29,8 @@ use TypeError;
  * This class resolves a string of the format 'class:method', 'class::method'
  * and 'class@method' into a closure that can be dispatched.
  *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ *
  * @final
  */
 class CallableResolver implements CallableResolverInterface

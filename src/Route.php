@@ -38,6 +38,8 @@ use Throwable;
  * for how segments of a route match, or even default values to use. These may
  * be provided after instantiation via the "defaults" property and related
  * addDefaults() method.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class Route implements Serializable, RouteInterface
 {

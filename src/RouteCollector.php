@@ -54,6 +54,8 @@ use RuntimeException;
  * Internally, the class performs some checks for duplicate routes when
  * attaching via one of the exposed methods, and will raise an exception when a
  * collision occurs.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareInterface
 {
