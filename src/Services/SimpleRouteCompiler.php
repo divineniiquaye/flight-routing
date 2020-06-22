@@ -273,6 +273,8 @@ class SimpleRouteCompiler implements Serializable
 
     private function compilePattern(RouteInterface $route, string $uriPattern, bool $isHost): array
     {
+        $options = $replaces = [];
+
         $pattern     = \rtrim(\ltrim($uriPattern, ':/'), '/') ?: '/';
         $leadingChar = 0 === \substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
 
