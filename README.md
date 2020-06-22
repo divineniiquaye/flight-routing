@@ -189,7 +189,6 @@ There are two ways of dipatching a router, either by using the default [HttpPubl
 <?php
 
 use Flight\Routing\Services\HttpPublisher;
-use BiuradPHP\Http\Response\EmitResponse;
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
 /* Load external routes file */
@@ -197,16 +196,16 @@ $router = require_once __DIR__.'/routes.php';
 assert($router instanceof BiuradPHP\Routing\RouteCollector);
 
 // Start the routing
-return (new EmitResponse)->emit($router->handle(Psr17Factory::fromGlobalRequest()));
-// or 
-return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()), new EmitResponse);
+return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
+
+// or use
 ```
 
 Remember the ```routes.php``` file you required in your ```index.php```? This file be where you place all your custom rules for routing.
 
 > **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be abit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml, doesn't contain a <!doctype> or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
-> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callabe, invokable class, 
+> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callabe, invokable class,
 > or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it
 > to be constructed on demand.
 
@@ -383,10 +382,10 @@ $router->any('foo', function() {
 
 ## Route Pattern and Parameters
 
-You can use route pattern to specify any number of required and optional parameters, these parameters will later be passed 
+You can use route pattern to specify any number of required and optional parameters, these parameters will later be passed
 to our route handler via `ServerRequestInterface` attribute `route`.
 
-Use the `{parameter_name:pattern}` form to define a route parameter, where pattern is a regexp friendly expression. You can 
+Use the `{parameter_name:pattern}` form to define a route parameter, where pattern is a regexp friendly expression. You can
 omit pattern and just use `{parameter_name}`, in this case the parameter will match `[^\/]+`.
 
 ### Required Parameters
@@ -682,7 +681,7 @@ class MyRouter implements RouterInterface
 	{
 		// ...
     }
-    
+
     /**
      * {@inheritdoc}
      */

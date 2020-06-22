@@ -23,14 +23,13 @@ cache:
     - $HOME/.composer/cache
 
 install:
-    - if [ $TRAVIS_PHP_VERSION = 'nightly' ]; then composer install --prefer-dist --ignore-platform-reqs; else composer install --prefer-dist; fi
+    - if [ $TRAVIS_PHP_VERSION = 'nightly' ]; then composer install --prefer-dist --ignore-platform-reqs; else composer install --prefer-stable; fi
 
 before_install:
     - composer self-update
     - phpenv config-rm xdebug.ini || true
     - composer require biurad/biurad-http ^0.1
-    - composer remove phpunit/phpunit --dev
-    - if [ "$PHPUNIT_TEST" == 1 ]; then composer require phpunit/phpunit ^8.5; else composer require phpunit/phpunit ^7.5; fi
+    - if [ "$PHPUNIT_TEST" == 1 ]; then composer update --prefer-stable; else composer require phpunit/phpunit ^7.5; fi
 
 before_script:
   - composer update $COMPOSER_FLAGS --prefer-dist
