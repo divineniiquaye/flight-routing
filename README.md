@@ -198,7 +198,7 @@ assert($router instanceof BiuradPHP\Routing\RouteCollector);
 // Start the routing
 return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
 
-// or use
+// or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
 ```
 
 Remember the ```routes.php``` file you required in your ```index.php```? This file be where you place all your custom rules for routing.
