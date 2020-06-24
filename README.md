@@ -28,13 +28,13 @@ First of all, you need to configure your web server to handle all the HTTP reque
 
 ## Installation
 
-The recommended way to install Url Routing is via Composer:
+The recommended way to install Flight Routing is via Composer:
 
 ```bash
 composer require divineniiquaye/flight-routing
 ```
 
-It requires PHP version 7.2 and supports PHP up to 7.4. The dev-master version requires PHP 7.3.
+It requires PHP version 7.2 and supports PHP up to 7.4. The dev-master version requires PHP 7.2.
 
 ## How To Use
 
