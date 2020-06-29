@@ -62,7 +62,7 @@ trait RouteValidation
      */
     protected function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
-        return (bool) \preg_match($routeUri, $requestUri, $parameters, \PREG_UNMATCHED_AS_NULL);
+        return (bool) \preg_match($routeUri, $requestUri, $parameters);
     }
 
     /**

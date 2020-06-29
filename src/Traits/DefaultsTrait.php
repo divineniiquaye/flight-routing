@@ -61,7 +61,7 @@ trait DefaultsTrait
     /**
      * {@inheritdoc}
      */
-    public function hasDefault($name): bool
+    public function hasDefault(string $name): bool
     {
         return \array_key_exists($name, $this->defaults);
     }

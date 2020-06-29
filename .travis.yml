@@ -3,41 +3,26 @@ sudo: false
 
 matrix:
   include:
-    - php: 7.1
-      env: COMPOSER_FLAGS="--prefer-lowest"
     - php: 7.2
-      env: SCRUTINIZER=1
-      env: PHPUNIT_TEST=1
     - php: 7.3
-      env: PHPUNIT_TEST=1
     - php: 7.4
-      env: PHPUNIT_TEST=1
-    - php: nightly
-  allow_failures:
-    - php: nightly
-    - php: 7.1
   fast_finish: true
 
 cache:
   directories:
     - $HOME/.composer/cache
 
-install:
-    - if [ $TRAVIS_PHP_VERSION = 'nightly' ]; then composer install --prefer-dist --ignore-platform-reqs; else composer install --prefer-dist; fi
-
 before_install:
-    - composer self-update
-    - phpenv config-rm xdebug.ini || true
-    - composer require biurad/biurad-http ^0.1
-    - if [ "$PHPUNIT_TEST" == 1 ]; then composer update --prefer-stable; else composer require phpunit/phpunit ^7.5; fi
+  - composer self-update
 
-before_script:
-  - composer update $COMPOSER_FLAGS --prefer-dist
+install:
+  - composer update --no-interaction
+  - composer require squizlabs/php_codesniffer --dev
 
 script:
-  - stty cols 120
-  - mkdir -p build/logs
-  - vendor/bin/phpunit -c phpunit.xml --coverage-clover clover.xml
+  - ./vendor/bin/phpcs --standard=psr12 --colors src Tests
+  - ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
-after_script:
-  - if [ "$SCRUTINIZER" == 1 ]; then wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar code-coverage:upload --format php-clover coverage.xml; fi
+after_success:
+  - wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar
+  - bash <(curl -s https://codecov.io/bash) -f coverage.xml
