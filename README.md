@@ -5,9 +5,9 @@
 
 The goal of this project is to create a router that is more or less 100% compatible with all php http routers, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority.
 
-Human-friendly URLs (also more cool & prettier) are easier to remember and do help SEO (search engine optimalization). Flight Routing allows you to use any current trends of *router* implementation and fully meets developers' desires.
+Human-friendly URLs (also more cool & prettier) are easier to remember and do help SEO (search engine optimalization). Flight Routing allows you to use any current trends of _router_ implementation and fully meets developers' desires.
 
-The desired URL format is set by a *router*. The plainest implementation of the router is [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php). It can be used when there's no *router* for a specific URL format yet.
+The desired URL format is set by a _router_. The plainest implementation of the router is [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php). It can be used when there's no _router_ for a specific URL format yet.
 
 First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
 
@@ -55,7 +55,8 @@ location / {
 Nothing special is required for Apache to work. We've include the `.htaccess` file in the `public` folder. If rewriting is not working for you, please check that the `mod_rewrite` module (htaccess support) is enabled in the Apache configuration.
 
 #### .htaccess example
-___
+
+---
 
 Below is an example of an working `.htaccess` file used by flight-routing.
 
@@ -82,7 +83,8 @@ Simply create a new `.htaccess` file in your projects `public` directory and pas
 On IIS you have to add some lines your `web.config` file in the `public` folder or create a new one. If rewriting is not working for you, please check that your IIS version have included the `url rewrite` module or download and install them from Microsoft web site.
 
 #### web.config example
-___
+
+---
 
 Below is an example of an working `web.config` file used by simple-php-router.
 
@@ -120,7 +122,8 @@ Simply create a new `web.config` file in your projects `public` directory and pa
 ```
 
 #### Troubleshooting
-___
+
+---
 
 If you do not have a `favicon.ico` file in your project, you can get a `NotFoundHttpException` (404 - not found).
 To add `favicon.ico` to the IIS ignore-list, add the following line to the `<conditions>` group:
@@ -143,7 +146,7 @@ If you are using `$_SERVER['ORIG_PATH_INFO']`, you will get `\index.php\` as par
 
 ## Configuration
 
-Please note that the following snippets only covers how to this router in a project without an existing framework using [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php) *router*. If you are using a framework or/and a different *router* in your project, the implementation varies.
+Please note that the following snippets only covers how to this router in a project without an existing framework using [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php) _router_. If you are using a framework or/and a different _router_ in your project, the implementation varies.
 
 It's not required, but you can set `namespace method paramter's value to eg: '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
@@ -159,7 +162,7 @@ Flight routing allows you to call any controller action with namespace using `*<
 
 > Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
 
-In your ```index.php``` require your newly-created ```routes.php``` and call the ```$router->handle()``` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) *publish* method, passing an instance of [PSR-7](https://www.php-fig.org/psr/psr-7) *ServerRequestInterface*. This will trigger and do the actual routing of the requests to response.
+In your `index.php` require your newly-created `routes.php` and call the `$router->handle()` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) _publish_ method, passing an instance of [PSR-7](https://www.php-fig.org/psr/psr-7) _ServerRequestInterface_. This will trigger and do the actual routing of the requests to response.
 
 ```php
 <?php
@@ -181,9 +184,10 @@ $router->setNamespace('\Demo\Controllers');
 // All routers goes in this space of the file
 return $router;
 ```
+
 There are two ways of dipatching a router, either by using the default [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) or [EmitResponse](https://github.com/biurad/biurad-http/blob/master/src/Response/EmitResponse.php) to dispatch the router.
 
-**This is an example of a basic ```index.php``` file:**
+**This is an example of a basic `index.php` file:**
 
 ```php
 <?php
@@ -201,7 +205,7 @@ return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequ
 // or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
 ```
 
-Remember the ```routes.php``` file you required in your ```index.php```? This file be where you place all your custom rules for routing.
+Remember the `routes.php` file you required in your `index.php`? This file be where you place all your custom rules for routing.
 
 > **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be abit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml, doesn't contain a <!doctype> or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
@@ -450,7 +454,7 @@ $router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
 // /hello/page-12
 ```
 
-**Note:** Route parameters are always encased within {} braces and should consist of alphabetic characters. Route parameters may not contain a - character. Use an underscore (_) instead.
+**Note:** Route parameters are always encased within {} braces and should consist of alphabetic characters. Route parameters may not contain a - character. Use an underscore (\_) instead.
 
 ### Regular Expression Constraints
 
@@ -600,7 +604,7 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
 
-This whole process is called *canonicalization*. Default (canonical) URL is the one router generates, that is, the first route matches exactly. Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
+This whole process is called _canonicalization_. Default (canonical) URL is the one router generates, that is, the first route matches exactly. Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
 $router->get(
@@ -642,7 +646,7 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 
 ## Custom Router
 
-If these offered routes do not fit your needs, you may create your own router and add it to your *router collection*. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
+If these offered routes do not fit your needs, you may create your own router and add it to your _router collection_. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
 
 ```php
 <?php
@@ -745,7 +749,7 @@ You're free to use this package, but if it makes it to your production environme
 
 Post Here: [Project Patreons - https://patreons.biurad.com](https://patreons.biurad.com)
 
-We publish all received request's on our website;
+We publish all received request's on our website.
 
 ## Credits
 

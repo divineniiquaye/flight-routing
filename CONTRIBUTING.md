@@ -22,9 +22,9 @@ We accept contributions via Pull Requests on [Github](https://github.com/divinen
 
 ## Running Tests
 
-``` bash
-$ composer test
+```bash
+$ vendor/bin/phpcs --standard=psr12 --colors src Tests
+$ vendor/bin/phpunit
 ```
-
 
 **Happy coding**!
