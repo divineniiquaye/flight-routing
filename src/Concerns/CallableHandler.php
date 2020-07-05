@@ -58,7 +58,8 @@ final class CallableHandler implements RequestHandlerInterface
         $outputLevel = \ob_get_level();
         \ob_start();
 
-        $output = $result = null;
+        $output = null;
+        $result = $output;
 
         $response = $this->responseFactory
             ->withHeader('Content-Type', 'text/html; charset=utf-8');
