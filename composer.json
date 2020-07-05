@@ -1,13 +1,13 @@
 {
     "name": "divineniiquaye/flight-routing",
     "type": "library",
-    "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers. Partially inspired by the Laravel router.",
+    "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers.",
     "keywords": [
         "router",
         "url routing",
-        "laravel",
-        "slim",
-        "routing-engine",
+        "psr-15",
+        "psr-7",
+        "php",
         "biuradphp",
         "php7"
     ],
@@ -20,7 +20,7 @@
         },
         {
             "name": "Biurad Lap Community",
-            "homepage": "https://biurad.com/contributors"
+            "homepage": "https://biurad.com/projects/contributors"
         }
     ],
     "require": {
@@ -50,6 +50,7 @@
         }
     },
     "minimum-stability": "dev",
+    "prefer-stable": true,
     "suggest": {
         "biurad/biurad-http": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
     }
