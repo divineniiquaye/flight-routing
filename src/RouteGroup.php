@@ -25,7 +25,7 @@ use Flight\Routing\Interfaces\RouterProxyInterface;
 class RouteGroup implements RouteGroupInterface
 {
     /**
-     * @var callable|string
+     * @var callable|object|string
      */
     protected $callable;
 
