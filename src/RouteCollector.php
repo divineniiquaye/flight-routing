@@ -528,13 +528,13 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Create a new route instance.
      *
-     * @param array|string $methods
+     * @param array        $methods
      * @param string       $uri
      * @param mixed        $action
      *
      * @return Route
      */
-    private function createRoute($methods, $uri, $action): Route
+    private function createRoute(array $methods, string $uri, $action): Route
     {
         $route = $this->newRoute($methods, $uri, $action);
 
@@ -556,15 +556,15 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Accepts a combination of a path, controller, domain and requesthandler,
      * and optionally the HTTP methods allowed.
      *
-     * @param array|array               $methods HTTP method to accept
-     * @param null|string               $uri     the uri of the route
+     * @param array                     $methods HTTP method to accept
+     * @param string                    $uri     the uri of the route
      * @param null|array|Closure|string $action  a requesthandler or controller
      *
      * @throws RuntimeException when called after match() have been called
      *
      * @return Route
      */
-    private function addRoute($methods, $uri, $action): Route
+    private function addRoute(array $methods, string $uri, $action): Route
     {
         $this->checkForDuplicateRoute($uri, $methods);
 
@@ -621,7 +621,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
                 \sprintf(
                     'Duplicate route detected; path "%s" answering to methods [%s]',
                     \reset($matches)->getPath(),
-                    \implode(',', $allowed ?: ['(any)'])
+                    \implode(',', $allowed ?? ['(any)'])
                 )
             );
         }

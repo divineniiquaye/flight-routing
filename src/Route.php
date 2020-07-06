@@ -134,7 +134,7 @@ class Route implements Serializable, RouteInterface
         }
 
         if (isset($data['namespace'])) {
-            $this->snamespace = $data['namespace'];
+            $this->namespace = $data['namespace'];
         }
 
         if (isset($data['group'])) {

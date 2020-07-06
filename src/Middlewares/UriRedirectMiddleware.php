@@ -35,7 +35,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
     ];
 
     /**
-     * @var array|ArrayAccess
+     * @var array
      */
     protected $redirects = [];
 
@@ -50,10 +50,10 @@ class UriRedirectMiddleware implements MiddlewareInterface
     private $query = true;
 
     /**
-     * @param array|ArrayAccess $redirects [from => to]
-     * @param array             $options
+     * @param array $redirects [from => to]
+     * @param array $options
      */
-    public function __construct($redirects = [], array $options = self::DEFAUTLS)
+    public function __construct(array $redirects = [], array $options = self::DEFAUTLS)
     {
         if (!\is_array($redirects) && !($redirects instanceof ArrayAccess)) {
             throw new InvalidArgumentException(
@@ -108,7 +108,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
         $uri = $request->getUri()->getPath();
 
-        if ($this->query && $query = $request->getUri()->getQuery() !== '') {
+        if ($this->query && ($query = $request->getUri()->getQuery()) !== '') {
             $uri .= '?' . $query;
         }
 

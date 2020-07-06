@@ -62,7 +62,7 @@ class MiddlewareDisptcher
      * Set of route middleware to be used in $middlewares
      * Stack, if string name is equal to a given middleware.
      *
-     * @var array<string: MiddlewareInterface>
+     * @var array<string: MiddlewareInterface|string>
      */
     protected $routeMiddlewares = [];
 
@@ -188,9 +188,7 @@ class MiddlewareDisptcher
             return $this->pipeline(...$middleware);
         }
 
-        if (!\is_string($middleware) || $middleware === '') {
-            throw InvalidMiddlewareException::forMiddleware($middleware);
-        }
+        throw InvalidMiddlewareException::forMiddleware($middleware);
     }
 
     /**
