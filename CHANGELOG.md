@@ -1,72 +1,29 @@
-# Changelog
+# Change Log
+All notable changes to this project will be documented in this file.
+Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
 
-All notable changes to `divineniiquaye/flight-routing` will be documented in this file.
+## [Unreleased][unreleased]
 
-## 0.2.10 - 2020-06-16
+### Added
+- Added changelog for 0.x versions
+- Added Dependabot to make changes to **composer.json** file
+- Added **.editorconfig** and **.gitattributes** files
+- Added tests for **psalm**, **github actions**, **phpstan** and **phpcs** for PSR-12 coding standing
 
-- Added a call to *flush()* within the *HttpPublisher*, This provide response to the browser more quickly.
-- Updated php version to 7.1 for stable release and php 7.2 for dev release
-- Updated coding standard to psr-12 to minimize breaks changes
-- Updated *SimpleRouteCompiler* class for faster route compling and matching
-- Updated php files header doc
+### Changed
+- Made changes to `README.md` file
+- Made changes to `CHANGELOG.md` file
+- Updated `CHANGELOG.md` file for [unreleased] version
+- Replaced `Support_us.md` with `FUNDING.yml` in **.github** folder
+- Made changes to `CONTRIBUTING.md` file and moved it to **.github** folder
+- Made changes to **composer.json** file
+- Updated php version to 7.1 for stable release and dev release
 
-## 0.2.7 - 2020-05-28
+### Fixed
+- Fixed minor documentation bug on RouteGroup class
 
-- Added psr-15 *RequestHandlerInterface* to *RouteCollectorInterface*
-- Added methods from deleted *ArgumentsTrait* to *ControllersTrait*
-- Improved code complexity to add some extra performance
-- Removed two extra arguments from *Route* class
-- Removed ['request'] arguments from *RouterProxy* and *RouteCollector* classes
-- Removed some unnecessary methods from *RouteCollector* class
-- Removed namespace key in *$groups* variable
-- Renamed `dispatch()` method to `handle` method requiring psr-7 *ServerRequestInterface*
-- Deleted *ArgumentsTrait* trait from Traits folder
-- Fixed issues with setting and getting `$namespace` in *Route* class
-- Fixed issues with performing a `route grouping`
-- Updated *$namespace* parameter to public static
-- Updated REAME.md file
+### Removed
+- Deleted `.scrutinizer.yml` file by @biustudio
+- Removed unassigned variable from `Flight\Routing\Concerns\CallableHandler` class
 
-## 0.2.4 - 2020-05-18
-
-- Fixed minor issues with `route grouping`
-- Fixed minor issues with `route uri generator`
-- Improved code quality, applied psr fixtures, and routing performance
-- Deleted *RouteMiddleware* class, and use *MiddlewareDispatcher* as replacements
-- Deleted *RouteResource* class, it will be replaced in the future
-- Deleted *ResourceController* interface
-- Deleted *RouteRunnerMiddleware* middleware class
-- Removed some `use function` statements from codebase
-- Removed some methods from *Route* class into new traits
-- Removed argument ['6'] from *Route* class
-- Added *tests* for `route group`, `route uri generator` and more
-- Added *PathsTrait* and *GroupsTrait* traits to *Route* class
-- Updated *MethodNotAllowedException* class
-- Updated `handle` method in *RouteResults* class
-
-## 0.2.0 - 2020-05-16
-
-- Improved how routes are handled and dispatched
-- Improved performance of routing x1.5
-- Renamed *SymfonyRouteCompiler* class to *SimpleRouteCompiler*
-- Removed *RouteResource* class and support for resource routing
-- Removed some methods from *Route* class to traits in `Traits` folder
-- Added ability to match domain and scheme from path.
-- Added ability to match controller and action on path
-- Added serializable support for *Route* class
-- Added new methods to some classes and interfaces
-- Added phpunit testing Classes
-- Added *schemes* to routing
-- Added a new folder `Traits`
-- Added *CallableHandler* class in `Concerns` folder
-- Added *UriHandlerException* class in `Exceptions` folder
-- Updated README.md file
-
-## 0.1.1 - 2020-05-04
-
-- Added improvement for routes handling
-- Added support for php 7.1 to php 8.0
-- Update README.md file
-
-## 0.1.0 - 2020-02-21
-
-- First release
+[unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.9...master
