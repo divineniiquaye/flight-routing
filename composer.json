@@ -2,15 +2,7 @@
     "name": "divineniiquaye/flight-routing",
     "type": "library",
     "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers.",
-    "keywords": [
-        "router",
-        "url routing",
-        "psr-15",
-        "psr-7",
-        "php",
-        "biuradphp",
-        "php7"
-    ],
+    "keywords": ["router","url routing","psr-15","psr-7","php","biuradphp","php7"],
     "homepage": "https://www.biurad.com",
     "license": "BSD-3-Clause",
     "authors": [
@@ -23,6 +15,12 @@
             "homepage": "https://biurad.com/projects/contributors"
         }
     ],
+    "support": {
+        "docs": "https://docs.biurad.com/flight-routing",
+        "issues": "https://github.com/divineniiquaye/flight-routing/issues",
+        "rss": "https://github.com/divineniiquaye/flight-routing/releases.atom",
+        "source": "https://github.com/divineniiquaye/flight-routing"
+    },
     "require": {
         "php": "^7.1 || ^8.0",
         "ext-libxml": "*",
@@ -34,24 +32,46 @@
     },
     "require-dev": {
         "biurad/biurad-http": "^0.1",
-        "phpunit/phpunit": "^8.5 || ^9.0"
+        "composer/package-versions-deprecated": "^1.8",
+        "phpstan/phpstan": "^0.12",
+        "phpstan/phpstan-strict-rules": "^0.12",
+        "phpunit/phpunit": "^8.5 || ^9.0",
+        "squizlabs/php_codesniffer": "^3.5",
+        "vimeo/psalm": "^3.11"
+    },
+    "suggest": {
+        "biurad/biurad-http": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
     },
     "autoload": {
         "psr-4": {
             "Flight\\Routing\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Flight\\Routing\\Tests\\": "Tests/"
         },
         "exclude-from-classmap": [
             "/Tests/"
         ]
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Flight\\Routing\\Tests\\": "Tests/"
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.x-dev"
         }
     },
+    "scripts": {
+        "phpcs": "phpcs -q",
+        "phpstan": "phpstan analyse",
+        "psalm": "psalm --show-info=true",
+        "phpunit": "phpunit --no-coverage",
+        "test": [
+            "@phpcs",
+            "@phpstan",
+            "@psalm",
+            "@phpunit"
+        ]
+    },
     "minimum-stability": "dev",
-    "prefer-stable": true,
-    "suggest": {
-        "biurad/biurad-http": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
-    }
+    "prefer-stable": true
 }
