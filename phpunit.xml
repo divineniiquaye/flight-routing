@@ -14,7 +14,7 @@
 
     <testsuites>
         <testsuite name="Routes, RESTFull, URI generation">
-            <directory>./Tests/</directory>
+            <directory>./tests/</directory>
         </testsuite>
     </testsuites>
 
