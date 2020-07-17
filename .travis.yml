@@ -1,28 +1,26 @@
 language: php
 sudo: false
 
-matrix:
-  include:
-    - php: 7.2
-    - php: 7.3
-    - php: 7.4
-  fast_finish: true
-
 cache:
-  directories:
-    - $HOME/.composer/cache
+    directories:
+        - $HOME/.composer/cache
+
+matrix:
+    include:
+        - php: 7.2
+        - php: 7.3
+        - php: 7.4
+    fast_finish: true
 
 before_install:
-  - composer self-update
+    - composer self-update
 
 install:
-  - composer update --no-interaction
-  - composer require squizlabs/php_codesniffer --dev
+    - composer update --no-interaction
 
 script:
-  - ./vendor/bin/phpcs --standard=psr12 --colors src Tests
-  - ./vendor/bin/phpunit --coverage-clover=coverage.xml
+    - ./vendor/bin/phpcs
+    - ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
 after_success:
-  - wget https://scrutinizer-ci.com/ocular.phar && php ocular.phar
-  - bash <(curl -s https://codecov.io/bash) -f coverage.xml
+    - bash <(curl -s https://codecov.io/bash) -f coverage.xml
