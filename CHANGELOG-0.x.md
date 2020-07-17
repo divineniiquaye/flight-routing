@@ -174,6 +174,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 ### Added
 - Initial commit (made major fixtures and changes)
 
+[0.5.0]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.9...v0.5.0
 [0.2.9]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.5...v0.2.8
 [0.2.7]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.5...v0.2.7
