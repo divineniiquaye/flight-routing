@@ -49,7 +49,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Flight\\Routing\\Tests\\": "Tests/"
+            "Flight\\Routing\\Tests\\": "tests/"
         },
         "exclude-from-classmap": [
             "/Tests/"
