@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.2 and above required
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -238,6 +238,6 @@ class Route implements Serializable, RouteInterface
             return $data[$key];
         }
 
-        throw new RuntimeException(\sprintf('Missing "%s" paramter in route instance', $key));
+        throw new RuntimeException(\sprintf('Missing "%s" parameter in route instance', $key));
     }
 }

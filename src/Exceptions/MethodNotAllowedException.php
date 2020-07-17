@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.2 and above required
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,7 +24,7 @@ class MethodNotAllowedException extends RouteNotFoundException
 {
     public function __construct(array $methods, string $path, string $method)
     {
-        $message = 'Unfotunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid';
+        $message = 'Unfortunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid';
 
         parent::__construct(\sprintf($message, $path, \implode(',', $methods), $method));
     }

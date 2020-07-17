@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.2 and above required
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -528,9 +528,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Create a new route instance.
      *
-     * @param array        $methods
-     * @param string       $uri
-     * @param mixed        $action
+     * @param array  $methods
+     * @param string $uri
+     * @param mixed  $action
      *
      * @return Route
      */
