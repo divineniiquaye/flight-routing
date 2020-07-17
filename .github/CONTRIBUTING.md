@@ -1,8 +1,6 @@
 # Contributing
 
-Contributions are **welcome** and will be fully **credited**.
-
-We accept contributions via Pull Requests on [Github](https://github.com/divineniiquaye/flight-routing).
+Contributions are **welcome** and will be fully **credited**. We accept contributions via Pull Requests on [Github](https://github.com/divineniiquaye/flight-routing).
 
 ## Pull Requests
 
@@ -22,9 +20,9 @@ We accept contributions via Pull Requests on [Github](https://github.com/divinen
 
 ## Running Tests
 
-```bash
-$ vendor/bin/phpcs --standard=psr12 --colors src Tests
-$ vendor/bin/phpunit
+``` bash
+$ composer test
 ```
+
 
 **Happy coding**!
