@@ -1,19 +1,16 @@
-# Flight routing is a simple, fast PHP router that is easy to get integrated with other routers. Partially inspired by the Laravel router
+# The PHP HTTP Flight Router
 
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing?ref=badge_shield)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/divineniiquaye/flight-routing/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/divineniiquaye/flight-routing/?branch=master)
+[![Latest Version](https://img.shields.io/packagist/v/divineniiquaye/flight-routing.svg?style=flat-square)](https://packagist.org/packages/divineniiquaye/flight-routing)
+[![Software License](https://img.shields.io/badge/License-BSD--3-brightgreen.svg?style=flat-square)](LICENSE)
+[![Workflow Status](https://img.shields.io/github/workflow/status/divineniiquaye/flight-routing/Tests?style=flat-square)](https://github.com/divineniiquaye/flight-routing/actions?query=workflow%3ATests)
+[![Code Maintainability](https://img.shields.io/codeclimate/maintainability/divineniiquaye/flight-routing?style=flat-square)](https://codeclimate.com/github/divineniiquaye/flight-routing)
+[![Coverage Status](https://img.shields.io/codecov/c/github/divineniiquaye/flight-routing?style=flat-square)](https://codecov.io/gh/divineniiquaye/flight-routing)
+[![Quality Score](https://img.shields.io/scrutinizer/g/divineniiquaye/flight-routing.svg?style=flat-square)](https://scrutinizer-ci.com/g/divineniiquaye/flight-routing)
+[![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://biurad.com/sponsor)
 
-The goal of this project is to create a router that is more or less 100% compatible with all php http routers, while remaining as simple as possible, and as easy to integrate and change without compromising either speed or complexity. Being lightweight is the #1 priority.
+**divineniiquaye/flight-routing** is a HTTP router for [PHP] 7.1+ based on [PSR-7] and [PSR-15] with support for annotations, created by [Divine Niiquaye][@divineniiquaye]. This library helps create a human friendly urls (also more cool & prettier) while allows you to use any current trends of **`PHP Http Router`** implementation and fully meets developers' desires.
 
-Human-friendly URLs (also more cool & prettier) are easier to remember and do help SEO (search engine optimalization). Flight Routing allows you to use any current trends of _router_ implementation and fully meets developers' desires.
-
-The desired URL format is set by a _router_. The plainest implementation of the router is [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php). It can be used when there's no _router_ for a specific URL format yet.
-
-First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
-
-**`Please note that this documentation is currently work-in-progress. Feel free to contribute.`**
-
-## Features
+## 🏆 Features
 
 - Basic routing (`GET`, `POST`, `PUT`, `PATCH`, `UPDATE`, `DELETE`) with support for custom multiple verbs.
 - Regular Expression Constraints for parameters.
@@ -26,21 +23,19 @@ First of all, you need to configure your web server to handle all the HTTP reque
 - Optional parameters
 - Sub-domain routing and more.
 
-## Installation
+## 📦 Installation & Basic Usage
 
-The recommended way to install Flight Routing is via Composer:
+This project requires PHP 7.1 or higher. The recommended way to install, is via [Composer]. Simply run:
 
 ```bash
-composer require divineniiquaye/flight-routing
+$ composer require divineniiquaye/flight-routing
 ```
 
-It requires PHP version 7.2 and supports PHP up to 7.4. The dev-master version requires PHP 7.2.
+First of all, you need to configure your web server to handle all the HTTP requests with a single PHP file like `index.php`. Here you can see required configurations for Apache HTTP Server and NGINX.
 
-## How To Use
+### Setting up Nginx:
 
-### Setting up Nginx
-
-If you are using Nginx please make sure that url-rewriting is enabled.
+> If you are using Nginx please make sure that url-rewriting is enabled.
 
 You can easily enable url-rewriting by adding the following configuration for the Nginx configuration-file for the demo-project.
 
@@ -50,17 +45,9 @@ location / {
 }
 ```
 
-### Setting up Apache
+### Setting up Apache:
 
 Nothing special is required for Apache to work. We've include the `.htaccess` file in the `public` folder. If rewriting is not working for you, please check that the `mod_rewrite` module (htaccess support) is enabled in the Apache configuration.
-
-#### .htaccess example
-
----
-
-Below is an example of an working `.htaccess` file used by flight-routing.
-
-Simply create a new `.htaccess` file in your projects `public` directory and paste the contents below in your newly created file. This will redirect all requests to your `index.php` file (see Configuration section below).
 
 ```htaccess
 <IfModule mod_rewrite.c>
@@ -75,20 +62,11 @@ Simply create a new `.htaccess` file in your projects `public` directory and pas
         RedirectMatch 307 ^/$ /index.php/
     </IfModule>
 </IfModule>
-
 ```
 
-### Setting up IIS
+### Setting up IIS:
 
-On IIS you have to add some lines your `web.config` file in the `public` folder or create a new one. If rewriting is not working for you, please check that your IIS version have included the `url rewrite` module or download and install them from Microsoft web site.
-
-#### web.config example
-
----
-
-Below is an example of an working `web.config` file used by simple-php-router.
-
-Simply create a new `web.config` file in your projects `public` directory and paste the contents below in your newly created file. This will redirect all requests to your `index.php` file (see Configuration section below). If the `web.config` file already exists, add the `<rewrite>` section inside the `<system.webServer>` branch.
+On IIS you have to add some lines your `web.config` file. If rewriting is not working for you, please check that your IIS version have included the `url rewrite` module or download and install them from Microsoft web site.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -121,36 +99,15 @@ Simply create a new `web.config` file in your projects `public` directory and pa
 </configuration>
 ```
 
-#### Troubleshooting
+### Configuration
 
 ---
 
-If you do not have a `favicon.ico` file in your project, you can get a `NotFoundHttpException` (404 - not found).
-To add `favicon.ico` to the IIS ignore-list, add the following line to the `<conditions>` group:
+Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultPilot] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouterInterface` class instance in your project, the implementation varies.
 
-```xml
-<add input="{REQUEST_FILENAME}" negate="true" pattern="favicon.ico" ignoreCase="true" />
-```
+It's not required, but you can set `namespace method parameter's value to eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
-You can also make one exception for files with some extensions:
-
-```xml
-<add input="{REQUEST_FILENAME}" pattern="\.ico|\.png|\.css|\.jpg" negate="true" ignoreCase="true" />
-```
-
-If you are using `$_SERVER['ORIG_PATH_INFO']`, you will get `\index.php\` as part of the returned value. For example:
-
-```text
-/index.php/test/mypage.php
-```
-
-## Configuration
-
-Please note that the following snippets only covers how to this router in a project without an existing framework using [DefaultFlightRouter](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php) _router_. If you are using a framework or/and a different _router_ in your project, the implementation varies.
-
-It's not required, but you can set `namespace method paramter's value to eg: '\Demo\Controllers';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
-
-Router uses [biurad-http](https://github.com/biurad/biurad-http) package to provide [PSR-7](https://www.php-fig.org/psr/psr-7) complaint request and response objects to your controllers and middleware.
+This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware
 
 run this in command line if the package has not be added.
 
@@ -158,34 +115,25 @@ run this in command line if the package has not be added.
 composer require biurad/biurad-http
 ```
 
-Flight routing allows you to call any controller action with namespace using `*<namepace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
+Flight routing allows you to call any controller action with namespace using `*<namespace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
 
 > Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
 
-In your `index.php` require your newly-created `routes.php` and call the `$router->handle()` method on [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) _publish_ method, passing an instance of [PSR-7](https://www.php-fig.org/psr/psr-7) _ServerRequestInterface_. This will trigger and do the actual routing of the requests to response.
+In your `index.php` require your newly-created `routes.php` and call the `$router->handle()` method on [Publisher] `publish` method, passing an instance of [PSR-7] `ServerRequestInterface`. This will trigger and do the actual routing of the requests to response.
 
 ```php
 <?php
 
-use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use Flight\Routing\RouteCollector as Router;
 
-// Need to have an idea about php before using this dependency, though it easy to use.
-$router = new Router(new Psr17Factory);
+return static function (Router $router): void {
+    $router->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
-/**
- * The default namespace for route-callbacks, so we don't have to specify it each time.
- * Can be overwritten by using the namespace config option on your routes.
- */
-$router->setNamespace('\Demo\Controllers');
-
-// Routes goes here...
-
-// All routers goes in this space of the file
-return $router;
+    // Add more routes here...
+}
 ```
 
-There are two ways of dipatching a router, either by using the default [HttpPublisher](https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php) or [EmitResponse](https://github.com/biurad/biurad-http/blob/master/src/Response/EmitResponse.php) to dispatch the router.
+There are two ways of dispatching a router, either by using the default [Publisher] or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
 **This is an example of a basic `index.php` file:**
 
@@ -195,25 +143,33 @@ There are two ways of dipatching a router, either by using the default [HttpPubl
 use Flight\Routing\Services\HttpPublisher;
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
+// Need to have an idea about php before using this dependency, though it easy to use.
+$router = new Router(new Psr17Factory);
+
+/**
+ * The default namespace for route-callbacks, so we don't have to specify it each time.
+ * Can be overwritten by using the namespace config option on your routes.
+ */
+$router->setNamespace('Demo\\Controllers\\');
+
 /* Load external routes file */
-$router = require_once __DIR__.'/routes.php';
-assert($router instanceof BiuradPHP\Routing\RouteCollector);
+(require_once __DIR__.'/routes.php')($router);
 
 // Start the routing
-return (new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
+(new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
 
 // or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
 ```
 
 Remember the `routes.php` file you required in your `index.php`? This file be where you place all your custom rules for routing.
 
-> **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be abit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml, doesn't contain a <!doctype> or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
+> **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be a bit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
-> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callabe, invokable class,
-> or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it
-> to be constructed on demand.
+> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callable,invocable class, or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it to be constructed on demand.
 
-## Basic routing
+### Basic routing
+
+---
 
 Below is a very basic example of setting up a route. First parameter is the url which the route should match - next parameter is a `Closure` or callback function that will be triggered once the route matches.
 
@@ -223,7 +179,9 @@ $router->get('/', function() {
 }); // $router from routes.php file.
 ```
 
-## Closure Handler
+### Closure Handler
+
+---
 
 It is possible to pass the `closure` as route handler, in this case our function will receive two
 arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`.
@@ -239,7 +197,9 @@ $router->get(
 ));
 ```
 
-## Route Request
+### Route Request
+
+---
 
 You can catch the request object like this example:
 
@@ -278,7 +238,9 @@ $router->post(
 );
 ```
 
-## Route Response
+### Route Response
+
+---
 
 The example below illustrates supported kinds of responses.
 
@@ -328,7 +290,9 @@ $router
 
 ```
 
-## Route Redirection Response
+### Route Redirection Response
+
+---
 
 In case of needing to redirecting user to another URL:
 
@@ -370,7 +334,9 @@ $router
     });
 ```
 
-## Multiple HTTP-Verbs
+### Multiple HTTP-Verbs
+
+---
 
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
@@ -384,7 +350,9 @@ $router->any('foo', function() {
 });
 ```
 
-## Route Pattern and Parameters
+### Route Pattern and Parameters
+
+---
 
 You can use route pattern to specify any number of required and optional parameters, these parameters will later be passed
 to our route handler via `ServerRequestInterface` attribute `route`.
@@ -393,6 +361,8 @@ Use the `{parameter_name:pattern}` form to define a route parameter, where patte
 omit pattern and just use `{parameter_name}`, in this case the parameter will match `[^\/]+`.
 
 ### Required Parameters
+
+---
 
 You'll properly wondering by know how you parse parameters from your urls. For example, you might want to capture the users id from an url. You can do so by defining route-parameters.
 
@@ -411,6 +381,8 @@ $router->get('/posts/{postId}/comments/{commentId}', function ($postId, $comment
 ```
 
 ### Optional Parameters
+
+---
 
 Occasionally you may need to specify a route parameter, but make the presence of that route parameter optional. Use `[]` to make a part of route (including the parameters) optional, for example:
 
@@ -452,11 +424,14 @@ $router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
 // /en-us/hello
 // /hello
 // /hello/page-12
+// /ru/hello/page-12
 ```
 
 **Note:** Route parameters are always encased within {} braces and should consist of alphabetic characters. Route parameters may not contain a - character. Use an underscore (\_) instead.
 
 ### Regular Expression Constraints
+
+---
 
 You may constrain the format of your route parameters using the where method on a route instance. The where method accepts the name of the parameter and a regular expression defining how the parameter should be constrained:
 
@@ -478,7 +453,9 @@ $router->get('/user/{id:[0-9]+}/{name:[a-z]+}', function (int $id, string $name)
 });
 ```
 
-## Named Routes
+### Named Routes
+
+---
 
 Named routes allow the convenient generation of URLs or redirects for specific routes. You may specify a name for a route by chaining the name method onto the route definition:
 
@@ -494,7 +471,9 @@ You can also specify names for Controller-actions:
 $router->get('/user/profile', 'UserController@profile')->setName('profile');
 ```
 
-## Generating URLs From Named Routes
+### Generating URLs From Named Routes
+
+---
 
 URL generator tries to keep the URL as short as possible (while unique), so what can be omitted is not used. The behavior of generating urls from route depends on the respective parameters sequence given.
 
@@ -515,7 +494,9 @@ $router->get('/user/{id}/profile', function ($id) {
 $url = $router->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
 ```
 
-## Route Groups
+### Route Groups
+
+---
 
 Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$router->group` method.
 
@@ -532,7 +513,9 @@ $router->group(
 );
 ```
 
-## Route Middlewares
+### Route Middlewares
+
+---
 
 Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests. To associate route specific middleware use `addMiddleware`, you can access route parameters via `arguments` attribute of the request object:
 
@@ -544,7 +527,9 @@ Input --[Request]↦ Router ↦ Middleware 1 ↦ ... ↦ Middleware N ↦ Contro
 Output ↤[Response]- Router ↤ Middleware 1 ↤ ... ↤ Middleware N ↤ [Response]
 ```
 
-We using using [laminas-stratigility](https://github.com/laminas/laminas-stratigility) to allow better and saver middleware usage. install [laminas-stratigility](https://github.com/zendframework/laminas-stratigility) via composer:
+We using using [laminas-stratigility] to allow better and saver middleware usage.
+
+run this in command line if the package has not be added.
 
 ```bash
 composer require laminas/laminas-stratigility
@@ -554,7 +539,7 @@ To declare a middleware, you must implements Middleware `Psr\Http\Server\Middlew
 
 Middleware must have a `process()` method that catches http request and a closure (which runs the next middleware or the controller) and it returns a response at the end. Middleware can break the lifecycle and return a response itself or it can run the `$handler` implementing `Psr\Http\Server\RequestHandlerInterface` to continue lifecycle.
 
-For example see the following snippet. In this snippet, we will demonstrate how a mddlewares works:
+For example see the following snippet. In this snippet, we will demonstrate how a middleware works:
 
 ```php
 <?php
@@ -598,13 +583,15 @@ class ParamWatcher implements MiddlewareInterface
 
 This route will trigger Unauthorized exception on `/forbidden`.
 
-> You can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make scense to do so!
+> You can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make sense to do so!
 
-## Multiple Routes
+### Multiple Routes
+
+---
 
 Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
 
-This whole process is called _canonicalization_. Default (canonical) URL is the one router generates, that is, the first route matches exactly. Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
+> Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
 $router->get(
@@ -623,7 +610,9 @@ $router->get(
 ))
 ```
 
-## Subdomain Routing
+### Subdomain Routing
+
+---
 
 Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
 
@@ -644,9 +633,11 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 });
 ```
 
-## Custom Router
+### Custom Router Pilot
 
-If these offered routes do not fit your needs, you may create your own router and add it to your _router collection_. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
+---
+
+If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
 
 ```php
 <?php
@@ -720,53 +711,90 @@ class MyRouter implements RouterInterface
 }
 ```
 
-## Changelog
+## 📓 Documentation
 
-Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
+For in-depth documentation before using this library.. Full documentation on advanced usage, configuration, and customization can be found at [docs.biurad.com][docs].
 
-## Contributing
+## ⏫ Upgrading
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+Information on how to upgrade to newer versions of this library can be found in the [UPGRADE].
 
-## Testing
+## 🏷️ Changelog
 
-To run the tests you'll have to start the included node based server first if any in a separate terminal window.
+[SemVer](http://semver.org/) is followed closely. Minor and patch releases should not introduce breaking changes to the codebase; See [CHANGELOG] for more information on what has changed recently.
 
-With the server running, you can start testing.
+Any classes or methods marked `@internal` are not intended for use outside of this library and are subject to breaking changes at any time, so please avoid using them.
+
+## 🛠️ Maintenance & Support
+
+When a new **major** version is released (`1.0`, `2.0`, etc), the previous one (`0.19.x`) will receive bug fixes for _at least_ 3 months and security updates for 6 months after that new release comes out.
+
+(This policy may change in the future and exceptions may be made on a case-by-case basis.)
+
+**Professional support, including notification of new releases and security updates, is available at [Biurad Commits][commit].**
+
+## 👷‍♀️ Contributing
+
+To report a security vulnerability, please use the [Biurad Security](https://security.biurad.com). We will coordinate the fix and eventually commit the solution in this project.
+
+Contributions to this library are **welcome**, especially ones that:
+
+- Improve usability or flexibility without compromising our ability to adhere to [PSR-7] and [PSR-15]
+- Optimize performance
+- Fix issues with adhering to [PSR-7], [PSR-15] and this library
+
+Please see [CONTRIBUTING] for additional details.
+
+## 🧪 Testing
 
 ```bash
-vendor/bin/phpunit
+$ composer test
 ```
 
-## Security
+This will tests biurad/php-cache will run against PHP 7.2 version or higher.
 
-If you discover any security related issues, please report using the issue tracker.
-use our example [Issue Report](.github/ISSUE_TEMPLATE/Bug_report.md) template.
+## 👥 Credits & Acknowledgements
 
-## Want to be listed on our projects website
+- [Divine Niiquaye Ibok][@divineniiquaye]
+- [Anatoly Fenric][]
+- [All Contributors][]
 
-You're free to use this package, but if it makes it to your production environment we highly appreciate you sending us a message on our website, mentioning which of our package(s) you are using.
+This code is partly a reference implementation of [Sunrise Http Router][] which is written, maintained and copyrighted by [Anatoly Fenric][]. This project new features  starting from version `1.0` was referenced from [Sunrise Http Router][]
 
-Post Here: [Project Patreons - https://patreons.biurad.com](https://patreons.biurad.com)
+## 🙌 Sponsors
 
-We publish all received request's on our website.
+Are you interested in sponsoring development of this project? Reach out and support us on [Patreon](https://www.patreon.com/biurad) or see <https://biurad.com/sponsor> for a list of ways to contribute.
 
-## Credits
+## 📄 License
 
-- [Divine Niiquaye](https://github.com/divineniiquaye)
-- [All Contributors](https://biurad.com/projects/flight-routing/contributers)
+**divineniiquaye/flight-routing** is licensed under the BSD-3 license. See the [`LICENSE`](LICENSE) file for more details.
 
-## Support us
+## 🏛️ Governance
 
-I am Niquaye Divine a software engineer at [`Biurad Lap`](https://biurad.com), Ghana. You'll find an overview of all our open source projects [on our website](https://biurad.com/opensource).
+This project is primarily maintained by [Divine Niiquaye Ibok][@divineniiquaye]. Members of the [Biurad Lap][] Leadership Team may occasionally assist with some of these duties.
 
-Does your business depend on our contributions? Reach out and support us on to build more project's. We want to build over one hundred project's in two years. [Support Us](https://biurad.com/donate) achieve our goal.
+## 🗺️ Who Uses It?
 
-All pledges will be dedicated to allocating workforce on maintenance and new awesome stuff.
-[Thanks to all who made Donations and Pledges to Us.](.github/ISSUE_TEMPLATE/Support_us.md)
+You're free to use this package, but if it makes it to your production environment we highly appreciate you sending us an [email] or [message] mentioning this library. We publish all received request's at <https://patreons.biurad.com>.
 
-## License
+Check out the other cool things people are doing with `divineniiquaye/flight-routing`: <https://packagist.org/packages/divineniiquaye/flight-routing/dependents>
 
-The BSD-3-Clause . Please see [License File](LICENSE.md) for more information.
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdivineniiquaye%2Fflight-routing?ref=badge_large)
+[Composer]: https://getcomposer.org
+[PHP]: https://php.net
+[PSR-7]: http://www.php-fig.org/psr/psr-6/
+[PSR-15]: http://www.php-fig.org/psr/psr-15/
+[@divineniiquaye]: https://github.com/divineniiquaye
+[docs]: https://docs.biurad.com/flight-routing
+[commit]: https://commits.biurad.com/flight-routing.git
+[UPGRADE]: UPGRADE-1.x.md
+[CHANGELOG]: CHANGELOG-0.x.md
+[CONTRIBUTING]: ./.github/CONTRIBUTING.md
+[All Contributors]: https://github.com/divineniiquaye/flight-routing/contributors
+[Biurad Lap]: https://team.biurad.com
+[email]: support@biurad.com
+[message]: https://projects.biurad.com/message
+[biurad-http]: https://github.com/biurad/biurad-http
+[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php
+[DefaultPilot]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
+[Anatoly Fenric]: https://anatoly.fenric.ru/
+[Sunrise Http Router]: https://github.com/sunrise-php/http-router
