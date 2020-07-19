@@ -38,7 +38,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  *   RequestHandlerMiddleware instances.
  * - string service names resolving to middleware
  * - arrays of service names and/or MiddlewareInterface instances
- * - PHP callables that follow the PSR-15 signature
+ * - PHP callable that follow the PSR-15 signature
  *
  * Additionally, the class provides the following decorator/utility methods:
  *
@@ -49,7 +49,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * - pipeline() will create a MiddlewarePipe instance from the array of
  *   middleware passed to it, after passing each first to prepare().
  */
-class MiddlewareDisptcher
+class MiddlewareDispatcher
 {
     /**
      * Set of middleware to be applied for every request.
@@ -62,7 +62,7 @@ class MiddlewareDisptcher
      * Set of route middleware to be used in $middlewares
      * Stack, if string name is equal to a given middleware.
      *
-     * @var array<string: MiddlewareInterface|string>
+     * @var array<string,mixed>
      */
     protected $routeMiddlewares = [];
 
@@ -98,15 +98,13 @@ class MiddlewareDisptcher
      *
      * $this->add([ProxyMiddleware::class]);
      *
-     * @param array|callable|MiddlewareInterface|string $middleware
+     * @param mixed $middleware
      */
     public function add($middleware): void
     {
         if (\is_array($middleware)) {
-            if (isset($middleware['routing'])) {
-                $this->routeMiddlewares = \array_merge($middleware['routing'], $this->routeMiddlewares);
-                unset($middleware['routing']);
-            }
+            $this->routeMiddlewares = \array_merge($middleware['routing'] ?? [], $this->routeMiddlewares);
+            unset($middleware['routing']);
 
             $this->middlewares = \array_merge($middleware, $this->middlewares);
 
@@ -142,7 +140,10 @@ class MiddlewareDisptcher
                 $middleware = $this->routeMiddlewares[$middleware];
             }
 
-            if (null !== $this->container && $this->container->has($middleware)) {
+            if (
+                (null !== $this->container && \is_string($middleware)) &&
+                $this->container->has($middleware)
+            ) {
                 $middleware = $this->container->get($middleware);
             }
 
