@@ -637,7 +637,7 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 
 ---
 
-If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its six methods:
+If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its five methods:
 
 ```php
 <?php
@@ -697,16 +697,6 @@ class MyRouter implements RouterInterface
     public function getIterator()
     {
         return new ArrayIterator($this->routes);
-    }
-
-    /**
-     * Gets the number of Routes in this collection.
-     *
-     * @return int The number of routes
-     */
-    public function count(): int
-    {
-        return count($this->routes);
     }
 }
 ```

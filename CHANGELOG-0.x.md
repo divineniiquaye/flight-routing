@@ -25,6 +25,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 ### Removed
 - Deleted `.scrutinizer.yml` file by @biustudio
 - Removed unassigned variable from `Flight\Routing\Concerns\CallableHandler` class
+- Removed `Countable` implementation from `Flight\Routing\Interfaces\RouterInterface`
 
 ## [0.2.9] - 2020-06-22
 ### Added
