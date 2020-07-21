@@ -126,7 +126,7 @@ In your `index.php` require your newly-created `routes.php` and call the `$route
 
 use Flight\Routing\RouteCollector as Router;
 
-return static function (Router $router): void {
+return static function (Router &$router): void {
     $router->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
     // Add more routes here...
