@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<psalm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="https://getpsalm.org/schema/config"
+       name="Psalm for Flight Routing"
+       useDocblockTypes="true"
+       errorLevel="3"
+       strictBinaryOperands="false"
+       rememberPropertyAssignmentsAfterCall="true"
+       checkForThrowsDocblock="false"
+       throwExceptionOnError="0"
+       ensureArrayStringOffsetsExist="true"
+       ensureArrayIntOffsetsExist="false"
+       resolveFromConfigFile="true"
+       xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+>
+    <projectFiles>
+        <directory name="src"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <LessSpecificImplementedReturnType errorLevel="suppress"/>
+
+        <PossiblyUndefinedStringArrayOffset>
+            <errorLevel type="suppress">
+                <file name="src/Route.php"/>
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+            </errorLevel>
+        </PossiblyUndefinedStringArrayOffset>
+
+        <PropertyNotSetInConstructor>
+            <errorLevel type="suppress">
+                <directory name="src/Traits"/>
+                <file name="src/RouteCollector.php"/>
+                <file name="src/Route.php"/>
+                <file name="src/RouteGroup.php"/>
+                <file name="src/RouteResults.php"/>
+            </errorLevel>
+        </PropertyNotSetInConstructor>
+
+        <UndefinedInterfaceMethod>
+            <errorLevel type="suppress">
+                <referencedMethod name="Flight\Routing\Interfaces\RouteGroupInterface::offsetGet"/>
+                <referencedMethod name="Flight\Routing\Interfaces\CallableResolverInterface::getContainer"/>
+            </errorLevel>
+        </UndefinedInterfaceMethod>
+    </issueHandlers>
+</psalm>
