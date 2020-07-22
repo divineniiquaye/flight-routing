@@ -18,14 +18,17 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Made changes to `CONTRIBUTING.md` file and moved it to **.github** folder
 - Made changes to **composer.json** file
 - Updated php version to 7.1 for stable release and dev release
+- Updated psalm and phpunit config file to be prefixed .dist
 
 ### Fixed
 - Fixed minor documentation bug on RouteGroup class
+- Fixed minor issues with parsing static method as string
 
 ### Removed
 - Deleted `.scrutinizer.yml` file by @biustudio
 - Removed unassigned variable from `Flight\Routing\Concerns\CallableHandler` class
 - Removed `Countable` implementation from `Flight\Routing\Interfaces\RouterInterface`
+- Delete tests bootstrap file. used composer's autoload file
 
 ## [0.2.9] - 2020-06-22
 ### Added
