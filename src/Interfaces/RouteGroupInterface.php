@@ -43,7 +43,7 @@ interface RouteGroupInterface
     /**
      * Get The Route Group Options.
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public function getOptions(): array;
 }

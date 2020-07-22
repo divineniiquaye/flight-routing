@@ -54,7 +54,7 @@ class MiddlewareDispatcher
     /**
      * Set of middleware to be applied for every request.
      *
-     * @var MiddlewareInterface[]
+     * @var MiddlewareInterface[]|string[]
      */
     protected $middlewares = [];
 
@@ -119,7 +119,7 @@ class MiddlewareDispatcher
     /**
      * Get all middlewares stack.
      *
-     * @return array<string, MiddlewareInterface>
+     * @return MiddlewareInterface[]|string[]
      */
     public function getMiddlewareStack(): array
     {
@@ -164,7 +164,7 @@ class MiddlewareDispatcher
      * that have been added before will be executed after the newly
      * added one (last in, first out).
      *
-     * @param array|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string|string[] $middleware
      *
      * @throws InvalidMiddlewareException if argument is not one of
      *                                    the specified types

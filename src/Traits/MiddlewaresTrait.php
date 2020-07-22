@@ -24,7 +24,7 @@ trait MiddlewaresTrait
     /**
      * Route Middlewares.
      *
-     * @var array
+     * @var string[]
      */
     protected $middlewares = [];
 

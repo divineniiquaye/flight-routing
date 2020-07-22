@@ -24,31 +24,23 @@ use Flight\Routing\Interfaces\RouterProxyInterface;
 
 class RouteGroup implements RouteGroupInterface
 {
-    /**
-     * @var callable|object|string
-     */
+    /** @var null|callable|object|string */
     protected $callable;
 
-    /**
-     * @var CallableResolverInterface
-     */
+    /** @var CallableResolverInterface */
     protected $callableResolver;
 
-    /**
-     * @var RouterProxyInterface
-     */
+    /** @var RouterProxyInterface */
     protected $routeProxy;
 
-    /**
-     * @var array
-     */
+    /** @var array<string,mixed> */
     protected $attributes = [];
 
     /**
-     * @param array                     $attributes
-     * @param callable|object|string    $callable
-     * @param CallableResolverInterface $callableResolver
-     * @param RouterProxyInterface      $routeProxy
+     * @param array<string,mixed>         $attributes
+     * @param null|callable|object|string $callable
+     * @param CallableResolverInterface   $callableResolver
+     * @param RouterProxyInterface        $routeProxy
      */
     public function __construct(
         array $attributes,
@@ -67,7 +59,9 @@ class RouteGroup implements RouteGroupInterface
      */
     public function collectRoutes(): RouteGroupInterface
     {
-        $this->loadGroupRoutes($this->callable);
+        if (null !== $this->callable) {
+            $this->loadGroupRoutes($this->callable);
+        }
 
         return $this;
     }
@@ -128,8 +122,8 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the namespace for the new group attributes.
      *
-     * @param array $new
-     * @param array $old
+     * @param array<string,string> $new
+     * @param array<string,string> $old
      *
      * @return null|string
      */
@@ -149,14 +143,14 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the prefix for the new group attributes.
      *
-     * @param array $new
-     * @param array $old
+     * @param array<string,string> $new
+     * @param array<string,string> $old
      *
-     * @return null|string
+     * @return string
      */
-    protected function formatPrefix($new, $old): ?string
+    protected function formatPrefix($new, $old): string
     {
-        $old = $old[self::PREFIX] ?? null;
+        $old = $old[self::PREFIX] ?? '';
 
         return isset($new[self::PREFIX]) ? $old . $new[self::PREFIX] : $old;
     }
@@ -164,8 +158,8 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the "wheres" for the new group attributes.
      *
-     * @param array $new
-     * @param array $old
+     * @param array<string,string[]> $new
+     * @param array<string,string[]> $old
      *
      * @return null|array
      */
@@ -181,9 +175,9 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format for the new group attributes.
      *
-     * @param string $old
-     * @param array  $new
-     * @param array  $old
+     * @param string                 $key
+     * @param array<string,string[]> $new
+     * @param array<string,string[]> $old
      *
      * @return array
      */
@@ -195,8 +189,8 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Format the "name" clause of the new group attributes.
      *
-     * @param array $new
-     * @param array $old
+     * @param array<string,string> $new
+     * @param array<string,string> $old
      *
      * @return array
      */

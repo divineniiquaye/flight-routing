@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use ArrayAccess;
-use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -26,47 +24,27 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class UriRedirectMiddleware implements MiddlewareInterface
 {
-    /**
-     * @var array
-     */
-    protected const DEFAUTLS = [
-        'permanent' => true,
-        'query'     => true,
-    ];
-
-    /**
-     * @var array
-     */
+    /** @var array */
     protected $redirects = [];
 
-    /**
-     * @var bool
-     */
-    private $permanent = true;
+    /** @var bool */
+    private $permanent;
+
+    /** @var bool */
+    private $query;
 
     /**
-     * @var bool
+     * @param array<string,string> $redirects [from => to]
+     * @param array<string,bool> $options
      */
-    private $query = true;
-
-    /**
-     * @param array $redirects [from => to]
-     * @param array $options
-     */
-    public function __construct(array $redirects = [], array $options = self::DEFAUTLS)
+    public function __construct(array $redirects = [], bool $query = true, bool $permanent = true)
     {
-        if (!\is_array($redirects) && !($redirects instanceof ArrayAccess)) {
-            throw new InvalidArgumentException(
-                'The redirects argument must be an array or implement the ArrayAccess interface'
-            );
-        }
-
         if (!empty($redirects)) {
             $this->redirects = $redirects;
         }
 
-        $this->allowQueries($options['query']);
-        $this->permanentRedirection($options['permanent']);
+        $this->query = $query;
+        $this->permanent = $permanent;
     }
 
     /**
@@ -76,7 +54,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
      *
      * @return UriRedirectMiddleware
      */
-    public function permanentRedirection(bool $permanent = true): self
+    public function setPermanentRedirection(bool $permanent = true): self
     {
         $this->permanent = $permanent;
 

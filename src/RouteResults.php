@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Closure;
 use Flight\Routing\Concerns\CallableHandler;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
@@ -73,12 +72,12 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $keepRequestMethod = 302;
 
     /**
-     * @var RouteInterface|string
+     * @var null|RouteInterface
      */
     protected $routeIdentifier;
 
     /**
-     * @var callable<ResponseInterface>
+     * @var callable
      */
     protected $response;
 
@@ -163,7 +162,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
         }
 
         // Inject the actual route result, as well as return the response.
-        if (false === $route = $this->getMatchedRoute()) {
+        if (!($route = $this->getMatchedRoute()) instanceof RouteInterface) {
             throw new  RouteNotFoundException(
                 \sprintf(
                     'Unable to find the controller for path "%s". The route is wrongly configured.',
@@ -177,11 +176,12 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             $this->logRoute($route, $request);
         }
 
-        $response = $this->dispatchRoute($this->getMatchedRoute(), $request);
+        $response = $this->dispatchRoute($route, $request);
 
         // Allow Redirection if exists and avoid static request.
         if (null !== $this->getRedirectLink()) {
-            return $response->withAddedHeader('Location', $this->getRedirectLink())
+            return $response
+                ->withAddedHeader('Location', (string) $this->getRedirectLink())
                 ->withStatus($this->keepRequestMethod);
         }
 
@@ -214,8 +214,8 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      *
      * @param bool $urlDecode
      *
-     * @return false|RequestHandlerInterface|RouteInterface false if representing a routing failure;
-     *                                                      null if not created. Route instance otherwise.
+     * @return null|bool|RouteInterface false if representing a routing failure;
+     *                                  null if not created. Route instance otherwise.
      */
     public function getMatchedRoute(bool $urlDecode = true)
     {
@@ -266,7 +266,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
             ->withAttribute('arguments', $route->getArguments());
 
         // If controller is instance of RequestHandlerInterface
-        if (!$callable instanceof Closure && $callable[0] instanceof RequestHandlerInterface) {
+        if (is_array($callable) && $callable[0] instanceof RequestHandlerInterface) {
             return $callable($request);
         }
 

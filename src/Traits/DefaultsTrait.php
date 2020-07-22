@@ -24,7 +24,7 @@ trait DefaultsTrait
     /**
      * Route defaults.
      *
-     * @var array
+     * @var array<string,mixed>
      */
     protected $defaults = [];
 

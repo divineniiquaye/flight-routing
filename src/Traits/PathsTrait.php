@@ -50,13 +50,13 @@ trait PathsTrait
      */
     protected function setPath(string $pattern): void
     {
-        if (null !== $this->prefix) {
+        if (!empty($this->prefix)) {
             $pattern = $this->normalizePrefix($pattern, $this->prefix);
         }
 
         // Match domain + scheme from pattern...
         if (\preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
-            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function ($matches) {
+            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function (array $matches) {
                 $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
 
                 return '';
@@ -104,13 +104,13 @@ trait PathsTrait
      * one character, and that the prefix begins with a slash.
      *
      * @param string $uri
-     * @param mixed  $prefix
+     * @param string $prefix
      *
      * @return string
      */
-    private function normalizePrefix(string $uri, $prefix)
+    private function normalizePrefix(string $uri, string $prefix)
     {
-        // Allow homepage uri on prefix just like python dgango url style.
+        // Allow homepage uri on prefix just like python django url style.
         if (\in_array($uri, ['', '/'], true)) {
             return \rtrim($prefix, '/') . $uri;
         }

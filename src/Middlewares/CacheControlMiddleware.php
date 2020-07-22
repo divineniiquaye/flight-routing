@@ -55,7 +55,9 @@ class CacheControlMiddleware implements MiddlewareInterface
         }
 
         // Fix protocol
-        if ('HTTP/1.0' !== $request->getServerParams()['SERVER_PROTOCOL']) {
+        $servers = $request->getServerParams();
+
+        if (isset($servers['SERVER_PROTOCOL']) && 'HTTP/1.0' !== $servers['SERVER_PROTOCOL']) {
             $response = $response->withProtocolVersion('1.1');
         }
 
@@ -69,7 +71,7 @@ class CacheControlMiddleware implements MiddlewareInterface
         ) {
             $response = $response
                 ->withHeader('Pragma', 'no-cache')
-                ->withHeader('Expires', -1);
+                ->withHeader('Expires', (string) -1);
         }
 
         // Redirection headers for 302 and 301
@@ -107,7 +109,7 @@ class CacheControlMiddleware implements MiddlewareInterface
     ): ResponseInterface {
         if (
             false !== \stripos($response->getHeaderLine('Content-Disposition'), 'attachment') &&
-            1 === \preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'], $match) &&
+            1 === \preg_match('/MSIE (.*?);/i', $request->getServerParams()['HTTP_USER_AGENT'] ?? '', $match) &&
             \array_key_exists('HTTPS', $request->getServerParams())
         ) {
             if ((int) \preg_replace('/(MSIE )(.*?);/', '$2', $match[0]) < 9) {

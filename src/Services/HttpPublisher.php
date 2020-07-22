@@ -38,32 +38,24 @@ class HttpPublisher implements PublisherInterface
      */
     public function publish($content, ?EmitterInterface $emitter): bool
     {
-        $content = empty($content) ? '' : $content;
-
-        if (null !== $emitter && $content instanceof PsrResponseInterface) {
-            try {
+        try {
+            if (null !== $emitter && $content instanceof PsrResponseInterface) {
                 return $emitter->emit($content);
-            } finally {
-                if (\function_exists('fastcgi_finish_request')) {
-                    fastcgi_finish_request();
-                }
             }
-        }
 
-        if (null === $emitter && $content instanceof PsrResponseInterface) {
-            $this->emitResponseHeaders($content);
-            $content = $content->getBody();
-        }
+            if (null === $emitter && $content instanceof PsrResponseInterface) {
+                $this->emitResponseHeaders($content);
+                $content = $content->getBody();
+            }
+    
+            \flush();
 
-        \flush();
-
-        if ($content instanceof StreamInterface) {
-            try {
+            if ($content instanceof StreamInterface) {
                 return $this->emitStreamBody($content);
-            } finally {
-                if (\function_exists('fastcgi_finish_request')) {
-                    fastcgi_finish_request();
-                }
+            }
+        } finally {
+            if (\function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
             }
         }
 

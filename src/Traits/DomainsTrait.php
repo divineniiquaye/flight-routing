@@ -31,7 +31,7 @@ trait DomainsTrait
     /**
      * Route domain.
      *
-     * @var string
+     * @var string|null
      */
     protected $domain;
 
@@ -57,7 +57,7 @@ trait DomainsTrait
      */
     public function getDomain(): string
     {
-        return \str_replace(['http://', 'https://'], '', $this->domain ?? '');
+        return \str_replace(['http://', 'https://'], '', (string) $this->domain);
     }
 
     /**

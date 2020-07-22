@@ -73,13 +73,13 @@ class SimpleRouteCompiler implements Serializable
     /** @var string */
     private $hostTemplate;
 
-    /** @var array */
+    /** @var array<string,mixed> */
     private $variables;
 
-    /** @var array */
+    /** @var array<string,mixed> */
     private $pathVariables;
 
-    /** @var array */
+    /** @var array<string,mixed> */
     private $hostVariables;
 
     public function __serialize(): array
@@ -115,10 +115,8 @@ class SimpleRouteCompiler implements Serializable
      */
     public function compile(RouteInterface $route): self
     {
-        $hostVariables = [];
-        $variables     = [];
-        $hostRegex     = null;
-        $hostTemplate  = null;
+        $hostVariables = $variables = [];
+        $hostRegex     = $hostTemplate = null;
 
         if ('' !== $host = $route->getDomain()) {
             $result = $this->compilePattern($route, $host, true);
@@ -155,7 +153,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * The template regex for matching.
      *
-     * @param bool $host either host or path tempalte
+     * @param bool $host either host or path template
      *
      * @return string The static regex
      */
@@ -245,23 +243,23 @@ class SimpleRouteCompiler implements Serializable
      */
     protected function getRequirements(array $requirements): array
     {
-        $newParamters = [];
+        $newParameters = [];
 
         foreach ($requirements as $key => $regex) {
-            $newParamters[$key] = $this->sanitizeRequirement($key, $regex);
+            $newParameters[$key] = $this->sanitizeRequirement($key, $regex);
         }
 
-        return $newParamters;
+        return $newParameters;
     }
 
-    private function sanitizeRequirement(string $key, string $regex)
+    private function sanitizeRequirement(string $key, string $regex): string
     {
         if ('' !== $regex && \strpos($regex, '^') === 0) {
             $regex = (string) \substr($regex, 1); // returns false for a single character
         }
 
         if ('$' === \substr($regex, -1)) {
-            $regex = \substr($regex, 0, -1);
+            $regex = (string) \substr($regex, 0, -1);
         }
 
         if ('' === $regex) {
@@ -305,7 +303,7 @@ class SimpleRouteCompiler implements Serializable
     }
 
     /**
-     * Compute preapred pattern and return it's replacements and arguments.
+     * Compute prepared pattern and return it's replacements and arguments.
      *
      * @param array          $variables
      * @param string         $pattern

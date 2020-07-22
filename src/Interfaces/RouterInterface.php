@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Countable;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\RouteResults;
 use IteratorAggregate;
@@ -33,10 +32,12 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  *
  * @copyright Copyright (c) 2015-2017 Zend Technologies USA Inc. (https://www.zend.com)
  */
-interface RouterInterface extends IteratorAggregate, Countable
+interface RouterInterface extends IteratorAggregate
 {
     /**
      * All added routes should be clonable.
+     *
+     * @psalm-suppress MissingReturnType
      */
     public function __clone();
 

@@ -19,6 +19,7 @@ namespace Flight\Routing\Interfaces;
 
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use ReflectionException;
 
 interface RouteInterface
 {
@@ -30,7 +31,7 @@ interface RouteInterface
     public function getMethods(): array;
 
     /**
-     * Get the route patternised path.
+     * Get the route patterned path.
      *
      * @return string
      */
@@ -84,11 +85,11 @@ interface RouteInterface
     /**
      * Set route name.
      *
-     * @param string $name
+     * @param null|string $name
      *
      * @return static
      */
-    public function setName(string $name): self;
+    public function setName(?string $name): self;
 
     /**
      * Retrieve a specific route argument.
@@ -103,14 +104,14 @@ interface RouteInterface
     /**
      * Get route arguments.
      *
-     * @return string[]
+     * @return array<string,mixed>
      */
     public function getArguments(): array;
 
     /**
      * Set a route arguments.
      *
-     * @param array $arguments
+     * @param array<string,mixed> $arguments
      *
      * @return self
      */
@@ -121,7 +122,7 @@ interface RouteInterface
      *
      * @see addPattern() method
      *
-     * @param array $wheres
+     * @param array<string,string> $wheres
      *
      * @return $this
      */
@@ -139,7 +140,7 @@ interface RouteInterface
      * Sets the schemes (e.g. 'https') this route is restricted to.
      * So an empty array means that any scheme is allowed.
      *
-     * @param string|string[] $schemes The scheme or an array of schemes
+     * @param null|string|string[] $schemes The scheme or an array of schemes
      *
      * @return $this
      */
@@ -158,7 +159,7 @@ interface RouteInterface
     /**
      * Adds defaults.
      *
-     * @param array $defaults The defaults
+     * @param array<string,mixed> $defaults The defaults
      *
      * @return RouteInterface
      */
@@ -167,7 +168,7 @@ interface RouteInterface
     /**
      * Get route default options.
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public function getDefaults(): array;
 
@@ -197,7 +198,7 @@ interface RouteInterface
     /**
      * Add middlewares to route.
      *
-     * @param array|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string|string[] $middleware
      *
      * @return RouteInterface
      */
@@ -206,7 +207,7 @@ interface RouteInterface
     /**
      * Get middlewares from stack.
      *
-     * @return array
+     * @return string[]
      */
     public function getMiddlewares(): array;
 

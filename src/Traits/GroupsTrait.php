@@ -29,7 +29,7 @@ trait GroupsTrait
     /**
      * Parent route groups.
      *
-     * @var array|RouteGroupInterface[]
+     * @var array<string,mixed>
      */
     protected $groups = [];
 

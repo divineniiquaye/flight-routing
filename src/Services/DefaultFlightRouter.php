@@ -43,7 +43,7 @@ class DefaultFlightRouter implements RouterInterface
     /**
      * Symfony RouteCompiler.
      *
-     * @var SimpleRouteCompiler
+     * @var callable
      */
     private $compiler;
 
@@ -113,29 +113,29 @@ class DefaultFlightRouter implements RouterInterface
             $basePath = '';
         }
 
-        $finalisedPath = \substr($request->getUri()->getPath(), \strlen($basePath));
-        $matched       = $this->marshalMatchedRoute($method, $scheme, $domain, \rawurldecode($finalisedPath));
+        $finalizedPath = \substr($request->getUri()->getPath(), \strlen($basePath));
+        $matched       = $this->marshalMatchedRoute($method, $scheme, $domain, \rawurldecode($finalizedPath));
 
         // Get the request matching format.
         [$status, $parameters, $route] = $matched;
-        $finalised                     = new RouteResults($status, $parameters, $route);
+        $finalized                     = new RouteResults($status, $parameters, $route);
 
         // A feature adopted from Symfony routing, workaround fix.
         if (
             RouteResults::FOUND === $status &&
-            null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalisedPath)
+            null !== $redirectedPath = $this->compareRedirection($route->getPath(), $finalizedPath)
         ) {
-            $finalised->shouldRedirect((\strlen($basePath) > 1 ? $basePath . '' : '/') . $redirectedPath);
+            $finalized->shouldRedirect((\strlen($basePath) > 1 ? $basePath . '' : '/') . $redirectedPath);
         }
 
-        return $finalised;
+        return $finalized;
     }
 
     /**
      * Generate a URI based on a given route.
      *
      * Replacements are written as `{name}`, `{name:pattern}` or `{name=<default>}`;.
-     * This method will automatedly search for the best route, then
+     * This method will automatically search for the best route, then
      * match based on the available substitutions and generates a uri.
      *
      * {@inheritdoc}
@@ -144,21 +144,22 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function generateUri(RouteInterface $route, array $substitutions = []): string
     {
-        $match = ($this->compiler)($route);
+        $match      = ($this->compiler)($route);
+        $variables  = $this->fetchOptions($substitutions, \array_keys($match->getVariables()));
+        $parameters = \array_merge($match->getVariables(), $route->getDefaults(), $variables);
 
-        $parameters = \array_merge(
-            $match->getVariables(),
-            $route->getDefaults(),
-            $this->fetchOptions($substitutions, \array_keys($match->getVariables()))
-        );
+        // If we have s secured scheme, it should be served
+        $schemes = \array_map(function ($scheme) {
+            if ('https' === $scheme) {
+                return 'https';
+            }
+
+            return 'http';
+        }, $route->getSchemes() ?? ['http']);
 
         //Uri without empty blocks (pretty stupid implementation)
         if ($path = $this->interpolate($match->getRegexTemplate() ?? '', $parameters)) {
-            $path = \sprintf(
-                '%s://%s/',
-                $route->getSchemes() ? \current($route->getSchemes()) : 'http',
-                \trim($path, '.')
-            );
+            $path = \sprintf('%s://%s/', \current($schemes), \trim($path, '.'));
         }
 
         return $path .= $this->interpolate($match->getRegexTemplate(false), $parameters); // Return generated path
@@ -179,16 +180,6 @@ class DefaultFlightRouter implements RouterInterface
     }
 
     /**
-     * Gets the number of Routes in this collection.
-     *
-     * @return int The number of routes
-     */
-    public function count(): int
-    {
-        return \count($this->routesToInject);
-    }
-
-    /**
      * Marshals a route result based on the results of matching URL from set of routes.
      *
      * @param string $method The current request method
@@ -202,7 +193,7 @@ class DefaultFlightRouter implements RouterInterface
     {
         $path = \trim($path, '/') ?: '/';
 
-        foreach ($this as $index => $route) {
+        foreach ($this as $route) {
             // Let's match the routes
             $match                         = ($this->compiler)($route);
             [$parameters, $HostParameters] = [[], []];
@@ -253,7 +244,7 @@ class DefaultFlightRouter implements RouterInterface
 
         foreach ($values as $key => $value) {
             $value                = (\is_array($value) || $value instanceof Closure) ? '' : $value;
-            $replaces["<{$key}>"] = \is_object($value) ? (string) $value : $value;
+            $replaces["<{$key}>"] = $value;
         }
 
         return \strtr($string, $replaces + self::URI_FIXERS);

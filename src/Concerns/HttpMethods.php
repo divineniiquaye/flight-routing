@@ -41,17 +41,4 @@ class HttpMethods implements RequestMethodInterface
         self::METHOD_TRACE,
         self::METHOD_CONNECT,
     ];
-
-    /**
-     * Standardize custom http method name
-     * For the methods that are not defined in this enum.
-     *
-     * @param string $method
-     *
-     * @return string
-     */
-    public static function custom(string $method): string
-    {
-        return \strtoupper($method);
-    }
 }

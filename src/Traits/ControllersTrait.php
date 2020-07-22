@@ -38,14 +38,14 @@ trait ControllersTrait
     /**
      * Route callable.
      *
-     * @var callable|string
+     * @var null|callable|object|string
      */
     protected $controller;
 
     /**
      * Route parameters.
      *
-     * @var array
+     * @var array<string,mixed>
      */
     protected $arguments = [];
 
@@ -84,15 +84,16 @@ trait ControllersTrait
      */
     public function getController()
     {
-        $namespace = $this->groups[RouteGroupInterface::NAMESPACE] ?? $this->namespace;
+        $controller = $this->controller;
+        $namespace  = $this->groups[RouteGroupInterface::NAMESPACE] ?? $this->namespace;
 
         // Append a group namespace starting with a "\" to main namespace.
         if (null !== $namespace && '\\' === $namespace[0]) {
-            $namespace = $this->namespace . \ltrim($namespace, '\\') . '\\';
+            $namespace = $this->namespace . \ltrim((string) $namespace, '\\') . '\\';
         }
 
-        if (\is_string(($controller = $this->controller)) || \is_array($controller)) {
-            return $this->appendNamespace($controller, $namespace);
+        if (null !== $namespace && (\is_string($controller) || !$controller instanceof Closure)) {
+            return $this->appendNamespace($controller, (string) $namespace);
         }
 
         return $controller;
@@ -110,19 +111,17 @@ trait ControllersTrait
      */
     public function handle(callable $controller, CallableResolverInterface $callableResolver): callable
     {
-        $finalController = function (Request $request, Response $response) use ($controller, $callableResolver) {
+        return function (Request $request, Response $response) use ($controller, $callableResolver) {
             if (\class_exists(BoundMethod::class)) {
                 return BoundMethod::call(
                     $container = $callableResolver->getContainer(),
                     $controller,
-                    $this->arguments + ($container ? [$request] : [$request, $response])
+                    array_merge($this->arguments, $container ? [$request] : [$request, $response])
                 );
             }
 
             return $controller($request, $response, $this->arguments);
         };
-
-        return $finalController;
     }
 
     /**
@@ -139,33 +138,18 @@ trait ControllersTrait
     }
 
     /**
-     * @param null|callable|object|string $controller
-     * @param null|string                 $namespace
+     * @param callable|string|string[]|null $controller
+     * @param string                   $namespace
      *
-     * @return null|callable
+     * @return null|callable|object|string
      */
-    private function appendNamespace($controller, ?string $namespace)
+    private function appendNamespace($controller, string $namespace)
     {
-        if (
-            \is_string($controller) &&
-            (
-                !\class_exists($controller) &&
-                false === \stripos($controller, (string) $namespace)
-            )
-        ) {
+        if (\is_string($controller) && !\class_exists($controller) && false === \stripos($controller, $namespace)) {
             $controller = \is_callable($controller) ? $controller : $namespace . $controller;
         }
 
-        if (
-            (
-                !$controller instanceof Closure &&
-                \is_array($controller)
-            ) &&
-            (
-                !\is_object($controller[0]) &&
-                !\class_exists($controller[0])
-            )
-        ) {
+        if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
             $controller[0] = $namespace . $controller[0];
         }
 

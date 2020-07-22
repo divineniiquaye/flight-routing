@@ -163,7 +163,7 @@ class Route implements Serializable, RouteInterface
      */
     final public function unserialize($serialized): void
     {
-        $this->__unserialize(\unserialize($serialized, null));
+        $this->__unserialize(\unserialize($serialized));
     }
 
     /**

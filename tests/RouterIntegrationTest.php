@@ -167,7 +167,7 @@ abstract class RouterIntegrationTest extends TestCase
 
                 $routeResult = $request->getAttribute(RouteResults::class);
                 Assert::assertInstanceOf(RouteResults::class, $routeResult);
-                Assert::assertTrue(RouteResults::FOUND === $routeResult->getROuteStatus());
+                Assert::assertTrue(RouteResults::FOUND === $routeResult->getRouteStatus());
 
                 $matchedRoute = $routeResult->getMatchedRoute();
                 Assert::assertNotFalse($matchedRoute);

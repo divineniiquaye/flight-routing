@@ -24,14 +24,14 @@ trait PatternsTrait
     /**
      * Route Patterns.
      *
-     * @var array
+     * @var array<string,string>
      */
     protected $patterns = [];
 
     /**
      * {@inheritdoc}
      */
-    public function addPattern(string $name, string $expression = null): RouteInterface
+    public function addPattern(string $name, string $expression): RouteInterface
     {
         $this->patterns[$name] = $expression;
 

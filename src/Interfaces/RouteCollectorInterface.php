@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Closure;
+use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -34,7 +35,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Get route objects.
      *
-     * @return array|RouteInterface[]
+     * @return RouteInterface[]
      */
     public function getRoutes(): array;
 
@@ -91,7 +92,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Add this to keep the HTTP method when redirecting.
      *
-     * redirections are temporary by default (code 302)
+     * redirection is temporary by default (code 302)
      *
      * @param bool $status
      *
@@ -109,7 +110,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Set the global the middlewares stack attached to all routes.
      *
-     * @param array|callable|MiddlewareInterface|string $middleware
+     * @param callable|MiddlewareInterface|string|string[] $middleware
      *
      * @return RouteCollectorInterface
      */
@@ -118,7 +119,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Set the route middleware and call it as a method on route.
      *
-     * @param array $middlewares [name => $middlewares ?? [$middlewares]]
+     * @param array<string,mixed> $middlewares [name => $middlewares]
      *
      * @return RouteCollectorInterface
      */
@@ -127,7 +128,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Get all middlewares from stack.
      *
-     * @return array
+     * @return MiddlewareInterface[]|string[]
      */
     public function getMiddlewaresStack(): array;
 
@@ -136,8 +137,8 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      *
      * This method implements a fluent interface.
      *
-     * @param array $parameters The parameters
-     * @param int   $type
+     * @param array<string,mixed> $parameters The parameters
+     * @param int                 $type
      *
      * @return RouteCollectorInterface
      */
@@ -146,8 +147,8 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Add route group.
      *
-     * @param array           $attributes
-     * @param callable|string $callable
+     * @param array<string,mixed> $attributes
+     * @param callable|string     $callable
      *
      * @return RouteGroupInterface
      */
@@ -175,7 +176,7 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * Dispatches a matched route response.
      *
      * Uses the composed router to match against the incoming request, and
-     * injects the request passed to the handler with the `RouteResulst` instance
+     * injects the request passed to the handler with the `RouteResults` instance
      * returned (using the `RouteResults` class name as the attribute name).
      * If routing succeeds, injects the request passed to the handler with any
      * matched parameters as well.
@@ -183,7 +184,6 @@ interface RouteCollectorInterface extends RequestHandlerInterface
      * @param ServerRequestInterface $request
      *
      * @throws RouteNotFoundException
-     * @throws ExceptionInterface
      *
      * @return ResponseInterface
      */
