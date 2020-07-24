@@ -27,7 +27,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class ContentTypeMiddeware implements MiddlewareInterface
+class ContentTypeMiddleware implements MiddlewareInterface
 {
     /**
      * @param ServerRequestInterface  $request
@@ -37,14 +37,17 @@ class ContentTypeMiddeware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (!$request->hasHeader('Content-Type') && \in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'])) {
+        if (
+            !$request->hasHeader('Content-Type') &&
+            \in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'], true)
+        ) {
             $request = $request->withAttribute('Content-Type', 'application/x-www-form-urlencoded');
         }
         $formContentType = ['application/x-www-form-urlencoded', 'multipart/form-data'];
 
         if (
             $request->getMethod() === 'POST' &&
-            \in_array($request->getHeader('Content-Type'), $formContentType, true)
+            \in_array($request->getHeaderLine('Content-Type'), $formContentType, true)
         ) {
             $request = $request->withParsedBody($_POST);
         }
