@@ -21,7 +21,7 @@ use DomainException;
 use Flight\Routing\Interfaces\ExceptionInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 
-class UrlGenerationException extends DomainException implements ExceptionInterface
+final class UrlGenerationException extends DomainException implements ExceptionInterface
 {
     /**
      * Create a new exception for missing route parameters.

@@ -19,6 +19,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Made changes to **composer.json** file
 - Updated php version to 7.1 for stable release and dev release
 - Updated psalm and phpunit config file to be prefixed .dist
+- Marked `Flight\Routing\Exceptions\UrlGenerationException` class as final
 
 ### Fixed
 - Fixed minor documentation bug on RouteGroup class
