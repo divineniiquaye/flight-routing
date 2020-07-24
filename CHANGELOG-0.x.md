@@ -3,7 +3,11 @@
 All notable changes to this project will be documented in this file.
 Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
 
-## [0.5.0] - 2020-07-17
+## [0.5.1] - 2020-07-25
+### Fixed
+- Fixed failing tests on github action
+
+## [0.5.0] - 2020-07-24
 ### Added
 - Added changelog for 0.x versions
 - Added Dependabot to make changes to **composer.json** file
@@ -179,6 +183,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 ### Added
 - Initial commit (made major fixtures and changes)
 
+[0.5.1]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.9...v0.5.0
 [0.2.9]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.5...v0.2.8
