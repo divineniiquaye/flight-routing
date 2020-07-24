@@ -22,6 +22,11 @@ namespace Flight\Routing\Exceptions;
  */
 class MethodNotAllowedException extends RouteNotFoundException
 {
+    /**
+     * @param string[] $methods
+     * @param string $path
+     * @param string $method
+     */
     public function __construct(array $methods, string $path, string $method)
     {
         $message = 'Unfortunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid';

@@ -83,10 +83,10 @@ interface RouterInterface extends IteratorAggregate
      * the URI, this should be performed afterwards; consider passing the URI
      * to league/uri to encode it.
      *
-     * @param RouteInterface $route         the Route instance name
-     * @param array|string[] $substitutions key => value option pairs to pass to the
-     *                                      router for purposes of generating a URI; takes precedence over options
-     *                                      present in route used to generate URI
+     * @param RouteInterface     $route         the Route instance name
+     * @param array<mixed,mixed> $substitutions key => value option pairs to pass to the
+     *                                          router for purposes of generating a URI; takes precedence over options
+     *                                          present in route used to generate URI
      *
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex

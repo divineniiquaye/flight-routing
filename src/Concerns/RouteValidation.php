@@ -39,24 +39,24 @@ trait RouteValidation
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param null|string $routeDomain
-     * @param string      $requestDomain
-     * @param array       $parameters
+     * @param null|string              $routeDomain
+     * @param string                   $requestDomain
+     * @param array<int|string,string> $parameters
      *
      * @return bool
      */
     protected function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
     {
         return ($routeDomain === null || empty($routeDomain)) ||
-            \preg_match($routeDomain, $requestDomain, $parameters);
+            (bool) \preg_match($routeDomain, $requestDomain, $parameters);
     }
 
     /**
      * Check if given request uri matches given uri method.
      *
-     * @param string $routeUri
-     * @param string $requestUri
-     * @param array  $parameters
+     * @param string                   $routeUri
+     * @param string                   $requestUri
+     * @param array<int|string,string> $parameters
      *
      * @return bool
      */
@@ -68,8 +68,8 @@ trait RouteValidation
     /**
      * Check if given request uri scheme matches given route scheme.
      *
-     * @param null|array|string $routeScheme
-     * @param string            $requestScheme
+     * @param null|string|string[] $routeScheme
+     * @param string               $requestScheme
      *
      * @return bool
      */
@@ -116,10 +116,10 @@ trait RouteValidation
     /**
      * Get merged default parameters.
      *
-     * @param array $params
-     * @param array $defaults
+     * @param array<int|string,mixed> $params
+     * @param array<string,string>    $defaults
      *
-     * @return array Merged default parameters
+     * @return array<string,string> Merged default parameters
      */
     protected function mergeDefaults(array $params, array $defaults): array
     {

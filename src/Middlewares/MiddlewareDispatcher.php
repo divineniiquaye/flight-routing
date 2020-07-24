@@ -228,7 +228,7 @@ class MiddlewareDispatcher
      * Each item is passed to prepare() before being passed to the
      * MiddlewarePipe instance the method returns.
      *
-     * @param array|MiddlewarePipe|string $middleware
+     * @param MiddlewareInterface[]|string|string[]|callable $middleware
      *
      * @return MiddlewarePipe
      */
@@ -241,7 +241,7 @@ class MiddlewareDispatcher
 
         $pipeline = new MiddlewarePipe();
 
-        foreach (\array_map([$this, 'resolve'], $middleware) as $m) {
+        foreach (\array_map([$this, 'resolve'], (array) $middleware) as $m) {
             $pipeline->pipe($this->prepare($m));
         }
 

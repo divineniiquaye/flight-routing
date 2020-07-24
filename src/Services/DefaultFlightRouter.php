@@ -25,7 +25,6 @@ use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouterInterface;
 use Flight\Routing\RouteResults;
 use Psr\Http\Message\ServerRequestInterface;
-use Traversable;
 
 class DefaultFlightRouter implements RouterInterface
 {
@@ -102,10 +101,9 @@ class DefaultFlightRouter implements RouterInterface
      */
     public function match(ServerRequestInterface $request): RouteResults
     {
-        $domain = $request->getUri()->getHost();
-        $scheme = $request->getUri()->getScheme();
-        $method = $request->getMethod();
-
+        $domain   = $request->getUri()->getHost();
+        $scheme   = $request->getUri()->getScheme();
+        $method   = $request->getMethod();
         $basePath = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
 
         // For phpunit testing to be smooth.
@@ -113,12 +111,15 @@ class DefaultFlightRouter implements RouterInterface
             $basePath = '';
         }
 
-        $finalizedPath = \substr($request->getUri()->getPath(), \strlen($basePath));
-        $matched       = $this->marshalMatchedRoute($method, $scheme, $domain, \rawurldecode($finalizedPath));
-
         // Get the request matching format.
-        [$status, $parameters, $route] = $matched;
-        $finalized                     = new RouteResults($status, $parameters, $route);
+        [$status, $parameters, $route] = $this->marshalMatchedRoute(
+            $method,
+            $scheme,
+            $domain,
+            \rawurldecode($finalizedPath = \substr($request->getUri()->getPath(), \strlen($basePath)))
+        );
+
+        $finalized = new RouteResults($status, $parameters, $route);
 
         // A feature adopted from Symfony routing, workaround fix.
         if (
@@ -156,10 +157,15 @@ class DefaultFlightRouter implements RouterInterface
 
             return 'http';
         }, $route->getSchemes() ?? ['http']);
+        $path = '';
 
         //Uri without empty blocks (pretty stupid implementation)
-        if ($path = $this->interpolate($match->getRegexTemplate() ?? '', $parameters)) {
-            $path = \sprintf('%s://%s/', \current($schemes), \trim($path, '.'));
+        if (null !== $match->getRegexTemplate()) {
+            $path = \sprintf(
+                '%s://%s/',
+                \current($schemes),
+                \trim($this->interpolate($match->getRegexTemplate(), $parameters), '.')
+            );
         }
 
         return $path .= $this->interpolate($match->getRegexTemplate(false), $parameters); // Return generated path
@@ -191,7 +197,7 @@ class DefaultFlightRouter implements RouterInterface
      */
     private function marshalMatchedRoute(string $method, string $scheme, string $host, string $path): array
     {
-        $path = \trim($path, '/') ?: '/';
+        $path = \trim($path, '/') ?? '/';
 
         foreach ($this as $route) {
             // Let's match the routes
@@ -225,7 +231,7 @@ class DefaultFlightRouter implements RouterInterface
      */
     private function createDispatcherCallback(): callable
     {
-        return function (RouteInterface $route) {
+        return function (RouteInterface $route): SimpleRouteCompiler {
             return (new SimpleRouteCompiler())->compile($route);
         };
     }
@@ -233,8 +239,8 @@ class DefaultFlightRouter implements RouterInterface
     /**
      * Interpolate string with given values.
      *
-     * @param string $string
-     * @param array  $values
+     * @param string              $string
+     * @param array<string,mixed> $values
      *
      * @return string
      */
@@ -243,8 +249,7 @@ class DefaultFlightRouter implements RouterInterface
         $replaces = [];
 
         foreach ($values as $key => $value) {
-            $value                = (\is_array($value) || $value instanceof Closure) ? '' : $value;
-            $replaces["<{$key}>"] = $value;
+            $replaces["<{$key}>"] = (\is_array($value) || $value instanceof Closure) ? '' : $value;
         }
 
         return \strtr($string, $replaces + self::URI_FIXERS);
@@ -253,10 +258,10 @@ class DefaultFlightRouter implements RouterInterface
     /**
      * Fetch uri segments and query parameters.
      *
-     * @param array|Traversable $parameters
-     * @param array             $allowed
+     * @param array<int|string,mixed> $parameters
+     * @param array<int|string,mixed> $allowed
      *
-     * @return array
+     * @return array<int|string,mixed>
      */
     private function fetchOptions($parameters, array $allowed): array
     {
@@ -269,8 +274,8 @@ class DefaultFlightRouter implements RouterInterface
             }
 
             //String must be normalized here
-            if (\is_string($parameter) && !\preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
-                $result[$key] = \htmlspecialchars((string) $parameter);
+            if (\is_string($parameter) && false === \preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
+                $result[$key] = \htmlspecialchars($parameter);
 
                 continue;
             }

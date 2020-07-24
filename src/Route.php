@@ -93,7 +93,7 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @return array
+     * @return array<string,mixed>
      */
     public function __serialize(): array
     {
@@ -115,7 +115,7 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @param array $data
+     * @param array<string,mixed> $data
      */
     public function __unserialize(array $data): void
     {
@@ -167,7 +167,7 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @param array $values
+     * @param array<string,mixed> $values
      *
      * @throws RuntimeException
      *
@@ -227,8 +227,8 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @param array  $data
-     * @param string $key
+     * @param array<string,mixed> $data
+     * @param string              $key
      *
      * @return mixed
      */

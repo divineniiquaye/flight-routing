@@ -112,7 +112,7 @@ interface RouterProxyInterface
      * declarations in the callback will be prepended by the group(s)
      * that it is in.
      *
-     * @param array                  $attributes
+     * @param array<string,mixed>    $attributes
      * @param callable|object|string $callable
      *
      * @return RouteGroupInterface

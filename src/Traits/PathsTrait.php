@@ -55,8 +55,8 @@ trait PathsTrait
         }
 
         // Match domain + scheme from pattern...
-        if (\preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
-            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function (array $matches) {
+        if (false !== \preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
+            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function (array $matches): string {
                 $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
 
                 return '';
@@ -65,7 +65,7 @@ trait PathsTrait
 
         //In some cases route controller can be provided as *<controller@action> pair, we can try to
         //generate such route automatically.
-        $pattern = $this->castRoute($pattern);
+        $pattern = $this->castRoute((string) $pattern);
 
         $this->path = (empty($pattern) || '/' === $pattern) ? '/' : $pattern;
     }
@@ -84,7 +84,7 @@ trait PathsTrait
      */
     protected function castRoute(string $route): ?string
     {
-        if (false !== \strpbrk($route, '*') && \preg_match(self::RCA_PATTERN, $route, $matches)) {
+        if (false !== \strpbrk($route, '*') && false !== \preg_match(self::RCA_PATTERN, $route, $matches)) {
             if (!isset($matches['route'])) {
                 throw new InvalidControllerException("Unable to locate route candidate for `{$route}`");
             }
@@ -115,7 +115,7 @@ trait PathsTrait
             return \rtrim($prefix, '/') . $uri;
         }
 
-        if (\preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
+        if (1 === \preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
             $newPattern = \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
         }
 

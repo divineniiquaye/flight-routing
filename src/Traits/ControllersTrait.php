@@ -38,7 +38,7 @@ trait ControllersTrait
     /**
      * Route callable.
      *
-     * @var null|callable|object|string
+     * @var null|callable|object|string|string[]
      */
     protected $controller;
 
@@ -116,7 +116,7 @@ trait ControllersTrait
                 return BoundMethod::call(
                     $container = $callableResolver->getContainer(),
                     $controller,
-                    array_merge($this->arguments, $container ? [$request] : [$request, $response])
+                    \array_merge($this->arguments, $container ? [$request] : [$request, $response])
                 );
             }
 
@@ -125,7 +125,7 @@ trait ControllersTrait
     }
 
     /**
-     * @param null|callable|object|string $controller
+     * @param null|callable|object|string|string[] $controller
      */
     protected function setController($controller): void
     {
@@ -138,10 +138,10 @@ trait ControllersTrait
     }
 
     /**
-     * @param callable|string|string[]|null $controller
-     * @param string                   $namespace
+     * @param null|callable|object|string|string[] $controller
+     * @param string                               $namespace
      *
-     * @return null|callable|object|string
+     * @return null|callable|object|string|string[]
      */
     private function appendNamespace($controller, string $namespace)
     {

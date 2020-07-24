@@ -24,8 +24,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class UriRedirectMiddleware implements MiddlewareInterface
 {
-    /** @var array */
-    protected $redirects = [];
+    /** @var array<string,string> */
+    protected $redirects;
 
     /** @var bool */
     private $permanent;
@@ -35,15 +35,13 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * @param array<string,string> $redirects [from => to]
-     * @param array<string,bool> $options
+     * @param bool $query
+     * @param bool $permanent
      */
     public function __construct(array $redirects = [], bool $query = true, bool $permanent = true)
     {
-        if (!empty($redirects)) {
-            $this->redirects = $redirects;
-        }
-
-        $this->query = $query;
+        $this->redirects = $redirects;
+        $this->query     = $query;
         $this->permanent = $permanent;
     }
 
@@ -108,7 +106,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     private function determineResponseCode(ServerRequestInterface $request): int
     {
-        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'])) {
+        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
             return $this->permanent ? 301 : 302;
         }
 

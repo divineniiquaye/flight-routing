@@ -56,6 +56,8 @@ interface RouteInterface
 
     /**
      * Get route requirements.
+     *
+     * @return array<string,string>
      */
     public function getPatterns(): array;
 
@@ -159,7 +161,7 @@ interface RouteInterface
     /**
      * Adds defaults.
      *
-     * @param array<string,mixed> $defaults The defaults
+     * @param array<int|string,mixed> $defaults The defaults
      *
      * @return RouteInterface
      */
@@ -168,7 +170,7 @@ interface RouteInterface
     /**
      * Get route default options.
      *
-     * @return array<string,mixed>
+     * @return array<int|string,mixed>
      */
     public function getDefaults(): array;
 

@@ -60,7 +60,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     protected $routeStatus;
 
     /**
-     * @var array
+     * @var array<int|string,mixed>
      */
     protected $routeArguments;
 
@@ -181,7 +181,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
         // Allow Redirection if exists and avoid static request.
         if (null !== $this->getRedirectLink()) {
             return $response
-                ->withAddedHeader('Location', (string) $this->getRedirectLink())
+                ->withAddedHeader('Location', $this->getRedirectLink())
                 ->withStatus($this->keepRequestMethod);
         }
 
@@ -191,7 +191,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
     /**
      * @param bool $urlDecode
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public function getRouteArguments(bool $urlDecode = true): array
     {
@@ -279,7 +279,7 @@ class RouteResults implements RequestHandlerInterface, LoggerAwareInterface
      * Determine the response code according with the method and the permanent config.
      *
      * @param ServerRequestInterface $request
-     * @param bool status
+     * @param bool $status
      */
     private function determineRedirectCode(ServerRequestInterface $request, bool $status): void
     {

@@ -80,7 +80,7 @@ class CallableResolver implements CallableResolverInterface
      */
     public function resolve($toResolve): callable
     {
-        if (\is_string($toResolve) && \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
+        if (\is_string($toResolve) && false !== \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
             // check for slim callable as "class:method", and "class@method"
             $toResolve = $this->resolveCallable($matches[1], $matches[3]);
         }
@@ -149,10 +149,9 @@ class CallableResolver implements CallableResolverInterface
         }
 
         if (!\is_callable($callable)) {
-            throw new InvalidControllerException(\sprintf(
-                '%s is not resolvable',
-                (\is_array($callable) || \is_object($callable)) ? \json_encode($callable) : $callable
-            ));
+            throw new InvalidControllerException(
+                \sprintf('%s is not resolvable', \json_encode($callable) ?? $callable)
+            );
         }
 
         return $callable;

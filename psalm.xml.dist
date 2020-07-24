@@ -23,6 +23,18 @@
     <issueHandlers>
         <LessSpecificImplementedReturnType errorLevel="suppress"/>
 
+        <InvalidArgument>
+            <errorLevel type="suppress">
+                <referencedFunction name="Flight\Routing\Middlewares\MiddlewareDispatcher::pipeline"/>
+            </errorLevel>
+        </InvalidArgument>
+
+        <PossiblyNullArgument>
+            <errorLevel type="suppress">
+                <referencedFunction name="Psr\Http\Message\ResponseInterface::withAddedHeader"/>
+            </errorLevel>
+        </PossiblyNullArgument>
+
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Route.php"/>
@@ -39,6 +51,14 @@
                 <file name="src/RouteResults.php"/>
             </errorLevel>
         </PropertyNotSetInConstructor>
+
+        <TypeDoesNotContainType>
+            <errorLevel type="suppress">
+                <file name="src/Concerns/CallableResolver.php"/>
+                <file name="src/Services/DefaultFlightRouter.php"/>
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+            </errorLevel>
+        </TypeDoesNotContainType>
 
         <UndefinedInterfaceMethod>
             <errorLevel type="suppress">

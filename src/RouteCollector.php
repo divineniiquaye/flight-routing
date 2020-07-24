@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Closure;
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\UrlGenerationException;
@@ -84,7 +83,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /** @var RouterInterface */
     protected $router;
 
-    /** @var array|RouteInterface[] */
+    /** @var RouteInterface[] */
     protected $nameList = [];
 
     /**
@@ -227,8 +226,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new GET route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -240,8 +239,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new POST route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -253,8 +252,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new PUT route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -266,8 +265,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new PATCH route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -279,8 +278,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new DELETE route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -292,8 +291,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new OPTIONS route with the router.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -305,8 +304,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Register a new route responding to all verbs.
      *
-     * @param string                    $uri
-     * @param null|array|Closure|string $action
+     * @param string                               $uri
+     * @param null|callable|object|string|string[] $action
      *
      * @return RouteInterface
      */
@@ -508,13 +507,13 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      *
      * @param array $middlewares
      *
-     * @return string[]|MiddlewareInterface[]
+     * @return MiddlewareInterface[]|string[]
      */
     protected function getMiddlewares(array $middlewares): array
     {
         return \array_filter(
             \array_replace($middlewares, $this->getMiddlewaresStack()),
-            function ($middleware) {
+            function ($middleware): bool {
                 return !\in_array($middleware, ['off', 'disable'], true);
             }
         );
@@ -523,9 +522,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     /**
      * Create a new route instance.
      *
-     * @param array                       $methods
+     * @param string[]                       $methods
      * @param string                      $uri
-     * @param null|callable|object|string $action
+     * @param null|callable|object|string|string[] $action
      *
      * @return Route
      */
@@ -551,9 +550,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * Accepts a combination of a path, controller, domain and requesthandler,
      * and optionally the HTTP methods allowed.
      *
-     * @param array                       $methods HTTP method to accept
+     * @param string[]                       $methods HTTP method to accept
      * @param string                      $uri     the uri of the route
-     * @param null|callable|object|string $action  a requesthandler or controller
+     * @param null|callable|object|string|string[] $action  a requesthandler or controller
      *
      * @throws RuntimeException when called after match() have been called
      *
@@ -590,6 +589,9 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * if so, and it responds to any of the $methods indicated, raises
      * a DuplicateRouteException indicating a duplicate route.
      *
+     * @param string $path
+     * @param string[] $methods
+     *
      * @throws DuplicateRouteException on duplicate route detection
      */
     private function checkForDuplicateRoute(string $path, array $methods): void
@@ -597,7 +599,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
         $allowed = [];
         $matches = \array_filter(
             $this->getRoutes(),
-            function (RouteInterface $route) use ($path, $methods, &$allowed) {
+            function (RouteInterface $route) use ($path, $methods, &$allowed): bool {
                 if ($path === $route->getPath()) {
                     foreach ($methods as $method) {
                         if (\in_array($method, $route->getMethods(), true)) {

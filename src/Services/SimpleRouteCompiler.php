@@ -67,7 +67,7 @@ class SimpleRouteCompiler implements Serializable
     /** @var string */
     private $compiled;
 
-    /** @var string */
+    /** @var string|null */
     private $hostRegex;
 
     /** @var string */
@@ -82,6 +82,9 @@ class SimpleRouteCompiler implements Serializable
     /** @var array<string,mixed> */
     private $hostVariables;
 
+    /**
+     * @return array<string,mixed>
+     */
     public function __serialize(): array
     {
         return [
@@ -95,6 +98,9 @@ class SimpleRouteCompiler implements Serializable
         ];
     }
 
+    /**
+     * @param array<string,mixed> $data
+     */
     public function __unserialize(array $data): void
     {
         $this->variables     = $data['vars'];
@@ -119,16 +125,16 @@ class SimpleRouteCompiler implements Serializable
         $hostRegex     = $hostTemplate = null;
 
         if ('' !== $host = $route->getDomain()) {
-            $result = $this->compilePattern($route, $host, true);
+            $result = $this->compilePattern($route, $host);
 
             $hostVariables = $result['variables'];
             $variables     = $hostVariables;
 
-            $hostRegex    = $result['regex'];
+            $hostRegex    = $result['regex'] . 'i';
             $hostTemplate = $result['template'];
         }
 
-        $result        = $this->compilePattern($route, $route->getPath(), false);
+        $result        = $this->compilePattern($route, $route->getPath());
         $pathVariables = $result['variables'];
 
         foreach ($pathVariables as $pathParam) {
@@ -189,7 +195,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the variables.
      *
-     * @return array The variables
+     * @return array<string,string> The variables
      */
     public function getVariables(): array
     {
@@ -199,7 +205,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the path variables.
      *
-     * @return array The variables
+     * @return array<string,string> The variables
      */
     public function getPathVariables(): array
     {
@@ -209,7 +215,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the host variables.
      *
-     * @return array The variables
+     * @return array<string,string> The variables
      */
     public function getHostVariables(): array
     {
@@ -217,6 +223,8 @@ class SimpleRouteCompiler implements Serializable
     }
 
     /**
+     * {@inheritdoc}
+     *
      * @internal
      */
     final public function serialize(): string
@@ -225,7 +233,7 @@ class SimpleRouteCompiler implements Serializable
     }
 
     /**
-     * @param $serialized
+     * {@inheritdoc}
      *
      * @internal
      */
@@ -237,9 +245,9 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Get the route requirements.
      *
-     * @param array $requirements
+     * @param array<string,string> $requirements
      *
-     * @return array
+     * @return array<string,string>
      */
     protected function getRequirements(array $requirements): array
     {
@@ -255,11 +263,11 @@ class SimpleRouteCompiler implements Serializable
     private function sanitizeRequirement(string $key, string $regex): string
     {
         if ('' !== $regex && \strpos($regex, '^') === 0) {
-            $regex = (string) \substr($regex, 1); // returns false for a single character
+            $regex = \substr($regex, 1); // returns false for a single character
         }
 
         if ('$' === \substr($regex, -1)) {
-            $regex = (string) \substr($regex, 0, -1);
+            $regex = \substr($regex, 0, -1);
         }
 
         if ('' === $regex) {
@@ -269,11 +277,17 @@ class SimpleRouteCompiler implements Serializable
         return $regex;
     }
 
-    private function compilePattern(RouteInterface $route, string $uriPattern, bool $isHost): array
+    /**
+     * @param RouteInterface $route
+     * @param string         $uriPattern
+     *
+     * @return array<string,mixed>
+     */
+    private function compilePattern(RouteInterface $route, string $uriPattern): array
     {
         $options = $replaces = [];
 
-        $pattern     = \rtrim(\ltrim($uriPattern, ':/'), '/') ?: '/';
+        $pattern     = \rtrim(\ltrim($uriPattern, ':/'), '/') ?? '/';
         $leadingChar = 0 === \substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
 
         // correct [/ first occurrence]
@@ -285,9 +299,9 @@ class SimpleRouteCompiler implements Serializable
         $this->prepareRoute($route, $pattern);
 
         // Match all variables enclosed in "{}" and iterate over them...
-        if (\preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
+        if (false !== \preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
             [$options, $replaces] = $this->computePattern(
-                \array_combine($matches[1], $matches[2]),
+                (array) \array_combine($matches[1], $matches[2]),
                 $pattern,
                 $route
             );
@@ -297,7 +311,7 @@ class SimpleRouteCompiler implements Serializable
 
         return [
             'template'  => \stripslashes(\str_replace('?', '', $template)),
-            'regex'     => '{^' . $leadingChar . \strtr($template, $replaces) . '$}sD' . ($isHost ? 'i' : ''),
+            'regex'     => '#^' . $leadingChar . \strtr($template, $replaces) . '$#sD',
             'variables' => \array_fill_keys($options, null),
         ];
     }
@@ -305,11 +319,11 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Compute prepared pattern and return it's replacements and arguments.
      *
-     * @param array          $variables
-     * @param string         $pattern
-     * @param RouteInterface $route
+     * @param array<string,string> $variables
+     * @param string               $pattern
+     * @param RouteInterface       $route
      *
-     * @return array
+     * @return array<int,array<int|string,string>>
      */
     private function computePattern(array $variables, string $pattern, RouteInterface $route): array
     {
@@ -333,7 +347,7 @@ class SimpleRouteCompiler implements Serializable
             $options[]          = $key;
         }
 
-        return [$options, $replaces + self::PATTERN_REPLACES];
+        return [$options, \array_merge($replaces, self::PATTERN_REPLACES)];
     }
 
     /**
@@ -345,7 +359,9 @@ class SimpleRouteCompiler implements Serializable
      */
     private function prepareRoute(RouteInterface $route, string &$pattern): void
     {
-        if (\preg_match_all('/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/', $pattern, $matches, \PREG_SET_ORDER)) {
+        $path = '/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/';
+
+        if (false !== \preg_match_all($path, $pattern, $matches, \PREG_SET_ORDER)) {
             foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
                 $pattern = \str_replace($match, $parameter, $pattern);
 
@@ -361,9 +377,9 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Prepares segment pattern with given constrains.
      *
-     * @param string $name
-     * @param string $segment
-     * @param array  $requirements
+     * @param string               $name
+     * @param string               $segment
+     * @param array<string,mixed> $requirements
      *
      * @return string
      */
@@ -371,7 +387,7 @@ class SimpleRouteCompiler implements Serializable
     {
         if ($segment !== '') {
             // If PCRE subpattern name starts with a digit. Append the missing symbol "}"
-            if (\preg_match('#\{(\d+)#', $segment)) {
+            if (1 === \preg_match('#\{(\d+)#', $segment)) {
                 $segment = $segment . '}';
             }
 

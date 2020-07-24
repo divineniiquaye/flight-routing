@@ -101,19 +101,18 @@ final class CallableHandler implements RequestHandlerInterface
         }
 
         if (\is_array($result) || $result instanceof JsonSerializable || $result instanceof stdClass) {
-            $response->getBody()->write(\json_encode($result));
-        } else {
-            $response->getBody()->write((string) $result);
+            $result = \json_encode($result);
         }
 
-        //Always detect response anf glue buffered output
-        return $this->detectResponse($response, $output);
-    }
-
-    private function detectResponse(ResponseInterface $response, string $output): ResponseInterface
-    {
+        $response->getBody()->write((string) $result);
         $response->getBody()->write($output);
 
+        //Always detect response anf glue buffered output
+        return $this->detectResponse($response);
+    }
+
+    private function detectResponse(ResponseInterface $response): ResponseInterface
+    {
         if ($this->isJson($response->getBody())) {
             return $response->withHeader('Content-Type', 'application/json');
         }
@@ -123,7 +122,7 @@ final class CallableHandler implements RequestHandlerInterface
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
-        if (!\preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
+        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
             return $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
         }
 

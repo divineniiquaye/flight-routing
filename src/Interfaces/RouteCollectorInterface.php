@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Closure;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Psr\Http\Message\ResponseInterface;
@@ -147,8 +146,8 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Add route group.
      *
-     * @param array<string,mixed> $attributes
-     * @param callable|string     $callable
+     * @param array<string,mixed>    $attributes
+     * @param callable|object|string $callable
      *
      * @return RouteGroupInterface
      */
@@ -157,9 +156,9 @@ interface RouteCollectorInterface extends RequestHandlerInterface
     /**
      * Add route.
      *
-     * @param string[]                       $methods Array of HTTP methods
-     * @param string                         $pattern The route pattern
-     * @param callable|Closure|object|string $handler The route callable
+     * @param string[]                             $methods Array of HTTP methods
+     * @param string                               $pattern The route pattern
+     * @param null|callable|object|string|string[] $handler The route callable
      *
      * @return RouteInterface
      */
