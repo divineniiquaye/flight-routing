@@ -29,7 +29,7 @@ use Psr\Http\Message\StreamInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class HttpPublisher implements PublisherInterface
+class Publisher implements PublisherInterface
 {
     /**
      * {@inheritdoc}
@@ -47,7 +47,7 @@ class HttpPublisher implements PublisherInterface
                 $this->emitResponseHeaders($content);
                 $content = $content->getBody();
             }
-    
+
             \flush();
 
             if ($content instanceof StreamInterface) {

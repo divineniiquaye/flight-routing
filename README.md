@@ -784,7 +784,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
 [biurad-http]: https://github.com/biurad/biurad-http
-[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/HttpPublisher.php
+[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
 [DefaultPilot]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router

@@ -7,9 +7,10 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 ### Added
 
 ### Changed
+- Renamed `Flight\Routing\Services\HttpPublisher` class to `Flight\Routing\Publisher`
 
 ### Fixed
 
 ### Removed
 
-[unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.0...master
+[unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.1...master
