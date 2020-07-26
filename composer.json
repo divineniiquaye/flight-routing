@@ -28,7 +28,8 @@
         "psr/log": "^1.1",
         "biurad/biurad-helpers": "^0.1",
         "psr/http-factory": "^1.0",
-        "laminas/laminas-stratigility": "^3.2"
+        "laminas/laminas-stratigility": "^3.2",
+        "doctrine/annotations": "^1.10"
     },
     "require-dev": {
         "biurad/biurad-http": "^0.1",

@@ -55,8 +55,8 @@ trait PathsTrait
         }
 
         // Match domain + scheme from pattern...
-        if (false !== \preg_match('@^(?:(https?):)?(//[^/]+)@i', $pattern)) {
-            $pattern = \preg_replace_callback('@^(?:(https?):)?(//[^/]+)@i', function (array $matches): string {
+        if (false !== \preg_match('^(?:(https?):)?(\/\/.*\.[^\/]+)$', $pattern)) {
+            $pattern = \preg_replace_callback('^(?:(https?):)?(\/\/.*\.[^\/]+)$', function (array $matches): string {
                 $this->addDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
 
                 return '';
