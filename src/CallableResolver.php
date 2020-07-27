@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Concerns;
+namespace Flight\Routing;
 
 use Closure;
 use Flight\Routing\Exceptions\InvalidControllerException;
@@ -56,16 +56,6 @@ class CallableResolver implements CallableResolverInterface
     }
 
     /**
-     * @internal Used in ControllersTrait
-     *
-     * @return null|ContainerInterface
-     */
-    public function getContainer(): ?ContainerInterface
-    {
-        return $this->container;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function addInstanceToClosure($instance): CallableResolverInterface
@@ -78,8 +68,12 @@ class CallableResolver implements CallableResolverInterface
     /**
      * {@inheritdoc}
      */
-    public function resolve($toResolve): callable
+    public function resolve($toResolve, ?string $namespace = null): callable
     {
+        if (null !== $namespace && (\is_string($toResolve) || !$toResolve instanceof Closure)) {
+            $toResolve = $this->appendNamespace($toResolve, (string) $namespace);
+        }
+
         if (\is_string($toResolve) && false !== \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
             // check for slim callable as "class:method", and "class@method"
             $toResolve = $this->resolveCallable($matches[1], $matches[3]);
@@ -132,6 +126,25 @@ class CallableResolver implements CallableResolverInterface
         }
 
         throw new InvalidControllerException('Controller could not be resolved as callable');
+    }
+
+    /**
+     * @param null|callable|object|string|string[] $controller
+     * @param string                               $namespace
+     *
+     * @return null|callable|object|string|string[]
+     */
+    protected function appendNamespace($controller, string $namespace)
+    {
+        if (\is_string($controller) && !\class_exists($controller) && false === \stripos($controller, $namespace)) {
+            $controller = \is_callable($controller) ? $controller : $namespace . $controller;
+        }
+
+        if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
+            $controller[0] = $namespace . $controller[0];
+        }
+
+        return $controller;
     }
 
     /**
