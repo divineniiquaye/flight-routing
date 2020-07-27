@@ -15,14 +15,14 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Concerns;
+namespace Flight\Routing;
 
 trait RouteValidation
 {
     /**
      * Check if given request method matches given route method.
      *
-     * @param array|string $routeMethod
+     * @param string[]|string $routeMethod
      * @param string       $requestMethod
      *
      * @return bool
@@ -68,49 +68,14 @@ trait RouteValidation
     /**
      * Check if given request uri scheme matches given route scheme.
      *
-     * @param null|string|string[] $routeScheme
-     * @param string               $requestScheme
+     * @param string[] $routeScheme
+     * @param string   $requestScheme
      *
      * @return bool
      */
-    protected function compareScheme($routeScheme, string $requestScheme): bool
+    protected function compareScheme(array $routeScheme, string $requestScheme): bool
     {
-        if (\is_array($routeScheme) && !empty($routeScheme)) {
-            return \in_array($requestScheme, $routeScheme, true);
-        }
-
-        return ($routeScheme === null || empty($routeScheme)) || $routeScheme === $requestScheme;
-    }
-
-    /**
-     * Check if the user is on the right uri which was matched.
-     * If matched returns null, else returns the path the user should be in.
-     *
-     * @param string $routeUri
-     * @param string $requestUri
-     *
-     * @return null|string
-     */
-    protected function compareRedirection(string $routeUri, string $requestUri): ?string
-    {
-        // Resolve Request Uri.
-        $newRequestUri = '/' === $requestUri ? '/' : \rtrim($requestUri, '/');
-        $newRouteUri   = '/' === $routeUri ? $routeUri : \rtrim($routeUri, '/');
-
-        $paths = [
-            'path'      => \substr($requestUri, \strlen($newRequestUri)),
-            'route'     => \substr($routeUri, \strlen($newRouteUri)),
-        ];
-
-        if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri . $paths['route'];
-        }
-
-        if (empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri;
-        }
-
-        return null;
+        return empty($routeScheme) || \in_array($requestScheme, $routeScheme, true);
     }
 
     /**
