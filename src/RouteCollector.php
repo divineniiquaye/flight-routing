@@ -19,20 +19,11 @@ namespace Flight\Routing;
 
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\DuplicateRouteException;
-use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Interfaces\CallableResolverInterface;
-use Flight\Routing\Interfaces\RouteCollectorInterface;
+use Flight\Routing\Interfaces\RouteCollectionInterface;
+use Flight\Routing\Interfaces\RouteFactory;
+use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouterInterface;
-use Psr\Container\ContainerInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
-use RuntimeException;
 
 /**
  * Aggregate routes for the router.
@@ -40,6 +31,7 @@ use RuntimeException;
  * This class provides all(*) methods for creating path+HTTP method-based routes and
  * injecting them into the router:
  *
+ * - head
  * - get
  * - post
  * - put
@@ -57,81 +49,20 @@ use RuntimeException;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareInterface
+class RouteCollector implements Interfaces\RouteCollectorInterface
 {
-    use LoggerAwareTrait;
+    /** @var RouteCollection */
+    private $collection;
 
-    /** @var Middlewares\MiddlewareDispatcher */
-    protected $middlewareDispatcher;
+    /** @var RouteFactoryInterface */
+    private $routeFactory;
 
-    /** @var CallableResolverInterface */
-    protected $callableResolver;
-
-    /** @var null|ContainerInterface */
-    protected $container;
-
-    /** @var ResponseFactoryInterface */
-    protected $responseFactory;
-
-    /**
-     * The current route being used.
-     *
-     * @var null|bool|RouteInterface
-     */
-    protected $currentRoute;
-
-    /** @var RouterInterface */
-    protected $router;
-
-    /** @var RouteInterface[] */
-    protected $nameList = [];
-
-    /**
-     * Route groups.
-     *
-     * @var RouteGroup
-     */
-    protected $routeGroup;
-
-    /**
-     * Route Default Namespace.
-     *
-     * @var string
-     */
-    protected $namespace;
-
-    /**
-     * Route Group Options.
-     *
-     * @var array<string,mixed>
-     */
-    protected $groupOptions = [];
-
-    /**
-     * Add this to keep the HTTP method when redirecting.
-     *
-     * @var bool
-     */
-    protected $keepRequestMethod = false;
-
-    /**
-     * @param ResponseFactoryInterface  $responseFactory
-     * @param null|RouterInterface      $router
-     * @param CallableResolverInterface $callableResolver
-     * @param null|ContainerInterface   $container
-     */
     public function __construct(
-        ResponseFactoryInterface $responseFactory,
-        RouterInterface $router = null,
-        CallableResolverInterface $callableResolver = null,
-        ContainerInterface $container = null
+        ?RouteCollectionInterface $collection = null,
+        ?RouteFactoryInterface $routeFactory = null
     ) {
-        $this->responseFactory = $responseFactory;
-        $this->router          = $router ?? new Services\DefaultFlightRouter();
-
-        $this->container            = $container;
-        $this->callableResolver     = $callableResolver ?? new Concerns\CallableResolver($container);
-        $this->middlewareDispatcher = new Middlewares\MiddlewareDispatcher([], $this->container);
+        $this->routeFactory = $routeFactory ?? new RouteFactory();
+        $this->collection   = $collection ?? new RouteCollection();
     }
 
     /**
@@ -140,446 +71,103 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     public function __debugInfo()
     {
         return [
-            'routes'    => $this->getRoutes(),
-            'current'   => $this->currentRoute,
-            'counts'    => \count($this->getRoutes()),
+            'routes' => \iterator_to_array($this->collection),
+            'counts' => \iterator_count($this->collection),
         ];
     }
 
     /**
      * {@inheritdoc}
      */
-    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): RouteCollectorInterface
+    public function getCollection(): RouteCollectionInterface
     {
-        foreach ($parameters as $key => $regex) {
-            if (self::TYPE_DEFAULT === $type) {
-                $this->groupOptions[RouteGroupInterface::DEFAULTS] = [$key => $regex];
-
-                continue;
-            }
-
-            $this->groupOptions[RouteGroupInterface::REQUIREMENTS] = [$key => $regex];
-        }
-
-        return $this;
+        return $this->collection;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getRoutes(): array
+    public function group($callable): RouteGroupInterface
     {
-        return \iterator_to_array($this->getRouter());
+        $collector = new self($this->collection, $this->routeFactory);
+
+        $callable($collector);
+
+        $this->collection->add(...$collector->collection);
+
+        return new RouteGroup($collector->collection);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function keepRequestMethod(bool $status = false): RouteCollectorInterface
+    public function head(string $name, string $pattern, $callable): RouteInterface
     {
-        $this->keepRequestMethod = $status;
-
-        return $this;
+        return $this->map($name, [HttpMethods::METHOD_HEAD], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getNamedRoute(string $name): RouteInterface
+    public function get(string $name, string $pattern, $callable): RouteInterface
     {
-        foreach ($this->router as $route) {
-            if ($name === $route->getName()) {
-                return $route;
-            }
-        }
-
-        throw new RuntimeException('Named route does not exist for name: ' . $name);
+        return $this->map($name, [HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function group(array $attributes, $callable): RouteGroupInterface
+    public function post(string $name, string $pattern, $callable): RouteInterface
     {
-        // Backup current properties
-        $oldGroupOption = $this->groupOptions;
-        $oldGroup       = $this->routeGroup;
-
-        // Register the Route Grouping
-        $routeCollectorProxy = new RouterProxy($this->responseFactory, $this->router, $this);
-        $routeGroup          = new RouteGroup($attributes, $callable, $this->callableResolver, $routeCollectorProxy);
-
-        // Add groups to RouteCollection
-        $this->routeGroup   = $routeGroup->mergeBackupAttributes($oldGroup);
-        $this->groupOptions = $this->resolveGlobals($routeGroup->getOptions(), $oldGroupOption);
-
-        // Returns routes on closure, file or on callable
-        $routeGroup->collectRoutes();
-
-        // Restore properties
-        $this->groupOptions = $oldGroupOption;
-        $this->routeGroup   = $oldGroup;
-
-        return $routeGroup;
-    }
-
-    /**
-     * Register a new GET route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function get($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD], $uri, $action);
-    }
-
-    /**
-     * Register a new POST route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function post($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_POST], $uri, $action);
-    }
-
-    /**
-     * Register a new PUT route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function put($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_PUT], $uri, $action);
-    }
-
-    /**
-     * Register a new PATCH route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function patch($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_PATCH], $uri, $action);
-    }
-
-    /**
-     * Register a new DELETE route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function delete($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_DELETE], $uri, $action);
-    }
-
-    /**
-     * Register a new OPTIONS route with the router.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function options($uri, $action = null): RouteInterface
-    {
-        return $this->map([HttpMethods::METHOD_OPTIONS], $uri, $action);
-    }
-
-    /**
-     * Register a new route responding to all verbs.
-     *
-     * @param string                               $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return RouteInterface
-     */
-    public function any($uri, $action = null): RouteInterface
-    {
-        return $this->map(HttpMethods::HTTP_METHODS_STANDARD, $uri, $action);
+        return $this->map($name, [HttpMethods::METHOD_POST], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function map(array $methods, string $pattern, $handler = null): RouteInterface
+    public function put(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->addRoute(\array_map('strtoupper', $methods), $pattern, $handler);
+        return $this->map($name, [HttpMethods::METHOD_PUT], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function setRoute(RouteInterface $route): void
+    public function patch(string $name, string $pattern, $callable): RouteInterface
     {
-        \assert($route instanceof Route);
-
-        // Configure route with needed dependencies.
-        $defaults = [
-            RouteGroup::NAMESPACE       => $this->namespace,
-            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
-            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
-        ];
-
-        $route->fromArray($defaults);
-        $this->router->addRoute($route);
+        return $this->map($name, [HttpMethods::METHOD_PATCH], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function addMiddlewares($middleware = []): RouteCollectorInterface
+    public function delete(string $name, string $pattern, $callable): RouteInterface
     {
-        $this->middlewareDispatcher->add($middleware);
-
-        return $this;
+        return $this->map($name, [HttpMethods::METHOD_DELETE], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function routeMiddlewares($middlewares = []): RouteCollectorInterface
+    public function options(string $name, string $pattern, $callable): RouteInterface
     {
-        $this->middlewareDispatcher->add(['routing' => $middlewares]);
-
-        return $this;
+        return $this->map($name, [HttpMethods::METHOD_OPTIONS], $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getMiddlewaresStack(): array
+    public function any(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->middlewareDispatcher->getMiddlewareStack();
+        return $this->map($name, HttpMethods::HTTP_METHODS_STANDARD, $pattern, $callable);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function setNamespace(string $rootNamespace): RouteCollectorInterface
+    public function map(string $name, array $methods, string $pattern, $handler): RouteInterface
     {
-        $this->namespace = $rootNamespace;
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string
-    {
-        if (isset($this->nameList[$routeName]) === false) {
-            throw new UrlGenerationException(
-                \sprintf(
-                    'Unable to generate a URL for the named route "%s" as such route does not exist.',
-                    $routeName
-                ),
-                404
-            );
-        }
-
-        $prefix = '.'; // Append missing "." at the beginning of the $uri.
-
-        // Making routing on sub-folders easier
-        if (\strpos($uri = $this->router->generateUri($this->getNamedRoute($routeName), $parameters), '/') !== 0) {
-            $prefix .= '/';
-        }
-
-        // Incase query is added to uri.
-        if (!empty($queryParams)) {
-            $uri .= '?' . \http_build_query($queryParams);
-        }
-
-        return \rtrim(\strpos($uri, '://') !== false ? $uri : $prefix . $uri, '/');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function currentRoute(): ?RouteInterface
-    {
-        if (!($route = $this->currentRoute) instanceof RouteInterface) {
-            return null;
-        }
-
-        return $route;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getRouter(): RouterInterface
-    {
-        return $this->router;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        // Add Route Names RouteCollector.
-        $routes = $this->getRoutes();
-        \array_walk($routes, [$this, 'addLookupRoute']);
-
-        $routingResults     = $this->router->match($request);
-        $this->currentRoute = $route = $routingResults->getMatchedRoute();
-        $routingResults->bindTo($request, $this->keepRequestMethod, $this->callableResolver, $this->responseFactory);
-
-        // Get all available middlewares
-        $middlewares = $route instanceof Route ? $route->getMiddlewares() : [];
-
-        if (\count($middlewares = $this->getMiddlewares($middlewares)) > 0) {
-            $middleware = $this->middlewareDispatcher->pipeline($middlewares);
-
-            try {
-                $requestHandler = $this->middlewareDispatcher->addHandler($routingResults);
-            } finally {
-                // This middleware is in the priority map; but, this is the first middleware we have
-                // encountered from the map thus far. We'll save its current index plus its index
-                // from the priority map so we can compare against them on the next iterations.
-                return $middleware->process($request, $requestHandler);
-            }
-        }
-
-        return $routingResults->handle($request);
-    }
-
-    /**
-     * Create a new Route object.
-     *
-     * @param array|string $methods
-     * @param string       $uri
-     * @param mixed        $action
-     *
-     * @return Route
-     */
-    protected function newRoute($methods, $uri, $action): Route
-    {
-        return new Route((array) $methods, $uri, $action, $this->routeGroup);
-    }
-
-    /**
-     * Resolving patterns and defaults to group.
-     *
-     * @param array<string,mixed> $groupOptions
-     * @param array<string,mixed> $previousOptions
-     *
-     * @return array<string,mixed>
-     */
-    protected function resolveGlobals(array $groupOptions, array $previousOptions): array
-    {
-        $groupOptions[RouteGroup::REQUIREMENTS] = \array_replace(
-            $this->groupOptions[RouteGroup::REQUIREMENTS] ?? [],
-            $previousOptions[RouteGroup::REQUIREMENTS] ?? [],
-            $groupOptions[RouteGroup::REQUIREMENTS] ?? []
-        );
-
-        $groupOptions[RouteGroup::DEFAULTS] = \array_replace(
-            $this->groupOptions[RouteGroup::DEFAULTS] ?? [],
-            $previousOptions[RouteGroup::DEFAULTS] ?? [],
-            $groupOptions[RouteGroup::DEFAULTS] ?? []
-        );
-
-        return \array_intersect_key(
-            \array_filter($groupOptions),
-            \array_flip([RouteGroup::DEFAULTS, RouteGroup::REQUIREMENTS])
-        );
-    }
-
-    /**
-     * Merge route middlewares with Router Middlewares.
-     *
-     * @param array $middlewares
-     *
-     * @return MiddlewareInterface[]|string[]
-     */
-    protected function getMiddlewares(array $middlewares): array
-    {
-        return \array_filter(
-            \array_replace($middlewares, $this->getMiddlewaresStack()),
-            function ($middleware): bool {
-                return !\in_array($middleware, ['off', 'disable'], true);
-            }
-        );
-    }
-
-    /**
-     * Create a new route instance.
-     *
-     * @param string[]                       $methods
-     * @param string                      $uri
-     * @param null|callable|object|string|string[] $action
-     *
-     * @return Route
-     */
-    private function createRoute(array $methods, string $uri, $action): Route
-    {
-        $route = $this->newRoute($methods, $uri, $action);
-
-        // Set the defaults for group routing.
-        $defaults = [
-            RouteGroup::NAMESPACE       => $this->namespace,
-            RouteGroup::DEFAULTS        => $this->groupOptions[RouteGroupInterface::DEFAULTS] ?? null,
-            RouteGroup::REQUIREMENTS    => $this->groupOptions[RouteGroupInterface::REQUIREMENTS] ?? null,
-        ];
-
-        $route->fromArray($defaults);
-
-        return $route;
-    }
-
-    /**
-     * Add a route.
-     *
-     * Accepts a combination of a path, controller, domain and requesthandler,
-     * and optionally the HTTP methods allowed.
-     *
-     * @param string[]                       $methods HTTP method to accept
-     * @param string                      $uri     the uri of the route
-     * @param null|callable|object|string|string[] $action  a requesthandler or controller
-     *
-     * @throws RuntimeException when called after match() have been called
-     *
-     * @return Route
-     */
-    private function addRoute(array $methods, string $uri, $action): Route
-    {
-        $this->checkForDuplicateRoute($uri, $methods);
-
-        // Add Route to a parsing Router.
-        $this->router->addRoute($route = $this->createRoute($methods, $uri, $action));
-
-        return $route;
-    }
-
-    /**
-     * Lookup a route via the route's unique identifier.
-     *
-     * @param RouteInterface $route
-     */
-    private function addLookupRoute(RouteInterface $route): void
-    {
-        if (null === $name = $route->getName()) {
-            return;
-        }
-
-        $this->nameList[$name] = $route;
+        return $this->routeFactory->createRoute($name, \array_map('strtoupper', $methods), $pattern, $handler);
     }
 
     /**
@@ -589,7 +177,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
      * if so, and it responds to any of the $methods indicated, raises
      * a DuplicateRouteException indicating a duplicate route.
      *
-     * @param string $path
+     * @param string   $path
      * @param string[] $methods
      *
      * @throws DuplicateRouteException on duplicate route detection
@@ -598,7 +186,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface, LoggerAwareI
     {
         $allowed = [];
         $matches = \array_filter(
-            $this->getRoutes(),
+            $this->collection,
             function (RouteInterface $route) use ($path, $methods, &$allowed): bool {
                 if ($path === $route->getPath()) {
                     foreach ($methods as $method) {
