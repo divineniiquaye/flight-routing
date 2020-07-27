@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Concerns;
+namespace Flight\Routing;
 
 use JsonSerializable;
 use Psr\Http\Message\ResponseInterface;
@@ -30,8 +30,9 @@ use Throwable;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class CallableHandler implements RequestHandlerInterface
+final class RouteHandler implements RequestHandlerInterface
 {
+    private const CONTENT_TYPE = 'Content-Type';
     /** @var callable */
     private $callable;
 
@@ -62,7 +63,7 @@ final class CallableHandler implements RequestHandlerInterface
         $result = null;
 
         $response = $this->responseFactory
-            ->withHeader('Content-Type', 'text/html; charset=utf-8');
+            ->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
 
         try {
             $result = ($this->callable)($request, $response);
@@ -114,16 +115,16 @@ final class CallableHandler implements RequestHandlerInterface
     private function detectResponse(ResponseInterface $response): ResponseInterface
     {
         if ($this->isJson($response->getBody())) {
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withHeader(self::CONTENT_TYPE, 'application/json');
         }
 
         if ($this->isXml($response->getBody())) {
-            return $response->withHeader('Content-Type', 'application/xml; charset=utf-8');
+            return $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
         if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
-            return $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+            return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
         }
 
         return $response;
