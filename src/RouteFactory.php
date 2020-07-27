@@ -15,8 +15,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Interfaces;
+namespace Flight\Routing;
 
+use Flight\Routing\Interfaces\RouteFactoryInterface;
+use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Route;
 
 class RouteFactory implements RouteFactoryInterface

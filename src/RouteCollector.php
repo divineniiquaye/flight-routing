@@ -20,7 +20,6 @@ namespace Flight\Routing;
 use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
-use Flight\Routing\Interfaces\RouteFactory;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
