@@ -23,40 +23,37 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Class SampleMiddleware.
+ * NamedBlankMiddleware
  */
-class SampleMiddleware implements MiddlewareInterface
+class NamedBlankMiddleware implements MiddlewareInterface
 {
+
     /**
      * @var string
      */
-    public $content;
+    private $name;
 
     /**
-     * @var array
+     * @param string $name
      */
-    public static $output = [];
-
-    /**
-     * SampleMiddleware constructor.
-     *
-     * @param null|string $content
-     */
-    public function __construct(string $content = null)
+    public function __construct(string $name)
     {
-        static::$output = [];
-
-        $this->content = $content ?: \mt_rand(1, 9999999);
+        $this->name = $name;
     }
 
     /**
-     * {@inheritdoc}
+     * @return string
      */
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    public function getName() : string
     {
-        static::$output[] = $this->content;
-        $request          = $request->withAttribute(__CLASS__, $this->content);
+        return $this->name;
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler) : ResponseInterface
+    {
         return $handler->handle($request);
     }
 }
