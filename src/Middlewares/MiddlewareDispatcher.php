@@ -72,13 +72,11 @@ class MiddlewareDispatcher
     protected $container;
 
     /**
-     * @param array                   $routeMiddlewares
      * @param null|ContainerInterface $container
      */
-    public function __construct(array $routeMiddlewares, ContainerInterface $container = null)
+    public function __construct(ContainerInterface $container = null)
     {
-        $this->routeMiddlewares = $routeMiddlewares;
-        $this->container        = $container;
+        $this->container = $container;
     }
 
     /**
@@ -96,22 +94,19 @@ class MiddlewareDispatcher
      *
      * or
      *
-     * $this->add([ProxyMiddleware::class]);
+     * $this->add(ProxyMiddleware::class);
      *
-     * @param mixed $middleware
+     * @param mixed ...$middleware
      */
-    public function add($middleware): void
+    public function add(...$middlewares): void
     {
-        if (\is_array($middleware)) {
-            $this->routeMiddlewares = \array_merge($middleware['routing'] ?? [], $this->routeMiddlewares);
-            unset($middleware['routing']);
+        foreach ($middlewares as $middleware) {
+            if (\is_array($middleware)) {
+                $this->routeMiddlewares = \array_merge($middleware, $this->routeMiddlewares);
 
-            $this->middlewares = \array_merge($middleware, $this->middlewares);
+                continue;
+            }
 
-            return;
-        }
-
-        if (null !== $middleware) {
             $this->middlewares[] = $middleware;
         }
     }
@@ -228,7 +223,7 @@ class MiddlewareDispatcher
      * Each item is passed to prepare() before being passed to the
      * MiddlewarePipe instance the method returns.
      *
-     * @param MiddlewareInterface[]|string|string[]|callable $middleware
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string ...$middleware
      *
      * @return MiddlewarePipe
      */
