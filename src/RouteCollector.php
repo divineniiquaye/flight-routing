@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Concerns\HttpMethods;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
@@ -102,7 +101,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function head(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_HEAD], $pattern, $callable);
+        return $this->map($name, [self::METHOD_HEAD], $pattern, $callable);
     }
 
     /**
@@ -110,7 +109,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function get(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_GET, HttpMethods::METHOD_HEAD], $pattern, $callable);
+        return $this->map($name, [self::METHOD_GET, self::METHOD_HEAD], $pattern, $callable);
     }
 
     /**
@@ -118,7 +117,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function post(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_POST], $pattern, $callable);
+        return $this->map($name, [self::METHOD_POST], $pattern, $callable);
     }
 
     /**
@@ -126,7 +125,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function put(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_PUT], $pattern, $callable);
+        return $this->map($name, [self::METHOD_PUT], $pattern, $callable);
     }
 
     /**
@@ -134,7 +133,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function patch(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_PATCH], $pattern, $callable);
+        return $this->map($name, [self::METHOD_PATCH], $pattern, $callable);
     }
 
     /**
@@ -142,7 +141,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function delete(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_DELETE], $pattern, $callable);
+        return $this->map($name, [self::METHOD_DELETE], $pattern, $callable);
     }
 
     /**
@@ -150,7 +149,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function options(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, [HttpMethods::METHOD_OPTIONS], $pattern, $callable);
+        return $this->map($name, [self::METHOD_OPTIONS], $pattern, $callable);
     }
 
     /**
@@ -158,7 +157,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function any(string $name, string $pattern, $callable): RouteInterface
     {
-        return $this->map($name, HttpMethods::HTTP_METHODS_STANDARD, $pattern, $callable);
+        return $this->map($name, self::HTTP_METHODS_STANDARD, $pattern, $callable);
     }
 
     /**
