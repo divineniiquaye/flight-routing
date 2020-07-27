@@ -17,50 +17,36 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Closure;
-use Flight\Routing\Interfaces\CallableResolverInterface;
+use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
-use Flight\Routing\Interfaces\RouterProxyInterface;
+use Flight\Routing\Interfaces\RouteInterface;
 
 class RouteGroup implements RouteGroupInterface
 {
-    /** @var null|callable|object|string */
-    protected $callable;
-
-    /** @var CallableResolverInterface */
-    protected $callableResolver;
-
-    /** @var RouterProxyInterface */
-    protected $routeProxy;
-
-    /** @var array<string,mixed> */
-    protected $attributes = [];
+    /**
+     * Route collection for group activities
+     *
+     * @var RouteCollectionInterface|RouteInterface[]
+     */
+    private $collection;
 
     /**
-     * @param array<string,mixed>         $attributes
-     * @param null|callable|object|string $callable
-     * @param CallableResolverInterface   $callableResolver
-     * @param RouterProxyInterface        $routeProxy
+     * Constructor of the class
+     *
+     * @param RouteCollectionInterface $collection
      */
-    public function __construct(
-        array $attributes,
-        $callable,
-        CallableResolverInterface $callableResolver,
-        RouterProxyInterface $routeProxy
-    ) {
-        $this->attributes       = $attributes;
-        $this->callable         = $callable;
-        $this->routeProxy       = $routeProxy;
-        $this->callableResolver = $callableResolver->addInstanceToClosure($this->routeProxy);
+    public function __construct(RouteCollectionInterface $collection)
+    {
+        $this->collection = $collection;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function collectRoutes(): RouteGroupInterface
+    public function setDefaults(array $defaults): RouteGroupInterface
     {
-        if (null !== $this->callable) {
-            $this->loadGroupRoutes($this->callable);
+        foreach ($this->collection as $route) {
+            $route->setDefaults($defaults);
         }
 
         return $this;
@@ -69,137 +55,60 @@ class RouteGroup implements RouteGroupInterface
     /**
      * {@inheritdoc}
      */
-    public function getOptions(): array
+    public function addPrefix(string $prefix): RouteGroupInterface
     {
-        return \array_filter($this->attributes);
-    }
-
-    /**
-     * Merge route groups into a new array.
-     *
-     * @param RouteGroup $group
-     */
-    public function mergeBackupAttributes(?RouteGroupInterface $group): self
-    {
-        $new = $this->attributes;
-        $old = null !== $group ? $group->getOptions() : [];
-
-        if (isset($new[self::DOMAIN])) {
-            unset($old[self::DOMAIN]);
+        foreach ($this->collection as $route) {
+            $route->addPrefix($prefix);
         }
-
-        $newAttributes = \array_merge(
-            $this->formatName($new, $old),
-            [
-                self::NAMESPACE     => $this->formatNamespace($new, $old),
-                self::PREFIX        => $this->formatPrefix($new, $old),
-                self::DEFAULTS      => $this->formatAttributes(self::DEFAULTS, $new, $old),
-                self::MIDDLEWARES   => $this->formatAttributes(self::MIDDLEWARES, $new, $old),
-                self::REQUIREMENTS  => $this->formatAttributes(self::REQUIREMENTS, $new, $old),
-                self::SCHEMES       => $this->formatSchemes($new, $old),
-            ]
-        );
-
-        $this->attributes = \array_filter($newAttributes);
 
         return $this;
     }
 
     /**
-     * Load the provided routes from group.
-     *
-     * @param callable|Closure|string $routes
-     *
-     * @return mixed
+     * {@inheritdoc}
      */
-    protected function loadGroupRoutes(&$routes)
+    public function addDomain(string $domain): RouteGroupInterface
     {
-        $callable = $this->callableResolver->resolve($routes);
-
-        return $callable($this->routeProxy);
-    }
-
-    /**
-     * Format the namespace for the new group attributes.
-     *
-     * @param array<string,string> $new
-     * @param array<string,string> $old
-     *
-     * @return null|string
-     */
-    protected function formatNamespace($new, $old): ?string
-    {
-        if (isset($new[self::NAMESPACE])) {
-            if (isset($old[self::NAMESPACE]) && \strpos($new[self::NAMESPACE], '\\') !== 0) {
-                return \rtrim($old[self::NAMESPACE], '\\') . '\\' . \rtrim($new[self::NAMESPACE], '\\');
-            }
-
-            return \rtrim($new[self::NAMESPACE], '\\');
+        foreach ($this->collection as $route) {
+            $route->setDomain($domain);
         }
 
-        return $old[self::NAMESPACE] ?? null;
+        return $this;
     }
 
     /**
-     * Format the prefix for the new group attributes.
-     *
-     * @param array<string,string> $new
-     * @param array<string,string> $old
-     *
-     * @return string
+     * {@inheritdoc}
      */
-    protected function formatPrefix($new, $old): string
+    public function addScheme(string ...$schemes): RouteGroupInterface
     {
-        $old = $old[self::PREFIX] ?? '';
-
-        return isset($new[self::PREFIX]) ? $old . $new[self::PREFIX] : $old;
-    }
-
-    /**
-     * Format the "wheres" for the new group attributes.
-     *
-     * @param array<string,string[]> $new
-     * @param array<string,string[]> $old
-     *
-     * @return null|array
-     */
-    protected function formatSchemes(array $new, array $old): ?array
-    {
-        if (!isset($old[self::SCHEMES], $new[self::SCHEMES])) {
-            return null;
+        foreach ($this->collection as $route) {
+            $route->setScheme(...$schemes);
         }
 
-        return \array_merge($old[self::SCHEMES] ?? [], $new[self::SCHEMES] ?? []);
+        return $this;
     }
 
     /**
-     * Format for the new group attributes.
-     *
-     * @param string                 $key
-     * @param array<string,string[]> $new
-     * @param array<string,string[]> $old
-     *
-     * @return array
+     * {@inheritdoc}
      */
-    protected function formatAttributes(string $key, array $new, array $old): array
+    public function addMethod(string ...$methods): RouteGroupInterface
     {
-        return \array_merge($old[$key] ?? [], $new[$key] ?? []);
-    }
-
-    /**
-     * Format the "name" clause of the new group attributes.
-     *
-     * @param array<string,string> $new
-     * @param array<string,string> $old
-     *
-     * @return array
-     */
-    protected function formatName(array $new, array $old): array
-    {
-        if (isset($old[self::NAME])) {
-            $new[self::NAME] = $old[self::NAME] . ($new[self::NAME] ?? '');
+        foreach ($this->collection as $route) {
+            $route->addMethod(...$methods);
         }
 
-        return $new;
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addMiddleware(...$middlewares): RouteGroupInterface
+    {
+        foreach ($this->collection as $route) {
+            $route->addMiddleware(...$middlewares);
+        }
+
+        return $this;
     }
 }
