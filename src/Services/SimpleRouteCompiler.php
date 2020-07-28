@@ -73,13 +73,13 @@ class SimpleRouteCompiler implements Serializable
     /** @var string */
     private $hostTemplate;
 
-    /** @var array<string,mixed> */
+    /** @var array<int|string,mixed> */
     private $variables;
 
-    /** @var array<string,mixed> */
+    /** @var array<int|string,mixed> */
     private $pathVariables;
 
-    /** @var array<string,mixed> */
+    /** @var array<int|string,mixed> */
     private $hostVariables;
 
     /**
@@ -195,7 +195,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the variables.
      *
-     * @return array<string,string> The variables
+     * @return array<int|string,string> The variables
      */
     public function getVariables(): array
     {
@@ -205,7 +205,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the path variables.
      *
-     * @return array<string,string> The variables
+     * @return array<int|string,string> The variables
      */
     public function getPathVariables(): array
     {
@@ -215,7 +215,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Returns the host variables.
      *
-     * @return array<string,string> The variables
+     * @return array<int|string,string> The variables
      */
     public function getHostVariables(): array
     {
@@ -333,8 +333,7 @@ class SimpleRouteCompiler implements Serializable
             if (\strlen($key) > self::VARIABLE_MAXIMUM_LENGTH) {
                 throw new UriHandlerException(
                     \sprintf(
-                        'Variable name "%s" cannot be longer than %s characters in route pattern "%s".' .
-                        ' Please use a shorter name.',
+                        'Variable name "%s" cannot be longer than %s characters in route pattern "%s".',
                         $key,
                         self::VARIABLE_MAXIMUM_LENGTH,
                         $pattern
@@ -364,11 +363,10 @@ class SimpleRouteCompiler implements Serializable
         if (false !== \preg_match_all($path, $pattern, $matches, \PREG_SET_ORDER)) {
             foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
                 $pattern = \str_replace($match, $parameter, $pattern);
-
-                $route->addDefaults([$parameter => $name]);
+                $route->setDefaults([$parameter => $name]);
 
                 if (!empty($regex)) {
-                    $route->addPattern($parameter, $regex);
+                    $route->setPattern($parameter, $regex);
                 }
             }
         }
