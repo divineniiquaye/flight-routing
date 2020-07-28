@@ -17,12 +17,21 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Route;
 
 class RouteFactory implements RouteFactoryInterface
 {
+    /**
+     * {@inheritDoc}
+     */
+    public function createCollection(RouteInterface ...$routes) : RouteCollectionInterface
+    {
+        return new RouteCollection(...$routes);
+    }
+
     /**
      * {@inheritDoc}
      */

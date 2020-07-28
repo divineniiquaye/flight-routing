@@ -20,6 +20,15 @@ namespace Flight\Routing\Interfaces;
 interface RouteFactoryInterface
 {
     /**
+     * Creates a route collection with the given route(s)
+     *
+     * @param RouteInterface ...$routes
+     *
+     * @return RouteCollectionInterface
+     */
+    public function createCollection(RouteInterface ...$routes): RouteCollectionInterface;
+
+    /**
      * Creates a new route from the given parameters
      *
      * @param string                      $name
