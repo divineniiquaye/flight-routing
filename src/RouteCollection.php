@@ -19,13 +19,14 @@ namespace Flight\Routing;
 
 use ArrayIterator;
 use CachingIterator;
+use Countable;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 
 /**
  * {@inheritdoc}
  */
-class RouteCollection implements RouteCollectionInterface
+class RouteCollection implements RouteCollectionInterface, Countable
 {
     /**
      * The collection routes
@@ -55,13 +56,11 @@ class RouteCollection implements RouteCollectionInterface
     }
 
     /**
-     * All added routes should be clonable.
+     * {@inheritdoc}
      */
-    public function __clone()
+    public function count(): int
     {
-        foreach ($this->routes as $name => $route) {
-            $this->routes[$name] = clone $route;
-        }
+        return count($this->routes);
     }
 
     /**

@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
@@ -56,11 +55,10 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
     private $routeFactory;
 
     public function __construct(
-        ?RouteCollectionInterface $collection = null,
         ?RouteFactoryInterface $routeFactory = null
     ) {
         $this->routeFactory = $routeFactory ?? new RouteFactory();
-        $this->collection   = $collection ?? new RouteCollection();
+        $this->collection   = $this->routeFactory->createCollection();
     }
 
     /**
@@ -68,9 +66,11 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function __debugInfo()
     {
+        $collection = $this->collection;
+
         return [
-            'routes' => \iterator_to_array($this->collection),
-            'counts' => \iterator_count($this->collection),
+            'routes' => \iterator_to_array($collection),
+            'counts' => \is_countable($collection) ? \count($this->collection) : \iterator_count($collection),
         ];
     }
 
@@ -87,7 +87,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function group($callable): RouteGroupInterface
     {
-        $collector = new self($this->collection, $this->routeFactory);
+        $collector = new self($this->routeFactory);
 
         $callable($collector);
 
@@ -165,51 +165,15 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
      */
     public function map(string $name, array $methods, string $pattern, $handler): RouteInterface
     {
-        return $this->routeFactory->createRoute($name, \array_map('strtoupper', $methods), $pattern, $handler);
-    }
-
-    /**
-     * Determine if the route is duplicated in the current list.
-     *
-     * Checks if a route with the same path exists already in the list;
-     * if so, and it responds to any of the $methods indicated, raises
-     * a DuplicateRouteException indicating a duplicate route.
-     *
-     * @param string   $path
-     * @param string[] $methods
-     *
-     * @throws DuplicateRouteException on duplicate route detection
-     */
-    private function checkForDuplicateRoute(string $path, array $methods): void
-    {
-        $allowed = [];
-        $matches = \array_filter(
-            $this->collection,
-            function (RouteInterface $route) use ($path, $methods, &$allowed): bool {
-                if ($path === $route->getPath()) {
-                    foreach ($methods as $method) {
-                        if (\in_array($method, $route->getMethods(), true)) {
-                            $allowed[] = $method;
-
-                            return true;
-                        }
-                    }
-
-                    return false;
-                }
-
-                return false;
-            }
+        $route = $this->routeFactory->createRoute(
+            $name,
+            \array_map('strtoupper', $methods),
+            $pattern,
+            $handler
         );
 
-        if (!empty($matches)) {
-            throw new DuplicateRouteException(
-                \sprintf(
-                    'Duplicate route detected; path "%s" answering to methods [%s]',
-                    \reset($matches)->getPath(),
-                    \implode(',', $allowed ?? ['(any)'])
-                )
-            );
-        }
+        $this->collection->add($route);
+
+        return $route;
     }
 }

@@ -17,174 +17,139 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\Exceptions\RouteNotFoundException;
-use Flight\Routing\Exceptions\UrlGenerationException;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use RuntimeException;
+use Fig\Http\Message\RequestMethodInterface;
 
-interface RouteCollectorInterface extends RequestHandlerInterface
+interface RouteCollectorInterface extends RequestMethodInterface
 {
-    public const TYPE_REQUIREMENT = 1;
-
-    public const TYPE_DEFAULT = 0;
+    /**
+     * Standard HTTP methods against which to test HEAD/OPTIONS requests.
+     */
+    public const HTTP_METHODS_STANDARD = [
+        self::METHOD_HEAD,
+        self::METHOD_GET,
+        self::METHOD_POST,
+        self::METHOD_PUT,
+        self::METHOD_PATCH,
+        self::METHOD_DELETE,
+        self::METHOD_PURGE,
+        self::METHOD_OPTIONS,
+        self::METHOD_TRACE,
+        self::METHOD_CONNECT,
+    ];
 
     /**
-     * Get route objects.
+     * Gets the collector collection
      *
-     * @return RouteInterface[]
+     * @return RouteCollectionInterface
      */
-    public function getRoutes(): array;
-
-    /**
-     * Generate a URI from the named route.
-     *
-     * Takes the named route and any parameters, and attempts to generate a
-     * URI from it. Additional router-dependent query may be passed.
-     *
-     * Once there are no missing parameters in the URI we will encode
-     * the URI and prepare it for returning to the user. If the URI is supposed to
-     * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
-     *
-     * @param string         $routeName   route name
-     * @param array|string[] $parameters  key => value option pairs to pass to the
-     *                                    router for purposes of generating a URI; takes precedence over options
-     *                                    present in route used to generate URI
-     * @param array          $queryParams Optional query string parameters
-     *
-     * @throws UrlGenerationException if the route name is not known
-     *                                or a parameter value does not match its regex
-     *
-     * @return string of fully qualified URL for named route
-     */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): ?string;
-
-    /**
-     * Set the root controller namespace.
-     *
-     * @param string $rootNamespace
-     *
-     * @return RouteCollectorInterface
-     */
-    public function setNamespace(string $rootNamespace): self;
-
-    /**
-     * Get named route object.
-     *
-     * @param string $name Route name
-     *
-     * @throws RuntimeException If named route does not exist
-     *
-     * @return RouteInterface
-     */
-    public function getNamedRoute(string $name): RouteInterface;
-
-    /**
-     * Get the current route.
-     *
-     * @return null|RouteInterface
-     */
-    public function currentRoute(): ?RouteInterface;
-
-    /**
-     * Add this to keep the HTTP method when redirecting.
-     *
-     * redirection is temporary by default (code 302)
-     *
-     * @param bool $status
-     *
-     * @return RouteCollectorInterface
-     */
-    public function keepRequestMethod(bool $status = false): self;
-
-    /**
-     * Ge the current router used.
-     *
-     * @return RouterInterface
-     */
-    public function getRouter(): RouterInterface;
-
-    /**
-     * Set the global the middlewares stack attached to all routes.
-     *
-     * @param callable|MiddlewareInterface|string|string[] $middleware
-     *
-     * @return RouteCollectorInterface
-     */
-    public function addMiddlewares($middleware = []): self;
-
-    /**
-     * Set the route middleware and call it as a method on route.
-     *
-     * @param array<string,mixed> $middlewares [name => $middlewares]
-     *
-     * @return RouteCollectorInterface
-     */
-    public function routeMiddlewares($middlewares = []): self;
-
-    /**
-     * Get all middlewares from stack.
-     *
-     * @return MiddlewareInterface[]|string[]
-     */
-    public function getMiddlewaresStack(): array;
-
-    /**
-     * Adds parameters.
-     *
-     * This method implements a fluent interface.
-     *
-     * @param array<string,mixed> $parameters The parameters
-     * @param int                 $type
-     *
-     * @return RouteCollectorInterface
-     */
-    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): self;
+    public function getCollection(): RouteCollectionInterface;
 
     /**
      * Add route group.
      *
-     * @param array<string,mixed>    $attributes
-     * @param callable|object|string $callable
+     * @param callable|object $callable or an object with __invoke method
      *
      * @return RouteGroupInterface
      */
-    public function group(array $attributes, $callable): RouteGroupInterface;
+    public function group($callable): RouteGroupInterface;
 
     /**
      * Add route.
      *
+     * @param string                               $name The route name
      * @param string[]                             $methods Array of HTTP methods
      * @param string                               $pattern The route pattern
      * @param null|callable|object|string|string[] $handler The route callable
      *
      * @return RouteInterface
      */
-    public function map(array $methods, string $pattern, $handler = null): RouteInterface;
+    public function map(string $name, array $methods, string $pattern, $handler): RouteInterface;
 
     /**
-     * Same as to map(); method.
+     * Add HEAD route.
      *
-     * @param RouteInterface $route
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
      */
-    public function setRoute(RouteInterface $route): void;
+    public function head(string $name, string $pattern, $callable): RouteInterface;
 
     /**
-     * Dispatches a matched route response.
+     * Add GET route.
      *
-     * Uses the composed router to match against the incoming request, and
-     * injects the request passed to the handler with the `RouteResults` instance
-     * returned (using the `RouteResults` class name as the attribute name).
-     * If routing succeeds, injects the request passed to the handler with any
-     * matched parameters as well.
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
      *
-     * @param ServerRequestInterface $request
-     *
-     * @throws RouteNotFoundException
-     *
-     * @return ResponseInterface
+     * @return RouteInterface
      */
-    public function handle(ServerRequestInterface $request): ResponseInterface;
+    public function get(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add POST route.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function post(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add PUT route.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function put(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add PATCH route.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function patch(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add DELETE route.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function delete(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add OPTIONS route.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function options(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * Add route for any HTTP method.
+     *
+     * @param string                      $name     The route name
+     * @param string                      $pattern  The route URI pattern
+     * @param null|callable|object|string $callable The route callback routine
+     *
+     * @return RouteInterface
+     */
+    public function any(string $name, string $pattern, $callable): RouteInterface;
 }
