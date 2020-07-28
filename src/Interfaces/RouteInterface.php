@@ -19,7 +19,6 @@ namespace Flight\Routing\Interfaces;
 
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use ReflectionException;
 
 interface RouteInterface
 {
@@ -40,19 +39,9 @@ interface RouteInterface
     /**
      * Get the Controller used on route.
      *
-     * @return mixed
+     * @return callable|object|string|string[]
      */
     public function getController();
-
-    /**
-     * Set a regular expression requirement on the route.
-     *
-     * @param string $name
-     * @param string $expression
-     *
-     * @return $this
-     */
-    public function addPattern(string $name, string $expression): self;
 
     /**
      * Get route requirements.
@@ -69,39 +58,11 @@ interface RouteInterface
     public function getDomain(): string;
 
     /**
-     * Get or set the domain for the route.
-     *
-     * @param null|string $domain
-     *
-     * @return RouteInterface
-     */
-    public function addDomain(?string $domain): self;
-
-    /**
      * Get route name.
      *
      * @return null|string
      */
     public function getName(): ?string;
-
-    /**
-     * Set route name.
-     *
-     * @param null|string $name
-     *
-     * @return static
-     */
-    public function setName(?string $name): self;
-
-    /**
-     * Retrieve a specific route argument.
-     *
-     * @param string      $name
-     * @param null|string $default
-     *
-     * @return null|string
-     */
-    public function getArgument(string $name, ?string $default = null): ?string;
 
     /**
      * Get route arguments.
@@ -111,100 +72,11 @@ interface RouteInterface
     public function getArguments(): array;
 
     /**
-     * Set a route arguments.
-     *
-     * @param array<string,mixed> $arguments
-     *
-     * @return self
-     */
-    public function addArguments(array $arguments): self;
-
-    /**
-     * Set a list of regular expression requirements on the route.
-     *
-     * @see addPattern() method
-     *
-     * @param array<string,string> $wheres
-     *
-     * @return $this
-     */
-    public function whereArray(array $wheres = []): self;
-
-    /**
-     * Returns the lowercased schemes this route is restricted to.
-     * So a null return means that any scheme is allowed.
-     *
-     * @return null|string[] The schemes
-     */
-    public function getSchemes(): ?array;
-
-    /**
-     * Sets the schemes (e.g. 'https') this route is restricted to.
-     * So an empty array means that any scheme is allowed.
-     *
-     * @param null|string|string[] $schemes The scheme or an array of schemes
-     *
-     * @return $this
-     */
-    public function addSchemes($schemes): self;
-
-    /**
-     * Gets a default value.
-     *
-     * @param string      $name
-     * @param null|string $default
-     *
-     * @return null|string The default value or defaults when not given
-     */
-    public function getDefault(string $name, ?string $default = null): ?string;
-
-    /**
-     * Adds defaults.
-     *
-     * @param array<int|string,mixed> $defaults The defaults
-     *
-     * @return RouteInterface
-     */
-    public function addDefaults(array $defaults): self;
-
-    /**
      * Get route default options.
      *
-     * @return array<int|string,mixed>
+     * @return array<string,mixed>
      */
     public function getDefaults(): array;
-
-    /**
-     * Checks if a default value is set for the given variable.
-     *
-     * @param string $name A variable name
-     *
-     * @return bool true if the default value is set, false otherwise
-     */
-    public function hasDefault(string $name): bool;
-
-    /**
-     * Checks if route exists in a group.
-     *
-     * @return bool
-     */
-    public function hasGroup(): bool;
-
-    /**
-     * The group id, route belongs to.
-     *
-     * @return null|string
-     */
-    public function getGroupId(): ?string;
-
-    /**
-     * Add middlewares to route.
-     *
-     * @param callable|MiddlewareInterface|RequestHandlerInterface|string|string[] $middleware
-     *
-     * @return RouteInterface
-     */
-    public function addMiddleware($middleware): self;
 
     /**
      * Get middlewares from stack.
@@ -214,14 +86,104 @@ interface RouteInterface
     public function getMiddlewares(): array;
 
     /**
-     * Handles a callable controller served on a route.
+     * Returns the lower cased schemes this route is restricted to.
      *
-     * @param callable                  $controller
-     * @param CallableResolverInterface $callableResolver
-     *
-     * @throws ReflectionException
-     *
-     * @return callable
+     * @return string[]
      */
-    public function handle(callable $controller, CallableResolverInterface $callableResolver): callable;
+    public function getSchemes(): array;
+
+    /**
+     * Adds the given domain scheme(s) to the route
+     *
+     * @param string ...$schemes
+     *
+     * @return RouteInterface
+     */
+    public function setScheme(string ...$schemes): self;
+
+    /**
+     * Set route name.
+     *
+     * @param string $name
+     *
+     * @return RouteInterface
+     */
+    public function setName(string $name): self;
+
+    /**
+     * Adds defaults.
+     *
+     * @param array<string,mixed> $defaults The defaults
+     *
+     * @return RouteInterface
+     */
+    public function setDefaults(array $defaults): self;
+
+    /**
+     * Set the domain for the route.
+     *
+     * @param string $domain
+     *
+     * @return RouteInterface
+     */
+    public function setDomain(string $domain): self;
+
+    /**
+     * Set a route controller's arguments.
+     *
+     * @param array<string,mixed> $arguments
+     *
+     * @return RouteInterface
+     */
+    public function setArguments(array $arguments): self;
+
+    /**
+     * Set a list of regular expression requirements on the route.
+     *
+     * @see addPattern() method
+     *
+     * @param array<string,string> $patterns
+     *
+     * @return RouteInterface
+     */
+    public function setPatterns(array $patterns): self;
+
+    /**
+     * Add middleware(s) to route.
+     *
+     * NB: Adding a request handler as middleware ends the middlewares cycle.
+     *
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
+     *
+     * @return RouteInterface
+     */
+    public function addMiddleware(...$middleware): self;
+
+    /**
+     * Set a regular expression requirement on the route.
+     *
+     * @param string $name
+     * @param string $expression
+     *
+     * @return RouteInterface
+     */
+    public function addPattern(string $name, string $expression): self;
+
+    /**
+     * Adds the given prefix to the route path
+     *
+     * @param string $prefix
+     *
+     * @return RouteInterface
+     */
+    public function addPrefix(string $prefix): self;
+
+    /**
+     * Adds the given method(s) to the route
+     *
+     * @param string ...$methods
+     *
+     * @return RouteInterface
+     */
+    public function addMethod(string ...$methods): RouteInterface;
 }

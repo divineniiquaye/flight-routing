@@ -18,11 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Closure;
-use Flight\Routing\Interfaces\RouteGroupInterface;
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\RouteInterface;
-use RuntimeException;
 use Serializable;
-use Throwable;
 
 /**
  * Value object representing a single route.
@@ -43,14 +41,6 @@ use Throwable;
  */
 class Route implements Serializable, RouteInterface
 {
-    use Traits\ControllersTrait;
-    use Traits\DefaultsTrait;
-    use Traits\DomainsTrait;
-    use Traits\GroupsTrait;
-    use Traits\MiddlewaresTrait;
-    use Traits\PathsTrait;
-    use Traits\PatternsTrait;
-
     /**
      * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
      * Pattern route:   `pattern/*<controller@action>`
@@ -61,89 +51,90 @@ class Route implements Serializable, RouteInterface
      */
     public const RCA_PATTERN = '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i';
 
-    /**
-     * HTTP methods supported by this route.
-     *
-     * @var string[]
-     */
-    protected $methods = [];
+    /** @var string[] */
+    private $methods = [];
 
-    /**
-     * Route name.
-     *
-     * @var null|string
-     */
-    protected $name;
+    /** @var string */
+    private $path;
+
+    /** @var null|string */
+    private $domain;
+
+    /** @var string */
+    private $name;
+
+    /** @var null|callable|object|string|string[] */
+    private $controller;
+
+    /** @var string[] */
+    private $schemes = [];
+
+    /** @var array<string,mixed> */
+    private $arguments = [];
+
+    /** @var array<string,mixed> */
+    private $defaults = [];
+
+    /** @var array<string,string|string[]> */
+    private $patterns = [];
+
+    /** @var string[] */
+    private $middlewares = [];
 
     /**
      * Create a new Route constructor.
      *
-     * @param string[]                    $methods  The route HTTP methods
-     * @param string                      $pattern  The route pattern
-     * @param null|callable|object|string $callable The route callable
-     * @param null|RouteGroupInterface    $group    The parent route group
+     * @param string                               $name    The route name
+     * @param string[]                             $methods The route HTTP methods
+     * @param string                               $pattern The route pattern
+     * @param null|callable|object|string|string[] $handler The route callable
      */
-    public function __construct(array $methods, string $pattern, $callable, ?RouteGroupInterface $group = null)
+    public function __construct(string $name, array $methods, string $pattern, $handler)
     {
-        $this->methods = $methods;
-
-        $this->appendGroupToRoute($group);
-        $this->setController($callable);
-        $this->setPath($pattern);
+        $this->name       = $name;
+        $this->controller = $handler;
+        $this->methods    = \array_map('strtoupper', $methods);
+        $this->path       = $this->castRoute($pattern);
     }
 
     /**
+     * @internal
+     *
      * @return array<string,mixed>
      */
     public function __serialize(): array
     {
         return [
+            'name'          => $this->name,
             'path'          => $this->path,
-            'prefix'        => $this->prefix,
             'host'          => $this->domain,
             'schemes'       => $this->schemes,
-            'namespace'     => $this->namespace,
             'defaults'      => $this->defaults,
-            'requirements'  => $this->patterns,
+            'patterns'      => $this->patterns,
             'methods'       => $this->methods,
             'middlewares'   => $this->middlewares,
             'arguments'     => $this->arguments,
-            'group'         => $this->groups,
-            'group_append'  => $this->groupAppended,
-            'controller'    => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
+            'handler'       => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
         ];
     }
 
     /**
+     * @internal
+     *
      * @param array<string,mixed> $data
      */
     public function __unserialize(array $data): void
     {
+        $this->name          = $data['name'];
         $this->path          = $data['path'];
-        $this->prefix        = $data['prefix'];
         $this->domain        = $data['host'];
         $this->defaults      = $data['defaults'];
         $this->schemes       = $data['schemes'];
-        $this->patterns      = $data['requirements'];
+        $this->patterns      = $data['patterns'];
         $this->methods       = $data['methods'];
-        $this->controller    = $data['controller'];
-        $this->groupAppended = $data['group_append'];
-
-        if (isset($data['middlewares'])) {
-            $this->middlewares = $data['middlewares'];
-        }
-
-        if (isset($data['namespace'])) {
-            $this->namespace = $data['namespace'];
-        }
-
-        if (isset($data['group'])) {
-            $this->groups = $data['group'];
-        }
-
-        if (isset($data['arguments'])) {
-            $this->arguments = $data['arguments'];
-        }
+        $this->controller    = $data['handler'];
+        $this->middlewares   = $data['middlewares'];
+        $this->arguments     = $data['arguments'];
     }
 
     /**
@@ -167,33 +158,23 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * @param array<string,mixed> $values
-     *
-     * @throws RuntimeException
-     *
-     * @internal
+     * {@inheritDoc}
      */
-    public function fromArray(array $values): void
+    public function getName(): string
     {
-        try {
-            foreach ($values as $key => $value) {
-                if (null !== $value) {
-                    if ('defaults' === $key) {
-                        $this->addDefaults($value);
-                    } elseif ('patterns' === $key) {
-                        $this->whereArray($value);
-                    } else {
-                        $this->$key = $this->getValueFromKey($values, $key);
-                    }
-                }
-            }
-        } catch (Throwable $exception) {
-            throw new RuntimeException($exception->getMessage());
-        }
+        return $this->name;
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
+     */
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function getMethods(): array
     {
@@ -201,19 +182,78 @@ class Route implements Serializable, RouteInterface
     }
 
     /**
-     * Add or change the route name.
-     *
-     * @param string $name
-     *
-     * @return $this
+     * {@inheritdoc}
      */
-    public function setName(?string $name): RouteInterface
+    public function getDomain(): string
     {
-        if (null === $name) {
-            return $this;
+        return \str_replace(['http://', 'https://'], '', (string) $this->domain);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getSchemes(): array
+    {
+        return $this->schemes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getController()
+    {
+        return $this->controller;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getArguments(): array
+    {
+        $routeArguments = [];
+
+        foreach ($this->arguments as $key => $value) {
+            if (\is_int($key)) {
+                continue;
+            }
+
+            $value                = \is_numeric($value) ? (int) $value : $value;
+            $routeArguments[$key] = \is_string($value) ? \rawurldecode($value) : $value;
         }
 
-        null !== $this->name ? $this->name .= $name : $this->name = $name;
+        return $routeArguments;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getDefaults(): array
+    {
+        return $this->defaults;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getPatterns(): array
+    {
+        return $this->patterns;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getMiddlewares(): array
+    {
+        return $this->middlewares;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function setName(string $name): RouteInterface
+    {
+        $this->name = $name;
 
         return $this;
     }
@@ -221,23 +261,170 @@ class Route implements Serializable, RouteInterface
     /**
      * {@inheritdoc}
      */
-    public function getName(): ?string
+    public function setDomain(string $domain): RouteInterface
     {
-        return $this->name;
+        if (false !== \preg_match('@^(?:(https?):)?(\/\/[^/]+)@i', $domain, $matches)) {
+            [, $scheme, $domain] = $matches;
+
+            if (!empty($scheme)) {
+                $this->setScheme($scheme);
+            }
+        }
+        $this->domain = \trim($domain, '//');
+
+        return $this;
     }
 
     /**
-     * @param array<string,mixed> $data
-     * @param string              $key
-     *
-     * @return mixed
+     * {@inheritDoc}
      */
-    private function getValueFromKey(array $data, string $key)
+    public function setScheme(string ...$schemes): RouteInterface
     {
-        if (isset($data[$key])) {
-            return $data[$key];
+        foreach ($schemes as $scheme) {
+            $this->schemes[] = $scheme;
         }
 
-        throw new RuntimeException(\sprintf('Missing "%s" parameter in route instance', $key));
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setArguments(array $arguments): RouteInterface
+    {
+        foreach ($arguments as $key => $value) {
+            $this->arguments[$key] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setDefaults(array $defaults): RouteInterface
+    {
+        foreach ($defaults as $key => $value) {
+            $this->defaults[$key] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setPatterns(array $patterns): RouteInterface
+    {
+        foreach ($patterns as $key => $expression) {
+            $this->addPattern($key, $expression);
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function addMethod(string ...$methods): RouteInterface
+    {
+        foreach ($methods as $method) {
+            $this->methods[] = \strtoupper($method);
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addPattern(string $name, $expression): RouteInterface
+    {
+        $this->patterns[$name] = $expression;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function addPrefix(string $prefix): RouteInterface
+    {
+        $this->path = $this->castPrefix($this->path, $prefix);
+
+        return $this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function addMiddleware(...$middlewares): RouteInterface
+    {
+        foreach ($middlewares as $middleware) {
+            $this->middlewares[] = $middleware;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Locates appropriate route by name. Support dynamic route allocation using following pattern:
+     * Pattern route:   `pattern/*<controller@action>`
+     * Default route: `*<controller@action>`
+     * Only action:   `pattern/*<action>`.
+     *
+     * @param string $route
+     *
+     * @throws InvalidControllerException
+     *
+     * @return string
+     */
+    private function castRoute(string $route): string
+    {
+        // Match domain + scheme from pattern...
+        if (false !== \preg_match($regex = '@^(?:(https?):)?(//[^/]+)@i', $route)) {
+            $route = \preg_replace_callback($regex, function (array $matches): string {
+                $this->setDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
+
+                return '';
+            }, $route);
+        }
+
+        if (false !== \strpbrk($route, '*') && false !== \preg_match(self::RCA_PATTERN, $route, $matches)) {
+            if (!isset($matches['route']) || empty($matches['route'])) {
+                throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
+            }
+
+            if (isset($matches['controller'], $matches['action'])) {
+                $this->controller = [$matches['controller'] ?: $this->controller, $matches['action']];
+            }
+
+            $route = $matches['route'];
+        }
+
+        return (empty($route) || '/' === $route) ? '/' : $route;
+    }
+
+    /**
+     * Ensures that the right-most slash is trimmed for prefixes of more than
+     * one character, and that the prefix begins with a slash.
+     *
+     * @param string $uri
+     * @param string $prefix
+     *
+     * @return string
+     */
+    private function castPrefix(string $uri, string $prefix)
+    {
+        // Allow homepage uri on prefix just like python django url style.
+        if (\in_array($uri, ['', '/'], true)) {
+            return \rtrim($prefix, '/') . $uri;
+        }
+
+        if (1 === \preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
+            $newPattern = \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
+        }
+
+        return !empty($newPattern) ? $newPattern : \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');
     }
 }
