@@ -22,26 +22,30 @@ namespace Flight\Routing\Tests\Fixtures;
  */
 class Helper
 {
-
     /**
      * @param iterable $routes
+     *
      * @return array
      */
-    public static function routesToArray(iterable $routes) : array
+    public static function routesToArray(iterable $routes): array
     {
         $result = [];
 
         foreach ($routes as $route) {
-            $item = [];
-            $item['name'] = $route->getName();
-            $item['path'] = $route->getPath();
-            $item['methods'] = $route->getMethods();
-            $item['handler'] = get_class($route->getController());
+            $item                = [];
+            $item['name']        = $route->getName();
+            $item['path']        = $route->getPath();
+            $item['domain']      = $route->getDomain();
+            $item['methods']     = $route->getMethods();
+            $item['handler']     = \get_class($route->getController());
             $item['middlewares'] = [];
-            $item['arguments'] = $route->getArguments();
+            $item['schemes']     = $route->getSchemes();
+            $item['defaults']    = $route->getDefaults();
+            $item['patterns']    = $route->getPatterns();
+            $item['arguments']   = $route->getArguments();
 
             foreach ($route->getMiddlewares() as $middleware) {
-                $classname = get_class($middleware);
+                $classname = \is_string($middleware) ? $middleware : \get_class($middleware);
 
                 if ($middleware instanceof NamedBlankMiddleware) {
                     $classname .= ':' . $middleware->getName();
@@ -58,9 +62,10 @@ class Helper
 
     /**
      * @param iterable $routes
+     *
      * @return array
      */
-    public static function routesToNames(iterable $routes) : array
+    public static function routesToNames(iterable $routes): array
     {
         $result = [];
 
