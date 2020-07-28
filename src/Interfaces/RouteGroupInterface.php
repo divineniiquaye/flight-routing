@@ -32,6 +32,15 @@ interface RouteGroupInterface
     public function setDefaults(array $defaults): self;
 
     /**
+     * Adds the given name to all routes in the collection
+     *
+     * @param string $name
+     *
+     * @return RouteGroupInterface
+     */
+    public function setName(string $name): self;
+
+    /**
      * Adds the given path prefix to all routes in the collection
      *
      * @param string $prefix

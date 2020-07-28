@@ -55,6 +55,18 @@ class RouteGroup implements RouteGroupInterface
     /**
      * {@inheritdoc}
      */
+    public function setName(string $name): RouteGroupInterface
+    {
+        foreach ($this->collection as $route) {
+            $route->setName($name . $route->getName());
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function addPrefix(string $prefix): RouteGroupInterface
     {
         foreach ($this->collection as $route) {
