@@ -32,7 +32,8 @@ use Throwable;
  */
 final class RouteHandler implements RequestHandlerInterface
 {
-    private const CONTENT_TYPE = 'Content-Type';
+    public const CONTENT_TYPE = 'Content-Type';
+
     /** @var callable */
     private $callable;
 
@@ -132,9 +133,6 @@ final class RouteHandler implements RequestHandlerInterface
 
     private function isJson(StreamInterface $stream): bool
     {
-        if (!\function_exists('json_decode')) {
-            return false;
-        }
         $stream->rewind();
 
         \json_decode($stream->getContents(), true);
@@ -144,9 +142,6 @@ final class RouteHandler implements RequestHandlerInterface
 
     private function isXml(StreamInterface $stream): bool
     {
-        if (!\function_exists('simplexml_load_string')) {
-            return false;
-        }
         $stream->rewind();
 
         $previousValue = \libxml_use_internal_errors(true);
