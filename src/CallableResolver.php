@@ -22,6 +22,7 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\CallableResolverInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use ReflectionClass;
 use RuntimeException;
 use TypeError;
 
@@ -74,7 +75,7 @@ class CallableResolver implements CallableResolverInterface
             $toResolve = $this->appendNamespace($toResolve, (string) $namespace);
         }
 
-        if (\is_string($toResolve) && false !== \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
+        if (\is_string($toResolve) && 1 === \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
             // check for slim callable as "class:method", and "class@method"
             $toResolve = $this->resolveCallable($matches[1], $matches[3]);
         }
@@ -108,12 +109,14 @@ class CallableResolver implements CallableResolverInterface
      */
     protected function resolveCallable($class, $method = '__invoke'): callable
     {
-        if (\is_string($class) && $this->container instanceof ContainerInterface && $this->container->has($class)) {
+        if (\is_string($class) && null !== $this->container && $this->container->has($class)) {
             $class = $this->container->get($class);
         }
 
         // We do not need class as a string here
-        $class = \is_object($class) ? $class : new $class();
+        if (\is_string($class) && \class_exists($class)) {
+            $class = (new ReflectionClass($class))->newInstance();
+        }
 
         // For a class that implements RequestHandlerInterface, we will call handle()
         // if no method has been specified explicitly
@@ -156,9 +159,18 @@ class CallableResolver implements CallableResolverInterface
      */
     protected function assertCallable($callable): callable
     {
+        if (\is_string($callable) && null !== $this->container && $this->container->has($callable)) {
+            $callable = $this->container->get($callable);
+        }
+
         // Maybe could be a class object or RequestHandlerInterface instance
         if (!$callable instanceof Closure && \is_object($callable)) {
-            return $this->resolveCallable($callable);
+            $callable = $this->resolveCallable($callable);
+        }
+
+        // Maybe could be a class string or RequestHandlerInterface instance as string
+        if (\is_string($callable) && \class_exists($callable)) {
+            $callable = $this->resolveCallable($callable);
         }
 
         if (!\is_callable($callable)) {

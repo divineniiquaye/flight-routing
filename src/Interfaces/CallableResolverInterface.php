@@ -33,16 +33,16 @@ interface CallableResolverInterface
     /**
      * Resolve toResolve into a callable that the router can dispatch.
      *
-     * If toResolve is of the format 'class:method', 'class::method',
-     * and 'class@method', then try to extract 'class' from the container
+     * If toResolve is of the format 'class:method',and 'class@method',
+     * then try to extract 'class' from the container
      * otherwise instantiate it and then dispatch 'method'.
      *
-     * @param mixed $toResolve
+     * @param mixed       $toResolve
+     * @param null|string $namespace
      *
-     * @throws InvalidControllerException if the callable does not exist
-     * @throws InvalidControllerException if the callable is not resolvable
+     * @throws InvalidControllerException if the callable does not exist or resolvable
      *
      * @return callable
      */
-    public function resolve($toResolve): callable;
+    public function resolve($toResolve, ?string $namespace = null): callable;
 }
