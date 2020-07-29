@@ -366,7 +366,7 @@ class SimpleRouteCompiler implements Serializable
                 $route->setDefaults([$parameter => $name]);
 
                 if (!empty($regex)) {
-                    $route->setPattern($parameter, $regex);
+                    $route->addPattern($parameter, $regex);
                 }
             }
         }
