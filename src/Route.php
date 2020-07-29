@@ -264,10 +264,14 @@ class Route implements Serializable, RouteInterface
     public function setDomain(string $domain): RouteInterface
     {
         if (false !== \preg_match('@^(?:(https?):)?(\/\/[^/]+)@i', $domain, $matches)) {
-            [, $scheme, $domain] = $matches;
+            [, $scheme, $host] = $matches;
 
             if (!empty($scheme)) {
                 $this->setScheme($scheme);
+            }
+
+            if (!empty($host)) {
+                $domain = $host;
             }
         }
         $this->domain = \trim($domain, '//');
