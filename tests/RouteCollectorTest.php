@@ -262,7 +262,7 @@ class RouteCollectorTest extends TestCase
         $route = $collector->head(
             $routeName,
             $routePath,
-            $routeRequestHandler,
+            $routeRequestHandler
         )
         ->addMiddleware(...$routeMiddlewares)
         ->setArguments($routeAttributes);
