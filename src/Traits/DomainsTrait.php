@@ -40,7 +40,7 @@ trait DomainsTrait
      */
     public function addDomain(?string $domain): RouteInterface
     {
-        if (false !== \preg_match('^(?:(https?):)?(\/\/.*\.[^\/]+)$', $domain ?? '', $matches)) {
+        if (1 === \preg_match('@^(?:(https?):)?(\/\/[^/]+)@i', $domain ?? '', $matches)) {
             [, $scheme, $domain] = $matches;
 
             if (!empty($scheme)) {
