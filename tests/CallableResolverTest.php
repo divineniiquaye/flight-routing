@@ -159,5 +159,9 @@ class CallableResolverTest extends TestCase
                 return $something;
             }
         ];
+
+        yield 'Callable Static String Class Type 1' => [
+            'Flight\Routing\Tests\Fixtures\BlankController::process'
+        ];
     }
 }
