@@ -22,8 +22,8 @@ trait RouteValidation
     /**
      * Check if given request method matches given route method.
      *
-     * @param string[]|string $routeMethod
-     * @param string       $requestMethod
+     * @param string|string[] $routeMethod
+     * @param string          $requestMethod
      *
      * @return bool
      */

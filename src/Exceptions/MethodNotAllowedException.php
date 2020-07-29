@@ -24,8 +24,8 @@ class MethodNotAllowedException extends RouteNotFoundException
 {
     /**
      * @param string[] $methods
-     * @param string $path
-     * @param string $method
+     * @param string   $path
+     * @param string   $method
      */
     public function __construct(array $methods, string $path, string $method)
     {

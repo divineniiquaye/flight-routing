@@ -27,7 +27,6 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class NamedBlankMiddleware implements MiddlewareInterface
 {
-
     /**
      * @var string
      */

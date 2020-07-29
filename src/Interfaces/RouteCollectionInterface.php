@@ -28,8 +28,6 @@ interface RouteCollectionInterface extends IteratorAggregate
      * Adds the given route(s) to the collection
      *
      * @param RouteInterface ...$routes
-     *
-     * @return void
      */
     public function add(RouteInterface ...$routes): void;
 }

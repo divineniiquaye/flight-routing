@@ -115,53 +115,53 @@ class CallableResolverTest extends TestCase
     public function implicitTypes(): Generator
     {
         yield 'Object Class Type:' => [
-            new Fixtures\BlankRequestHandler()
+            new Fixtures\BlankRequestHandler(),
         ];
 
         yield 'String Invocable Class Type:' => [
-            Fixtures\BlankController::class
+            Fixtures\BlankController::class,
         ];
 
         yield 'Object Invocable Class Type:' => [
-            new Fixtures\BlankController()
+            new Fixtures\BlankController(),
         ];
 
         yield 'Callable Class Type:' => [
-            [new Fixtures\BlankController(), 'handle']
+            [new Fixtures\BlankController(), 'handle'],
         ];
 
         yield 'Array Class Type:' => [
-            [Fixtures\BlankController::class, 'handle']
+            [Fixtures\BlankController::class, 'handle'],
         ];
 
         yield 'Callable RequestHandler Class Type:' => [
-            [new Fixtures\BlankRequestHandler(), 'handle']
+            [new Fixtures\BlankRequestHandler(), 'handle'],
         ];
 
         yield 'Array RequestHandler Class Type:' => [
-            [Fixtures\BlankRequestHandler::class, 'handle']
+            [Fixtures\BlankRequestHandler::class, 'handle'],
         ];
 
         yield 'Pattern : Class Type:' => [
-            'Flight\Routing\Tests\Fixtures\BlankRequestHandler:handle'
+            'Flight\Routing\Tests\Fixtures\BlankRequestHandler:handle',
         ];
 
         yield 'Pattern @ Class Type:' => [
-            'Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle'
+            'Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle',
         ];
 
         yield 'Callable String Type:' => [
-            'phpinfo'
+            'phpinfo',
         ];
 
         yield 'Callable Closure Type:' => [
             function (string $something): string {
                 return $something;
-            }
+            },
         ];
 
         yield 'Callable Static String Class Type 1' => [
-            'Flight\Routing\Tests\Fixtures\BlankController::process'
+            'Flight\Routing\Tests\Fixtures\BlankController::process',
         ];
     }
 }

@@ -56,7 +56,7 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add route.
      *
-     * @param string                               $name The route name
+     * @param string                               $name    The route name
      * @param string[]                             $methods Array of HTTP methods
      * @param string                               $pattern The route pattern
      * @param null|callable|object|string|string[] $handler The route callable

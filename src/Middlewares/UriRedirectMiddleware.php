@@ -35,8 +35,8 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
     /**
      * @param array<string,string> $redirects [from => to]
-     * @param bool $query
-     * @param bool $permanent
+     * @param bool                 $query
+     * @param bool                 $permanent
      */
     public function __construct(array $redirects = [], bool $query = true, bool $permanent = true)
     {

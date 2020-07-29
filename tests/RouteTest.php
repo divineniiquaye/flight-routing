@@ -69,7 +69,7 @@ class RouteTest extends TestCase
             $routeName,
             $routeMethods,
             $routePath,
-            $routeRequestHandler,
+            $routeRequestHandler
         );
         $route->addMiddleware(...$routeMiddlewares)
             ->setDomain('https://biurad.com')
@@ -113,7 +113,7 @@ class RouteTest extends TestCase
             $routeName,
             $routeMethods,
             $routePath,
-            $routeRequestHandler,
+            $routeRequestHandler
         );
 
         $serialized = $route->serialize();
@@ -165,7 +165,7 @@ class RouteTest extends TestCase
             $routeName,
             $routeMethods,
             '//biurad.com/' . \ltrim($routePath, '/'),
-            $routeRequestHandler,
+            $routeRequestHandler
         );
 
         $this->assertEquals($routePath, $route->getPath());
@@ -183,7 +183,7 @@ class RouteTest extends TestCase
             $routeName,
             $routeMethods,
             'https://biurad.com/' . \ltrim($routePath, '/'),
-            $routeRequestHandler,
+            $routeRequestHandler
         );
 
         $this->assertEquals($routePath, $route->getPath());
@@ -201,13 +201,13 @@ class RouteTest extends TestCase
             $routeName,
             $routeMethods,
             $routePath . '*<handle>',
-            new Fixtures\BlankRequestHandler(),
+            new Fixtures\BlankRequestHandler()
         );
         $route2 = new Route(
             $routeName,
             $routeMethods,
             $routePath . '*<Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle>',
-            null,
+            null
         );
 
         $this->assertIsCallable($route1->getController());

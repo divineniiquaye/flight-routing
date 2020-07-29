@@ -17,16 +17,15 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
+use Flight\Routing\Route as BaseRoute;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Flight\Routing\Route as BaseRoute;
 
 /**
  * TestRoute
  */
 class TestRoute extends BaseRoute
 {
-
     /**
      * @var int
      */
@@ -55,7 +54,7 @@ class TestRoute extends BaseRoute
      */
     public static function getTestRouteName(int $flags = 0): string
     {
-        return uniqid() . '.' . uniqid() . '.' . uniqid();
+        return \uniqid() . '.' . \uniqid() . '.' . \uniqid();
     }
 
     /**
@@ -63,7 +62,7 @@ class TestRoute extends BaseRoute
      */
     public static function getTestRoutePath(int $flags = 0): string
     {
-        return '/' . uniqid() . '/' . uniqid() . '/' . uniqid();
+        return '/' . \uniqid() . '/' . \uniqid() . '/' . \uniqid();
     }
 
     /**
@@ -72,9 +71,9 @@ class TestRoute extends BaseRoute
     public static function getTestRouteMethods(int $flags = 0): array
     {
         return [
-            strtoupper(uniqid()),
-            strtoupper(uniqid()),
-            strtoupper(uniqid()),
+            \strtoupper(\uniqid()),
+            \strtoupper(\uniqid()),
+            \strtoupper(\uniqid()),
         ];
     }
 
@@ -110,9 +109,9 @@ class TestRoute extends BaseRoute
     public static function getTestRouteAttributes(int $flags = 0): array
     {
         return [
-            uniqid() => uniqid(),
-            uniqid() => uniqid(),
-            uniqid() => uniqid(),
+            \uniqid() => \uniqid(),
+            \uniqid() => \uniqid(),
+            \uniqid() => \uniqid(),
         ];
     }
 }

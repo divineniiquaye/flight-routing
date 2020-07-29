@@ -60,7 +60,7 @@ class RouteCollection implements RouteCollectionInterface, Countable
      */
     public function count(): int
     {
-        return count($this->routes);
+        return \count($this->routes);
     }
 
     /**

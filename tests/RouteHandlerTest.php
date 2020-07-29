@@ -55,7 +55,7 @@ class RouteHandlerTest extends TestCase
     public function testHandleWithException(): void
     {
         $this->expectException(RuntimeException::class);
-        
+
         $handler = static function (ServerRequestInterface $request, ResponseInterface $response): void {
             throw new RuntimeException('An error occurred');
         };

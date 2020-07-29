@@ -67,7 +67,7 @@ class SimpleRouteCompiler implements Serializable
     /** @var string */
     private $compiled;
 
-    /** @var string|null */
+    /** @var null|string */
     private $hostRegex;
 
     /** @var string */
@@ -375,8 +375,8 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Prepares segment pattern with given constrains.
      *
-     * @param string               $name
-     * @param string               $segment
+     * @param string              $name
+     * @param string              $segment
      * @param array<string,mixed> $requirements
      *
      * @return string

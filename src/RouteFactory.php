@@ -20,7 +20,6 @@ namespace Flight\Routing;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Route;
 
 class RouteFactory implements RouteFactoryInterface
 {
