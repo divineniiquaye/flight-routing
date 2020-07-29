@@ -31,5 +31,5 @@ interface RouteCollectionInterface extends IteratorAggregate
      *
      * @return void
      */
-    public function add(RouteInterface ...$routes) : void;
+    public function add(RouteInterface ...$routes): void;
 }

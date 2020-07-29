@@ -27,28 +27,21 @@ use PHPUnit\Framework\TestCase;
  */
 class RouteFactoryTest extends TestCase
 {
-
-    /**
-     * @return void
-     */
-    public function testConstructor() : void
+    public function testConstructor(): void
     {
         $factory = new RouteFactory();
 
         $this->assertInstanceOf(RouteFactoryInterface::class, $factory);
     }
 
-    /**
-     * @return void
-     */
-    public function testCreateRoute() : void
+    public function testCreateRoute(): void
     {
-        $routeName = Fixtures\TestRoute::getTestRouteName();
-        $routePath = Fixtures\TestRoute::getTestRoutePath();
-        $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
+        $routeName           = Fixtures\TestRoute::getTestRouteName();
+        $routePath           = Fixtures\TestRoute::getTestRoutePath();
+        $routeMethods        = Fixtures\TestRoute::getTestRouteMethods();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $route = (new RouteFactory)->createRoute(
+        $route = (new RouteFactory())->createRoute(
             $routeName,
             $routeMethods,
             $routePath,
@@ -67,19 +60,16 @@ class RouteFactoryTest extends TestCase
         $this->assertSame([], $route->getArguments());
     }
 
-    /**
-     * @return void
-     */
-    public function testCreateRouteWithOptionalParams() : void
+    public function testCreateRouteWithOptionalParams(): void
     {
-        $routeName = Fixtures\TestRoute::getTestRouteName();
-        $routePath = Fixtures\TestRoute::getTestRoutePath();
-        $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
+        $routeName           = Fixtures\TestRoute::getTestRouteName();
+        $routePath           = Fixtures\TestRoute::getTestRoutePath();
+        $routeMethods        = Fixtures\TestRoute::getTestRouteMethods();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-        $routeMiddlewares = Fixtures\TestRoute::getTestRouteMiddlewares();
-        $routeAttributes = Fixtures\TestRoute::getTestRouteAttributes();
+        $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
+        $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $route = (new RouteFactory)->createRoute(
+        $route = (new RouteFactory())->createRoute(
             $routeName,
             $routeMethods,
             $routePath,

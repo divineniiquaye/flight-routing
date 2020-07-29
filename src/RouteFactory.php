@@ -27,7 +27,7 @@ class RouteFactory implements RouteFactoryInterface
     /**
      * {@inheritDoc}
      */
-    public function createCollection(RouteInterface ...$routes) : RouteCollectionInterface
+    public function createCollection(RouteInterface ...$routes): RouteCollectionInterface
     {
         return new RouteCollection(...$routes);
     }

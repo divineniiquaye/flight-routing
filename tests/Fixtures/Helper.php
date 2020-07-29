@@ -17,15 +17,17 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
+use Flight\Routing\Interfaces\RouteInterface;
+
 /**
  * Helper
  */
 class Helper
 {
     /**
-     * @param iterable $routes
+     * @param iterable<int,RouteInterface> $routes
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public static function routesToArray(iterable $routes): array
     {
@@ -61,9 +63,9 @@ class Helper
     }
 
     /**
-     * @param iterable $routes
+     * @param iterable<int,RouteInterface> $routes
      *
-     * @return array
+     * @return string[]
      */
     public static function routesToNames(iterable $routes): array
     {

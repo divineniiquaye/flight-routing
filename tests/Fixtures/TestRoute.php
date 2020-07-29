@@ -53,7 +53,7 @@ class TestRoute extends BaseRoute
     /**
      * @return string
      */
-    public static function getTestRouteName(int $flags = 0) : string
+    public static function getTestRouteName(int $flags = 0): string
     {
         return uniqid() . '.' . uniqid() . '.' . uniqid();
     }
@@ -61,7 +61,7 @@ class TestRoute extends BaseRoute
     /**
      * @return string
      */
-    public static function getTestRoutePath(int $flags = 0) : string
+    public static function getTestRoutePath(int $flags = 0): string
     {
         return '/' . uniqid() . '/' . uniqid() . '/' . uniqid();
     }
@@ -69,7 +69,7 @@ class TestRoute extends BaseRoute
     /**
      * @return string[]
      */
-    public static function getTestRouteMethods(int $flags = 0) : array
+    public static function getTestRouteMethods(int $flags = 0): array
     {
         return [
             strtoupper(uniqid()),
@@ -81,7 +81,7 @@ class TestRoute extends BaseRoute
     /**
      * @return RequestHandlerInterface
      */
-    public static function getTestRouteRequestHandler(int $flags = 0) : RequestHandlerInterface
+    public static function getTestRouteRequestHandler(int $flags = 0): RequestHandlerInterface
     {
         return new BlankRequestHandler();
     }
@@ -89,7 +89,7 @@ class TestRoute extends BaseRoute
     /**
      * @return MiddlewareInterface[]
      */
-    public static function getTestRouteMiddlewares(int $flags = 0) : array
+    public static function getTestRouteMiddlewares(int $flags = 0): array
     {
         $middlewares = [new BlankMiddleware()];
 
@@ -105,9 +105,9 @@ class TestRoute extends BaseRoute
     }
 
     /**
-     * @return array
+     * @return array<string,string>
      */
-    public static function getTestRouteAttributes(int $flags = 0) : array
+    public static function getTestRouteAttributes(int $flags = 0): array
     {
         return [
             uniqid() => uniqid(),

@@ -28,11 +28,10 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class BlankMiddlewarableRequestHandler implements MiddlewareInterface, RequestHandlerInterface
 {
-
     /**
      * {@inheritDoc}
      */
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler) : ResponseInterface
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         return $handler->handle($request);
     }
@@ -40,8 +39,8 @@ class BlankMiddlewarableRequestHandler implements MiddlewareInterface, RequestHa
     /**
      * {@inheritDoc}
      */
-    public function handle(ServerRequestInterface $request) : ResponseInterface
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return (new ResponseFactory)->createResponse();
+        return (new ResponseFactory())->createResponse();
     }
 }

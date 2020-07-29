@@ -27,7 +27,6 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class BlankRequestHandler implements RequestHandlerInterface
 {
-
     /**
      * @var bool
      */
@@ -39,17 +38,29 @@ class BlankRequestHandler implements RequestHandlerInterface
     private $attributes = [];
 
     /**
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface
+     *
+     * @link https://www.php.net/manual/ru/language.oop5.magic.php#object.invoke
+     */
+    public function __invoke(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->handle($request);
+    }
+
+    /**
      * @return bool
      */
-    public function isRunned() : bool
+    public function isRunned(): bool
     {
         return $this->isRunned;
     }
 
     /**
-     * @return array
+     * @return array<string,mixed>
      */
-    public function getAttributes() : array
+    public function getAttributes(): array
     {
         return $this->attributes;
     }
@@ -67,23 +78,11 @@ class BlankRequestHandler implements RequestHandlerInterface
     /**
      * {@inheritDoc}
      */
-    public function handle(ServerRequestInterface $request) : ResponseInterface
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->isRunned = true;
+        $this->isRunned   = true;
         $this->attributes = $request->getAttributes();
 
-        return (new ResponseFactory)->createResponse();
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     *
-     * @return ResponseInterface
-     *
-     * @link https://www.php.net/manual/ru/language.oop5.magic.php#object.invoke
-     */
-    public function __invoke(ServerRequestInterface $request) : ResponseInterface
-    {
-        return $this->handle($request);
+        return (new ResponseFactory())->createResponse();
     }
 }

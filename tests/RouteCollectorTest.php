@@ -38,7 +38,7 @@ class RouteCollectorTest extends TestCase
 
     public function testRouteFactory(): void
     {
-        $expectedRoute = new Fixtures\TestRoute();
+        $expectedRoute      = new Fixtures\TestRoute();
         $expectedCollection = new RouteCollection();
 
         $routeFactory = $this->createMock(RouteFactoryInterface::class);

@@ -28,7 +28,6 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class BlankMiddleware implements MiddlewareInterface
 {
-
     /**
      * @var bool
      */
@@ -50,15 +49,15 @@ class BlankMiddleware implements MiddlewareInterface
     /**
      * @return string
      */
-    public function getHash() : string
+    public function getHash(): string
     {
-        return spl_object_hash($this);
+        return \spl_object_hash($this);
     }
 
     /**
      * @return bool
      */
-    public function isBroken() : bool
+    public function isBroken(): bool
     {
         return $this->isBroken;
     }
@@ -66,7 +65,7 @@ class BlankMiddleware implements MiddlewareInterface
     /**
      * @return bool
      */
-    public function isRunned() : bool
+    public function isRunned(): bool
     {
         return $this->isRunned;
     }
@@ -74,12 +73,12 @@ class BlankMiddleware implements MiddlewareInterface
     /**
      * {@inheritDoc}
      */
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler) : ResponseInterface
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $this->isRunned = true;
 
         if ($this->isBroken) {
-            return (new ResponseFactory)->createResponse();
+            return (new ResponseFactory())->createResponse();
         }
 
         return $handler->handle($request);
