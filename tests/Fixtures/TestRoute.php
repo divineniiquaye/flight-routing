@@ -42,7 +42,7 @@ class TestRoute extends BaseRoute
             self::getTestRouteName($flags),
             self::getTestRouteMethods($flags),
             self::getTestRoutePath($flags),
-            self::getTestRouteRequestHandler($flags),
+            self::getTestRouteRequestHandler($flags)
         );
 
         $this->addMiddleware(...self::getTestRouteMiddlewares($flags));
