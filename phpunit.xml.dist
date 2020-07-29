@@ -27,6 +27,11 @@
     <filter>
         <whitelist>
             <directory>src</directory>
+            <exclude>
+                <directory>src/Traits</directory>
+                <file>src/Publisher.php</file>
+                <file>src/RouteResults.php</file>
+            </exclude>
         </whitelist>
     </filter>
 </phpunit>
