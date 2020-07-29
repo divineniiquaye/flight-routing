@@ -17,11 +17,17 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
+use Flight\Routing\Interfaces\ExceptionInterface;
+use RuntimeException;
+
 /**
  * HTTP 405 exception.
  */
-class MethodNotAllowedException extends RouteNotFoundException
+class MethodNotAllowedException extends RuntimeException implements ExceptionInterface
 {
+    /** @var string[] */
+    private $methods;
+
     /**
      * @param string[] $methods
      * @param string   $path
@@ -29,8 +35,19 @@ class MethodNotAllowedException extends RouteNotFoundException
      */
     public function __construct(array $methods, string $path, string $method)
     {
-        $message = 'Unfortunately current uri "%s" is not allowed on [%s] request methods, "%s" is invalid';
+        $this->methods = $methods;
+        $message       = 'Unfortunately current uri "%s" is not allowed on [%s] request methods, "%s" is invalid';
 
         parent::__construct(\sprintf($message, $path, \implode(',', $methods), $method), 405);
+    }
+
+    /**
+     * Gets allowed methods
+     *
+     * @return string[]
+     */
+    public function getAllowedMethods(): array
+    {
+        return $this->methods;
     }
 }
