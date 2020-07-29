@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
 
-## [0.5.1] - 2020-07-25
+## [0.5.1] - 2020-07-29
 ### Fixed
 - Fixed failing tests on github action
 
