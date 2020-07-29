@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
+use Flight\Routing\Exceptions\UrlGenerationException;
+
 /**
  * Interface defining required router compiling capabilities.
  *
@@ -43,17 +45,16 @@ interface RouteMatcherInterface
      * the URI, this should be performed afterwards; consider passing the URI
      * to league/uri to encode it.
      *
-     * @param string             $path
+     * @param RouteInterface     $route
      * @param array<mixed,mixed> $substitutions key => value option pairs to pass to the
      *                                          router for purposes of generating a URI; takes precedence over options
      *                                          present in route used to generate URI
      *
-     * @throws UrlGenerationException if the route name is not known
-     *                                or a parameter value does not match its regex
+     * @throws UrlGenerationException if a parameter value does not match its regex
      *
      * @return string
      */
-    public function buildPath(string $path, array $substitutions): string;
+    public function buildPath(RouteInterface $route, array $substitutions): string;
 
     /**
      * Returns the compiled regexp for request matching
