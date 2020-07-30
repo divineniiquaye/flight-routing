@@ -3,7 +3,7 @@ includes:
 
 parameters:
     level: max
-    paths: [src]
+    paths: [src, tests]
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
     treatPhpDocTypesAsCertain: false
@@ -11,20 +11,5 @@ parameters:
     ignoreErrors:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
         -
-            message: "#^Variable property access on \\$this\\(Flight\\\\Routing\\\\Route\\).$#"
-            path: src/Route.php
-        -
-            message: "#^Method Flight\\\\Routing\\\\Concerns\\\\CallableResolver\\:\\:resolveCallable\\(\\) should return callable\\(\\): mixed but returns array\\(mixed, string\\).$#"
-            path: src/Concerns/CallableResolver.php
-        -
-            message: "#^Property Flight\\\\Routing\\\\RouteGroup\\:\\:\\$attributes \\(array<string, mixed>\\) does not accept array<int\\|string, mixed>.$#"
-            path: src/RouteGroup.php
-        -
-            message: "#^Call to an undefined method Flight\\\\Routing\\\\Interfaces\\\\CallableResolverInterface\\:\\:getContainer\\(\\).$#"
-            path: src/Traits/ControllersTrait.php
-        -
-            message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
-            path: src/Services/SimpleRouteCompiler.php
-        -
-            message: "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
-            path: src/Traits/PathsTrait.php
+            message: "#^Method Flight\\\\Routing\\\\CallableResolver\\:\\:resolveCallable\\(\\) should return callable\\(\\): mixed but returns array\\(mixed, string\\).$#"
+            path: src/CallableResolver.php
