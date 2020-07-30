@@ -17,21 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
-use DomainException;
 use Flight\Routing\Interfaces\ExceptionInterface;
-use Flight\Routing\Interfaces\RouteInterface;
+use RuntimeException;
 
-final class UrlGenerationException extends DomainException implements ExceptionInterface
+final class UrlGenerationException extends RuntimeException implements ExceptionInterface
 {
-    /**
-     * Create a new exception for missing route parameters.
-     *
-     * @param RouteInterface $route
-     *
-     * @return static
-     */
-    public static function forMissingParameters(RouteInterface $route)
-    {
-        return new static("Missing required parameters for [Route: {$route->getName()}] [URI: {$route->getPath()}].");
-    }
 }
