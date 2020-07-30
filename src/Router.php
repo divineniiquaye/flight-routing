@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use BiuradPHP\Support\BoundMethod;
+use Closure;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
@@ -279,8 +280,8 @@ class Router implements RequestHandlerInterface
     public function match(ServerRequestInterface &$request): RouteHandler
     {
         $requestUri  = $request->getUri();
-        $basePath    = 'cli' !== \PHP_SAPI ? \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '') : '';
-        $requestPath = \trim(\substr($requestUri->getPath(), \strlen($basePath)), '/') ?? '/';
+        $basePath    = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
+        $requestPath = \substr($requestUri->getPath(), \strlen($basePath)) ?? '/';
 
         // Get the request matching format.
         $route = $this->marshalMatchedRoute(
@@ -291,7 +292,7 @@ class Router implements RequestHandlerInterface
                 \rawurldecode($requestPath),
             ]
         );
-        $request = &$request->withAttribute(Route::class, $route);
+        $request = $request->withAttribute(Route::class, $route);
 
         return new RouteHandler($this->generateResponse($route), ($this->response)());
     }
@@ -310,14 +311,10 @@ class Router implements RequestHandlerInterface
         if (\count($middlewares = $this->mergeMiddlewares($middlewares)) > 0) {
             $middleware = $this->pipeline->pipeline(...$middlewares);
 
-            try {
-                $requestHandler = $this->pipeline->addHandler($routingResults);
-            } finally {
-                // This middleware is in the priority map; but, this is the first middleware we have
-                // encountered from the map thus far. We'll save its current index plus its index
-                // from the priority map so we can compare against them on the next iterations.
-                return $middleware->process($request, $requestHandler);
-            }
+            // This middleware is in the priority map; but, this is the first middleware we have
+            // encountered from the map thus far. We'll save its current index plus its index
+            // from the priority map so we can compare against them on the next iterations.
+            return $middleware->process($request, $routingResults);
         }
 
         return $routingResults->handle($request);
@@ -376,7 +373,7 @@ class Router implements RequestHandlerInterface
             );
 
             // If controller is instance of RequestHandlerInterface
-            if ($handler[0] instanceof RequestHandlerInterface) {
+            if (!$handler instanceof Closure && $handler[0] instanceof RequestHandlerInterface) {
                 return $handler($request);
             }
 
@@ -417,9 +414,11 @@ class Router implements RequestHandlerInterface
             }
 
             $this->assertRoute($route, $process);
-            $arguments = $this->fetchOptions(\array_replace($parameters, $hostParameters), $match->getVariables());
 
-            return $route->setArguments($arguments ?? $match->getVariables());
+            return $route->setArguments($this->mergeDefaults(
+                \array_replace($parameters, $hostParameters) ?? $match->getVariables(),
+                $route->getDefaults()
+            ));
         }
 
         throw new  RouteNotFoundException(
@@ -438,7 +437,7 @@ class Router implements RequestHandlerInterface
      */
     private function assertRoute(RouteInterface $route, array $attributes): void
     {
-        [$method, $scheme, $host, $path] = $attributes;
+        [$method, $scheme, , $path] = $attributes;
 
         if (!$this->compareMethod($route->getMethods(), $method)) {
             throw new MethodNotAllowedException($route->getMethods(), $path, $method);
@@ -446,40 +445,9 @@ class Router implements RequestHandlerInterface
 
         if (!$this->compareScheme($route->getSchemes(), $scheme)) {
             throw new UriHandlerException(
-                \sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $host, $path),
+                \sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $scheme, $path),
                 400
             );
         }
-    }
-
-    /**
-     * Fetch uri segments and query parameters.
-     *
-     * @param array<int|string,mixed> $parameters
-     * @param array<int|string,mixed> $allowed
-     *
-     * @return array<int|string,mixed>
-     */
-    private function fetchOptions($parameters, array $allowed): array
-    {
-        $result = [];
-
-        foreach ($parameters as $key => $parameter) {
-            if (\is_numeric($key) && isset($allowed[$key])) {
-                // this segment fetched keys from given parameters either by name or by position
-                $key = $allowed[$key];
-            }
-
-            //String must be normalized here
-            if (\is_string($parameter) && false === \preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
-                $result[$key] = \htmlspecialchars($parameter);
-
-                continue;
-            }
-
-            $result[$key] = $parameter;
-        }
-
-        return $result;
     }
 }

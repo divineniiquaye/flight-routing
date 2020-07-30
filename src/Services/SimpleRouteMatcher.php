@@ -56,9 +56,13 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     public function buildPath(RouteInterface $route, array $substitutions): string
     {
         $this->compileRoute($route);
+
         $match      = $this->compiler;
-        $variables  = $this->fetchOptions($substitutions, \array_keys($match->getVariables()));
-        $parameters = \array_merge($match->getVariables(), $route->getDefaults(), $variables);
+        $parameters = \array_merge(
+            $match->getVariables(),
+            $route->getDefaults(),
+            $this->fetchOptions($substitutions, \array_keys($match->getVariables()))
+        );
 
         // If we have s secured scheme, it should be served
         $schemes = \array_map(function ($scheme) {
