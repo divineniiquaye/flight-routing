@@ -22,18 +22,14 @@ trait RouteValidation
     /**
      * Check if given request method matches given route method.
      *
-     * @param string|string[] $routeMethod
-     * @param string          $requestMethod
+     * @param string[] $routeMethod
+     * @param string   $requestMethod
      *
      * @return bool
      */
-    protected function compareMethod($routeMethod, string $requestMethod): bool
+    protected function compareMethod(array $routeMethod, string $requestMethod): bool
     {
-        if (\is_array($routeMethod) && !empty($routeMethod)) {
-            return \in_array($requestMethod, $routeMethod, true);
-        }
-
-        return $routeMethod === $requestMethod;
+        return \in_array($requestMethod, $routeMethod, true);
     }
 
     /**
