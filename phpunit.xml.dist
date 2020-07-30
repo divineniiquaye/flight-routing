@@ -29,7 +29,6 @@
             <directory>src</directory>
             <exclude>
                 <file>src/Publisher.php</file>
-                <file>src/RouteResults.php</file>
             </exclude>
         </whitelist>
     </filter>
