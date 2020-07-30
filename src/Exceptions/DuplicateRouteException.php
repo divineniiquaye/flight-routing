@@ -17,9 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Exceptions;
 
-use DomainException;
 use Flight\Routing\Interfaces\ExceptionInterface;
+use LogicException;
 
-class DuplicateRouteException extends DomainException implements ExceptionInterface
+class DuplicateRouteException extends LogicException implements ExceptionInterface
 {
 }
