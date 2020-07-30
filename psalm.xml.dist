@@ -41,30 +41,5 @@
                 <file name="src/Services/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
-
-        <PropertyNotSetInConstructor>
-            <errorLevel type="suppress">
-                <directory name="src/Traits"/>
-                <file name="src/RouteCollector.php"/>
-                <file name="src/Route.php"/>
-                <file name="src/RouteGroup.php"/>
-                <file name="src/RouteResults.php"/>
-            </errorLevel>
-        </PropertyNotSetInConstructor>
-
-        <TypeDoesNotContainType>
-            <errorLevel type="suppress">
-                <file name="src/Concerns/CallableResolver.php"/>
-                <file name="src/Services/DefaultFlightRouter.php"/>
-                <file name="src/Services/SimpleRouteCompiler.php"/>
-            </errorLevel>
-        </TypeDoesNotContainType>
-
-        <UndefinedInterfaceMethod>
-            <errorLevel type="suppress">
-                <referencedMethod name="Flight\Routing\Interfaces\RouteGroupInterface::offsetGet"/>
-                <referencedMethod name="Flight\Routing\Interfaces\CallableResolverInterface::getContainer"/>
-            </errorLevel>
-        </UndefinedInterfaceMethod>
     </issueHandlers>
 </psalm>
