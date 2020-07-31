@@ -137,14 +137,6 @@ class SimpleRouteCompiler implements Serializable
         $result        = $this->compilePattern($route, $route->getPath());
         $pathVariables = $result['variables'];
 
-        foreach ($pathVariables as $pathParam) {
-            if ('_fragment' === $pathParam) {
-                throw new UriHandlerException(
-                    \sprintf('Route pattern "%s" cannot contain "_fragment" as a path parameter.', $route->getPath())
-                );
-            }
-        }
-
         $this->compiled      = $result['regex'];
         $this->template      = $result['template'];
         $this->pathVariables = $pathVariables;
