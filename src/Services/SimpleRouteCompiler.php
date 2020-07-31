@@ -302,7 +302,6 @@ class SimpleRouteCompiler implements Serializable
         if (false !== \preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
             [$options, $replaces] = $this->computePattern(
                 (array) \array_combine($matches[1], $matches[2]),
-                $pattern,
                 $route
             );
         }
@@ -320,12 +319,11 @@ class SimpleRouteCompiler implements Serializable
      * Compute prepared pattern and return it's replacements and arguments.
      *
      * @param array<string,string> $variables
-     * @param string               $pattern
      * @param RouteInterface       $route
      *
      * @return array<int,array<int|string,string>>
      */
-    private function computePattern(array $variables, string $pattern, RouteInterface $route): array
+    private function computePattern(array $variables, RouteInterface $route): array
     {
         $options = $replaces = [];
 
@@ -336,14 +334,23 @@ class SimpleRouteCompiler implements Serializable
                         'Variable name "%s" cannot be longer than %s characters in route pattern "%s".',
                         $key,
                         self::VARIABLE_MAXIMUM_LENGTH,
-                        $pattern
+                        $route->getPath()
                     )
                 );
+            }
+            $nested = null; // Match all nested variables enclosed in "{}"
+
+            if ('{' === $segment[0] && \strlen($segment) !== '}') {
+                [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) -1), $key, ''];
             }
 
             $segment            = $this->prepareSegment($key, $segment, $this->getRequirements($route->getPatterns()));
             $replaces["<$key>"] = \sprintf('(?P<%s>(?U)%s)', $key, $segment);
             $options[]          = $key;
+
+            if (null !== $nested) {
+                $replaces["<$nested>"] = $nested . $replaces["<$key>"];
+            }
         }
 
         return [$options, \array_merge($replaces, self::PATTERN_REPLACES)];
