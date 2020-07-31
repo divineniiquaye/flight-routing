@@ -163,11 +163,11 @@ interface RouteInterface
      * Set a regular expression requirement on the route.
      *
      * @param string $name
-     * @param string $expression
+     * @param string|string[] $expression
      *
      * @return RouteInterface
      */
-    public function addPattern(string $name, string $expression): self;
+    public function addPattern(string $name, $expression): self;
 
     /**
      * Adds the given prefix to the route path

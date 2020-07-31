@@ -246,7 +246,7 @@ class SimpleRouteCompiler implements Serializable
         $newParameters = [];
 
         foreach ($requirements as $key => $regex) {
-            $newParameters[$key] = $this->sanitizeRequirement($key, $regex);
+            $newParameters[$key] = is_array($regex) ? $regex : $this->sanitizeRequirement($key, $regex);
         }
 
         return $newParameters;
@@ -363,10 +363,6 @@ class SimpleRouteCompiler implements Serializable
             foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
                 $pattern = \str_replace($match, $parameter, $pattern);
                 $route->setDefaults([$parameter => $name]);
-
-                if (!empty($regex)) {
-                    $route->addPattern($parameter, $regex);
-                }
             }
         }
     }

@@ -345,13 +345,13 @@ class RouterTest extends TestCase
             'test_id',
             [RouteCollector::METHOD_GET],
             '/{cool}',
-            function (int $cool, string $name): string {
+            function ($cool, string $name): string {
                 return "My name is {$name} with id: {$cool}";
             }
         );
 
         $router = $this->getRouter();
-        $router->addParameters(['id' => '+\d']);
+        $router->addParameters(['cool' => ['23', 'me']]);
         $router->addParameters(['name' => 'Divine'], $router::TYPE_DEFAULT);
         $router->addRoute($route);
 
@@ -360,6 +360,12 @@ class RouterTest extends TestCase
         $response = $router->handle($request);
 
         $this->assertSame('My name is Divine with id: 23', (string) $response->getBody());
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(RouteCollector::METHOD_GET, '/me');
+        $response = $router->handle($request);
+
+        $this->assertSame('My name is Divine with id: me', (string) $response->getBody());
     }
 
     public function testHandleWithMiddlewares(): void
