@@ -332,8 +332,8 @@ class SimpleRouteCompiler implements Serializable
             }
             $nested = null; // Match all nested variables enclosed in "{}"
 
-            if ('{' === $segment[0] && \strlen($segment) !== '}') {
-                [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) -1), $key, ''];
+            if (!empty($segment) && ('{' === $segment[0] && \strlen($segment) !== '}')) {
+                [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) - 1), $key, ''];
             }
 
             $segment            = $this->prepareSegment($key, $segment, $this->getRequirements($route->getPatterns()));
