@@ -16,5 +16,7 @@
     <file>tests/</file>
 
     <!-- Include full PSR-12 Coding Standard -->
-    <rule ref="PSR12"/>
+    <rule ref="PSR12">
+        <exclude-pattern>tests/Services/SimpleRouteCompilerTest.php</exclude-pattern>
+    </rule>
 </ruleset>
