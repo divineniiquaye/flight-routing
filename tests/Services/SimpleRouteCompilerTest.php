@@ -221,7 +221,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         yield  'Route with a requirement, optional and required placeholder' => [
             '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
-            ['en-us/foo', '/en-us/foo', 'foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
+            ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
             '#^/?(?:(?P<lang>(?U)[a-z]{2})(?:-(?P<sublang>(?U)[^\/]+))?\/)?(?P<name>(?U)[^\/]+)(?:\/page-(?P<page>(?U)[^\/]+))?$#sD',
             ['lang' => null, 'sublang' => null, 'name' => null, 'page' => 0],
         ];
