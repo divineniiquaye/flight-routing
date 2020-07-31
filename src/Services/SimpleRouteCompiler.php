@@ -299,14 +299,14 @@ class SimpleRouteCompiler implements Serializable
         $this->prepareRoute($route, $pattern);
 
         // Match all variables enclosed in "{}" and iterate over them...
-        if (false !== \preg_match_all('/{(\w+):?(.*?)?}/', $pattern, $matches)) {
+        if (false !== \preg_match_all('#\{(\w+)\:?(.*?)?\}#', $pattern, $matches)) {
             [$options, $replaces] = $this->computePattern(
                 (array) \array_combine($matches[1], $matches[2]),
                 $route
             );
         }
 
-        $template = \str_replace(['{', '}'], '', \preg_replace('/{(\w+):?.*?}/', '<\1>', $pattern));
+        $template = \str_replace(['{', '}'], '', \preg_replace('#\{(\w+)\:?.*?\}#', '<\1>', $pattern));
 
         return [
             'template'  => \stripslashes(\str_replace('?', '', $template)),
