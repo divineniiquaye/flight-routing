@@ -57,33 +57,28 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     {
         $this->compileRoute($route);
 
-        $match      = $this->compiler;
         $parameters = \array_merge(
-            $match->getVariables(),
+            $this->getVariables(),
             $route->getDefaults(),
-            $this->fetchOptions($substitutions, \array_keys($match->getVariables()))
+            $this->fetchOptions($substitutions, \array_keys($this->getVariables()))
         );
 
         // If we have s secured scheme, it should be served
         $schemes = \array_map(function ($scheme) {
-            if ('https' === $scheme) {
-                return 'https';
-            }
-
-            return 'http';
+            return 'https' === $scheme ? 'https' : 'http';
         }, $route->getSchemes() ?? ['http']);
         $path = '';
 
         //Uri without empty blocks (pretty stupid implementation)
-        if (null !== $match->getRegexTemplate()) {
+        if (null !== $this->compiler->getRegexTemplate()) {
             $path = \sprintf(
                 '%s://%s/',
                 \current($schemes),
-                \trim($this->interpolate($match->getRegexTemplate(), $parameters), '.')
+                \trim($this->interpolate($this->compiler->getRegexTemplate(), $parameters), '.')
             );
         }
 
-        return $path .= $this->interpolate($match->getRegexTemplate(false), $parameters); // Return generated path
+        return $path .= $this->interpolate($this->compiler->getRegexTemplate(false), $parameters);
     }
 
     /**
@@ -143,13 +138,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
                 $key = $allowed[$key];
             }
 
-            //String must be normalized here
-            if (\is_string($parameter) && false === \preg_match('/^[a-z\-_0-9]+$/i', $parameter)) {
-                $result[$key] = \htmlspecialchars($parameter);
-
-                continue;
-            }
-
+            // TODO: String must be normalized here
             $result[$key] = $parameter;
         }
 
