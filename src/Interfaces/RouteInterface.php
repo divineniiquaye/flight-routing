@@ -46,7 +46,7 @@ interface RouteInterface
     /**
      * Get route requirements.
      *
-     * @return array<string,string>
+     * @return array<string,string|string[]>
      */
     public function getPatterns(): array;
 
@@ -81,7 +81,7 @@ interface RouteInterface
     /**
      * Get middlewares from stack.
      *
-     * @return string[]
+     * @return array<int,callable|MiddlewareInterface|RequestHandlerInterface|string>
      */
     public function getMiddlewares(): array;
 
@@ -131,7 +131,7 @@ interface RouteInterface
     /**
      * Set a route controller's arguments.
      *
-     * @param array<string,mixed> $arguments
+     * @param array<int|string,mixed> $arguments
      *
      * @return RouteInterface
      */
@@ -153,11 +153,11 @@ interface RouteInterface
      *
      * NB: Adding a request handler as middleware ends the middlewares cycle.
      *
-     * @param callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string ...$middlewares
      *
      * @return RouteInterface
      */
-    public function addMiddleware(...$middleware): self;
+    public function addMiddleware(...$middlewares): self;
 
     /**
      * Set a regular expression requirement on the route.

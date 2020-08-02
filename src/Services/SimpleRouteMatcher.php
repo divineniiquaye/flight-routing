@@ -104,12 +104,12 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /**
      * Interpolate string with given values.
      *
-     * @param string              $string
-     * @param array<string,mixed> $values
+     * @param null|string             $string
+     * @param array<int|string,mixed> $values
      *
      * @return string
      */
-    private function interpolate(string $string, array $values): string
+    private function interpolate(?string $string, array $values): string
     {
         $replaces = [];
 
@@ -117,7 +117,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             $replaces["<{$key}>"] = (\is_array($value) || $value instanceof Closure) ? '' : $value;
         }
 
-        return \strtr($string, $replaces + self::URI_FIXERS);
+        return \strtr((string) $string, $replaces + self::URI_FIXERS);
     }
 
     /**

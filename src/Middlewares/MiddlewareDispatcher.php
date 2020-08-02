@@ -62,7 +62,7 @@ class MiddlewareDispatcher
      * Set of route middleware to be used in $middlewares
      * Stack, if string name is equal to a given middleware.
      *
-     * @var array<string,mixed>
+     * @var array<int|string,mixed>
      */
     protected $routeMiddlewares = [];
 
@@ -96,7 +96,7 @@ class MiddlewareDispatcher
      *
      * $this->add(ProxyMiddleware::class);
      *
-     * @param mixed ...$middleware
+     * @param mixed ...$middlewares
      */
     public function add(...$middlewares): void
     {

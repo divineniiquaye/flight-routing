@@ -237,16 +237,16 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Get the route requirements.
      *
-     * @param array<string,string> $requirements
+     * @param array<string,string|string[]> $requirements
      *
-     * @return array<string,string>
+     * @return array<string,string|string[]>
      */
     protected function getRequirements(array $requirements): array
     {
         $newParameters = [];
 
         foreach ($requirements as $key => $regex) {
-            $newParameters[$key] = is_array($regex) ? $regex : $this->sanitizeRequirement($key, $regex);
+            $newParameters[$key] = \is_array($regex) ? $regex : $this->sanitizeRequirement($key, $regex);
         }
 
         return $newParameters;
@@ -332,7 +332,7 @@ class SimpleRouteCompiler implements Serializable
             }
             $nested = null; // Match all nested variables enclosed in "{}"
 
-            if (!empty($segment) && ('{' === $segment[0] && \strlen($segment) !== '}')) {
+            if (!empty($segment) && ('{' === $segment[0] && $segment[\strlen($segment)] !== '}')) {
                 [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) - 1), $key, ''];
             }
 

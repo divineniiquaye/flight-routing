@@ -32,6 +32,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
@@ -54,7 +55,7 @@ class Router implements RequestHandlerInterface
     /** @var MiddlewareDispatcher */
     private $pipeline;
 
-    /** @var ContainerInterface */
+    /** @var null|ContainerInterface */
     private $container;
 
     /** @var callable */
@@ -66,7 +67,7 @@ class Router implements RequestHandlerInterface
     /** @var RouteInterface[] */
     private $routes = [];
 
-    /** @var MiddlewareInterface[] */
+    /** @var array<string,mixed> */
     private $middlewares = [];
 
     /** @var array<int,array<string,mixed>> */
@@ -99,7 +100,7 @@ class Router implements RequestHandlerInterface
     /**
      * Gets the router middlewares
      *
-     * @return MiddlewareInterface[]
+     * @return array<int,array<array<string,mixed>|MiddlewareInterface|string>>
      */
     public function getMiddlewares(): array
     {
@@ -148,7 +149,7 @@ class Router implements RequestHandlerInterface
 
                 continue;
             }
-            $hash = \spl_object_hash($middleware);
+            $hash = \is_object($middleware) ? \spl_object_hash($middleware) : \md5(\get_class($middleware));
 
             if (isset($this->middlewares[$hash])) {
                 throw new DuplicateRouteException(\sprintf('A middleware with the hash "%s" already exists.', $hash));
@@ -369,7 +370,7 @@ class Router implements RequestHandlerInterface
             $handler   = $this->resolver->resolve($route->getController(), $this->namespace);
             $arguments = \array_merge(
                 $route->getArguments(),
-                $this->container ? [$request] : [$request, $response]
+                null !== $this->container ? [$request] : [$request, $response]
             );
 
             // If controller is instance of RequestHandlerInterface

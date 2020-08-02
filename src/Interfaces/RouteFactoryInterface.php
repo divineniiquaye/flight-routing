@@ -31,10 +31,10 @@ interface RouteFactoryInterface
     /**
      * Creates a new route from the given parameters
      *
-     * @param string                      $name
-     * @param string[]                    $methods
-     * @param string                      $path
-     * @param null|callable|object|string $handler
+     * @param string                               $name
+     * @param string[]                             $methods
+     * @param string                               $path
+     * @param null|callable|object|string|string[] $handler
      *
      * @return RouteInterface
      */

@@ -63,13 +63,13 @@ class Route implements Serializable, RouteInterface
     /** @var string */
     private $name;
 
-    /** @var null|callable|object|string|string[] */
+    /** @var callable|object|string|string[] */
     private $controller;
 
     /** @var string[] */
     private $schemes = [];
 
-    /** @var array<string,mixed> */
+    /** @var array<int|string,mixed> */
     private $arguments = [];
 
     /** @var array<string,mixed> */
@@ -78,7 +78,7 @@ class Route implements Serializable, RouteInterface
     /** @var array<string,string|string[]> */
     private $patterns = [];
 
-    /** @var string[] */
+    /** @var array<int,mixed> */
     private $middlewares = [];
 
     /**
@@ -92,7 +92,7 @@ class Route implements Serializable, RouteInterface
     public function __construct(string $name, array $methods, string $pattern, $handler)
     {
         $this->name       = $name;
-        $this->controller = $handler;
+        $this->controller = null === $handler ? '' : $handler;
         $this->methods    = \array_map('strtoupper', $methods);
         $this->path       = $this->castRoute($pattern);
     }
@@ -387,7 +387,7 @@ class Route implements Serializable, RouteInterface
     {
         // Match domain + scheme from pattern...
         if (false !== \preg_match($regex = '@^(?:(https?):)?(//[^/]+)@i', $route)) {
-            $route = \preg_replace_callback($regex, function (array $matches): string {
+            $route = (string) \preg_replace_callback($regex, function (array $matches): string {
                 $this->setDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
 
                 return '';

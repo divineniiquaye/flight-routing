@@ -27,7 +27,7 @@ class Helper
     /**
      * @param iterable<int,RouteInterface> $routes
      *
-     * @return array<string,mixed>
+     * @return array<int,array<string,mixed>>
      */
     public static function routesToArray(iterable $routes): array
     {

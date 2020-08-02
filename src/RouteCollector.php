@@ -48,7 +48,7 @@ use Flight\Routing\Interfaces\RouteInterface;
  */
 class RouteCollector implements Interfaces\RouteCollectorInterface
 {
-    /** @var RouteCollection */
+    /** @var RouteCollectionInterface */
     private $collection;
 
     /** @var RouteFactoryInterface */
@@ -62,15 +62,15 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
     }
 
     /**
-     * @return array
+     * @return array<string,mixed>
      */
-    public function __debugInfo()
+    public function __debugInfo(): array
     {
         $collection = $this->collection;
 
         return [
             'routes' => \iterator_to_array($collection),
-            'counts' => \is_countable($collection) ? \count($this->collection) : \iterator_count($collection),
+            'counts' => \iterator_count($collection),
         ];
     }
 

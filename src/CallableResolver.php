@@ -72,7 +72,7 @@ class CallableResolver implements CallableResolverInterface
     public function resolve($toResolve, ?string $namespace = null): callable
     {
         if (null !== $namespace && (\is_string($toResolve) || !$toResolve instanceof Closure)) {
-            $toResolve = $this->appendNamespace($toResolve, (string) $namespace);
+            $toResolve = $this->appendNamespace($toResolve, $namespace);
         }
 
         if (\is_string($toResolve) && 1 === \preg_match(self::CALLABLE_PATTERN, $toResolve, $matches)) {
