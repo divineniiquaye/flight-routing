@@ -65,7 +65,11 @@ class SimpleRouteCompilerTest extends TestCase
 
         // Match every pattern...
         foreach ($matches as $match) {
-            $this->assertMatchesRegularExpression($regex, $match);
+            if (\PHP_VERSION_ID < 70300) {
+                $this->assertRegExp($regex, $match);
+            } else {
+                $this->assertMatchesRegularExpression($regex, $match);
+            }
         }
     }
 
@@ -88,7 +92,11 @@ class SimpleRouteCompilerTest extends TestCase
 
         // Match every pattern...
         foreach ($matches as $match) {
-            $this->assertMatchesRegularExpression($regex, $match);
+            if (\PHP_VERSION_ID < 70300) {
+                $this->assertRegExp($regex, $match);
+            } else {
+                $this->assertMatchesRegularExpression($regex, $match);
+            }
         }
     }
 

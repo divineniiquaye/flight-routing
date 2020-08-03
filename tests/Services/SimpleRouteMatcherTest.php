@@ -37,8 +37,9 @@ class SimpleRouteMatcherTest extends TestCase
 
     public function testCompileRoute(): void
     {
-        $factory = new SimpleRouteMatcher();
-        $route   = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null);
+        $factory    = new SimpleRouteMatcher();
+        $route      = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null);
+        $regexMatch = 'assertMatchesRegularExpression';
 
         $factory->compileRoute($route);
 
@@ -46,9 +47,13 @@ class SimpleRouteMatcherTest extends TestCase
         $this->assertEquals('#^(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$#sDi', $factory->getRegex(true));
         $this->assertEquals(['foo' => null, 'lang' => null], $factory->getVariables());
 
-        $this->assertMatchesRegularExpression($factory->getRegex(), '/foo');
-        $this->assertMatchesRegularExpression($factory->getRegex(true), 'example.com');
-        $this->assertMatchesRegularExpression($factory->getRegex(true), 'en.example.com');
+        if (\PHP_VERSION_ID < 70300) {
+            $regexMatch = 'assertRegExp';
+        }
+
+        $this->{$regexMatch}($factory->getRegex(), '/foo');
+        $this->{$regexMatch}($factory->getRegex(true), 'example.com');
+        $this->{$regexMatch}($factory->getRegex(true), 'en.example.com');
     }
 
     /**
