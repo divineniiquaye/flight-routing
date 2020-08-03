@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
 
+## [0.5.2] - 2020-07-31
+### Fixed
+- Fixed major issues with `Flight\Routing\Publisher` class namespace
+
 ## [0.5.1] - 2020-07-29
 ### Fixed
 - Fixed failing tests on github action
@@ -183,6 +187,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 ### Added
 - Initial commit (made major fixtures and changes)
 
+[0.5.2]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.9...v0.5.0
 [0.2.9]: https://github.com/divineniiquaye/flight-routing/compare/v0.2.8...v0.2.9
