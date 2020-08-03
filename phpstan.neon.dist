@@ -24,9 +24,6 @@ parameters:
             message: "#^Cannot access offset 0 on callable\\(\\): mixed.$#"
             path: src/Router.php
         -
-            message: "#^Parameter \\#1 (\\$object|\\$str) of function (get_class|md5) expects (object|string), (string|false) given.$#"
-            path: src/Router.php
-        -
             message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
             path: src/Services/SimpleRouteCompiler.php
         -
