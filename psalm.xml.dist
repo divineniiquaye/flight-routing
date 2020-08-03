@@ -21,19 +21,32 @@
     </projectFiles>
 
     <issueHandlers>
-        <LessSpecificImplementedReturnType errorLevel="suppress"/>
-
-        <InvalidArgument>
+        <PossiblyInvalidFunctionCall>
             <errorLevel type="suppress">
-                <referencedFunction name="Flight\Routing\Middlewares\MiddlewareDispatcher::pipeline"/>
+                <file name="src/RouteCollector.php"/>
             </errorLevel>
-        </InvalidArgument>
+        </PossiblyInvalidFunctionCall>
 
         <PossiblyNullArgument>
             <errorLevel type="suppress">
-                <referencedFunction name="Psr\Http\Message\ResponseInterface::withAddedHeader"/>
+                <file name="src/Route.php" />
             </errorLevel>
         </PossiblyNullArgument>
+
+        <InvalidArrayAccess>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+            </errorLevel>
+        </InvalidArrayAccess>
+
+        <TypeDoesNotContainType>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+                <file name="src\CallableResolver.php"/>
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+                <file name="src/Services/SimpleRouteMatcher.php"/>
+            </errorLevel>
+        </TypeDoesNotContainType>
 
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">

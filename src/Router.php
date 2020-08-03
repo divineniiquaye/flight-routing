@@ -149,7 +149,7 @@ class Router implements RequestHandlerInterface
 
                 continue;
             }
-            $hash = \is_object($middleware) ? \spl_object_hash($middleware) : \md5(\get_class($middleware));
+            $hash = \is_object($middleware) ? \spl_object_hash($middleware) : \md5($middleware);
 
             if (isset($this->middlewares[$hash])) {
                 throw new DuplicateRouteException(\sprintf('A middleware with the hash "%s" already exists.', $hash));

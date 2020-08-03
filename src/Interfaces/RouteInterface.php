@@ -60,9 +60,9 @@ interface RouteInterface
     /**
      * Get route name.
      *
-     * @return null|string
+     * @return string
      */
-    public function getName(): ?string;
+    public function getName(): string;
 
     /**
      * Get route arguments.

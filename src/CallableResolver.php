@@ -151,7 +151,7 @@ class CallableResolver implements CallableResolverInterface
     }
 
     /**
-     * @param callable $callable
+     * @param mixed $callable
      *
      * @throws RuntimeException if the callable is not resolvable
      *
