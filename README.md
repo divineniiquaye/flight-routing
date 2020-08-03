@@ -103,7 +103,7 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
 
 ---
 
-Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultPilot] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouterInterface` class instance in your project, the implementation varies.
+Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultMatcher] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouteMatcherInterface` class instance in your project, the implementation varies.
 
 It's not required, but you can set `namespace method parameter's value to eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
@@ -119,18 +119,18 @@ Flight routing allows you to call any controller action with namespace using `*<
 
 > Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
 
-In your `index.php` require your newly-created `routes.php` and call the `$router->handle()` method on [Publisher] `publish` method, passing an instance of [PSR-7] `ServerRequestInterface`. This will trigger and do the actual routing of the requests to response.
+In your `index.php` require your newly-created `routes.php` and call the `$collector->handle()` method on [Publisher] `publish` method, passing an instance of [PSR-7] `ServerRequestInterface`. This will trigger and do the actual routing of the requests to response.
 
 ```php
 <?php
 
 use Flight\Routing\RouteCollector as Router;
 
-return static function (Router &$router): void {
-    $router->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+return static function (Router &$collector): void {
+    $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
     // Add more routes here...
-}
+};
 ```
 
 There are two ways of dispatching a router, either by using the default [Publisher] or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
@@ -140,11 +140,17 @@ There are two ways of dispatching a router, either by using the default [Publish
 ```php
 <?php
 
-use Flight\Routing\Services\HttpPublisher;
-use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+use Flight\Routing\{RouteCollector, Router, Publisher};
+use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+
+$collector = new RouteCollector();
+
+/* Load external routes file */
+(require_once __DIR__.'/routes.php')($collector);
 
 // Need to have an idea about php before using this dependency, though it easy to use.
 $router = new Router(new Psr17Factory);
+$router->addRoute(...$collector->getCollection());
 
 /**
  * The default namespace for route-callbacks, so we don't have to specify it each time.
@@ -152,11 +158,8 @@ $router = new Router(new Psr17Factory);
  */
 $router->setNamespace('Demo\\Controllers\\');
 
-/* Load external routes file */
-(require_once __DIR__.'/routes.php')($router);
-
 // Start the routing
-(new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
+(new Publisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
 
 // or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
 ```
@@ -174,9 +177,9 @@ Remember the `routes.php` file you required in your `index.php`? This file be wh
 Below is a very basic example of setting up a route. First parameter is the url which the route should match - next parameter is a `Closure` or callback function that will be triggered once the route matches.
 
 ```php
-$router->get('/', function() {
+$collector->get('home', '/', function() {
   return 'Hello world';
-}); // $router from routes.php file.
+}); // $collector from routes.php file.
 ```
 
 ### Closure Handler
@@ -187,7 +190,8 @@ It is possible to pass the `closure` as route handler, in this case our function
 arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`.
 
 ```php
-$router->get(
+$collector->get(
+    'hello',
     '/{name}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         $response->getBody()->write("hello world");
@@ -206,11 +210,11 @@ You can catch the request object like this example:
 ```php
 <?php
 
-use BiuradPHP\Http\ServerRequest;
-use BiuradPHP\Http\Response\EmptyResponse;
-use BiuradPHP\Http\Response\JsonResponse;
+use Biurad\Http\ServerRequest;
+use Biurad\Http\Response\{EmptyResponse, JsonResponse};
 
-$router->get(
+$collector->get(
+    'api_home',
     '/',
     function (ServerRequest $request) {
         return new JsonResponse([
@@ -225,7 +229,8 @@ $router->get(
     }
 );
 
-$router->post(
+$collector->post(
+    'api_post',
     '/blog/posts',
     function (ServerRequest $request) {
         $post           = new \Demo\Models\Post();
@@ -247,41 +252,43 @@ The example below illustrates supported kinds of responses.
 ```php
 <?php
 
-use BiuradPHP\Http\Response\EmptyResponse;
-use BiuradPHP\Http\Response\HtmlResponse;
-use BiuradPHP\Http\Response\JsonResponse;
-use BiuradPHP\Http\Response\TextResponse;
+use Biurad\Http\Response\{EmptyResponse, HtmlResponse, JsonResponse, TextResponse};
 
-$router
+$collector
     ->get(
+        'html_string_response',
         '/html/1',
         function () {
             return '<html>This is an HTML response</html>';
         }
     );
-$router
+$collector
     ->get(
+        'html_response',
         '/html/2',
         function () {
             return new HtmlResponse('<html>This is also an HTML response</html>', 200);
         }
     );
-$router
+$collector
     ->get(
+        'json_response',
         '/json',
         function () {
             return new JsonResponse(['message' => 'Unauthorized!'], 401);
         }
     );
-$router
+$collector
     ->get(
+        'text_response',
         '/text',
         function () {
             return new TextResponse('This is a plain text...');
         }
     );
-$router
+$collector
     ->get(
+        'empty_response',
         '/empty',
         function () {
             return new EmptyResponse();
@@ -299,10 +306,10 @@ In case of needing to redirecting user to another URL:
 ```php
 <?php
 
-use BiuradPHP\Http\Response\RedirectResponse;
+use Biurad\Http\Response\RedirectResponse;
 
-$router
-    ->get('/redirect', function () {
+$collector
+    ->get('redirect', '/redirect', function () {
         return new RedirectResponse('https://biurad.com');
     });
 ```
@@ -312,24 +319,34 @@ $router
 Here you can see how to declare different routes with different http methods:
 
 ```php
-$router
-    ->get('/', function () {
+<?php
+
+$collector
+    ->head('head', '/', function () {
+        return '<b>HEAD method</b>';
+    });
+$collector
+    ->get('get', '/', function () {
         return '<b>GET method</b>';
     });
-$router
-    ->post('/', function () {
+$collector
+    ->post('post', '/', function () {
         return '<b>POST method</b>';
     });
-$router
-    ->patch('/', function () {
+$collector
+    ->patch('patch', '/', function () {
         return '<b>PATCH method</b>';
     });
-$router
-    ->put('/', function () {
+$collector
+    ->put('put', '/', function () {
         return '<b>PUT method</b>';
     });
-$router
-    ->delete('/', function () {
+$collector
+    ->options('options', '/', function () {
+        return '<b>OPTIONS method</b>';
+    });
+$collector
+    ->delete('delete', '/', function () {
         return '<b>DELETE method</b>';
     });
 ```
@@ -341,11 +358,11 @@ $router
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
 ```php
-$router->map(['get', 'post'], '/', function() {
+$collector->map('map', ['get', 'post'], '/', function() {
   // ...
 });
 
-$router->any('foo', function() {
+$collector->any('any', 'foo', function() {
   // ...
 });
 ```
@@ -367,7 +384,7 @@ omit pattern and just use `{parameter_name}`, in this case the parameter will ma
 You'll properly wondering by know how you parse parameters from your urls. For example, you might want to capture the users id from an url. You can do so by defining route-parameters.
 
 ```php
-$router->get('/user/{userId}', function ($userId) {
+$collector->get('user', '/user/{userId}', function ($userId) {
   return 'User with id: ' . $userId;
 });
 ```
@@ -375,7 +392,7 @@ $router->get('/user/{userId}', function ($userId) {
 You may define as many route parameters as required by your route:
 
 ```php
-$router->get('/posts/{postId}/comments/{commentId}', function ($postId, $commentId) {
+$collector->get('posts_comment', '/posts/{postId}/comments/{commentId}', function ($postId, $commentId) {
   // ...
 });
 ```
@@ -388,22 +405,22 @@ Occasionally you may need to specify a route parameter, but make the presence of
 
 ```php
 // Optional parameter
-$router->get('/user[/{name}]', function ($name = null) {
+$collector->get('optional_with_slash', '/user[/{name}]', function ($name = null) {
   return $name;
 });
 //or
-$router->get('/user[/{name}]', function ($name) {
+$collector->get('optional', '/user[/{name}]', function ($name) {
   return $name;
 });
 ```
 
 ```php
 // Optional parameter with default value
-$router->get('/user/[{name}]', function ($name = 'Simon') {
+$collector->get('optional_without_slash', '/user/[{name}]', function ($name = 'Simon') {
   return $name;
 });
 //or
-$router->get('/user/[{name=<Simon>}]', function ($name) {
+$collector->get('optional_with_default', '/user/[{name=<Simon>}]', function ($name) {
   return $name;
 });
 ```
@@ -411,13 +428,13 @@ $router->get('/user/[{name=<Simon>}]', function ($name) {
 Obviously, if a parameter is inside an optional sequence, it's optional too and defaults to `null`. Sequence should define it's surroundings, in this case a slash which must follow a parameter, if set. The technique may be used for example for optional language subdomains:
 
 ```php
-$router->get('//[{lang=<en>}.]example.com/hello', ...);
+$collector->get('lang', '//[{lang=<en>}.]example.com/hello', ...);
 ```
 
 Sequences may be freely nested and combined:
 
 ```php
-$router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
+$collector->get('lang_with_default', '[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
 
 // Accepted URLs:
 // /cs/hello
@@ -436,19 +453,19 @@ $router->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
 You may constrain the format of your route parameters using the where method on a route instance. The where method accepts the name of the parameter and a regular expression defining how the parameter should be constrained:
 
 ```php
-$router->get('/user/{name}', function ($name) {
+$collector->get('pattern_string', '/user/{name}', function ($name) {
     //
-})->setPattern('name', '[A-Za-z]+');
+})->addPattern('name', '[A-Za-z]+');
 
-$router->get('/user/{id}', function (int $id) {
+$collector->get('pattern_int', '/user/{id}', function (int $id) {
     //
-})->setPattern('id', '[0-9]+');
+})-addPattern('id', '[0-9]+');
 
-$router->get('/user/{id}/{name}', function (int $id, string $name) {
+$collector->get('patterned', '/user/{id}/{name}', function (int $id, string $name) {
     //
-})->whereArray(['id' => '[0-9]+', 'name' => '[a-z]+']);
+})->setPatterns(['id' => '[0-9]+', 'name' => '[a-z]+']);
 
-$router->get('/user/{id:[0-9]+}/{name:[a-z]+}', function (int $id, string $name) {
+$collector->get('pattern_in_path', '/user/{id:[0-9]+}/{name:[a-z]+}', function (int $id, string $name) {
     //
 });
 ```
@@ -457,18 +474,20 @@ $router->get('/user/{id:[0-9]+}/{name:[a-z]+}', function (int $id, string $name)
 
 ---
 
-Named routes allow the convenient generation of URLs or redirects for specific routes. You may specify a name for a route by chaining the name method onto the route definition:
+Named routes allow the convenient generation of URLs or redirects for specific routes. It is mandatory to specify a name for a route by chaining the name onto the first argument of route definition:
 
 ```php
-$router->get('/user/profile', function () {
+$collector->get('profile', '/user/profile', function () {
     // Your code here
-})->setName('profile');
+};
 ```
 
-You can also specify names for Controller-actions:
+You can also specify names for grouping route with a prefixed name:
 
 ```php
-$router->get('/user/profile', 'UserController@profile')->setName('profile');
+$collector->group(function ($group) {
+    $group->get('profile', '/user/profile', 'UserController@profile');
+})->setName('user.'); // Will produce "user.profile"
 ```
 
 ### Generating URLs From Named Routes
@@ -481,33 +500,32 @@ Once you have assigned a name to a given route, you may use the route's name, it
 
 ```php
 // Generating URLs...
-$url = $router->generateUri('profile');
+$url = $collector->generateUri('profile');
 ```
 
 If the named route defines parameters, you may pass the parameters as the second argument to the `url` function. The given parameters will automatically be inserted into the URL in their correct positions:
 
 ```php
-$router->get('/user/{id}/profile', function ($id) {
+$collector->get('profile', '/user/{id}/profile', function ($id) {
     //
-})->setName('profile');
+});
 
-$url = $router->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
+$url = $collector->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
 ```
 
 ### Route Groups
 
 ---
 
-Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$router->group` method.
+Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$collector->group` method.
 
 ```php
 <?php
 
-use Flight\Routing\Interfaces\RouterProxyInterface;
+use Flight\Routing\Interfaces\RouteCollectorInterface;
 
-$router->group(
-    [...], // Add your group attributes
-    function (RouterProxyInterface $route) {
+$collector->group(
+    function (RouteCollectorInterface $route) {
         // Define your routes using $route...
     }
 );
@@ -545,8 +563,11 @@ For example see the following snippet. In this snippet, we will demonstrate how 
 <?php
 
 use Demo\Middleware\ParamWatcher;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
-$router->get(
+$collector->get(
+    'watch',
     '/{param}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         return $request->getAttribute('arguments');
@@ -566,7 +587,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use BiuradPHP\Http\Exceptions\ClientException\UnauthorizedException;
+use Biurad\Http\Exceptions\ClientException\UnauthorizedException;
 
 class ParamWatcher implements MiddlewareInterface
 {
@@ -594,7 +615,12 @@ Flight Routing increases SEO (search engine optimization) as it prevents multipl
 > Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
-$router->get(
+<?php
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+$collector->get(
+    'reachable',
     '/{param}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         return $request->getAttribute('arguments');
@@ -602,7 +628,8 @@ $router->get(
 ))
 
 // this route will never trigger
-$router->get(
+$collector->get(
+    'non_reachable',
     '/hello',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         return $request->getAttribute('arguments');
@@ -617,86 +644,68 @@ $router->get(
 Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
 
 ```php
+<?php
+
+use Flight\Routing\Interfaces\RouteCollectorInterface;
+
 // Domain
-$router->get('/', 'Controller@method')->setDomain('domain.com');
+$collector->get('domain', '/', 'Controller@method')->setDomain('domain.com');
 
 // Subdomain
-$router->get('/', 'Controller:method')->setDomain('server2.domain.com');
+$collector->get('sub_domain', '/', 'Controller:method')->setDomain('server2.domain.com');
 
 // Subdomain regex pattern
-$router->get('/', ['Controller', 'method'])->setDomain('{accounts:.*}.domain.com');
+$collector->get('account_domain', '/', ['Controller', 'method'])->setDomain('{accounts:.*}.domain.com');
 
-$router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface $route) {
+$collector->group(function (RouteCollectorInterface $route) {
     $route->get('/user/{id}', function ($id) {
         //
     });
-});
+})->setDomain('account.myapp.com');
 ```
 
-### Custom Router Pilot
+### Custom Route Matcher
 
 ---
 
-If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its five methods:
+If these offered routes do not fit your needs, you may create your own router matcher and add it to your `router collector`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its four methods:
 
 ```php
 <?php
 
-use ArrayIterator;
-use Psr\Http\Message\ServerRequestInterface;
-use Flight\Routing\Interfaces\RouterInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\RouteResults;
 
-class MyRouter implements RouterInterface
+class MyRouteMatcher implements RouteMatcherInterface
 {
-    /** @var array */
-    private $routes = [];
-
     /**
      * {@inheritdoc}
      */
-    public function addRoute(RouteInterface $route) : void
+    public function compileRoute(RouteInterface $route): RouteMatcherInterface
     {
-        $this->routes[] = $route;
+        // ... compile the route for matching
     }
 
 	/**
      * {@inheritdoc}
      */
-    public function match(ServerRequestInterface $request): RouteResults
-	{
-		// ...
-	}
-
+    public function buildPath(RouteInterface $route, array $substitutions): string
+    {
+        // ... generate a named route path using $substitutions
+    }
     /**
      * {@inheritdoc}
      */
-	public function generateUri(RouteInterface $route, array $substitutions = []): string
-	{
-		// ...
+    public function getRegex(bool $domain = false): string
+    {
+        // ... the regex generated using this class "compileRoute" method
     }
-
     /**
      * {@inheritdoc}
      */
-    public function __clone()
+    public function getVariables(): array
     {
-        foreach ($this->routes as $name => $route) {
-            $this->routes[$name] = clone $route;
-        }
-    }
-
-    /**
-     * Gets the current RouterInterface as an Iterator that includes all routes.
-     *
-     * It implements IteratorAggregate.
-     *
-     * @return ArrayIterator|RouteInterface[] An ArrayIterator object for iterating over routes
-     */
-    public function getIterator()
-    {
-        return new ArrayIterator($this->routes);
+        // ... the variables generated using this class "compileRoute" method
     }
 }
 ```
@@ -785,6 +794,6 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [message]: https://projects.biurad.com/message
 [biurad-http]: https://github.com/biurad/biurad-http
 [Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
-[DefaultPilot]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
+[DefaultMatcher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/SimpleRouteMatcher.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router
