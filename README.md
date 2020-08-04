@@ -103,7 +103,7 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
 
 ---
 
-Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultPilot] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouterInterface` class instance in your project, the implementation varies.
+Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultRouter] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouterInterface` class instance in your project, the implementation varies.
 
 It's not required, but you can set `namespace method parameter's value to eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
@@ -140,7 +140,8 @@ There are two ways of dispatching a router, either by using the default [Publish
 ```php
 <?php
 
-use Flight\Routing\Services\HttpPublisher;
+use Flight\Routing\Publisher;
+use Flight\Routing\RouteCollector as Router;
 use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
 // Need to have an idea about php before using this dependency, though it easy to use.
@@ -156,7 +157,7 @@ $router->setNamespace('Demo\\Controllers\\');
 (require_once __DIR__.'/routes.php')($router);
 
 // Start the routing
-(new HttpPublisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
+(new Publisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
 
 // or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
 ```
@@ -785,6 +786,6 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [message]: https://projects.biurad.com/message
 [biurad-http]: https://github.com/biurad/biurad-http
 [Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
-[DefaultPilot]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
+[DefaultRouter]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router
