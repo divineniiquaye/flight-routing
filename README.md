@@ -638,7 +638,7 @@ $router->group(['domain' => 'account.myapp.com'], function (RouterProxyInterface
 
 ---
 
-If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouterInterface.php) with its five methods:
+If these offered routes do not fit your needs, you may create your own router pilot and add it to your `router collection`. Router is nothing more than an implementation of [RouterInterface](https://github.com/divineniiquaye/flight-routing/blob/0.5.x/src/Interfaces/RouterInterface.php) with its five methods:
 
 ```php
 <?php
@@ -785,7 +785,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
 [biurad-http]: https://github.com/biurad/biurad-http
-[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
-[DefaultRouter]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/DefaultFlightRouter.php
+[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/0.5.x/src/Publisher.php
+[DefaultRouter]: https://github.com/divineniiquaye/flight-routing/blob/0.5.x/src/Services/DefaultFlightRouter.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router
