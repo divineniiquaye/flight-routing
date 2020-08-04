@@ -332,7 +332,7 @@ class SimpleRouteCompiler implements Serializable
             }
             $nested = null; // Match all nested variables enclosed in "{}"
 
-            if (!empty($segment) && ('{' === $segment[0] && $segment[\strlen($segment)] !== '}')) {
+            if (!empty($segment) && ('{' === $segment[0] && substr($segment, -1, 1) !== '}')) {
                 [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) - 1), $key, ''];
             }
 
