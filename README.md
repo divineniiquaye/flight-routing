@@ -25,7 +25,7 @@
 
 ## 📦 Installation & Basic Usage
 
-This project requires PHP 7.1 or higher. The recommended way to install, is via [Composer]. Simply run:
+This project requires [PHP] 7.1 or higher. The recommended way to install, is via [Composer]. Simply run:
 
 ```bash
 $ composer require divineniiquaye/flight-routing
