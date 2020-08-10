@@ -9,9 +9,6 @@ parameters:
     ignoreErrors:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
         -
-            message: "#^Method Flight\\\\Routing\\\\CallableResolver\\:\\:resolveCallable\\(\\) should return callable\\(\\): mixed but returns array\\(mixed, string\\).$#"
-            path: src/CallableResolver.php
-        -
             message: "#^Interface Flight\\\\Routing\\\\Interfaces\\\\RouteCollectionInterface extends generic interface IteratorAggregate but does not specify its types\\: TKey, TValue$#"
             path: src/Interfaces/RouteCollectionInterface.php
         -
@@ -21,7 +18,7 @@ parameters:
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteCollector.php
         -
-            message: "#^Cannot access offset 0 on callable\\(\\): mixed.$#"
+            message: "#^Parameter \\#1 \\$callable of method DivineNii\\\\Invoker\\\\Interfaces\\\\InvokerInterface\\:\\:call\\(\\) expects array<string>\\|\\(callable\\(\\): mixed\\)\\|string, array<string>\\|\\(callable\\(\\): mixed\\)\\|object\\|string given.$#"
             path: src/Router.php
         -
             message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
