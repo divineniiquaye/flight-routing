@@ -13,7 +13,7 @@ matrix:
     fast_finish: true
 
 before_install:
-    - composer self-update
+    - composer self-update --preview
 
 install:
     - composer update --no-interaction
