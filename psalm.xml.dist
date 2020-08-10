@@ -33,16 +33,9 @@
             </errorLevel>
         </PossiblyNullArgument>
 
-        <InvalidArrayAccess>
-            <errorLevel type="suppress">
-                <file name="src/Router.php"/>
-            </errorLevel>
-        </InvalidArrayAccess>
-
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
-                <file name="src/CallableResolver.php"/>
                 <file name="src/Services/SimpleRouteCompiler.php"/>
                 <file name="src/Services/SimpleRouteMatcher.php"/>
             </errorLevel>
