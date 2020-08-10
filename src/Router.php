@@ -17,14 +17,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use BiuradPHP\Support\BoundMethod;
 use Closure;
+use DivineNii\Invoker\Interfaces\InvokerInterface;
+use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Interfaces\CallableResolverInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Middlewares\MiddlewareDispatcher;
@@ -49,7 +49,7 @@ class Router implements RequestHandlerInterface
     /** @var RouteMatcherInterface */
     private $matcher;
 
-    /** @var CallableResolverInterface */
+    /** @var InvokerInterface */
     private $resolver;
 
     /** @var MiddlewareDispatcher */
@@ -76,12 +76,12 @@ class Router implements RequestHandlerInterface
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         ?RouteMatcherInterface $matcher = null,
-        ?CallableResolverInterface $resolver = null,
+        ?InvokerInterface $resolver = null,
         ?ContainerInterface $container = null
     ) {
         $this->container = $container;
         $this->pipeline  = new MiddlewareDispatcher($container);
-        $this->resolver  = $resolver ?? new CallableResolver($container);
+        $this->resolver  = $resolver ?? new Invoker([], $container);
         $this->matcher   = $matcher ?? new Services\SimpleRouteMatcher();
 
         $this->response = [$responseFactory, 'createResponse'];
@@ -367,18 +367,21 @@ class Router implements RequestHandlerInterface
     private function generateResponse(RouteInterface $route): callable
     {
         return function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-            $handler   = $this->resolver->resolve($route->getController(), $this->namespace);
-            $arguments = \array_merge(
-                $route->getArguments(),
-                null !== $this->container ? [$request] : [$request, $response]
-            );
+            $handler   = $this->resolveController($route->getController());
+            $arguments = [ServerRequestInterface::class => $request, ResponseInterface::class => $response];
 
-            // If controller is instance of RequestHandlerInterface
-            if (!$handler instanceof Closure && $handler[0] instanceof RequestHandlerInterface) {
-                return $handler($request);
+            // For a class that implements RequestHandlerInterface, we will call handle()
+            // if no method has been specified explicitly
+            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
+                $handler = [$handler, 'handle'];
             }
 
-            return BoundMethod::call($this->container, $handler, $arguments);
+            // If controller is instance of RequestHandlerInterface
+            if ($handler instanceof RequestHandlerInterface) {
+                return $handler->handle($request);
+            }
+
+            return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));
         };
     }
 
@@ -395,26 +398,17 @@ class Router implements RequestHandlerInterface
      */
     private function marshalMatchedRoute(array $process): RouteInterface
     {
-        [, , $host, $path] = $process;
-
         foreach ($this->routes as $route) {
             // Let's match the routes
             $match      = $this->matcher->compileRoute($this->mergeAttributes($route));
             $parameters = $hostParameters = [];
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if (!$this->compareUri($match->getRegex(), $path, $parameters)) {
+            if (!$this->compareUri($match->getRegex(), $process[3], $parameters)) {
                 continue;
             }
 
-            if (!$this->compareDomain($match->getRegex(true), $host, $hostParameters)) {
-                throw new UriHandlerException(
-                    \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $host, $path),
-                    400
-                );
-            }
-
-            $this->assertRoute($route, $process);
+            $this->assertRoute($route, $match->getRegex(true), $hostParameters, $process);
 
             return $route->setArguments($this->mergeDefaults(
                 \array_replace($parameters, $hostParameters) ?? $match->getVariables(),
@@ -425,7 +419,7 @@ class Router implements RequestHandlerInterface
         throw new  RouteNotFoundException(
             \sprintf(
                 'Unable to find the controller for path "%s". The route is wrongly configured.',
-                $path
+                $process[3]
             )
         );
     }
@@ -433,15 +427,25 @@ class Router implements RequestHandlerInterface
     /**
      * Asserts the Route's method and domain scheme.
      *
-     * @param RouteInterface $route
-     * @param string[]       $attributes
+     * @param RouteInterface           $route
+     * @param string                   $domain
+     * @param array<int|string,string> $parameters
+     * @param array<int,mixed>         $attributes
      */
-    private function assertRoute(RouteInterface $route, array $attributes): void
+    private function assertRoute(RouteInterface $route, string $domain, array &$parameters, array $attributes): void
     {
-        [$method, $scheme, , $path] = $attributes;
+        [$method, $scheme, $host, $path] = $attributes;
+        $parameters                      = [];
 
         if (!$this->compareMethod($route->getMethods(), $method)) {
             throw new MethodNotAllowedException($route->getMethods(), $path, $method);
+        }
+
+        if (!$this->compareDomain($domain, $host, $parameters)) {
+            throw new UriHandlerException(
+                \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $host, $path),
+                400
+            );
         }
 
         if (!$this->compareScheme($route->getSchemes(), $scheme)) {
@@ -450,5 +454,29 @@ class Router implements RequestHandlerInterface
                 400
             );
         }
+    }
+
+    /**
+     * @param callable|object|string|string[] $controller
+     *
+     * @return callable|object|string|string[]
+     */
+    private function resolveController($controller)
+    {
+        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
+            if (
+                \is_string($controller) &&
+                !\class_exists($controller) &&
+                false === \stripos($controller, $this->namespace)
+            ) {
+                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
+            }
+
+            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
+                $controller[0] = $this->namespace . $controller[0];
+            }
+        }
+
+        return $controller;
     }
 }

@@ -41,6 +41,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Updated `Flight\Routing\Services\SimpleRouteCompiler` class regex's used for matching urls
 - Updated `Flight\Routing\Services\SimpleRouteCompiler` class for partly nested matching. This change is temporal
 - Made few changes in `Flight\Routing\Services\SimpleRouteMatcher` class
+- Updated `Flight\Routing\Router` class to use **divineniiquaye/php-invoker** library
 
 ### Fixed
 - Fixed validating request methods with strict array in `Flight\Routing\RouteValidation::compareMethod` method
@@ -56,5 +57,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Deleted `Flight\Routing\RouteResults` class, use `Flight\Routing\RouteHandler` instead
 - Removed exception thrown on **_fragment** variable in `Flight\Routing\Services\SimpleRouteCompiler::compile` method
 - Removed tests for php 8.0 due to phpunit's `PHPUnit\Framework\TestCase::createMock` method
+- Deleted `Flight\Routing\CallableResolver` class and it's `Flight\Routing\Tests\CallableResolverTest` class
+- Deleted `Flight\Routing\Interfaces\CallableResolverInterface` and implementation in `Flight\Routing\Router` class
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
