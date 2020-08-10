@@ -73,9 +73,11 @@ final class RouteHandler implements RequestHandlerInterface
 
             throw $e;
         } finally {
+            // @codeCoverageIgnoreStart
             while (\ob_get_level() > $outputLevel + 1) {
                 $output = \ob_get_clean() . $output;
             }
+            // @codeCoverageIgnoreEnd
         }
 
         return $this->wrapResponse($response, $result, \ob_get_clean() . $output);
@@ -95,9 +97,11 @@ final class RouteHandler implements RequestHandlerInterface
     {
         // Always return the response...
         if ($result instanceof ResponseInterface) {
+            // @codeCoverageIgnoreStart
             if (!empty($output) && $result->getBody()->isWritable()) {
                 $result->getBody()->write($output);
             }
+            // @codeCoverageIgnoreEnd
 
             return $result;
         }

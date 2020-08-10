@@ -101,7 +101,7 @@ class MiddlewareDispatcher
     public function add(...$middlewares): void
     {
         foreach ($middlewares as $middleware) {
-            if (\is_array($middleware)) {
+            if (\is_array($middleware) && !is_callable($middleware)) {
                 $this->routeMiddlewares = \array_merge($middleware, $this->routeMiddlewares);
 
                 continue;

@@ -81,6 +81,12 @@ class BlankMiddleware implements MiddlewareInterface
             return (new ResponseFactory())->createResponse();
         }
 
-        return $handler->handle($request);
+        $response = $handler->handle($request);
+
+        if (\array_key_exists('Broken', $request->getServerParams())) {
+            $response = $response->withHeader('Middleware-Broken', 'broken');
+        }
+
+        return $response->withHeader('Middleware', 'test');
     }
 }

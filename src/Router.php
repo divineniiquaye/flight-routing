@@ -144,7 +144,7 @@ class Router implements RequestHandlerInterface
     public function addMiddleware(...$middlewares): void
     {
         foreach ($middlewares as $middleware) {
-            if (\is_array($middleware)) {
+            if (\is_array($middleware) || is_callable($middleware)) {
                 $this->pipeline->add($middleware);
 
                 continue;
