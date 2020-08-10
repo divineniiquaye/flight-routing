@@ -20,6 +20,7 @@ namespace Flight\Routing\Tests;
 use BiuradPHP\Http\Factory\ServerRequestFactory;
 use BiuradPHP\Http\Response;
 use Flight\Routing\Exceptions\DuplicateRouteException;
+use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
@@ -85,9 +86,10 @@ class RouterTest extends TestCase
                 $route->getMethods()[0],
                 $route->getPath()
             );
-        $router->match($request);
+        $handler = $router->match($request);
 
         $this->assertInstanceOf(RouteInterface::class, $request->getAttribute(Route::class));
+        $this->assertInstanceOf(ResponseInterface::class, $handler->handle($request));
     }
 
     public function testAddMiddleware(): void
@@ -95,7 +97,7 @@ class RouterTest extends TestCase
         $middlewares = [
             new Fixtures\BlankMiddleware(),
             new Fixtures\BlankMiddleware(),
-            new Fixtures\BlankMiddleware(),
+            Fixtures\BlankMiddleware::class,
         ];
 
         $router = $this->getRouter();
@@ -375,21 +377,24 @@ class RouterTest extends TestCase
         $middlewares = [
             new Fixtures\BlankMiddleware(),
             new Fixtures\BlankMiddleware(),
-            new Fixtures\BlankMiddleware(),
+            Fixtures\BlankMiddleware::class,
+            [new Fixtures\BlankMiddleware(), 'process'],
         ];
 
         $router = $this->getRouter();
         $router->addRoute($route);
         $router->addMiddleware(...$middlewares);
-        $router->handle((new ServerRequestFactory())
+        $response = $router->handle((new ServerRequestFactory())
             ->createServerRequest(
                 $route->getMethods()[0],
-                $route->getPath()
+                $route->getPath(),
+                ['Broken' => 'test']
             ));
 
         $this->assertTrue($middlewares[0]->isRunned());
         $this->assertTrue($middlewares[1]->isRunned());
-        $this->assertTrue($middlewares[2]->isRunned());
+        $this->assertTrue($response->hasHeader('Middleware'));
+        $this->assertEquals('broken', $response->getHeaderLine('Middleware-Broken'));
         $this->assertTrue($route->getController()->isRunned());
     }
 
@@ -521,5 +526,68 @@ class RouterTest extends TestCase
         $this->expectException(UriHandlerException::class);
 
         $router->handle($request);
+    }
+
+    public function testHandleWithMiddlewareException(): void
+    {
+        $route = new Route(
+            'test_middleware',
+            [RouteCollector::METHOD_GET],
+            '/middleware',
+            Fixtures\BlankRequestHandler::class
+        );
+        $route->addMiddleware('none');
+
+        $router = $this->getRouter();
+        $router->addRoute($route);
+
+        $this->expectExceptionMessage(
+            'Middleware "string" is neither a string service name, ' .
+            'a PHP callable, a Psr\Http\Server\MiddlewareInterface instance, ' .
+            'a Psr\Http\Server\RequestHandlerInterface instance, or an array of such arguments'
+        );
+        $this->expectException(InvalidMiddlewareException::class);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(RouteCollector::METHOD_GET, '/middleware');
+        $router->handle($request);
+    }
+
+    /**
+     * @dataProvider handleNamespaceData
+     *
+     * @param string          $namespace
+     * @param string|string[] $controller
+     */
+    public function testHandleWithNamespace(string $namespace, $controller): void
+    {
+        $route = new Route(
+            'test_namespace',
+            [RouteCollector::METHOD_GET],
+            '/namespace',
+            $controller
+        );
+
+        $router = $this->getRouter();
+        $router->setNamespace($namespace);
+        $router->addRoute($route);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(RouteCollector::METHOD_GET, '/namespace');
+        $response = $router->handle($request);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function handleNamespaceData(): array
+    {
+        return [
+            ['Flight\\Routing\\Tests\\Fixtures\\', 'BlankController'],
+            ['Flight\\Routing\\Tests', '\\Fixtures\\BlankController'],
+            ['Flight\\Routing\\Tests\\', ['Fixtures\\BlankController', 'handle']],
+        ];
     }
 }
