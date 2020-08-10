@@ -47,6 +47,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Fixed validating request methods with strict array in `Flight\Routing\RouteValidation::compareMethod` method
 - Fixed major and minor issues with phpstan and psalm
 - Fixed major and minor coding standard issues
+- Fixed minor issues with **PSR-15** middlewares usage
 
 ### Removed
 - Removed proxy usage, use `Flight\Routing\RouteCollector` class instead
