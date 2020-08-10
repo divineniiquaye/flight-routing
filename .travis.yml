@@ -20,6 +20,8 @@ install:
 
 script:
     - ./vendor/bin/phpcs
+    - ./vendor/bin/phpstan
+    - ./vendor/bin/psalm
     - ./vendor/bin/phpunit --coverage-clover=coverage.xml
 
 after_success:
