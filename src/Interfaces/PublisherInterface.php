@@ -33,9 +33,9 @@ interface PublisherInterface
      * Publish the content.
      *
      * @param PsrResponseInterface|StreamInterface $content
-     * @param null|EmitterInterface                $response
+     * @param null|EmitterInterface                $emitter
      *
      * @return bool
      */
-    public function publish($content, ?EmitterInterface $response): bool;
+    public function publish($content, ?EmitterInterface $emitter): bool;
 }
