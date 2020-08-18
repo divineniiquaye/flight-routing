@@ -1,85 +1,63 @@
 name: Tests
-
-on:
-    push: ~
-    pull_request: ~
+on: [push, pull_request]
 
 jobs:
-    phpcs:
-        name: PHPCS
-        runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        php: ['7.2', '7.3', '7.4']
+        coverage: ["true"]
+        composer-flags: [""]
+        include:
+          - php: "8.0"
+            coverage: "false"
+            composer-flags: "--ignore-platform-req=php"
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-            - uses: shivammathur/setup-php@v2
-              with:
-                  php-version: 7.2
-                  extensions: curl, mbstring
-                  coverage: none
-                  tools: composer:v2, cs2pr
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, curl
+          coverage: xdebug
+          tools: composer:v2
 
-            - run: composer update --no-progress
+      - name: Get composer cache directory
+        id: composercache
+        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
 
-            - run: vendor/bin/phpcs -q --report=checkstyle | cs2pr
+      - name: Cache composer dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.composercache.outputs.dir }}
+          # Use composer.json for key, if composer.lock is not committed.
+          # key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
-    phpunit:
-        name: PHPUnit on ${{ matrix.php }}
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                php: ["7.2", "7.3", "7.4"]
-                coverage: [true]
-                composer-flags: [""]
+      - name: Install dependencies
+        run: composer update --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
 
-        steps:
-            - uses: actions/checkout@v2
+      - name: Check Coding Stardard
+        run: vendor/bin/phpcs
 
-            - uses: shivammathur/setup-php@v2
-              with:
-                  php-version: ${{ matrix.php }}
-                  extensions: curl, mbstring
-                  coverage: pcov
-                  tools: composer:v2
+      - name: Test with Phpunit
+        run: |
+          if [ "${{ !matrix.coverage }}" == "false" ]; then
+            vendor/bin/phpunit --no-coverage
+          fi
+          if [ "${{ !matrix.coverage }}" == "true" ]; then
+            vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
+            bash <(curl -s https://codecov.io/bash) -f coverage.clover
+          fi
 
-            - run: composer update --no-progress
+      - name: Test with Phpstan
+        run: vendor/bin/phpstan analyse
 
-            - run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
-
-            - run: bash <(curl -s https://codecov.io/bash) -f coverage.clover
-
-    phpstan:
-        name: PHPStan
-        runs-on: ubuntu-latest
-
-        steps:
-            - uses: actions/checkout@v2
-
-            - uses: shivammathur/setup-php@v2
-              with:
-                  php-version: 7.2
-                  extensions: curl, mbstring
-                  coverage: none
-                  tools: composer:v2
-
-            - run: composer update --no-progress
-
-            - run: vendor/bin/phpstan analyse
-
-    psalm:
-        name: Psalm
-        runs-on: ubuntu-latest
-
-        steps:
-            - uses: actions/checkout@v2
-
-            - uses: shivammathur/setup-php@v2
-              with:
-                  php-version: 7.2
-                  extensions: curl, mbstring
-                  coverage: none
-                  tools: composer:v2
-
-            - run: composer update --no-progress
-
-            - run: vendor/bin/psalm
+      - name: Test with Psalm
+        run: vendor/bin/psalm
