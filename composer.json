@@ -40,7 +40,7 @@
         "vimeo/psalm": "^3.11"
     },
     "suggest": {
-        "biurad/biurad-http": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
+        "biurad/http-galaxy": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
     },
     "autoload": {
         "psr-4": {
@@ -50,10 +50,7 @@
     "autoload-dev": {
         "psr-4": {
             "Flight\\Routing\\Tests\\": "tests/"
-        },
-        "exclude-from-classmap": [
-            "/Tests/"
-        ]
+        }
     },
     "extra": {
         "branch-alias": {
