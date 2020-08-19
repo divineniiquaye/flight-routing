@@ -44,8 +44,11 @@ jobs:
         run: composer update --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
 
       - name: Check Coding Standard
-        run: vendor/bin/phpcs
-        if: ${{ matrix.coverage }}
+        run: |
+          if [ "${{ !matrix.coverage }}" == "false" ]; then
+            vendor/bin/phpcbf
+          fi
+          vendor/bin/phpcs
 
       - name: Test with Phpunit
         run: |
