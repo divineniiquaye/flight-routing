@@ -45,10 +45,9 @@ jobs:
 
       - name: Check Coding Standard
         run: |
-          if [ "${{ !matrix.coverage }}" == "false" ]; then
-            vendor/bin/phpcbf
+          if [ "${{ matrix.coverage }}" == "true" ]; then
+            vendor/bin/phpcs
           fi
-          vendor/bin/phpcs
 
       - name: Test with Phpunit
         run: |
