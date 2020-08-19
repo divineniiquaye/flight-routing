@@ -43,15 +43,15 @@ jobs:
       - name: Install dependencies
         run: composer update --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
 
-      - name: Check Coding Stardard
-        run: vendor/bin/phpcs
+      - name: Check Coding Standard
+        run: if [ "${{ matrix.coverage }}" == "true" ]; then vendor/bin/phpcs fi
 
       - name: Test with Phpunit
         run: |
-          if [ "${{ !matrix.coverage }}" == "false" ]; then
+          if [ "${{ matrix.coverage }}" == "false" ]; then
             vendor/bin/phpunit --no-coverage
           fi
-          if [ "${{ !matrix.coverage }}" == "true" ]; then
+          if [ "${{ matrix.coverage }}" == "true" ]; then
             vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
             bash <(curl -s https://codecov.io/bash) -f coverage.clover
           fi
