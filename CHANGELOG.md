@@ -13,7 +13,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added improvement to `Flight\Routing\RouteCollector` class for a great performance usage
 - Added improvement to `Flight\Routing\Route` class for a great performance usage
 - Added `Flight\Routing\Router` class for dispatching routes instead of `Flight\Routing\RouteCollector` class
-- Added phpunit tests for over 80% coverage
+- Added phpunit tests for over 90% coverage
 - Added branch for 0.5.x version, so to provide security fixtures, update, and maintenance
 
 ### Changed
@@ -48,6 +48,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Fixed major and minor issues with phpstan and psalm
 - Fixed major and minor coding standard issues
 - Fixed minor issues with **PSR-15** middlewares usage
+- Fixed cache control middleware response with IE < 9 in `Flight\RoutingMiddlewares\CacheControlMiddleware` class
 
 ### Removed
 - Removed proxy usage, use `Flight\Routing\RouteCollector` class instead
@@ -60,5 +61,9 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Removed tests for php 8.0 due to phpunit's `PHPUnit\Framework\TestCase::createMock` method
 - Deleted `Flight\Routing\CallableResolver` class and it's `Flight\Routing\Tests\CallableResolverTest` class
 - Deleted `Flight\Routing\Interfaces\CallableResolverInterface` and implementation in `Flight\Routing\Router` class
+- Delete `Flight\RoutingMiddlewares\ContentLengthMiddleware` class
+- Delete `Flight\RoutingMiddlewares\ContentTypeMiddleware` class
+- Delete `Flight\RoutingMiddlewares\ContentTypeOptionsMiddleware` class
+- Delete `Flight\RoutingMiddlewares\MethodOverrideMiddleware` class
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
