@@ -19,6 +19,7 @@ namespace Flight\Routing\Middlewares;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -34,7 +35,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
     private $query;
 
     /**
-     * @param array<string,string> $redirects [from => to]
+     * @param array<string,string|UriInterface> $redirects [from => to]
      * @param bool                 $query
      * @param bool                 $permanent
      */
@@ -94,7 +95,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
         return $response
             ->withStatus($this->determineResponseCode($request))
-            ->withAddedHeader('Location', $this->redirects[$uri]);
+            ->withAddedHeader('Location', (string) $this->redirects[$uri]);
     }
 
     /**
