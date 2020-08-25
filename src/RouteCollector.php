@@ -34,6 +34,7 @@ use Flight\Routing\Interfaces\RouteInterface;
  * - put
  * - patch
  * - delete
+ * - options
  * - any
  * - map
  *

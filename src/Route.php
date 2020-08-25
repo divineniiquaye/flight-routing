@@ -387,11 +387,7 @@ class Route implements Serializable, RouteInterface
     {
         // Match domain + scheme from pattern...
         if (false !== \preg_match($regex = '@^(?:(https?):)?(//[^/]+)@i', $route)) {
-            $route = (string) \preg_replace_callback($regex, function (array $matches): string {
-                $this->setDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
-
-                return '';
-            }, $route);
+            $route = $this->castDomain($route, $regex);
         }
 
         if (false !== \strpbrk($route, '*') && false !== \preg_match(self::RCA_PATTERN, $route, $matches)) {
@@ -408,6 +404,24 @@ class Route implements Serializable, RouteInterface
 
         return (empty($route) || '/' === $route) ? '/' : $route;
     }
+
+    /**
+     * Match scheme and domain from route patterned path
+     *
+     * @param string $route
+     * @param string $regex
+     * 
+     * @return string
+     */
+    private function castDomain(string $route, string $regex): string
+    {
+        return (string) \preg_replace_callback($regex, function (array $matches): string {
+            $this->setDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
+
+            return '';
+        }, $route);
+    }
+
 
     /**
      * Ensures that the right-most slash is trimmed for prefixes of more than
