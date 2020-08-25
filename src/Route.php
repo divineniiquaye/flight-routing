@@ -410,7 +410,7 @@ class Route implements Serializable, RouteInterface
      *
      * @param string $route
      * @param string $regex
-     * 
+     *
      * @return string
      */
     private function castDomain(string $route, string $regex): string
@@ -421,7 +421,6 @@ class Route implements Serializable, RouteInterface
             return '';
         }, $route);
     }
-
 
     /**
      * Ensures that the right-most slash is trimmed for prefixes of more than
