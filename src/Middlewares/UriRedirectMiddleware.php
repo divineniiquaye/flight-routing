@@ -25,7 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class UriRedirectMiddleware implements MiddlewareInterface
 {
-    /** @var array<string,string> */
+    /** @var array<string,string|UriInterface> */
     protected $redirects;
 
     /** @var bool */
