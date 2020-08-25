@@ -61,9 +61,9 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Removed tests for php 8.0 due to phpunit's `PHPUnit\Framework\TestCase::createMock` method
 - Deleted `Flight\Routing\CallableResolver` class and it's `Flight\Routing\Tests\CallableResolverTest` class
 - Deleted `Flight\Routing\Interfaces\CallableResolverInterface` and implementation in `Flight\Routing\Router` class
-- Delete `Flight\RoutingMiddlewares\ContentLengthMiddleware` class
-- Delete `Flight\RoutingMiddlewares\ContentTypeMiddleware` class
-- Delete `Flight\RoutingMiddlewares\ContentTypeOptionsMiddleware` class
-- Delete `Flight\RoutingMiddlewares\MethodOverrideMiddleware` class
+- Deleted `Flight\RoutingMiddlewares\ContentLengthMiddleware` class
+- Deleted `Flight\RoutingMiddlewares\ContentTypeMiddleware` class
+- Deleted `Flight\RoutingMiddlewares\ContentTypeOptionsMiddleware` class
+- Deleted `Flight\RoutingMiddlewares\MethodOverrideMiddleware` class
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
