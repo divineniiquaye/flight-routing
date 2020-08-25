@@ -61,9 +61,6 @@ class CacheControlMiddleware implements MiddlewareInterface
             $response = $response->withProtocolVersion('1.1');
         }
 
-        // Checks if we need to remove Cache-Control for SSL encrypted downloads when using IE < 9.
-        $response = $this->ensureIEOverSSLCompatibility($request, $response);
-
         // Check if we need to send extra expire info headers
         if (
             '1.0' === $response->getProtocolVersion() &&
@@ -88,7 +85,8 @@ class CacheControlMiddleware implements MiddlewareInterface
             $response = $response->withoutHeader('Cache-Control');
         }
 
-        return $response;
+        // Checks if we need to remove Cache-Control for SSL encrypted downloads when using IE < 9.
+        return $this->ensureIEOverSSLCompatibility($request, $response);
     }
 
     /**
