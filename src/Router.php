@@ -144,7 +144,7 @@ class Router implements RequestHandlerInterface
     public function addMiddleware(...$middlewares): void
     {
         foreach ($middlewares as $middleware) {
-            if (\is_array($middleware) || is_callable($middleware)) {
+            if (\is_array($middleware) || \is_callable($middleware)) {
                 $this->pipeline->add($middleware);
 
                 continue;
@@ -367,7 +367,14 @@ class Router implements RequestHandlerInterface
     private function generateResponse(RouteInterface $route): callable
     {
         return function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-            $handler   = $this->resolveController($route->getController());
+            $controller = $route->getController();
+
+            // Disable or enable HTTP request method prefix for action.
+            if (is_array($controller) && false !== strpos($route->getName(), '__restful')) {
+                $controller[1] = \strtolower($request->getMethod()) . \ucfirst($controller[1]);
+            }
+
+            $handler   = $this->resolveController($controller);
             $arguments = [ServerRequestInterface::class => $request, ResponseInterface::class => $response];
 
             // For a class that implements RequestHandlerInterface, we will call handle()

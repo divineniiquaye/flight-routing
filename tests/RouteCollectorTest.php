@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
@@ -811,5 +812,43 @@ class RouteCollectorTest extends TestCase
             'patterns'    => [],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
+    }
+
+    public function testResource(): void
+    {
+        $routeName     = Fixtures\TestRoute::getTestRouteName();
+        $routePath     = Fixtures\TestRoute::getTestRoutePath();
+        $routeResource = new Fixtures\BlankRestful();
+
+        $collector = new RouteCollector();
+
+        $route = $collector->resource(
+            $routeName,
+            $routePath,
+            $routeResource
+        );
+
+        $this->assertSame($routeName . '__restful', $route->getName());
+        $this->assertSame($routePath, $route->getPath());
+        $this->assertSame($collector::HTTP_METHODS_STANDARD, $route->getMethods());
+        $this->assertSame([$routeResource, $routeName], $route->getController());
+    }
+
+    public function testResourceWithException(): void
+    {
+        $routeName           = Fixtures\TestRoute::getTestRouteName();
+        $routePath           = Fixtures\TestRoute::getTestRoutePath();
+        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
+
+        $collector = new RouteCollector();
+
+        $this->expectException(InvalidControllerException::class);
+        $this->getExpectedExceptionMessage('Resource handler type should be a string or object, but not a callable');
+
+        $collector->resource(
+            $routeName,
+            $routePath,
+            $routeRequestHandler
+        );
     }
 }

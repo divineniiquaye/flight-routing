@@ -29,9 +29,15 @@
 
         <PossiblyNullArgument>
             <errorLevel type="suppress">
-                <file name="src/Route.php" />
+                <file name="src/Route.php"/>
             </errorLevel>
         </PossiblyNullArgument>
+
+        <PossiblyInvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+            </errorLevel>
+        </PossiblyInvalidArgument>
 
         <TypeDoesNotContainType>
             <errorLevel type="suppress">

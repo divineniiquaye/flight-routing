@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
@@ -36,6 +37,7 @@ use Flight\Routing\Interfaces\RouteInterface;
  * - delete
  * - options
  * - any
+ * - resource
  * - map
  *
  * A general `map()` method allows specifying multiple request methods and/or
@@ -159,6 +161,20 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
     public function any(string $name, string $pattern, $callable): RouteInterface
     {
         return $this->map($name, self::HTTP_METHODS_STANDARD, $pattern, $callable);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function resource(string $name, string $pattern, $resource): RouteInterface
+    {
+        if (\is_callable($resource)) {
+            throw new InvalidControllerException(
+                'Resource handler type should be a string or object, but not a callable'
+            );
+        }
+
+        return $this->any($name . '__restful', $pattern, [$resource, $name]);
     }
 
     /**

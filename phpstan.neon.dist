@@ -26,3 +26,6 @@ parameters:
         -
             message: "#^Parameter \\#1 \\$defaults of method Flight\\\\Routing\\\\Interfaces\\\\RouteInterface\\:\\:setDefaults\\(\\) expects array<string, mixed>, array<int\\|string, mixed> given.$#"
             path: src/Services/SimpleRouteCompiler.php
+        -
+            message: "#^Parameter \\#3 \\$callable of method Flight\\\\Routing\\\\RouteCollector\\:\\:any\\(\\) expects \\(callable\\(\\): mixed\\)\\|object\\|string\\|null, array\\(object\\|string, string\\) given.$#"
+            path: src/RouteCollector.php

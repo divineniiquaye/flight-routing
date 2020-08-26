@@ -22,6 +22,7 @@
 - Route prefixes.
 - Optional parameters
 - Sub-domain routing and more.
+- Restful Routing
 
 ## 📦 Installation & Basic Usage
 
@@ -644,6 +645,59 @@ $collector->group(function (RouteCollectorInterface $route) {
     });
 })->setDomain('account.myapp.com');
 ```
+
+### RESTful Routing
+
+---
+
+All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteCollector::resource` method to automatically prefix all the methods in `Flight\Routing\Interfaces\RouteCollectorInterface::HTTP_METHODS_STANDARD` with HTTP verb.
+
+For example, we can use the following controller:
+
+```php
+namespace Demo\Controller;
+
+class UserController
+{
+    public function getUser(int $id): string
+    {
+        return "get {$id}";
+    }
+
+    public function postUser(int $id): string
+    {
+        return "post {$id}";
+    }
+
+    public function deleteUser(int $id): string
+    {
+        return "delete {$id}";
+    }
+}
+```
+
+Add route using `Flight\Routing\Router::addRoute`:
+
+```php
+use Demo\UserController;
+
+$router->addRoute(new Route(
+    'user__restful',
+    '/user/<id:\d+>',
+    [UserController::class, 'user']
+));
+```
+
+Add route using `Flight\Routing\RouteCollector::resource`:
+
+```php
+use Demo\UserController;
+
+$collector->resource('user', '/user/<id:\d+>', UserController::class);
+```
+
+> Invoking `/user/1` with different HTTP methods will call different controller methods. Note, you still need
+> to specify the action name.
 
 ### Custom Route Matcher
 

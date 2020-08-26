@@ -15,6 +15,8 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added `Flight\Routing\Router` class for dispatching routes instead of `Flight\Routing\RouteCollector` class
 - Added phpunit tests for over 90% coverage
 - Added branch for 0.5.x version, so to provide security fixtures, update, and maintenance
+- Added **resource** method to `Flight\Routing\RouteCollector` class and its interface
+- Added a **restful** method type of implementation for api usage with named prefix `__restful`
 
 ### Changed
 - Made few changes to `README.md` file

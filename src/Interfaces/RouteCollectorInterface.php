@@ -152,4 +152,15 @@ interface RouteCollectorInterface extends RequestMethodInterface
      * @return RouteInterface
      */
     public function any(string $name, string $pattern, $callable): RouteInterface;
+
+    /**
+     * This adds a `__restful` to route name and automatically prefix all the methods with HTTP verb.
+     *
+     * @param string        $name
+     * @param string        $pattern
+     * @param object|string $resource
+     *
+     * @return RouteInterface
+     */
+    public function resource(string $name, string $pattern, $resource): RouteInterface;
 }

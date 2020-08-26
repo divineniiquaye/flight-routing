@@ -590,4 +590,41 @@ class RouterTest extends TestCase
             ['Flight\\Routing\\Tests\\', ['Fixtures\\BlankController', 'handle']],
         ];
     }
+
+    /**
+     * @dataProvider hasResourceData
+     *
+     * @param string $expected
+     */
+    public function testHandleResource(string $expected): void
+    {
+        $route = new Route(
+            'user__restful',
+            RouteCollector::HTTP_METHODS_STANDARD,
+            '/user/{id:\d+}',
+            [new Fixtures\BlankRestful(), 'user']
+        );
+
+        $router = $this->getRouter();
+        $router->addRoute($route);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest($expected, 'user/23');
+        $response = $router->handle($request);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(\strtolower($expected) . ' 23', (string) $response->getBody());
+    }
+
+    /**
+     * @return string[]
+     */
+    public function hasResourceData(): array
+    {
+        return [
+            [RouteCollector::METHOD_GET],
+            [RouteCollector::METHOD_POST],
+            [RouteCollector::METHOD_DELETE],
+        ];
+    }
 }
