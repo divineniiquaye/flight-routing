@@ -54,6 +54,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Fixed major and minor coding standard issues
 - Fixed minor issues with **PSR-15** middlewares usage
 - Fixed cache control middleware response with IE < 9 in `Flight\RoutingMiddlewares\CacheControlMiddleware` class
+- Fixed PSR-4 autoloading standard issues in tests directory: **Middlewares** and **Services**
 
 ### Removed
 - Removed proxy usage, use `Flight\Routing\RouteCollector` class instead
