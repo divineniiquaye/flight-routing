@@ -17,7 +17,7 @@
 - Named routes.
 - Generating url to routes.
 - Route groups.
-- Middleware (classes that intercepts before the route is rendered).
+- [PSR-15] Middleware (classes that intercepts before the route is rendered).
 - Namespaces.
 - Route prefixes.
 - Optional parameters
@@ -122,8 +122,6 @@ Flight routing allows you to call any controller action with namespace using `*<
 In your `index.php` require your newly-created `routes.php` and call the `$collector->handle()` method on [Publisher] `publish` method, passing an instance of [PSR-7] `ServerRequestInterface`. This will trigger and do the actual routing of the requests to response.
 
 ```php
-<?php
-
 use Flight\Routing\RouteCollector as Router;
 
 return static function (Router &$collector): void {
@@ -138,8 +136,6 @@ There are two ways of dispatching a router, either by using the default [Publish
 **This is an example of a basic `index.php` file:**
 
 ```php
-<?php
-
 use Flight\Routing\{RouteCollector, Router, Publisher};
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
@@ -187,7 +183,7 @@ $collector->get('home', '/', function() {
 ---
 
 It is possible to pass the `closure` as route handler, in this case our function will receive two
-arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`.
+arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`. Patterned name from path can be added, including from [PSR-11] container.
 
 ```php
 $collector->get(
@@ -208,8 +204,6 @@ $collector->get(
 You can catch the request object like this example:
 
 ```php
-<?php
-
 use Biurad\Http\ServerRequest;
 use Biurad\Http\Response\{EmptyResponse, JsonResponse};
 
@@ -250,8 +244,6 @@ $collector->post(
 The example below illustrates supported kinds of responses.
 
 ```php
-<?php
-
 use Biurad\Http\Response\{EmptyResponse, HtmlResponse, JsonResponse, TextResponse};
 
 $collector
@@ -304,8 +296,6 @@ $collector
 In case of needing to redirecting user to another URL:
 
 ```php
-<?php
-
 use Biurad\Http\Response\RedirectResponse;
 
 $collector
@@ -520,8 +510,6 @@ $url = $collector->generateUri('profile', ['id' => 1]); // will produce "user/1/
 Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$collector->group` method.
 
 ```php
-<?php
-
 use Flight\Routing\Interfaces\RouteCollectorInterface;
 
 $collector->group(
@@ -560,8 +548,6 @@ Middleware must have a `process()` method that catches http request and a closur
 For example see the following snippet. In this snippet, we will demonstrate how a middleware works:
 
 ```php
-<?php
-
 use Demo\Middleware\ParamWatcher;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -579,8 +565,6 @@ $collector->get(
 where `ParamWatcher` is:
 
 ```php
-<?php
-
 namespace Demo\Middleware;
 
 use Psr\Http\Message\ResponseInterface as Response;
@@ -615,7 +599,6 @@ Flight Routing increases SEO (search engine optimization) as it prevents multipl
 > Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
 ```php
-<?php
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -644,8 +627,6 @@ $collector->get(
 Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
 
 ```php
-<?php
-
 use Flight\Routing\Interfaces\RouteCollectorInterface;
 
 // Domain
@@ -781,6 +762,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [Composer]: https://getcomposer.org
 [PHP]: https://php.net
 [PSR-7]: http://www.php-fig.org/psr/psr-6/
+[PSR-11]: http://www.php-fig.org/psr/psr-11/
 [PSR-15]: http://www.php-fig.org/psr/psr-15/
 [@divineniiquaye]: https://github.com/divineniiquaye
 [docs]: https://docs.biurad.com/flight-routing
