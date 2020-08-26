@@ -15,9 +15,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing;
+namespace Flight\Routing\Traits;
 
-trait RouteValidation
+use Closure;
+use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Router;
+
+trait ValidationTrait
 {
     /**
      * Check if given request method matches given route method.
@@ -27,7 +31,7 @@ trait RouteValidation
      *
      * @return bool
      */
-    protected function compareMethod(array $routeMethod, string $requestMethod): bool
+    private function compareMethod(array $routeMethod, string $requestMethod): bool
     {
         return \in_array($requestMethod, $routeMethod, true);
     }
@@ -41,7 +45,7 @@ trait RouteValidation
      *
      * @return bool
      */
-    protected function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
+    private function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
     {
         return ($routeDomain === null || empty($routeDomain)) ||
             (bool) \preg_match($routeDomain, $requestDomain, $parameters);
@@ -56,7 +60,7 @@ trait RouteValidation
      *
      * @return bool
      */
-    protected function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
+    private function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
         return (bool) \preg_match($routeUri, $requestUri, $parameters);
     }
@@ -69,7 +73,7 @@ trait RouteValidation
      *
      * @return bool
      */
-    protected function compareScheme(array $routeScheme, string $requestScheme): bool
+    private function compareScheme(array $routeScheme, string $requestScheme): bool
     {
         return empty($routeScheme) || \in_array($requestScheme, $routeScheme, true);
     }
@@ -82,7 +86,7 @@ trait RouteValidation
      *
      * @return array<string,string> Merged default parameters
      */
-    protected function mergeDefaults(array $params, array $defaults): array
+    private function mergeDefaults(array $params, array $defaults): array
     {
         foreach ($params as $key => $value) {
             if (!\is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
@@ -91,5 +95,51 @@ trait RouteValidation
         }
 
         return $defaults;
+    }
+
+    /**
+     * Merge Router attributes in route default and patterns.
+     *
+     * @param RouteInterface $route
+     *
+     * @return RouteInterface
+     */
+    private function mergeAttributes(RouteInterface $route): RouteInterface
+    {
+        foreach ($this->attributes as $type => $attributes) {
+            if (Router::TYPE_DEFAULT === $type) {
+                $route->setDefaults($attributes);
+
+                continue;
+            }
+
+            $route->setPatterns($attributes);
+        }
+
+        return $route;
+    }
+
+    /**
+     * @param callable|object|string|string[] $controller
+     *
+     * @return callable|object|string|string[]
+     */
+    private function resolveController($controller)
+    {
+        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
+            if (
+                \is_string($controller) &&
+                !\class_exists($controller) &&
+                false === \stripos($controller, $this->namespace)
+            ) {
+                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
+            }
+
+            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
+                $controller[0] = $this->namespace . $controller[0];
+            }
+        }
+
+        return $controller;
     }
 }

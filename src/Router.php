@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Closure;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
@@ -40,7 +39,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class Router implements RequestHandlerInterface
 {
-    use RouteValidation;
+    use Traits\ValidationTrait;
 
     public const TYPE_REQUIREMENT = 1;
 
@@ -336,28 +335,6 @@ class Router implements RequestHandlerInterface
     }
 
     /**
-     * Merge Router attributes in route default and patterns.
-     *
-     * @param RouteInterface $route
-     *
-     * @return RouteInterface
-     */
-    private function mergeAttributes(RouteInterface $route): RouteInterface
-    {
-        foreach ($this->attributes as $type => $attributes) {
-            if (self::TYPE_DEFAULT === $type) {
-                $route->setDefaults($attributes);
-
-                continue;
-            }
-
-            $route->setPatterns($attributes);
-        }
-
-        return $route;
-    }
-
-    /**
      * Generate the response so it can be served
      *
      * @param RouteInterface $route
@@ -461,29 +438,5 @@ class Router implements RequestHandlerInterface
                 400
             );
         }
-    }
-
-    /**
-     * @param callable|object|string|string[] $controller
-     *
-     * @return callable|object|string|string[]
-     */
-    private function resolveController($controller)
-    {
-        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
-            if (
-                \is_string($controller) &&
-                !\class_exists($controller) &&
-                false === \stripos($controller, $this->namespace)
-            ) {
-                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
-            }
-
-            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
-                $controller[0] = $this->namespace . $controller[0];
-            }
-        }
-
-        return $controller;
     }
 }

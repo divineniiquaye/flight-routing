@@ -17,6 +17,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added branch for 0.5.x version, so to provide security fixtures, update, and maintenance
 - Added **resource** method to `Flight\Routing\RouteCollector` class and its interface
 - Added a **restful** method type of implementation for api usage with named prefix `__restful`
+- Added `Flight\Routing\Traits\CastingTrait` to reduce code complexity in `Flight\Routing\Route` class
 
 ### Changed
 - Made few changes to `README.md` file
@@ -44,6 +45,8 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Updated `Flight\Routing\Services\SimpleRouteCompiler` class for partly nested matching. This change is temporal
 - Made few changes in `Flight\Routing\Services\SimpleRouteMatcher` class
 - Updated `Flight\Routing\Router` class to use **divineniiquaye/php-invoker** library
+- Moved and Renamed `Flight\Routing\RouteValidation` trait to `Flight\Routing\Traits\ValidationTrait`
+- Moved **resolveController** and **mergeAttributes** methods in `Flight\Routing\Router` class to `Flight\Routing\Traits\ValidationTrait`
 
 ### Fixed
 - Fixed validating request methods with strict array in `Flight\Routing\RouteValidation::compareMethod` method
