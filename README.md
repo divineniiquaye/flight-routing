@@ -683,7 +683,7 @@ use Demo\UserController;
 
 $router->addRoute(new Route(
     'user__restful',
-    '/user/<id:\d+>',
+    '/user/{id:\d+}',
     [UserController::class, 'user']
 ));
 ```
@@ -693,7 +693,7 @@ Add route using `Flight\Routing\RouteCollector::resource`:
 ```php
 use Demo\UserController;
 
-$collector->resource('user', '/user/<id:\d+>', UserController::class);
+$collector->resource('user', '/user/{id:\d+}', UserController::class);
 ```
 
 > Invoking `/user/1` with different HTTP methods will call different controller methods. Note, you still need
