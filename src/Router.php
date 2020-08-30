@@ -356,7 +356,7 @@ class Router implements RequestHandlerInterface
 
             // For a class that implements RequestHandlerInterface, we will call handle()
             // if no method has been specified explicitly
-            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
+            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class)) {
                 $handler = [$handler, 'handle'];
             }
 

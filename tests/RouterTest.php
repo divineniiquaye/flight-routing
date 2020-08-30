@@ -627,4 +627,45 @@ class RouterTest extends TestCase
             [RouteCollector::METHOD_DELETE],
         ];
     }
+
+    /**
+     * @dataProvider hasCollectionGroupData
+     *
+     * @param string $expectedMethod
+     * @param string $expectedUri
+     */
+    public function testHandleCollectionGrouping(string $expectedMethod, string $expectedUri): void
+    {
+        $collector = new RouteCollector();
+
+        $collector->group(function (RouteCollector $group): void {
+            $group->get('home', '/', new Fixtures\BlankRequestHandler());
+            $group->get('ping', '/ping', new Fixtures\BlankRequestHandler());
+
+            $group->group(function (RouteCollector $group): void {
+                $group->head('greeting', 'hello/{me}', new Fixtures\BlankRequestHandler());
+            })->addPrefix('/v1')->addDomain('https://biurad.com');
+        })->addPrefix('/api')->setName('api.');
+
+        $router = $this->getRouter();
+        $router->addRoute(...$collector->getCollection());
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest($expectedMethod, $expectedUri);
+        $response = $router->handle($request);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function hasCollectionGroupData(): array
+    {
+        return [
+            [RouteCollector::METHOD_GET, '/api'],
+            [RouteCollector::METHOD_GET, '/api/ping'],
+            [RouteCollector::METHOD_HEAD, 'https://biurad.com/api/v1/hello/23'],
+        ];
+    }
 }
