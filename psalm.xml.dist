@@ -50,6 +50,7 @@
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Route.php"/>
+                <file name="src/Annotation/Route.php"/>
                 <file name="src/Services/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
