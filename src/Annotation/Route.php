@@ -75,7 +75,7 @@ final class Route
     private $defaults;
 
     /**
-     * @param array<string,mixed><string,mixed> $params
+     * @param array<string,mixed> $params
      */
     public function __construct(array $params)
     {
@@ -161,7 +161,7 @@ final class Route
     }
 
     /**
-     * @return string
+     * @return string[]
      */
     public function getSchemes(): array
     {
