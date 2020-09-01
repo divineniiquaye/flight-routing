@@ -53,7 +53,7 @@ final class Route
     /** @var string @Required */
     private $path;
 
-    /** @var string @Required */
+    /** @var null|string @Required */
     private $name;
 
     /** @var string[] @Required */
@@ -75,7 +75,7 @@ final class Route
     private $defaults;
 
     /**
-     * @param array<string,mixed> $params
+     * @param array<string,mixed><string,mixed> $params
      */
     public function __construct(array $params)
     {
@@ -84,12 +84,14 @@ final class Route
             unset($params['value']);
         }
 
-        $params = array_merge([
+        $params = \array_merge([
             'middlewares' => [],
-            'patterns' => [],
-            'defaults' => [],
-            'schemes' => [],
-            'domain' => null,
+            'patterns'    => [],
+            'defaults'    => [],
+            'schemes'     => [],
+            'methods'     => [],
+            'domain'      => null,
+            'name'        => null,
         ], $params);
 
         $this->assertParamsContainValidName($params);
@@ -110,60 +112,91 @@ final class Route
         $this->defaults    = $params['defaults'];
     }
 
+    /**
+     * @return string
+     */
     public function getPath(): string
     {
         return $this->path;
     }
 
+    /**
+     * @return null|string
+     */
     public function getDomain(): ?string
     {
         return $this->domain;
     }
 
-    public function getName(): string
+    /**
+     * @return null|string
+     */
+    public function getName(): ?string
     {
         return $this->name;
     }
 
+    /**
+     * @return array<string,string>
+     */
     public function getPatterns(): array
     {
         return $this->patterns;
     }
 
+    /**
+     * @return string[]
+     */
     public function getMethods(): array
     {
         return $this->methods;
     }
 
+    /**
+     * @return string[]
+     */
     public function getMiddlewares(): array
     {
         return $this->middlewares;
     }
 
+    /**
+     * @return string
+     */
     public function getSchemes(): array
     {
         return $this->schemes;
     }
 
+    /**
+     * @return array<string,mixed>
+     */
     public function getDefaults(): array
     {
         return $this->defaults;
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
     private function assertParamsContainValidName(array $params): void
     {
+        if (null === $params['name']) {
+            return;
+        }
+
         if (empty($params['name']) || !\is_string($params['name'])) {
-            throw new InvalidAnnotationException('@Route.name must be not an empty string.');
+            throw new InvalidAnnotationException(\sprintf(
+                '@Route.name must %s.',
+                empty($params['name']) ? 'be not an empty string' : 'contain only a string'
+            ));
         }
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
@@ -175,14 +208,14 @@ final class Route
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
     private function assertParamsContainValidMethods(array $params): void
     {
-        if (empty($params['methods']) || !\is_array($params['methods'])) {
-            throw new InvalidAnnotationException('@Route.methods must be not an empty array.');
+        if (!\is_array($params['methods'])) {
+            throw new InvalidAnnotationException('@Route.methods must contain only an array.');
         }
 
         foreach ($params['methods'] as $method) {
@@ -193,7 +226,7 @@ final class Route
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
@@ -211,7 +244,7 @@ final class Route
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
@@ -229,7 +262,7 @@ final class Route
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
@@ -247,7 +280,7 @@ final class Route
     }
 
     /**
-     * @param array $params
+     * @param array<string,mixed> $params
      *
      * @throws InvalidAnnotationException
      */
