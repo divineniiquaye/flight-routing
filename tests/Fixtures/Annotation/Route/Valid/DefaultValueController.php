@@ -42,4 +42,8 @@ class DefaultValueController
     public function hello(string $name = 'World')
     {
     }
+
+    private function notAccessed()
+    {
+    }
 }

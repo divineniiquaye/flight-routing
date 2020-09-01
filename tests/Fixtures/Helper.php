@@ -34,12 +34,16 @@ class Helper
         $result = [];
 
         foreach ($routes as $route) {
+            if (\is_object($controller = $route->getController())) {
+                $controller = \get_class($controller);
+            }
+
             $item                = [];
             $item['name']        = $route->getName();
             $item['path']        = $route->getPath();
             $item['domain']      = $route->getDomain();
             $item['methods']     = $route->getMethods();
-            $item['handler']     = \get_class($route->getController());
+            $item['handler']     = $controller;
             $item['middlewares'] = [];
             $item['schemes']     = $route->getSchemes();
             $item['defaults']    = $route->getDefaults();

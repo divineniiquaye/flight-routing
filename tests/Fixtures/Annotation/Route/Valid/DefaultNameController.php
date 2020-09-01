@@ -15,18 +15,14 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
-use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
-
-/**
- * @Route(
- *   name="home",
- *   path="/",
- *   methods={"GET"},
- *   attributes="foo"
- * )
- */
-class AttributesNotArray extends BlankRequestHandler
+class DefaultNameController
 {
+    /**
+     * @Route("/default", methods={"GET", "POST"})
+     */
+    public function default()
+    {
+    }
 }

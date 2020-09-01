@@ -15,25 +15,18 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
 /**
  * @Route(
- *   name="ping",
- *   path="/ping",
- *   methods={"HEAD", "GET"},
- *   middlewares={
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware",
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware"
- *   },
- *   defaults={
- *     "foo": "bar",
- *     "bar": "baz"
- *   }
+ *   name="home",
+ *   path="/",
+ *   methods={"GET"},
+ *   defaults="foo"
  * )
  */
-class PingRequestHandler extends BlankRequestHandler
+class DefaultsNotArray extends BlankRequestHandler
 {
 }

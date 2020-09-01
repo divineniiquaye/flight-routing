@@ -15,24 +15,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Abstracts;
 
-/**
- * @Route("/prefix", name="do.", domain="biurad.com")
- */
-class RouteWithPrefixController
+abstract class AbstractController
 {
-    /**
-     * @Route("/path", methods={"GET", "POST"}, name="action")
-     */
-    public function action()
-    {
-    }
+    abstract public function abstractRouteAction();
 
-    /**
-     * @Route("/path_two", methods={"GET", "POST"}, name="action_two")
-     */
-    public function actionTwo()
+    public function routeAction($arg1, $arg2 = 'defaultValue2', $arg3 = 'defaultValue3'): void
     {
     }
 }
