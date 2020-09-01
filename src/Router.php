@@ -347,7 +347,7 @@ class Router implements RequestHandlerInterface
             $controller = $route->getController();
 
             // Disable or enable HTTP request method prefix for action.
-            if (is_array($controller) && false !== strpos($route->getName(), '__restful')) {
+            if (\is_array($controller) && false !== \strpos($route->getName(), '__restful')) {
                 $controller[1] = \strtolower($request->getMethod()) . \ucfirst($controller[1]);
             }
 
@@ -356,7 +356,7 @@ class Router implements RequestHandlerInterface
 
             // For a class that implements RequestHandlerInterface, we will call handle()
             // if no method has been specified explicitly
-            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class)) {
+            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
                 $handler = [$handler, 'handle'];
             }
 
