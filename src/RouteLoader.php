@@ -30,7 +30,6 @@ use ReflectionClass;
 use ReflectionMethod;
 use RegexIterator;
 use Spiral\Annotations\AnnotationLocator;
-use Throwable;
 
 class RouteLoader
 {

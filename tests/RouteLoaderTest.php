@@ -53,17 +53,17 @@ class RouteLoaderTest extends TestCase
         ]);
 
         $this->assertSame([
-            'do.action',
-            'do.action_two',
-            'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
-            'home',
-            'lol',
             'sub-dir:foo',
             'sub-dir:bar',
-            'ping',
+            'do.action',
+            'do.action_two',
+            'lol',
             'action',
             'hello_without_default',
             'hello_with_default',
+            'ping',
+            'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
+            'home',
         ], Fixtures\Helper::routesToNames($loader->load()));
     }
 
