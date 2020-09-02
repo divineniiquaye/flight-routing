@@ -245,7 +245,10 @@ class RouteLoader
             $classReflection = new ReflectionClass($class);
 
             if ($classReflection->isAbstract()) {
-                throw $this->AbstractException($classReflection->getName());
+                throw new InvalidAnnotationException(\sprintf(
+                    'Annotations from class "%s" cannot be read as it is abstract.',
+                    $classReflection->getName()
+                ));
             }
             $annotationClass = $this->annotation->getClassAnnotation($classReflection, Annotation\Route::class);
 
@@ -351,13 +354,5 @@ class RouteLoader
         $files     = new RegexIterator($iterator, '/\.php$/');
 
         return \iterator_to_array($files);
-    }
-
-    private function AbstractException(string $className): Throwable
-    {
-        return new InvalidAnnotationException(\sprintf(
-            'Annotations from class "%s" cannot be read as it is abstract.',
-            $className
-        ));
     }
 }
