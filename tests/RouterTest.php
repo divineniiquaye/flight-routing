@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
+use BiuradPHP\Http\Factory\ResponseFactory;
 use BiuradPHP\Http\Factory\ServerRequestFactory;
 use BiuradPHP\Http\Response;
 use Flight\Routing\Exceptions\DuplicateRouteException;
@@ -30,6 +31,7 @@ use Flight\Routing\Route;
 use Flight\Routing\RouteCollector;
 use Flight\Routing\Router;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -398,6 +400,49 @@ class RouterTest extends TestCase
         $this->assertTrue($route->getController()->isRunned());
     }
 
+    public function testHandleMiddlewareWithContainer(): void
+    {
+        $route = new Fixtures\TestRoute();
+
+        $container = $this->getMockBuilder(ContainerInterface::class)->getMock();
+        $container->method('has')->willReturn(true);
+        $container->method('get')->willReturn(new Fixtures\BlankMiddleware());
+
+        $route->addMiddleware('container');
+
+        $router = new Router(new ResponseFactory(), null, null, $container);
+        $router->addRoute($route);
+
+        $response = $router->handle((new ServerRequestFactory())
+            ->createServerRequest(
+                $route->getMethods()[0],
+                $route->getPath()
+            ));
+
+        $this->assertTrue($response->hasHeader('Middleware'));
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+    }
+
+    public function testHandleMultipleMiddlewares(): void
+    {
+        $route = new Fixtures\TestRoute();
+
+        $middlewares = [[Fixtures\BlankMiddleware::class, Fixtures\BlankRequestHandler::class]];
+        $route->addMiddleware(...$middlewares);
+
+        $router = $this->getRouter();
+        $router->addRoute($route);
+
+        $response = $router->handle((new ServerRequestFactory())
+            ->createServerRequest(
+                $route->getMethods()[0],
+                $route->getPath()
+            ));
+
+        $this->assertTrue($response->hasHeader('Middleware'));
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+    }
+
     public function testHandleWithBrokenMiddleware(): void
     {
         $route = new Fixtures\TestRoute();
@@ -421,6 +466,28 @@ class RouterTest extends TestCase
         $this->assertTrue($middlewares[1]->isRunned());
         $this->assertFalse($middlewares[2]->isRunned());
         $this->assertFalse($route->getController()->isRunned());
+    }
+
+    public function testHandleInvalidMiddleware(): void
+    {
+        $route = new Fixtures\TestRoute();
+        $route->addMiddleware('none');
+
+        $router = $this->getRouter();
+        $router->addRoute($route);
+
+        $this->expectExceptionMessage(
+            'Middleware "string" is neither a string service name, a PHP callable, ' .
+            'a Psr\Http\Server\MiddlewareInterface instance, a Psr\Http\Server\RequestHandlerInterface instance, ' .
+            'or an array of such arguments'
+        );
+        $this->expectException(InvalidMiddlewareException::class);
+
+        $router->handle((new ServerRequestFactory())
+            ->createServerRequest(
+                $route->getMethods()[0],
+                $route->getPath()
+            ));
     }
 
     public function testHandleForUnallowedMethod(): void
@@ -644,11 +711,15 @@ class RouterTest extends TestCase
 
             $group->group(function (RouteCollector $group): void {
                 $group->head('greeting', 'hello/{me}', new Fixtures\BlankRequestHandler());
-            })->addPrefix('/v1')->addDomain('https://biurad.com');
+            })
+            ->addPrefix('/v1')
+            ->addMiddleware('hello')
+            ->addDomain('https://biurad.com');
         })->addPrefix('/api')->setName('api.');
 
         $router = $this->getRouter();
         $router->addRoute(...$collector->getCollection());
+        $router->addMiddleware(['hello' => Fixtures\BlankMiddleware::class]);
 
         $request = (new ServerRequestFactory())
             ->createServerRequest($expectedMethod, $expectedUri);
