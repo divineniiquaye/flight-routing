@@ -174,6 +174,7 @@ Remember the `routes.php` file you required in your `index.php`? This file be wh
 This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteCollectorInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
 
 ```php
+use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\{RouteCollector, RouteLoader};
 
 AnnotationRegistry::registerLoader('class_exists');
@@ -190,7 +191,7 @@ $loader->attachArray([
 ]);
 
 // Load all attached routes into router
-$router->addRoute(...$collector->getCollection());
+$router->addRoute(...$loader->load());
 
 ```
 
