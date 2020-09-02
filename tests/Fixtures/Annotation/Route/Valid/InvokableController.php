@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
+use Flight\Routing\Annotation\Route;
+
 /**
  * @Route("/here", name="lol", methods={"GET", "POST"}, schemes={"https"})
  */

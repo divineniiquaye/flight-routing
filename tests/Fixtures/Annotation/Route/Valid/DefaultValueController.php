@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
+use Flight\Routing\Annotation\Route;
+
 class DefaultValueController
 {
     /**

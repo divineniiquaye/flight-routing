@@ -15,16 +15,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
+use Flight\Routing\Interfaces\RouteCollectorInterface;
 
-use Flight\Routing\Annotation\Route;
-
-class DefaultNameController
-{
-    /**
-     * @Route("/default", methods={"GET", "POST"})
-     */
-    public function default()
-    {
-    }
-}
+/** @var RouteCollectorInterface $this */
+$this->get('foobar', '/foobar', function () {
+    return 'Hello World';
+});
