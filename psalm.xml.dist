@@ -21,6 +21,12 @@
     </projectFiles>
 
     <issueHandlers>
+        <ArgumentTypeCoercion>
+            <errorLevel type="suppress">
+                <file name="src/RouteLoader.php"/>
+            </errorLevel>
+        </ArgumentTypeCoercion>
+
         <PossiblyInvalidFunctionCall>
             <errorLevel type="suppress">
                 <file name="src/RouteCollector.php"/>
@@ -30,18 +36,27 @@
         <PossiblyNullArgument>
             <errorLevel type="suppress">
                 <file name="src/Route.php"/>
+                <file name="src/RouteLoader.php"/>
             </errorLevel>
         </PossiblyNullArgument>
 
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
+                <file name="src/RouteLoader.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
+
+        <PossiblyUndefinedMethod>
+            <errorLevel type="suppress">
+                <file name="src/RouteLoader.php"/>
+            </errorLevel>
+        </PossiblyUndefinedMethod>
 
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
+                <file name="src/RouteLoader.php"/>
                 <file name="src/Services/SimpleRouteCompiler.php"/>
                 <file name="src/Services/SimpleRouteMatcher.php"/>
             </errorLevel>

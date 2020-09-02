@@ -29,3 +29,9 @@ parameters:
         -
             message: "#^Parameter \\#3 \\$callable of method Flight\\\\Routing\\\\RouteCollector\\:\\:any\\(\\) expects \\(callable\\(\\): mixed\\)\\|object\\|string\\|null, array\\(object\\|string, string\\) given.$#"
             path: src/RouteCollector.php
+        -
+            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
+            path: src/RouteLoader.php
+        -
+            message: "#^Call to an undefined method Doctrine\\\\Common\\\\Annotations\\\\Reader\\|Spiral\\\\Annotations\\\\AnnotationLocator\\:\\:getClassAnnotation|getMethodAnnotations|findClasses|findMethods|\\(\\)$#"
+            path: src/RouteLoader.php

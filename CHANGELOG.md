@@ -18,6 +18,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added **resource** method to `Flight\Routing\RouteCollector` class and its interface
 - Added a **restful** method type of implementation for api usage with named prefix `__restful`
 - Added `Flight\Routing\Traits\CastingTrait` to reduce code complexity in `Flight\Routing\Route` class
+- Added `Flight\Routing\RouteLoader` class for loading annotations and file callable
 
 ### Changed
 - Made few changes to `README.md` file

@@ -108,12 +108,12 @@ Please note that the following snippets only covers how to use this router in a 
 
 It's not required, but you can set `namespace method parameter's value to eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
-This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware
+This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http-galaxy] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware
 
 run this in command line if the package has not be added.
 
 ```bash
-composer require biurad/biurad-http
+composer require biurad/http-galaxy
 ```
 
 Flight routing allows you to call any controller action with namespace using `*<namespace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
@@ -167,7 +167,34 @@ Remember the `routes.php` file you required in your `index.php`? This file be wh
 
 > The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callable,invocable class, or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it to be constructed on demand.
 
-### Basic routing
+### Loading Routes
+
+---
+
+This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteCollectorInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
+
+```php
+use Flight\Routing\{RouteCollector, RouteLoader};
+
+AnnotationRegistry::registerLoader('class_exists');
+
+$loader = new RouteLoader();
+$loader->attach('src/Controller'); // Load annotations from classes
+$loader->attach('routes/api.php'); // Load routes from file
+
+// or attach an array
+$loader->attachArray([
+    'src/Controller',
+    'src/Bundle/BundleName/Controller',
+    'routes/api.php',
+]);
+
+// Load all attached routes into router
+$router->addRoute(...$collector->getCollection());
+
+```
+
+### Basic Routing
 
 ---
 
@@ -706,8 +733,6 @@ $collector->resource('user', '/user/{id:\d+}', UserController::class);
 If these offered routes do not fit your needs, you may create your own router matcher and add it to your `router collector`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its four methods:
 
 ```php
-<?php
-
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 
@@ -828,7 +853,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [Biurad Lap]: https://team.biurad.com
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
-[biurad-http]: https://github.com/biurad/biurad-http
+[biurad-http-galaxy]: https://github.com/biurad/php-http-galaxy
 [Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
 [DefaultMatcher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/SimpleRouteMatcher.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
