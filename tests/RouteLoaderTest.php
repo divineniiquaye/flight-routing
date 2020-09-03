@@ -52,19 +52,21 @@ class RouteLoaderTest extends TestCase
             'non-existing-file.php',
         ]);
 
+        $routes = array_filter(Fixtures\Helper::routesToNames($loader->load()));
+
         $this->assertSame([
-            'sub-dir:foo',
-            'sub-dir:bar',
-            'do.action',
-            'do.action_two',
-            'lol',
+            'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
             'action',
             'hello_without_default',
             'hello_with_default',
-            'ping',
-            'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
             'home',
-        ], Fixtures\Helper::routesToNames($loader->load()));
+            'lol',
+            'ping',
+            'do.action',
+            'do.action_two',
+            'sub-dir:bar',
+            'sub-dir:foo',
+        ], $routes);
     }
 
     /**
