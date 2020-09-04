@@ -289,12 +289,22 @@ class Router implements RequestHandlerInterface
                 $request->getMethod(),
                 $requestUri->getScheme(),
                 $requestUri->getHost(),
-                \rawurldecode($requestPath),
+                \rawurldecode(\strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath),
             ]
         );
-        $request = $request->withAttribute(Route::class, $route);
 
-        return new RouteHandler($this->generateResponse($route), ($this->response)());
+        if ($route instanceof RouteInterface) {
+            $request = $request->withAttribute(Route::class, $route);
+
+            return new RouteHandler($this->generateResponse($route), ($this->response)());
+        }
+
+        throw new RouteNotFoundException(
+            \sprintf(
+                'Unable to find the controller for path "%s". The route is wrongly configured.',
+                $requestPath
+            )
+        );
     }
 
     /**
@@ -302,13 +312,13 @@ class Router implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        // Get the Route Handler ready for dispatching
         $routingResults = $this->match($request);
-        $route          = $request->getAttribute(Route::class);
 
-        // Get all available middlewares
-        $middlewares = $route instanceof Route ? $route->getMiddlewares() : [];
+        /** @var RouteInterface $route */
+        $route = $request->getAttribute(Route::class);
 
-        if (\count($middlewares = $this->mergeMiddlewares($middlewares)) > 0) {
+        if (\count($middlewares = $this->mergeMiddlewares($route->getMiddlewares())) > 0) {
             $middleware = $this->pipeline->pipeline(...$middlewares);
 
             // This middleware is in the priority map; but, this is the first middleware we have
@@ -376,11 +386,10 @@ class Router implements RequestHandlerInterface
      *
      * @throws MethodNotAllowedException
      * @throws UriHandlerException
-     * @throws RouteNotFoundException
      *
-     * @return RouteInterface
+     * @return null|RouteInterface
      */
-    private function marshalMatchedRoute(array $process): RouteInterface
+    private function marshalMatchedRoute(array $process): ?RouteInterface
     {
         foreach ($this->routes as $route) {
             // Let's match the routes
@@ -400,12 +409,7 @@ class Router implements RequestHandlerInterface
             ));
         }
 
-        throw new  RouteNotFoundException(
-            \sprintf(
-                'Unable to find the controller for path "%s". The route is wrongly configured.',
-                $process[3]
-            )
-        );
+        return null;
     }
 
     /**
