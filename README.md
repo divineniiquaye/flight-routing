@@ -179,7 +179,7 @@ use Flight\Routing\{RouteCollector, RouteLoader};
 
 AnnotationRegistry::registerLoader('class_exists');
 
-$loader = new RouteLoader();
+$loader = new RouteLoader(new RouteCollector());
 $loader->attach('src/Controller'); // Load annotations from classes
 $loader->attach('routes/api.php'); // Load routes from file
 
