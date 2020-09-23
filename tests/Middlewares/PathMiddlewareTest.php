@@ -17,27 +17,28 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Middlewares;
 
-use BiuradPHP\Http\Factory\ResponseFactory;
-use BiuradPHP\Http\Factory\ServerRequestFactory;
 use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Route;
-use Flight\Routing\Router;
-use PHPUnit\Framework\TestCase;
+use Flight\Routing\RoutePipeline;
+use Flight\Routing\Tests\BaseTestCase;
+use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * PathMiddlewareTest
  */
-class PathMiddlewareTest extends TestCase
+class PathMiddlewareTest extends BaseTestCase
 {
     public function testProcessStatus(): void
     {
-        $router = new Router(new ResponseFactory());
-        $router->addMiddleware(new PathMiddleware());
+        $router   = $this->getRouter();
+        $pipeline = new RoutePipeline();
+
+        $pipeline->addMiddleware(new PathMiddleware());
         $router->addRoute(new Route('path_middleware_200', ['GET'], '/foo', [$this, 'handlePath']));
 
-        $response = $router->handle((new ServerRequestFactory())->createServerRequest('GET', 'foo'));
+        $response = $pipeline->process(new ServerRequest('GET', 'foo'), $router);
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -53,18 +54,18 @@ class PathMiddlewareTest extends TestCase
      */
     public function testProcess(string $uriPath, string $expectedPath, bool $expectsStatus): void
     {
-        $router = new Router(new ResponseFactory());
-        $router->addMiddleware(new PathMiddleware($expectsStatus));
+        $router   = $this->getRouter();
+        $pipeline = new RoutePipeline();
 
+        $pipeline->addMiddleware(new PathMiddleware());
         $router->addRoute(new Route('path_middleware', ['GET', 'POST'], $uriPath, [$this, 'handlePath']));
-        $requestFactory = new ServerRequestFactory();
 
-        $response = $router->handle($requestFactory->createServerRequest('GET', $expectedPath));
+        $response = $pipeline->process(new ServerRequest('GET', $expectedPath), $router);
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 301 : 302, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
 
-        $response = $router->handle($requestFactory->createServerRequest('POST', $expectedPath));
+        $response = $pipeline->process(new ServerRequest('POST', $expectedPath), $router);
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 308 : 307, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
@@ -84,7 +85,7 @@ class PathMiddlewareTest extends TestCase
             // name                      => [$uriPath, $expectedPath,   $expectsStatus ]
             'prefix-bare-bare'           => ['/foo',   'foo/',          true],
             'root-prefix-tail'           => ['/foo',   '/foo/',         true],
-            'prefix-surround-tail'       => ['/foo/',  '/foo',         false],
+            'prefix-surround-tail'       => ['/foo/',  '/foo',         true],
         ];
     }
 }

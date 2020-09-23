@@ -23,12 +23,11 @@ use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCollector;
-use PHPUnit\Framework\TestCase;
 
 /**
  * RouteCollectorTest
  */
-class RouteCollectorTest extends TestCase
+class RouteCollectorTest extends BaseTestCase
 {
     public function testDefaultCollection(): void
     {
@@ -42,11 +41,7 @@ class RouteCollectorTest extends TestCase
         $expectedRoute      = new Fixtures\TestRoute();
         $expectedCollection = new RouteCollection();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-        $routeFactory->method('createCollection')->willReturn($expectedCollection);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute, $expectedCollection);
         $builtRoute = $collector->map(
             'test',
             [$collector::METHOD_GET],
@@ -63,10 +58,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->head('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
@@ -76,10 +68,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->get('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
@@ -89,10 +78,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->post('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
@@ -102,10 +88,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->put('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
@@ -115,10 +98,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->patch('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
@@ -128,10 +108,7 @@ class RouteCollectorTest extends TestCase
     {
         $expectedRoute = new Fixtures\TestRoute();
 
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-
-        $collector  = new RouteCollector($routeFactory);
+        $collector  = $this->getRouteCollector($expectedRoute);
         $builtRoute = $collector->delete('test', '/test', new Fixtures\BlankRequestHandler());
 
         $this->assertSame($expectedRoute, $builtRoute);
