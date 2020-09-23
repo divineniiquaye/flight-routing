@@ -18,7 +18,7 @@ parameters:
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteCollector.php
         -
-            message: "#^Parameter \\#1 \\$callable of method DivineNii\\\\Invoker\\\\Interfaces\\\\InvokerInterface\\:\\:call\\(\\) expects array<string>\\|\\(callable\\(\\): mixed\\)\\|string, array<string>\\|\\(callable\\(\\): mixed\\)\\|object\\|string given.$#"
+            message: "#^Call to an undefined method DivineNii\\\\Invoker\\\\Interfaces\\\\InvokerInterface\\:\\:getContainer\\(\\).$#"
             path: src/Router.php
         -
             message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
@@ -35,3 +35,15 @@ parameters:
         -
             message: "#^Call to an undefined method Doctrine\\\\Common\\\\Annotations\\\\Reader\\|Spiral\\\\Annotations\\\\AnnotationLocator\\:\\:getClassAnnotation|getMethodAnnotations|findClasses|findMethods|\\(\\)$#"
             path: src/RouteLoader.php
+        -
+            message: "#^Call to function is_callable\\(\\) with mixed will always evaluate to false.$#"
+            path: src/Traits/MiddlewareTrait.php
+        -
+            message: "#^Parameter \\#1 \\$var of function count expects array\\|Countable, callable given.$#"
+            path: src/Traits/MiddlewareTrait.php
+        -
+            message: "#^Result of && is always false.$#"
+            path: src/Traits/MiddlewareTrait.php
+        -
+            message: "#^Cannot access offset 1 on callable\\(\\): mixed.$#"
+            path: src/Traits/MiddlewareTrait.php
