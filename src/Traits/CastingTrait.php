@@ -17,10 +17,51 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
+use Closure;
 use Flight\Routing\Exceptions\InvalidControllerException;
 
 trait CastingTrait
 {
+    /**
+     * @internal
+     *
+     * @return array<string,mixed>
+     */
+    public function __serialize(): array
+    {
+        return [
+            'name'          => $this->name,
+            'path'          => $this->path,
+            'host'          => $this->domain,
+            'schemes'       => $this->schemes,
+            'defaults'      => $this->defaults,
+            'patterns'      => $this->patterns,
+            'methods'       => $this->methods,
+            'middlewares'   => $this->middlewares,
+            'arguments'     => $this->arguments,
+            'handler'       => $this->controller instanceof Closure ? [$this, 'getController'] : $this->controller,
+        ];
+    }
+
+    /**
+     * @internal
+     *
+     * @param array<string,mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->name          = $data['name'];
+        $this->path          = $data['path'];
+        $this->domain        = $data['host'];
+        $this->defaults      = $data['defaults'];
+        $this->schemes       = $data['schemes'];
+        $this->patterns      = $data['patterns'];
+        $this->methods       = $data['methods'];
+        $this->controller    = $data['handler'];
+        $this->middlewares   = $data['middlewares'];
+        $this->arguments     = $data['arguments'];
+    }
+
     /**
      * {@inheritdoc}
      *
