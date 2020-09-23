@@ -23,7 +23,7 @@
     <issueHandlers>
         <ArgumentTypeCoercion>
             <errorLevel type="suppress">
-                <file name="src/RouteLoader.php"/>
+                <referencedFunction name="ReflectionClass::__construct"/>
             </errorLevel>
         </ArgumentTypeCoercion>
 
@@ -33,17 +33,9 @@
             </errorLevel>
         </PossiblyInvalidFunctionCall>
 
-        <PossiblyNullArgument>
-            <errorLevel type="suppress">
-                <file name="src/Route.php"/>
-                <file name="src/RouteLoader.php"/>
-            </errorLevel>
-        </PossiblyNullArgument>
-
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
-                <file name="src/RouteLoader.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
 
@@ -52,6 +44,36 @@
                 <file name="src/RouteLoader.php"/>
             </errorLevel>
         </PossiblyUndefinedMethod>
+
+        <UndefinedInterfaceMethod>
+            <errorLevel type="suppress">
+                <referencedMethod name="DivineNii\Invoker\Interfaces\InvokerInterface::getContainer"/>
+            </errorLevel>
+        </UndefinedInterfaceMethod>
+
+        <InvalidScalarArgument>
+            <errorLevel type="suppress">
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+            </errorLevel>
+        </InvalidScalarArgument>
+
+        <InvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/Traits/MiddlewareTrait.php"/>
+            </errorLevel>
+        </InvalidArgument>
+
+        <InvalidArrayAccess>
+            <errorLevel type="suppress">
+                <file name="src/Traits/MiddlewareTrait.php"/>
+            </errorLevel>
+        </InvalidArrayAccess>
+
+        <InvalidCatch>
+            <errorLevel type="suppress">
+                <referencedClass name="Psr\Container\NotFoundExceptionInterface"/>
+            </errorLevel>
+        </InvalidCatch>
 
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
@@ -64,8 +86,8 @@
 
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
-                <file name="src/Route.php"/>
                 <file name="src/Annotation/Route.php"/>
+                <file name="src/Traits/CastingTrait.php" />
                 <file name="src/Services/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
