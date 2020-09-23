@@ -37,5 +37,5 @@ interface PublisherInterface
      *
      * @return bool
      */
-    public function publish($content, ?EmitterInterface $emitter): bool;
+    public function publish($content, ?EmitterInterface $emitter = null): bool;
 }

@@ -36,7 +36,7 @@ class Publisher implements PublisherInterface
      *
      * @throws LogicException
      */
-    public function publish($content, ?EmitterInterface $emitter): bool
+    public function publish($content, ?EmitterInterface $emitter = null): bool
     {
         try {
             if (null !== $emitter && $content instanceof PsrResponseInterface) {
