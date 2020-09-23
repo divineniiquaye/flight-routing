@@ -122,7 +122,7 @@ trait ValidationTrait
     /**
      * @param callable|object|string|string[] $controller
      *
-     * @return callable|object|string|string[]
+     * @return mixed
      */
     private function resolveController($controller)
     {

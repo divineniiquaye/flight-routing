@@ -52,6 +52,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Moved and Renamed `Flight\Routing\RouteValidation` trait to `Flight\Routing\Traits\ValidationTrait`
 - Moved **resolveController** and **mergeAttributes** methods in `Flight\Routing\Router` class to `Flight\Routing\Traits\ValidationTrait`
 - Updated `Flight\Routing\Publisher::publish` method and it's interface second arguments default to null.
+- Updated `Flight\Routing\Router::generateUri` method return type to `Psr\Http\Message\UriInterface` instance
 - Updated `Flight\Routing\Router` class constructor to add `Psr\Http\Message\UriFactoryInterface` to arguments
 
 ### Fixed

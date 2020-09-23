@@ -26,12 +26,12 @@ use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Middlewares\MiddlewareDispatcher;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Message\UriFactoryInterface;
+use Psr\Http\Message\UriInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
@@ -51,14 +51,11 @@ class Router implements RequestHandlerInterface
     /** @var InvokerInterface */
     private $resolver;
 
-    /** @var MiddlewareDispatcher */
-    private $pipeline;
-
-    /** @var null|ContainerInterface */
-    private $container;
-
     /** @var callable */
     private $response;
+
+    /** @var UriFactoryInterface */
+    private $uriFactory;
 
     /** @var string */
     private $namespace;
@@ -66,24 +63,21 @@ class Router implements RequestHandlerInterface
     /** @var RouteInterface[] */
     private $routes = [];
 
-    /** @var array<string,mixed> */
-    private $middlewares = [];
-
     /** @var array<int,array<string,mixed>> */
     private $attributes = [];
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
+        UriFactoryInterface $uriFactory,
         ?RouteMatcherInterface $matcher = null,
         ?InvokerInterface $resolver = null,
         ?ContainerInterface $container = null
     ) {
-        $this->container = $container;
-        $this->pipeline  = new MiddlewareDispatcher($container);
         $this->resolver  = $resolver ?? new Invoker([], $container);
         $this->matcher   = $matcher ?? new Services\SimpleRouteMatcher();
 
-        $this->response = [$responseFactory, 'createResponse'];
+        $this->uriFactory      = $uriFactory;
+        $this->response        = [$responseFactory, 'createResponse'];
     }
 
     /**
@@ -94,16 +88,6 @@ class Router implements RequestHandlerInterface
     public function getRoutes(): array
     {
         return \array_values($this->routes);
-    }
-
-    /**
-     * Gets the router middlewares
-     *
-     * @return array<int,array<array<string,mixed>|MiddlewareInterface|string>>
-     */
-    public function getMiddlewares(): array
-    {
-        return \array_values($this->middlewares);
     }
 
     public function setNamespace(string $namespace): void
@@ -130,31 +114,6 @@ class Router implements RequestHandlerInterface
             }
 
             $this->routes[$name] = $route;
-        }
-    }
-
-    /**
-     * Adds the given middleware(s) to the router
-     *
-     * @param array<string,mixed>|MiddlewareInterface|string ...$middlewares
-     *
-     * @throws DuplicateRouteException
-     */
-    public function addMiddleware(...$middlewares): void
-    {
-        foreach ($middlewares as $middleware) {
-            if (\is_array($middleware) || \is_callable($middleware)) {
-                $this->pipeline->add($middleware);
-
-                continue;
-            }
-            $hash = \is_object($middleware) ? \spl_object_hash($middleware) : \md5($middleware);
-
-            if (isset($this->middlewares[$hash])) {
-                throw new DuplicateRouteException(\sprintf('A middleware with the hash "%s" already exists.', $hash));
-            }
-
-            $this->middlewares[$hash] = $middleware;
         }
     }
 
@@ -234,9 +193,9 @@ class Router implements RequestHandlerInterface
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
      *
-     * @return string of fully qualified URL for named route
+     * @return UriInterface of fully qualified URL for named route
      */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): string
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): UriInterface
     {
         try {
             $route = $this->getRoute($routeName);
@@ -263,7 +222,9 @@ class Router implements RequestHandlerInterface
             $createdUri .= '?' . \http_build_query($queryParams);
         }
 
-        return \rtrim(\strpos($createdUri, '://') !== false ? $createdUri : $prefix . $createdUri, '/');
+        $createdUri = \rtrim(\strpos($createdUri, '://') !== false ? $createdUri : $prefix . $createdUri, '/');
+
+        return $this->uriFactory->createUri($createdUri);
     }
 
     /**
@@ -318,30 +279,18 @@ class Router implements RequestHandlerInterface
         /** @var RouteInterface $route */
         $route = $request->getAttribute(Route::class);
 
-        if (\count($middlewares = $this->mergeMiddlewares($route->getMiddlewares())) > 0) {
-            $middleware = $this->pipeline->pipeline(...$middlewares);
+        // Add Middlewares on route ...
+        $pipeline = new RoutePipeline($this->resolver->getContainer());
+        $pipeline->addMiddleware(...$route->getMiddlewares());
 
+        if (\count($pipeline->getMiddlewares()) > 0) {
             // This middleware is in the priority map; but, this is the first middleware we have
             // encountered from the map thus far. We'll save its current index plus its index
             // from the priority map so we can compare against them on the next iterations.
-            return $middleware->process($request, $routingResults);
+            return $pipeline->process($request, $routingResults);
         }
 
         return $routingResults->handle($request);
-    }
-
-    /**
-     * Merge route middlewares with Router Middlewares.
-     *
-     * @param mixed[] $middlewares
-     *
-     * @return MiddlewareInterface[]|mixed[]
-     */
-    private function mergeMiddlewares(array $middlewares): array
-    {
-        $this->pipeline->add(...$this->getMiddlewares());
-
-        return \array_merge($middlewares, $this->pipeline->getMiddlewareStack());
     }
 
     /**
