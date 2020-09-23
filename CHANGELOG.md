@@ -20,6 +20,8 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added `Flight\Routing\Traits\CastingTrait` to reduce code complexity in `Flight\Routing\Route` class
 - Added `Flight\Routing\RouteLoader` class for loading annotations and file callable
 - Added `Flight\Routing\Middlewares\PathMiddleware` class tof fix issues with right uri path
+- Added `Flight\Routing\RoutePipeline` class for middleware routing, and simplified `Flight\Routing\Router` class
+- Added `Flight\Routing\Traits\MiddlewareTrait` to simplify the `Flight\Routing\RoutePipeline` class
 
 ### Changed
 - Made few changes to `README.md` file
@@ -75,5 +77,6 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Deleted `Flight\RoutingMiddlewares\ContentTypeMiddleware` class
 - Deleted `Flight\RoutingMiddlewares\ContentTypeOptionsMiddleware` class
 - Deleted `Flight\RoutingMiddlewares\MethodOverrideMiddleware` class
+- Deleted `Flight\RoutingMiddlewares\MiddlewareDispatcher` class in favor of `Flight\Routing\RoutePipeline` class
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
