@@ -311,7 +311,7 @@ class Router implements RequestHandlerInterface
             }
 
             $handler   = $this->resolveController($controller);
-            $arguments = [ServerRequestInterface::class => $request, ResponseInterface::class => $response];
+            $arguments = [get_class($request) => $request, get_class($response) => $response];
 
             // For a class that implements RequestHandlerInterface, we will call handle()
             // if no method has been specified explicitly
