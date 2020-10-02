@@ -20,9 +20,69 @@ namespace Flight\Routing\Traits;
 use Closure;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Router;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 trait ValidationTrait
 {
+    /**
+     * @param callable|object|string|string[] $controller
+     *
+     * @return mixed
+     */
+    protected function resolveNamespace($controller)
+    {
+        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
+            if (
+                \is_string($controller) &&
+                !\class_exists($controller) &&
+                false === \stripos($controller, $this->namespace)
+            ) {
+                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
+            }
+
+            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
+                $controller[0] = $this->namespace . $controller[0];
+            }
+        }
+
+        return $controller;
+    }
+
+    /**
+     * @param ServerRequestInterface $request
+     * @param RouteInterface         $route
+     *
+     * @return mixed
+     */
+    protected function resolveController(ServerRequestInterface $request, RouteInterface &$route)
+    {
+        $controller = $route->getController();
+
+        // Disable or enable HTTP request method prefix for action.
+        if (
+            \is_array($controller) &&
+            false !== \strpos($route->getName(), '__restful')
+        ) {
+            $controller[1] = \strtolower($request->getMethod()) . \ucfirst($controller[1]);
+        }
+
+        $handler = $this->resolveNamespace($controller);
+
+        // For a class that implements RequestHandlerInterface, we will call handle()
+        // if no method has been specified explicitly
+        if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
+            $handler = [$handler, 'handle'];
+        }
+
+        // If controller is instance of RequestHandlerInterface
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler->handle($request);
+        }
+
+        return $handler;
+    }
+
     /**
      * Check if given request method matches given route method.
      *
@@ -117,29 +177,5 @@ trait ValidationTrait
         }
 
         return $route;
-    }
-
-    /**
-     * @param callable|object|string|string[] $controller
-     *
-     * @return mixed
-     */
-    private function resolveController($controller)
-    {
-        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
-            if (
-                \is_string($controller) &&
-                !\class_exists($controller) &&
-                false === \stripos($controller, $this->namespace)
-            ) {
-                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
-            }
-
-            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
-                $controller[0] = $this->namespace . $controller[0];
-            }
-        }
-
-        return $controller;
     }
 }

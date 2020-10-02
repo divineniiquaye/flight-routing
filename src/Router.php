@@ -303,25 +303,11 @@ class Router implements RequestHandlerInterface
     private function generateResponse(RouteInterface $route): callable
     {
         return function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-            $controller = $route->getController();
+            $handler   = $this->resolveController($request, $route);
+            $arguments = [\get_class($request) => $request, \get_class($response) => $response];
 
-            // Disable or enable HTTP request method prefix for action.
-            if (\is_array($controller) && false !== \strpos($route->getName(), '__restful')) {
-                $controller[1] = \strtolower($request->getMethod()) . \ucfirst($controller[1]);
-            }
-
-            $handler   = $this->resolveController($controller);
-            $arguments = [get_class($request) => $request, get_class($response) => $response];
-
-            // For a class that implements RequestHandlerInterface, we will call handle()
-            // if no method has been specified explicitly
-            if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
-                $handler = [$handler, 'handle'];
-            }
-
-            // If controller is instance of RequestHandlerInterface
-            if ($handler instanceof RequestHandlerInterface) {
-                return $handler->handle($request);
+            if ($handler instanceof ResponseInterface) {
+                return $handler;
             }
 
             return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));

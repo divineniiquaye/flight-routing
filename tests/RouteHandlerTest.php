@@ -83,6 +83,19 @@ class RouteHandlerTest extends TestCase
         $this->assertEquals($contentType, $response->getHeaderLine(RouteHandler::CONTENT_TYPE));
     }
 
+    public function testEchoHandleResponse(): void
+    {
+        $call = static function (ServerRequestInterface $request, ResponseInterface $response): void {
+            echo 'Hello World To Flight Routing';
+        };
+
+        $response =  (new RouteHandler($call, (new ResponseFactory())->createResponse()))
+            ->handle(GuzzleHttpPsr7Factory::fromGlobalRequest());
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals('Hello World To Flight Routing', (string) $response->getBody());
+    }
+
     /**
      * @return Generator
      */
