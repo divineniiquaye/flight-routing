@@ -35,7 +35,7 @@
 
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
-                <file name="src/Router.php"/>
+                <file name="src/Traits/ValidationTrait.p"/>
             </errorLevel>
         </PossiblyInvalidArgument>
 
