@@ -35,7 +35,7 @@
 
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
-                <file name="src/Traits/ValidationTrait.p"/>
+                <file name="src/Traits/ValidationTrait.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
 
