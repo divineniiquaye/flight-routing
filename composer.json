@@ -27,10 +27,10 @@
         "ext-json": "*",
         "psr/http-factory": "^1.0",
         "laminas/laminas-stratigility": "^3.2",
-        "divineniiquaye/php-invoker": "^0.1"
+        "divineniiquaye/php-invoker": "^0.9"
     },
     "require-dev": {
-        "biurad/biurad-http": "^0.1",
+        "biurad/http-galaxy": "^0.1",
         "composer/package-versions-deprecated": "^1.8",
         "doctrine/annotations": "^1.10",
         "phpstan/phpstan": "^0.12",
