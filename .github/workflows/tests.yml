@@ -53,14 +53,16 @@ jobs:
         run: |
           if [ "${{ !matrix.coverage }}" == "false" ]; then
             vendor/bin/phpunit --no-coverage
-          fi
-          if [ "${{ matrix.coverage }}" == "true" ]; then
+          else
             vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
             bash <(curl -s https://codecov.io/bash) -f coverage.clover
           fi
 
       - name: Test with Phpstan
-        run: vendor/bin/phpstan analyse
+        run: |
+          if [ "${{ matrix.coverage }}" == "true" ]; then
+            vendor/bin/phpstan analyse
+          fi
 
       - name: Test with Psalm
         run: vendor/bin/psalm
