@@ -8,12 +8,10 @@ parameters:
 
     ignoreErrors:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
+        - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
         -
             message: "#^Interface Flight\\\\Routing\\\\Interfaces\\\\RouteCollectionInterface extends generic interface IteratorAggregate but does not specify its types\\: TKey, TValue$#"
             path: src/Interfaces/RouteCollectionInterface.php
-        -
-            message: "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
-            path: src/Route.php
         -
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteCollector.php
@@ -47,3 +45,9 @@ parameters:
         -
             message: "#^Cannot access offset 1 on callable\\(\\): mixed.$#"
             path: src/Traits/MiddlewareTrait.php
+        -
+            message: "#^Return type \\(\\int) of method Flight\\\\Routing\\\\RouteCollection\\:\\:count\\(\\) should be covariant with return type \\(int<0, max>\\) of method Countable\\:\\:count\\(\\).$#"
+            path: src/RouteCollection.php
+        -
+            message: "#^Parameter \\#2 $start of function substr expects int, int<0, max>\\|string given.$#"
+            path: src/Router.php
