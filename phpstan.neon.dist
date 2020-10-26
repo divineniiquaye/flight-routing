@@ -48,6 +48,3 @@ parameters:
         -
             message: "#^Return type \\(int\\) of method Flight\\\\Routing\\\\RouteCollection\\:\\:count\\(\\) should be covariant with return type \\(int<0, max>\\) of method Countable\\:\\:count\\(\\).$#"
             path: src/RouteCollection.php
-        -
-            message: "#^Parameter \\#2 $start of function substr expects int, int<0, max>\\|string given.$#"
-            path: src/Router.php
