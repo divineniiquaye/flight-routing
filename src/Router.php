@@ -242,7 +242,11 @@ class Router implements RequestHandlerInterface
     {
         $requestUri  = $request->getUri();
         $basePath    = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
-        $requestPath = \substr($requestUri->getPath(), 'cli' === PHP_SAPI ? \strlen($basePath) : '') ?: '/';
+        $requestPath = \substr($requestUri->getPath(), \strlen($basePath)) ?: '/';
+
+        if ('cli' === PHP_SAPI) {
+            $requestPath = $requestUri->getPath();
+        }
 
         // Get the request matching format.
         $route = $this->marshalMatchedRoute(
