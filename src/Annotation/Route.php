@@ -98,7 +98,7 @@ final class Route
      * @param string[]            $methods
      * @param string[]            $patterns
      * @param string[]            $defaults
-     * @param string[]            $domain
+     * @param string              $domain
      * @param string[]            $schemes
      * @param string[]            $middlewares
      */
