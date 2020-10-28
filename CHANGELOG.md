@@ -22,6 +22,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added `Flight\Routing\Middlewares\PathMiddleware` class tof fix issues with right uri path
 - Added `Flight\Routing\RoutePipeline` class for middleware routing, and simplified `Flight\Routing\Router` class
 - Added `Flight\Routing\Traits\MiddlewareTrait` to simplify the `Flight\Routing\RoutePipeline` class
+- Added `Flight\Routing\Interface\RouteListenerInterface` to provides an opportunity to update matched route before executed
 
 ### Changed
 - Made few changes to `README.md` file
@@ -62,6 +63,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Fixed minor issues with **PSR-15** middlewares usage
 - Fixed cache control middleware response with IE < 9 in `Flight\RoutingMiddlewares\CacheControlMiddleware` class
 - Fixed PSR-4 autoloading standard issues in tests directory: **Middlewares** and **Services**
+- Fixed matching request path with cli failure
 
 ### Removed
 - Removed proxy usage, use `Flight\Routing\RouteCollector` class instead

@@ -25,6 +25,7 @@ use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -62,6 +63,9 @@ class Router implements RequestHandlerInterface
 
     /** @var RouteInterface[] */
     private $routes = [];
+
+    /** @var RouteListenerInterface[] */
+    private $listeners = [];
 
     /** @var array<int,array<string,mixed>> */
     private $attributes = [];
@@ -114,6 +118,16 @@ class Router implements RequestHandlerInterface
             }
 
             $this->routes[$name] = $route;
+
+    /**
+     * Adds the given route(s) listener to the router
+     *
+     * @param RouteListenerInterface ...$listener
+     */
+    public function addRouteListener(RouteListenerInterface ...$listeners): void
+    {
+        foreach ($listeners as $listener) {
+            $this->listeners[] = $listener;
         }
     }
 
@@ -314,7 +328,10 @@ class Router implements RequestHandlerInterface
                 return $handler;
             }
 
-            return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));
+            foreach ($this->listeners as $listener) {
+                $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
+            }
+                return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));
         };
     }
 

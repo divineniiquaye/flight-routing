@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
+use DivineNii\Invoker\Exceptions\NotEnoughParametersException;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
@@ -56,6 +57,27 @@ class RouterTest extends BaseTestCase
         $router->addRoute(...$routes);
 
         $this->assertSame($routes, $router->getRoutes());
+    }
+
+    public function testaddRouteListener(): void
+    {
+        $router  = $this->getRouter();
+        $route   = new Route('phpinfo', [RouteCollector::METHOD_GET], 'phpinfo', 'phpinfo');
+        $request = new ServerRequest($route->getMethods()[0], $route->getPath());
+
+        $router->addRoute($route);
+
+        try {
+            $router->handle($request);
+        } catch (NotEnoughParametersException $e) {
+            $this->assertEquals('Unable to invoke the callable because no value was given for parameter 1 ($what)', $e->getMessage());
+        }
+
+        $router->addRouteListener(new Fixtures\PhpInfoListener());
+        $response = $router->handle($request);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals('text/plain; charset=utf-8', $response->getHeaderLine('Content-Type'));
     }
 
     public function testSetNamespace(): void
