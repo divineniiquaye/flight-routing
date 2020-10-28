@@ -92,18 +92,18 @@ final class Route
     private $defaults;
 
     /**
-     * @param array<string,mixed> $params      data array managed by the Doctrine Annotations library or the path
-     * @param null|string         $path
-     * @param string              $name
-     * @param string[]            $methods
-     * @param string[]            $patterns
-     * @param string[]            $defaults
-     * @param string              $domain
-     * @param string[]            $schemes
-     * @param string[]            $middlewares
+     * @param array<string,mixed>|string $params      data array managed by the Doctrine Annotations library or the path
+     * @param null|string                $path
+     * @param string                     $name
+     * @param string[]                   $methods
+     * @param string[]                   $patterns
+     * @param string[]                   $defaults
+     * @param string                     $domain
+     * @param string[]                   $schemes
+     * @param string[]                   $middlewares
      */
     public function __construct(
-        array $params = [],
+        $params = [],
         ?string $path = null,
         string $name = null,
         array $methods = [],
@@ -113,7 +113,7 @@ final class Route
         array $schemes = [],
         array $middlewares = []
     ) {
-        if (isset($params['value'])) {
+        if (is_array($params) && isset($params['value'])) {
             $params['path'] = $params['value'];
             unset($params['value']);
         } elseif (\is_string($params)) {
