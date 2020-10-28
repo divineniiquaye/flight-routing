@@ -272,51 +272,42 @@ class RouteLoaderTest extends TestCase
     }
 
     /**
+     * @requires PHP 8
+     *
      * @runInSeparateProcess
      */
-    public function testLoadWithCache(): void
+    public function testLoadAttribute(): void
     {
-        $cache = $this->createMock(CacheInterface::class);
-
-        $cache->method('has')
-            ->will($this->returnCallback(function () {
-                static $counter = 0;
-
-                return ++$counter > 1;
-            }));
-
-        $cache->expects($this->exactly(1))
-            ->method('set')
-            ->willReturn(null);
-
-        $cache->method('get')
-            ->willReturn([
-                Fixtures\BlankRequestHandler::class => [
-                    'global' => new AnnotationRoute(['name' => 'foo', 'path' => '/foo', 'methods' => ['GET']]),
-                ],
-            ]);
-
         $loader = new RouteLoader(new RouteCollector());
-        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Empty');
-        $loader->setCache($cache);
+        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Attribute');
 
-        // attempt to reload annotations...
-        $loader->load();
-        $loader->load();
+        $routes = $loader->load();
 
-        $this->assertCount(3, $loader->load());
         $this->assertContains([
-            'name'        => 'foo',
-            'path'        => '/foo',
+            'name'        => 'attribute_specific_name',
+            'path'        => '/defaults/specific-name',
             'domain'      => '',
             'methods'     => [RouteCollector::METHOD_GET],
-            'handler'     => Fixtures\BlankRequestHandler::class,
+            'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'withName'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($loader->load()));
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultclass_noname',
+            'path'        => '/defaults/specific-none',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'noName'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
     }
 
     /**

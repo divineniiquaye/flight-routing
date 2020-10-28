@@ -23,6 +23,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Added `Flight\Routing\RoutePipeline` class for middleware routing, and simplified `Flight\Routing\Router` class
 - Added `Flight\Routing\Traits\MiddlewareTrait` to simplify the `Flight\Routing\RoutePipeline` class
 - Added `Flight\Routing\Interface\RouteListenerInterface` to provides an opportunity to update matched route before executed
+- Added PHP 8 class reflection attribute support to route loading in `Flight\Routing\RouteLoader` class
 
 ### Changed
 - Made few changes to `README.md` file

@@ -272,31 +272,31 @@ class RouteLoader
     }
 
     /**
-     * Finds annotations using spiral annotations
+     * @param ReflectionClass|ReflectionMethod $reflection
      *
-     * @return mixed[]
+     * @return Annotation\Route[]|iterable
      */
-    private function annotationsLocator(): array
+    private function getAnnotations(object $reflection): iterable
     {
-        $annotations = [];
-
-        foreach ($this->annotation->findClasses(Annotation\Route::class) as $class) {
-            $classReflection = $class->getClass();
-
-            $annotations[$classReflection->name]['global'] = $class->getAnnotation();
-        }
-
-        foreach ($this->annotation->findMethods(Annotation\Route::class) as $method) {
-            $methodReflection = $method->getMethod();
-
-            if ($methodReflection->isPrivate() || $methodReflection->isProtected()) {
-                continue;
+        if (\PHP_VERSION_ID >= 80000) {
+            foreach ($reflection->getAttributes(Annotation\Route::class) as $attribute) {
+                yield $attribute->newInstance();
             }
-
-            $annotations[$method->getClass()->name]['method'][] = [$methodReflection, $method->getAnnotation()];
         }
 
-        return $annotations;
+        if (null === $this->annotation) {
+            return;
+        }
+
+        $anntotations = $reflection instanceof ReflectionClass
+            ? $this->annotation->getClassAnnotations($reflection)
+            : $this->annotation->getMethodAnnotations($reflection);
+
+        foreach ($anntotations as $annotation) {
+            if ($annotation instanceof Annotation\Route) {
+                yield $annotation;
+            }
+        }
     }
 
     /**
@@ -315,11 +315,16 @@ class RouteLoader
             $name .= '_' . $handler[1] ?? '__invoke';
         }
 
+        if ($this->defaultRouteIndex > 0) {
+            $name .= '_'.$this->defaultRouteIndex;
+        }
+        ++$this->defaultRouteIndex;
+
         return \strtolower($name);
     }
 
     /**
-     * Finds classes in the given resource
+     * Finds classes in the given resource directory
      *
      * @param string $resource
      *
