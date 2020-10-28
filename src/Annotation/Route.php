@@ -46,9 +46,9 @@ use Flight\Routing\Exceptions\InvalidAnnotationException;
  *  }
  * ```
  *
- * ```php
  * On PHP 8, the annotation class can be used as an attribute as well:
- *     #[Route('/Blog')]
+ * ```php
+ *     #[Route('/Blog', methods: ['GET', 'POST'])]
  *     class Blog
  *     {
  *         #[Route('/', name: 'blog_index')]
@@ -92,23 +92,43 @@ final class Route
     private $defaults;
 
     /**
-     * @param array<string,mixed> $params
+     * @param array<string,mixed> $params      data array managed by the Doctrine Annotations library or the path
+     * @param null|string         $path
+     * @param string              $name
+     * @param string[]            $methods
+     * @param string[]            $patterns
+     * @param string[]            $defaults
+     * @param string[]            $domain
+     * @param string[]            $schemes
+     * @param string[]            $middlewares
      */
-    public function __construct(array $params)
-    {
+    public function __construct(
+        array $params = [],
+        ?string $path = null,
+        string $name = null,
+        array $methods = [],
+        array $patterns = [],
+        array $defaults = [],
+        string $domain = null,
+        array $schemes = [],
+        array $middlewares = []
+    ) {
         if (isset($params['value'])) {
             $params['path'] = $params['value'];
             unset($params['value']);
+        } elseif (\is_string($params)) {
+            $params = ['path' => $params];
         }
 
         $params = \array_merge([
-            'middlewares' => [],
-            'patterns'    => [],
-            'defaults'    => [],
-            'schemes'     => [],
-            'methods'     => [],
-            'domain'      => null,
-            'name'        => null,
+            'middlewares' => $middlewares,
+            'patterns'    => $patterns,
+            'defaults'    => $defaults,
+            'schemes'     => $schemes,
+            'methods'     => $methods,
+            'domain'      => $domain,
+            'name'        => $name,
+            'path'        => $path,
         ], $params);
 
         $this->assertParamsContainValidName($params);
