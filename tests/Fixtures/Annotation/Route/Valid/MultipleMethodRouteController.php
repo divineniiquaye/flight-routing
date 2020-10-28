@@ -15,20 +15,18 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
-use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
+use Flight\Routing\Annotation\Route;
 
-/**
- * @Route(
- *   name="home",
- *   path="/",
- *   methods={"GET"},
- *   middlewares={
- *     "undefinedClass"
- *   }
- * )
- */
-class MiddlewaresNotExistable extends BlankRequestHandler
+class MultipleMethodRouteController
 {
+    /**
+     * @Route("/get", methods={"GET", "HEAD"})
+     * @Route("/post", methods={"POST"})
+     * @Route("/put", methods={"PUT"})
+     */
+    public function default()
+    {
+    }
 }

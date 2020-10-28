@@ -15,15 +15,19 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
+
+use Flight\Routing\Annotation\Route;
 
 /**
- * @Route(
- *   name="home",
- *   path="/",
- *   methods={"GET"}
- * )
+ * @Route("/en", name="english")
  */
-class SourceNotValid
+class MultipleClassRouteController
 {
+    /**
+     * @Route("/locale", name="_locale", methods={"GET", "HEAD"})
+     */
+    public function default()
+    {
+    }
 }
