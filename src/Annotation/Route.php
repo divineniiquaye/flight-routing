@@ -46,8 +46,25 @@ use Flight\Routing\Exceptions\InvalidAnnotationException;
  *  }
  * ```
  *
+ * ```php
+ * On PHP 8, the annotation class can be used as an attribute as well:
+ *     #[Route('/Blog')]
+ *     class Blog
+ *     {
+ *         #[Route('/', name: 'blog_index')]
+ *         public function index()
+ *         {
+ *         }
+ *         #[Route('/{id}', name: 'blog_post', patterns: ["id" => '\d+'])]
+ *         public function show()
+ *         {
+ *         }
+ *     }
+ * ```
+ *
  * @Target({"CLASS", "METHOD"})
  */
+#[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
 final class Route
 {
     /** @var string @Required */
