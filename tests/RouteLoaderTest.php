@@ -401,7 +401,7 @@ class RouteLoaderTest extends TestCase
     }
 
     /**
-     * @dataProvider InvalidAnnotatedClasses
+     * @dataProvider invalidAnnotatedClasses
      * @runInSeparateProcess
      *
      * @param string $class
@@ -433,7 +433,7 @@ class RouteLoaderTest extends TestCase
     /**
      * @return string[]
      */
-    public function InvalidAnnotatedClasses(): array
+    public function invalidAnnotatedClasses(): array
     {
         return [
             [Fixtures\Annotation\Route\Invalid\DefaultsNotArray::class, '@Route.defaults must be an array.'],
