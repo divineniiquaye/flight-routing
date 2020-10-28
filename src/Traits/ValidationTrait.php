@@ -32,17 +32,21 @@ trait ValidationTrait
      */
     protected function resolveNamespace($controller)
     {
-        if (null !== $this->namespace && (\is_string($controller) || !$controller instanceof Closure)) {
+        $namespace = $this->namespace;
+
+        if (null !== $namespace && (\is_string($controller) || !$controller instanceof Closure)) {
             if (
-                \is_string($controller) &&
-                !\class_exists($controller) &&
-                false === \stripos($controller, $this->namespace)
+                (
+                    \is_string($controller) &&
+                    !\class_exists($controller)
+                ) &&
+                !str_starts_with($controller, $namespace)
             ) {
-                $controller = \is_callable($controller) ? $controller : $this->namespace . $controller;
+                $controller = \is_callable($controller) ? $controller : $this->namespace . \ltrim($controller, '\\/');
             }
 
             if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
-                $controller[0] = $this->namespace . $controller[0];
+                $controller[0] = $this->namespace . \ltrim($controller[0], '\\/');
             }
         }
 
@@ -60,11 +64,21 @@ trait ValidationTrait
         $controller = $route->getController();
 
         // Disable or enable HTTP request method prefix for action.
-        if (
-            \is_array($controller) &&
-            false !== \strpos($route->getName(), '__restful')
-        ) {
-            $controller[1] = \strtolower($request->getMethod()) . \ucfirst($controller[1]);
+        if (str_ends_with($route->getName(), '__restful')) {
+            switch (true) {
+                case \is_array($controller):
+                    $controller[1] = $this->getResourceMethod($request, $controller[1]);
+
+                    break;
+
+                case \is_string($controller) && \class_exists($controller):
+                    $controller = [
+                        $controller,
+                        $this->getResourceMethod($request, \substr($route->getName(), -0, -9)),
+                    ];
+
+                    break;
+            }
         }
 
         $handler = $this->resolveNamespace($controller);
@@ -177,5 +191,14 @@ trait ValidationTrait
         }
 
         return $route;
+    }
+
+    /**
+     * @param ServerRequestInterface $request
+     * @param string                 $name
+     */
+    private function getResourceMethod(ServerRequestInterface $request, string $name): string
+    {
+        return \strtolower($request->getMethod()) . \ucfirst($name);
     }
 }

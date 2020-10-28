@@ -70,6 +70,9 @@ class Router implements RequestHandlerInterface
     /** @var array<int,array<string,mixed>> */
     private $attributes = [];
 
+    /** @var null|ProfileRoute */
+    private $profiler;
+
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
@@ -94,9 +97,22 @@ class Router implements RequestHandlerInterface
         return \array_values($this->routes);
     }
 
+    /**
+     * Set Namespace for route handlers/controllers
+     *
+     * @param string $namespace
+     */
     public function setNamespace(string $namespace): void
     {
-        $this->namespace = $namespace;
+        $this->namespace = rtrim($namespace, '\\/') . '\\';
+    }
+
+    /**
+     * @param ProfileRoute $profiler
+     */
+    public function setProfiler(?ProfileRoute $profiler = null): void
+    {
+        $this->profiler = $profiler ?? new ProfileRoute();
     }
 
     /**
@@ -119,10 +135,16 @@ class Router implements RequestHandlerInterface
 
             $this->routes[$name] = $route;
 
+            if (null !== $this->profiler) {
+                $this->profiler->addProfile(new ProfileRoute($name, $route));
+            }
+        }
+    }
+
     /**
      * Adds the given route(s) listener to the router
      *
-     * @param RouteListenerInterface ...$listener
+     * @param RouteListenerInterface ...$listeners
      */
     public function addRouteListener(RouteListenerInterface ...$listeners): void
     {
@@ -273,6 +295,9 @@ class Router implements RequestHandlerInterface
         );
 
         if ($route instanceof RouteInterface) {
+            if (null !== $this->profiler) {
+                $this->profiler->setMatched($route->getName());
+            }
             $request = $request->withAttribute(Route::class, $route);
 
             return new RouteHandler($this->generateResponse($route), ($this->response)());
@@ -329,9 +354,21 @@ class Router implements RequestHandlerInterface
             }
 
             foreach ($this->listeners as $listener) {
-                $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
+                // Only allow default Invoker class
+                if ($this->resolver instanceof Invoker) {
+                    $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
+                }
             }
+
+            try {
                 return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));
+            } finally {
+                if (null !== $this->profiler) {
+                    foreach ($this->profiler->getProfiles() as $profiler) {
+                        $profiler->leave();
+                    }
+                }
+            }
         };
     }
 

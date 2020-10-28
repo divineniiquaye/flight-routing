@@ -591,23 +591,20 @@ class RouterTest extends BaseTestCase
     /**
      * @dataProvider hasResourceData
      *
-     * @param string $expected
+     * @param string $name
+     * @param string $method
+     * @param mixed  $controller
      */
-    public function testHandleResource(string $expected): void
+    public function testHandleResource(string $name, string $method, $controller): void
     {
-        $route = new Route(
-            'user__restful',
-            RouteCollector::HTTP_METHODS_STANDARD,
-            '/user/{id:\d+}',
-            [new Fixtures\BlankRestful(), 'user']
-        );
+        $route = new Route($name, RouteCollector::HTTP_METHODS_STANDARD, '/user/{id:\d+}', $controller);
 
         $router = $this->getRouter();
         $router->addRoute($route);
-        $response = $router->handle(new ServerRequest($expected, 'user/23'));
+        $response = $router->handle(new ServerRequest($method, 'user/23'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals(\strtolower($expected) . ' 23', (string) $response->getBody());
+        $this->assertEquals(\strtolower($method) . ' 23', (string) $response->getBody());
     }
 
     /**
@@ -615,10 +612,12 @@ class RouterTest extends BaseTestCase
      */
     public function hasResourceData(): array
     {
+        $controller = [new Fixtures\BlankRestful(), 'user'];
+
         return [
-            [RouteCollector::METHOD_GET],
-            [RouteCollector::METHOD_POST],
-            [RouteCollector::METHOD_DELETE],
+            ['named__restful', RouteCollector::METHOD_GET, $controller],
+            ['user__restful', RouteCollector::METHOD_POST, Fixtures\BlankRestful::class],
+            ['another__restful', RouteCollector::METHOD_DELETE, $controller],
         ];
     }
 

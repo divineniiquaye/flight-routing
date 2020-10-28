@@ -27,6 +27,7 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionClass;
 use ReflectionMethod;
+use Reflector;
 use RegexIterator;
 
 class RouteLoader
@@ -94,7 +95,7 @@ class RouteLoader
         $collector   = clone $this->collector;
 
         foreach ($this->resources as $resource) {
-            if (class_exists($resource) || \is_dir($resource)) {
+            if (\class_exists($resource) || \is_dir($resource)) {
                 $annotations += $this->findAnnotations($resource);
 
                 continue;
@@ -115,9 +116,9 @@ class RouteLoader
     /**
      * Add a route from annotation
      *
-     * @param RouteCollectorInterface             $collector
-     * @param Annotation\Route|Annotation\Route[] $annotation
-     * @param string|string[]                     $handler
+     * @param RouteCollectorInterface $collector
+     * @param Annotation\Route        $annotation
+     * @param string|string[]         $handler
      */
     private function addRoute(RouteCollectorInterface $collector, Annotation\Route $annotation, $handler): void
     {
@@ -220,9 +221,9 @@ class RouteLoader
     {
         $classes = $annotations = [];
 
-        if (is_dir($resource)) {
-            $classes = array_merge($this->findClasses($resource), $classes);
-        } elseif (class_exists($resource)) {
+        if (\is_dir($resource)) {
+            $classes = \array_merge($this->findClasses($resource), $classes);
+        } elseif (\class_exists($resource)) {
             $classes[] = $resource;
         }
 
@@ -270,7 +271,7 @@ class RouteLoader
      *
      * @return Annotation\Route[]|iterable
      */
-    private function getAnnotations(object $reflection): iterable
+    private function getAnnotations(Reflector $reflection): iterable
     {
         if (\PHP_VERSION_ID >= 80000) {
             foreach ($reflection->getAttributes(Annotation\Route::class) as $attribute) {
@@ -310,7 +311,7 @@ class RouteLoader
         }
 
         if ($this->defaultRouteIndex > 0) {
-            $name .= '_'.$this->defaultRouteIndex;
+            $name .= '_' . $this->defaultRouteIndex;
         }
         ++$this->defaultRouteIndex;
 

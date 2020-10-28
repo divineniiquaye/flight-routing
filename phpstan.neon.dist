@@ -5,13 +5,11 @@ parameters:
     level: max
     paths: [src]
     checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
 
     ignoreErrors:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
         - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
-        -
-            message: "#^Interface Flight\\\\Routing\\\\Interfaces\\\\RouteCollectionInterface extends generic interface IteratorAggregate but does not specify its types\\: TKey, TValue$#"
-            path: src/Interfaces/RouteCollectionInterface.php
         -
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteCollector.php
@@ -28,11 +26,14 @@ parameters:
             message: "#^Parameter \\#3 \\$callable of method Flight\\\\Routing\\\\RouteCollector\\:\\:any\\(\\) expects \\(callable\\(\\): mixed\\)\\|object\\|string\\|null, array\\(object\\|string, string\\) given.$#"
             path: src/RouteCollector.php
         -
-            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
+            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.|Call to an undefined method ReflectionClass\\|ReflectionMethod\\:\\:getAttributes\\(\\).$#"
             path: src/RouteLoader.php
         -
-            message: "#^Call to an undefined method Doctrine\\\\Common\\\\Annotations\\\\Reader\\|Spiral\\\\Annotations\\\\AnnotationLocator\\:\\:getClassAnnotation|getMethodAnnotations|findClasses|findMethods|\\(\\)$#"
+            message: "#^Anonymous function has an unused use \\$collector.|Call to an undefined method ReflectionClass<mixed>\\:\\:getAttributes\\(\\).$#"
             path: src/RouteLoader.php
+        -
+            message: "#^Strict comparison using !== between null and string will always evaluate to true.$#"
+            path: src/Traits/ValidationTrait.php
         -
             message: "#^Call to function is_callable\\(\\) with mixed will always evaluate to false.$#"
             path: src/Traits/MiddlewareTrait.php
