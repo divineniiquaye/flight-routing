@@ -23,50 +23,42 @@ use FilesystemIterator;
 use Flight\Routing\Exceptions\InvalidAnnotationException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteCollectorInterface;
-use Psr\SimpleCache\CacheInterface;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionClass;
 use ReflectionMethod;
 use RegexIterator;
-use Spiral\Annotations\AnnotationLocator;
 
 class RouteLoader
 {
     /** @var RouteCollectorInterface */
     private $collector;
 
-    /** @var AnnotationLocator|AnnotationReader */
+    /** @var null|AnnotationReader */
     private $annotation;
-
-    /** @var null|CacheInterface */
-    private $cache;
 
     /** @var string[] */
     private $resources = [];
 
+    /** @var int */
+    private $defaultRouteIndex = 0;
+
     /**
-     * @param RouteCollectorInterface            $collector
-     * @param AnnotationLocator|AnnotationReader $reader
+     * @param RouteCollectorInterface $collector
+     * @param null|AnnotationReader   $reader
      */
-    public function __construct(RouteCollectorInterface $collector, $reader = null)
+    public function __construct(RouteCollectorInterface $collector, ?AnnotationReader $reader = null)
     {
         $this->collector  = $collector;
-        $this->annotation = $reader ?? new SimpleAnnotationReader();
+        $this->annotation = $reader;
+
+        if (null === $reader && \interface_exists(AnnotationReader::class)) {
+            $this->annotation = new SimpleAnnotationReader();
+        }
 
         if ($this->annotation instanceof SimpleAnnotationReader) {
             $this->annotation->addNamespace('Flight\Routing\Annotation');
         }
-    }
-
-    /**
-     * Sets the given cache to the loader
-     *
-     * @param CacheInterface $cache
-     */
-    public function setCache(CacheInterface $cache): void
-    {
-        $this->cache = $cache;
     }
 
     /**
@@ -99,10 +91,11 @@ class RouteLoader
     public function load(): RouteCollectionInterface
     {
         $annotations = [];
+        $collector   = clone $this->collector;
 
         foreach ($this->resources as $resource) {
-            if ($this->annotation instanceof AnnotationReader && \is_dir($resource)) {
-                $annotations += $this->fetchAnnotations($resource);
+            if (class_exists($resource) || \is_dir($resource)) {
+                $annotations += $this->findAnnotations($resource);
 
                 continue;
             }
@@ -111,43 +104,32 @@ class RouteLoader
                 continue;
             }
 
-            (function () use ($resource): void {
+            (function () use ($resource, $collector): void {
                 require $resource;
             })->call($this->collector);
         }
 
-        if ($this->annotation instanceof AnnotationLocator) {
-            $annotations = $this->annotationsLocator();
-        }
-
-        foreach ($annotations as $class => $collection) {
-            if (isset($collection['method'])) {
-                $this->addRouteGroup($collection['global'] ?? null, $collection['method']);
-
-                continue;
-            }
-
-            $this->addRoute($this->collector, $collection['global'], $class);
-        }
-
-        return $this->collector->getCollection();
+        return $this->resolveAnnotations($collector, $annotations);
     }
 
     /**
      * Add a route from annotation
      *
-     * @param RouteCollectorInterface $collector
-     * @param Annotation\Route        $annotation
-     * @param string|string[]         $handler
+     * @param RouteCollectorInterface             $collector
+     * @param Annotation\Route|Annotation\Route[] $annotation
+     * @param string|string[]                     $handler
      */
     private function addRoute(RouteCollectorInterface $collector, Annotation\Route $annotation, $handler): void
     {
-        $route = $collector->map(
-            $annotation->getName() ?? $this->getDefaultRouteName($handler),
-            $annotation->getMethods(),
-            $annotation->getPath(),
-            $handler
-        )
+        $routeName    = $annotation->getName() ?? $this->getDefaultRouteName($handler);
+        $routeMethods = $annotation->getMethods();
+
+        // Incase of API Resource
+        if (str_ends_with($routeName, '__restful')) {
+            $routeMethods = $collector::HTTP_METHODS_STANDARD;
+        }
+
+        $route = $collector->map($routeName, $routeMethods, $annotation->getPath(), $handler)
         ->setScheme(...$annotation->getSchemes())
         ->setPatterns($annotation->getPatterns())
         ->setDefaults($annotation->getDefaults())
@@ -166,25 +148,15 @@ class RouteLoader
      */
     private function addRouteGroup(?Annotation\Route $grouping, array $methods): void
     {
-        $methodRoutes = function (RouteCollectorInterface $route) use ($methods): void {
-            /**
-             * @var Annotation\Route $annotation
-             * @var ReflectionMethod $method
-             */
-            foreach ($methods as [$method, $annotation]) {
-                $this->addRoute($route, $annotation, [$method->class, $method->getName()]);
-            }
-        };
-
         if (null === $grouping) {
-            ($methodRoutes)($this->collector);
+            $this->mergeAnnotations($this->collector, $methods);
 
             return;
         }
 
         $group = $this->collector->group(
-            function (RouteCollectorInterface $group) use ($methodRoutes): void {
-                ($methodRoutes)($group);
+            function (RouteCollectorInterface $group) use ($methods): void {
+                $this->mergeAnnotations($group, $methods);
             }
         )
         ->addMethod(...$grouping->getMethods())
@@ -203,29 +175,38 @@ class RouteLoader
     }
 
     /**
-     * Fetches annotations for the given resource
-     *
-     * @param string $resource
-     *
-     * @return mixed[]
+     * @param RouteCollectorInterface $collector
+     * @param array<string,mixed>     $annotations
      */
-    private function fetchAnnotations(string $resource): array
+    private function resolveAnnotations(RouteCollectorInterface $collector, array $annotations): RouteCollectionInterface
     {
-        if (!$this->cache instanceof CacheInterface) {
-            return $this->findAnnotations($resource);
+        foreach ($annotations as $class => $collection) {
+            if (isset($collection['method'])) {
+                $this->addRouteGroup($collection['global'] ?? null, $collection['method']);
+
+                continue;
+            }
+            $this->defaultRouteIndex = 0;
+
+            foreach ($this->getAnnotations(new ReflectionClass($class)) as $annotation) {
+                $this->addRoute($this->collector, $annotation, $class);
+            }
         }
 
-        // some cache stores may have character restrictions for a key...
-        $key = \hash('md5', $resource);
+        \gc_mem_caches();
 
-        if (!$this->cache->has($key)) {
-            $value = $this->findAnnotations($resource);
+        return $collector->getCollection();
+    }
 
-            // TTL should be set at the storage...
-            $this->cache->set($key, $value);
+    /**
+     * @param RouteCollectorInterface $route
+     * @param mixed[]                 $methods
+     */
+    private function mergeAnnotations(RouteCollectorInterface $route, array $methods): void
+    {
+        foreach ($methods as [$method, $annotation]) {
+            $this->addRoute($route, $annotation, [$method->class, $method->getName()]);
         }
-
-        return $this->cache->get($key);
     }
 
     /**
@@ -237,8 +218,13 @@ class RouteLoader
      */
     private function findAnnotations(string $resource): array
     {
-        $classes     = $this->findClasses($resource);
-        $annotations = [];
+        $classes = $annotations = [];
+
+        if (is_dir($resource)) {
+            $classes = array_merge($this->findClasses($resource), $classes);
+        } elseif (class_exists($resource)) {
+            $classes[] = $resource;
+        }
 
         foreach ($classes as $class) {
             $classReflection = new ReflectionClass($class);
@@ -249,21 +235,29 @@ class RouteLoader
                     $classReflection->getName()
                 ));
             }
-            $annotationClass = $this->annotation->getClassAnnotation($classReflection, Annotation\Route::class);
 
-            if (null !== $annotationClass) {
-                $annotations[$class]['global'] = $annotationClass;
+            if (
+                \PHP_VERSION_ID >= 80000 &&
+                ($attribute = $classReflection->getAttributes(Annotation\Route::class)[0] ?? null)
+            ) {
+                $annotations[$class]['global'] = $attribute->newInstance();
+            }
+
+            if (!isset($annotations[$class]) && $this->annotation instanceof AnnotationReader) {
+                $annotations[$class]['global'] = $this->annotation->getClassAnnotation(
+                    $classReflection,
+                    Annotation\Route::class
+                );
             }
 
             foreach ($classReflection->getMethods() as $method) {
                 if ($method->isAbstract() || $method->isPrivate() || $method->isProtected()) {
                     continue;
                 }
+                $this->defaultRouteIndex = 0;
 
-                foreach ($this->annotation->getMethodAnnotations($method) as $annotationMethod) {
-                    if ($annotationMethod instanceof Annotation\Route) {
-                        $annotations[$class]['method'][] = [$method, $annotationMethod];
-                    }
+                foreach ($this->getAnnotations($method) as $annotation) {
+                    $annotations[$method->class]['method'][] = [$method, $annotation];
                 }
             }
         }

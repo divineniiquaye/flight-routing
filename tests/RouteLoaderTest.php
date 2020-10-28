@@ -21,15 +21,10 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Annotations\SimpleAnnotationReader;
-use Flight\Routing\Annotation\Route as AnnotationRoute;
 use Flight\Routing\Exceptions\InvalidAnnotationException;
 use Flight\Routing\RouteCollector;
 use Flight\Routing\RouteLoader;
 use PHPUnit\Framework\TestCase;
-use Psr\SimpleCache\CacheInterface;
-use Spiral\Annotations\AnnotationLocator;
-use Spiral\Tokenizer\ClassLocator;
-use Symfony\Component\Finder\Finder;
 
 /**
  * RouteLoaderTest
@@ -59,7 +54,12 @@ class RouteLoaderTest extends TestCase
             'action',
             'do.action',
             'do.action_two',
+            'english_locale',
             'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
+            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'flight_routing_tests_fixtures_annotation_route_valid_restfulcontroller',
             'hello_with_default',
             'hello_without_default',
             'home',
@@ -67,6 +67,7 @@ class RouteLoaderTest extends TestCase
             'ping',
             'sub-dir:bar',
             'sub-dir:foo',
+            'user__restful',
         ], $routes);
     }
 
@@ -82,21 +83,17 @@ class RouteLoaderTest extends TestCase
             __DIR__ . '/Fixtures/routes/foobar.php',
         ]);
 
-        $this->assertCount(13, $loader->load());
+        $this->assertCount(19, $loader->load());
     }
 
     /**
      * @dataProvider annotationTypeData
      * @runInSeparateProcess
      *
-     * @param callalble|Reader $annotation
+     * @param Reader $annotation
      */
-    public function testLoad($annotation): void
+    public function testLoad(Reader $annotation): void
     {
-        if (\is_callable($annotation)) {
-            $annotation = ($annotation)(__DIR__ . '/Fixtures/Annotation/Route/Valid');
-        }
-
         $loader = new RouteLoader(new RouteCollector(), $annotation);
         $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Valid');
         $routes = $loader->load();
@@ -107,6 +104,71 @@ class RouteLoaderTest extends TestCase
             'domain'      => '',
             'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultNameController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'path'        => '/get',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'path'        => '/post',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_POST],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'path'        => '/put',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_PUT],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_restfulcontroller',
+            'path'        => 'testing/',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\RestfulController::class, 'handleSomething'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'english_locale',
+            'path'        => '/en/locale',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
@@ -140,20 +202,18 @@ class RouteLoaderTest extends TestCase
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
 
-        if (!$annotation instanceof AnnotationLocator) {
-            $this->assertContains([
-                'name'        => 'hello_with_default',
-                'path'        => '/cool/{name=<Symfony>}',
-                'domain'      => '',
-                'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
-                'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
-                'middlewares' => [],
-                'schemes'     => [],
-                'defaults'    => [],
-                'patterns'    => ['name' => '\w+'],
-                'arguments'   => [],
-            ], Fixtures\Helper::routesToArray($routes));
-        }
+        $this->assertContains([
+            'name'        => 'hello_with_default',
+            'path'        => '/cool/{name=<Symfony>}',
+            'domain'      => '',
+            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => ['name' => '\w+'],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
             'name'        => 'home',
@@ -269,6 +329,19 @@ class RouteLoaderTest extends TestCase
             'patterns'    => [],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'user__restful',
+            'path'        => '/user/{id:\d+}',
+            'domain'      => '',
+            'methods'     => RouteCollector::HTTP_METHODS_STANDARD,
+            'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
     }
 
     /**
@@ -328,18 +401,20 @@ class RouteLoaderTest extends TestCase
     }
 
     /**
+     * @dataProvider InvalidAnnotatedClasses
      * @runInSeparateProcess
      *
-     * @param string $resource
-     * @param string $expectedException
+     * @param string $class
+     * @param string $message
      */
-    public function testLoadInvalidAnnotatedClasses(): void
+    public function testLoadInvalidAnnotatedClasses(string $class, string $message): void
     {
         $loader = new RouteLoader(new RouteCollector());
-        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Invalid');
+        $loader->attach($class);
 
         // the given exception message should be tested through annotation class...
         $this->expectException(InvalidAnnotationException::class);
+        $this->expectExceptionMessage($message);
 
         $loader->load();
     }
@@ -352,22 +427,25 @@ class RouteLoaderTest extends TestCase
         return [
             [new SimpleAnnotationReader()],
             [new AnnotationReader()],
-            [[$this, 'annotationLocator']],
         ];
     }
 
     /**
-     * @param string $directory
-     *
-     * @return AnnotationLocator
+     * @return string[]
      */
-    private function annotationLocator(string $directory): AnnotationLocator
+    public function InvalidAnnotatedClasses(): array
     {
-        $finder = (new Finder())->files()
-            ->in($directory)
-            ->name('*.php');
-        $classes = new ClassLocator($finder);
-
-        return new AnnotationLocator($classes);
+        return [
+            [Fixtures\Annotation\Route\Invalid\DefaultsNotArray::class, '@Route.defaults must be an array.'],
+            [Fixtures\Annotation\Route\Invalid\MethodsNotArray::class, '@Route.methods must contain only an array.'],
+            [Fixtures\Annotation\Route\Invalid\MethodsNotStringable::class, '@Route.methods must contain only strings.'],
+            [Fixtures\Annotation\Route\Invalid\MiddlewaresNotArray::class, '@Route.middlewares must be an array.'],
+            [Fixtures\Annotation\Route\Invalid\MiddlewaresNotStringable::class, '@Route.middlewares must contain only strings.'],
+            [Fixtures\Annotation\Route\Invalid\NameEmpty::class, '@Route.name must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a string.'],
+            [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must be not an empty string.'],
+        ];
     }
 }
