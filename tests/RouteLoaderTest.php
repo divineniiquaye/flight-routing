@@ -370,7 +370,7 @@ class RouteLoaderTest extends TestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultclass_noname',
+            'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultsclass_noname',
             'path'        => '/defaults/specific-none',
             'domain'      => '',
             'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
