@@ -21,12 +21,12 @@
         </testsuite>
     </testsuites>
 
-    <filter>
-        <whitelist>
+    <coverage>
+        <include>
             <directory>src</directory>
-            <exclude>
-                <file>src/Publisher.php</file>
-            </exclude>
-        </whitelist>
-    </filter>
+        </include>
+        <exclude>
+            <file>src/Publisher.php</file>
+        </exclude>
+    </coverage>
 </phpunit>
