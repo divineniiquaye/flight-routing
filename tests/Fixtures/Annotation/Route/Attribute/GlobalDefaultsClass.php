@@ -27,7 +27,7 @@ class GlobalDefaultsClass
     {
     }
 
-    #[Route(path: '/specific-none', methods: ['GET', 'HEAD']]
+    #[Route(path: '/specific-none', methods: ['GET', 'HEAD'])]
     public function noName()
     {
     }
