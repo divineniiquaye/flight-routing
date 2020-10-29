@@ -211,6 +211,16 @@ class Router implements RequestHandlerInterface
     }
 
     /**
+     * Get the profiled routes
+     *
+     * @return null|ProfileRoute
+     */
+    public function getProfile(): ?ProfileRoute
+    {
+        return $this->profiler;
+    }
+
+    /**
      * Generate a URI from the named route.
      *
      * Takes the named route and any parameters, and attempts to generate a

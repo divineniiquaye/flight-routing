@@ -34,7 +34,7 @@ final class ProfileRoute implements IteratorAggregate
     private $name;
 
     /** @var bool */
-    private $matched;
+    private $matched = false;
 
     /** @var array<string,float|int> */
     private $starts = [];
@@ -60,10 +60,18 @@ final class ProfileRoute implements IteratorAggregate
      */
     public function setMatched(string $name, bool $matched = true): void
     {
-        foreach ($this->profiles as $profile) {
-            if ($name === $profile->getName()) {
-                $profile->matched = $matched;
+        if (!empty($this->profiles)) {
+            foreach ($this->profiles as $profile) {
+                if ($name === $profile->getName()) {
+                    $profile->matched = $matched;
+                }
             }
+
+            return;
+        }
+
+        if ($name === $this->name) {
+            $this->matched = $matched;
         }
     }
 
@@ -89,6 +97,14 @@ final class ProfileRoute implements IteratorAggregate
     public function isRoute(): bool
     {
         return $this->route instanceof RouteInterface;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isMatched(): bool
+    {
+        return $this->matched;
     }
 
     /**
