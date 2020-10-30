@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<psalm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="https://getpsalm.org/schema/config"
+       name="Psalm for Flight Routing"
+       useDocblockTypes="true"
+       errorLevel="3"
+       strictBinaryOperands="false"
+       rememberPropertyAssignmentsAfterCall="true"
+       checkForThrowsDocblock="false"
+       throwExceptionOnError="0"
+       ensureArrayStringOffsetsExist="true"
+       ensureArrayIntOffsetsExist="false"
+       resolveFromConfigFile="true"
+       xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+>
+    <projectFiles>
+        <directory name="src"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <ArgumentTypeCoercion>
+            <errorLevel type="suppress">
+                <referencedFunction name="ReflectionClass::__construct"/>
+            </errorLevel>
+        </ArgumentTypeCoercion>
+
+        <PossiblyInvalidFunctionCall>
+            <errorLevel type="suppress">
+                <file name="src/RouteCollector.php"/>
+            </errorLevel>
+        </PossiblyInvalidFunctionCall>
+
+        <PossiblyInvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/Traits/ValidationTrait.php"/>
+            </errorLevel>
+        </PossiblyInvalidArgument>
+
+        <PossiblyUndefinedMethod>
+            <errorLevel type="suppress">
+                <file name="src/RouteLoader.php"/>
+            </errorLevel>
+        </PossiblyUndefinedMethod>
+
+        <UndefinedInterfaceMethod>
+            <errorLevel type="suppress">
+                <referencedMethod name="DivineNii\Invoker\Interfaces\InvokerInterface::getContainer"/>
+            </errorLevel>
+        </UndefinedInterfaceMethod>
+
+        <InvalidScalarArgument>
+            <errorLevel type="suppress">
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+            </errorLevel>
+        </InvalidScalarArgument>
+
+        <InvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/Traits/MiddlewareTrait.php"/>
+            </errorLevel>
+        </InvalidArgument>
+
+        <InvalidArrayAccess>
+            <errorLevel type="suppress">
+                <file name="src/Traits/MiddlewareTrait.php"/>
+            </errorLevel>
+        </InvalidArrayAccess>
+
+        <InvalidCatch>
+            <errorLevel type="suppress">
+                <referencedClass name="Psr\Container\NotFoundExceptionInterface"/>
+            </errorLevel>
+        </InvalidCatch>
+
+        <UndefinedMethod>
+            <errorLevel type="suppress">
+                <referencedMethod name="ReflectionClass::getAttributes" />
+            </errorLevel>
+        </UndefinedMethod>
+
+        <TypeDoesNotContainType>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+                <file name="src/RouteLoader.php"/>
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+                <file name="src/Services/SimpleRouteMatcher.php"/>
+            </errorLevel>
+        </TypeDoesNotContainType>
+
+        <PossiblyUndefinedStringArrayOffset>
+            <errorLevel type="suppress">
+                <file name="src/Annotation/Route.php"/>
+                <file name="src/Traits/CastingTrait.php" />
+                <file name="src/Services/SimpleRouteCompiler.php"/>
+            </errorLevel>
+        </PossiblyUndefinedStringArrayOffset>
+    </issueHandlers>
+</psalm>

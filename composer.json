@@ -1,0 +1,78 @@
+{
+    "name": "divineniiquaye/flight-routing",
+    "type": "library",
+    "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers.",
+    "keywords": ["router","url routing","psr-15","psr-7","php","biuradphp","php7"],
+    "homepage": "https://www.biurad.com",
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Divine Niiquaye Ibok",
+            "email": "divineibok@gmail.com"
+        },
+        {
+            "name": "Biurad Lap Community",
+            "homepage": "https://biurad.com/projects/contributors"
+        }
+    ],
+    "support": {
+        "docs": "https://docs.biurad.com/flight-routing",
+        "issues": "https://github.com/divineniiquaye/flight-routing/issues",
+        "rss": "https://github.com/divineniiquaye/flight-routing/releases.atom",
+        "source": "https://github.com/divineniiquaye/flight-routing"
+    },
+    "require": {
+        "php": "^7.1 || ^8.0",
+        "ext-libxml": "*",
+        "ext-json": "*",
+        "psr/http-factory": "^1.0",
+        "laminas/laminas-stratigility": "^3.2",
+        "divineniiquaye/php-invoker": "^0.9",
+        "symfony/polyfill-php80": "^1.20"
+    },
+    "require-dev": {
+        "biurad/http-galaxy": "^0.1",
+        "composer/package-versions-deprecated": "^1.8",
+        "doctrine/annotations": "^1.10",
+        "phpstan/phpstan": "^0.12",
+        "phpstan/phpstan-strict-rules": "^0.12",
+        "phpunit/phpunit": "^8.5 || ^9.0",
+        "squizlabs/php_codesniffer": "^3.5",
+        "vimeo/psalm": "^3.11",
+        "doctrine/cache": "^1.10"
+    },
+    "suggest": {
+        "biurad/http-galaxy": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros",
+        "doctrine/annotations": "For annotation routing on classes and methods using RouteLoader method",
+        "psr/simple-cache": "For caching annotated routes including routes in collection when enabled in route loader class"
+    },
+    "autoload": {
+        "psr-4": {
+            "Flight\\Routing\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Flight\\Routing\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.x-dev"
+        }
+    },
+    "scripts": {
+        "phpcs": "phpcs -q",
+        "phpstan": "phpstan analyse",
+        "psalm": "psalm --show-info=true",
+        "phpunit": "phpunit --no-coverage",
+        "test": [
+            "@phpcs",
+            "@phpstan",
+            "@psalm",
+            "@phpunit"
+        ]
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
