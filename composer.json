@@ -43,8 +43,7 @@
     },
     "suggest": {
         "biurad/http-galaxy": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros",
-        "doctrine/annotations": "For annotation routing on classes and methods using RouteLoader method",
-        "psr/simple-cache": "For caching annotated routes including routes in collection when enabled in route loader class"
+        "doctrine/annotations": "For annotation routing on classes and methods using RouteLoader method"
     },
     "autoload": {
         "psr-4": {
