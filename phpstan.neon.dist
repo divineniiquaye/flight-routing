@@ -14,9 +14,6 @@ parameters:
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteCollector.php
         -
-            message: "#^Call to an undefined method DivineNii\\\\Invoker\\\\Interfaces\\\\InvokerInterface\\:\\:getContainer\\(\\).$#"
-            path: src/Router.php
-        -
             message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
             path: src/Services/SimpleRouteCompiler.php
         -
