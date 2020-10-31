@@ -364,10 +364,7 @@ class Router implements RequestHandlerInterface
             }
 
             foreach ($this->listeners as $listener) {
-                // Only allow default Invoker class
-                if ($this->resolver instanceof Invoker) {
-                    $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
-                }
+                $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
             }
 
             try {
