@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use DivineNii\Invoker\Exceptions\NotEnoughParametersException;
+use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
@@ -373,7 +374,7 @@ class RouterTest extends BaseTestCase
 
         $route->addMiddleware('container');
 
-        $router = $this->getRouter('', null, null, $container);
+        $router = $this->getRouter('', null, new Invoker([], $container));
         $router->addRoute($route);
 
         $response = $router->handle(new ServerRequest($route->getMethods()[0], $route->getPath()));
@@ -428,7 +429,7 @@ class RouterTest extends BaseTestCase
         $router->addRoute($route);
 
         $this->expectExceptionMessage(
-            'Middleware "string" is neither a string service name, a PHP callable, ' .
+            'Middleware "none" is neither a string service name, a PHP callable, ' .
             'a Psr\Http\Server\MiddlewareInterface instance, a Psr\Http\Server\RequestHandlerInterface instance, ' .
             'or an array of such arguments'
         );
@@ -543,7 +544,7 @@ class RouterTest extends BaseTestCase
         $pipeline = (new RoutePipeline())->withHandler($router);
 
         $this->expectExceptionMessage(
-            'Middleware "string" is neither a string service name, ' .
+            'Middleware "none" is neither a string service name, ' .
             'a PHP callable, a Psr\Http\Server\MiddlewareInterface instance, ' .
             'a Psr\Http\Server\RequestHandlerInterface instance, or an array of such arguments'
         );

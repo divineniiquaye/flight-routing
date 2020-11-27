@@ -33,10 +33,16 @@ class InvalidMiddlewareException extends DomainException implements ExceptionInt
      */
     public static function forMiddleware($middleware): self
     {
+        $middleware = is_string($middleware) ? $middleware : \gettype($middleware);
+
+        if (is_object($middleware)) {
+            $middleware = get_class($middleware);
+        }
+
         return new self(\sprintf(
             'Middleware "%s" is neither a string service name, a PHP callable,'
             . ' a %s instance, a %s instance, or an array of such arguments',
-            \is_object($middleware) ? \get_class($middleware) : \gettype($middleware),
+            $middleware,
             MiddlewareInterface::class,
             RequestHandlerInterface::class
         ));

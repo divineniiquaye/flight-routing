@@ -57,9 +57,8 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
     /** @var RouteFactoryInterface */
     private $routeFactory;
 
-    public function __construct(
-        ?RouteFactoryInterface $routeFactory = null
-    ) {
+    public function __construct(?RouteFactoryInterface $routeFactory = null)
+    {
         $this->routeFactory = $routeFactory ?? new RouteFactory();
         $this->collection   = $this->routeFactory->createCollection();
     }
@@ -73,7 +72,7 @@ class RouteCollector implements Interfaces\RouteCollectorInterface
 
         return [
             'routes' => \iterator_to_array($collection),
-            'counts' => \iterator_count($collection),
+            'counts' => $collection->count(),
         ];
     }
 

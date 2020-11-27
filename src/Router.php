@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Biurad\Annotations\LoaderInterface;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
@@ -24,10 +25,11 @@ use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Interfaces\RouteCollectionInterface;
+use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -52,8 +54,8 @@ class Router implements RequestHandlerInterface
     /** @var InvokerInterface */
     private $resolver;
 
-    /** @var callable */
-    private $response;
+    /** @var ResponseFactoryInterface */
+    private $responseFactory;
 
     /** @var UriFactoryInterface */
     private $uriFactory;
@@ -70,21 +72,26 @@ class Router implements RequestHandlerInterface
     /** @var array<int,array<string,mixed>> */
     private $attributes = [];
 
-    /** @var null|ProfileRoute */
+    /** @var null|DebugRoute */
     private $profiler;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
-        ?RouteMatcherInterface $matcher = null,
+        ?RouteFactoryInterface $routeFactory = null,
         ?InvokerInterface $resolver = null,
-        ?ContainerInterface $container = null
+        bool $profileRoutes = false
     ) {
-        $this->resolver  = $resolver ?? new Invoker([], $container);
-        $this->matcher   = $matcher ?? new Services\SimpleRouteMatcher();
+        $routeFactory  = $routeFactory ?? new RouteFactory();
+        $this->matcher = $routeFactory->createMatcher();
 
         $this->uriFactory      = $uriFactory;
-        $this->response        = [$responseFactory, 'createResponse'];
+        $this->responseFactory = $responseFactory;
+        $this->resolver        = $resolver ?? new Invoker();
+
+        if (false !== $profileRoutes) {
+            $this->profiler = new DebugRoute();
+        }
     }
 
     /**
@@ -251,7 +258,7 @@ class Router implements RequestHandlerInterface
         $createdUri = $this->matcher->buildPath($route, $parameters);
 
         // Making routing on sub-folders easier
-        if (\strpos($createdUri = $this->matcher->buildPath($route, $parameters), '/') !== 0) {
+        if (\strpos($createdUri, '/') !== 0) {
             $prefix .= '/';
         }
 
@@ -260,9 +267,11 @@ class Router implements RequestHandlerInterface
             $createdUri .= '?' . \http_build_query($queryParams);
         }
 
-        $createdUri = \rtrim(\strpos($createdUri, '://') !== false ? $createdUri : $prefix . $createdUri, '/');
+        if (\strpos($createdUri, '://') === false) {
+            $createdUri = $prefix . $createdUri;
+        }
 
-        return $this->uriFactory->createUri($createdUri);
+        return $this->uriFactory->createUri(\rtrim($createdUri, '/'));
     }
 
     /**
@@ -301,8 +310,11 @@ class Router implements RequestHandlerInterface
             throw new RouteNotFoundException(
                 \sprintf(
                     'Unable to find the controller for path "%s". The route is wrongly configured.',
+                    $requestPath
+                )
+            );
+        }
 
-            return new RouteHandler($this->generateResponse($route), ($this->response)());
         if ($this->profiler instanceof DebugRoute) {
             $this->profiler->setMatched($route->getName());
         }
@@ -333,6 +345,20 @@ class Router implements RequestHandlerInterface
         }
 
         return $routingResults->handle($request);
+    }
+
+    /**
+     * Load routes from annotation.
+     *
+     * @param LoaderInterface $loader
+     */
+    public function loadAnnotation(LoaderInterface $loader): void
+    {
+        foreach ($loader->load() as $annotation) {
+            if ($annotation instanceof RouteCollectionInterface) {
+                $this->addRoute(...$annotation);
+            }
+        }
     }
 
     /**
