@@ -17,12 +17,15 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
+use Countable;
 use IteratorAggregate;
 
 /**
  * Serves as a route storage, instead of using arrays.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-interface RouteCollectionInterface extends IteratorAggregate
+interface RouteCollectionInterface extends IteratorAggregate, Countable
 {
     /**
      * Adds the given route(s) to the collection

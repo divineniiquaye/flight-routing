@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Flight\Routing\Interfaces\RouteInterface;
-use Serializable;
 
 /**
  * Value object representing a single route.
@@ -37,7 +36,7 @@ use Serializable;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Route implements Serializable, RouteInterface
+class Route implements RouteInterface
 {
     use Traits\CastingTrait;
 
@@ -150,18 +149,18 @@ class Route implements Serializable, RouteInterface
      */
     public function getArguments(): array
     {
-        $routeArguments = [];
+        $arguments = [];
 
         foreach ($this->arguments as $key => $value) {
             if (\is_int($key)) {
                 continue;
             }
 
-            $value                = \is_numeric($value) ? (int) $value : $value;
-            $routeArguments[$key] = \is_string($value) ? \rawurldecode($value) : $value;
+            $value           = \is_numeric($value) ? (int) $value : $value;
+            $arguments[$key] = \is_string($value) ? \rawurldecode($value) : $value;
         }
 
-        return $routeArguments;
+        return $arguments;
     }
 
     /**

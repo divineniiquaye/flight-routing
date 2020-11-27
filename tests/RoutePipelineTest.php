@@ -162,7 +162,7 @@ class RoutePipelineTest extends BaseTestCase
         $pipeline->addMiddleware('none');
 
         $this->expectExceptionMessage(
-            'Middleware "string" is neither a string service name, a PHP callable, ' .
+            'Middleware "none" is neither a string service name, a PHP callable, ' .
             'a Psr\Http\Server\MiddlewareInterface instance, a Psr\Http\Server\RequestHandlerInterface instance, ' .
             'or an array of such arguments'
         );

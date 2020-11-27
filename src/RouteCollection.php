@@ -17,24 +17,15 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use ArrayIterator;
-use CachingIterator;
-use Countable;
+use ArrayObject;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 
 /**
  * {@inheritdoc}
  */
-class RouteCollection implements RouteCollectionInterface, Countable
+class RouteCollection extends ArrayObject implements RouteCollectionInterface
 {
-    /**
-     * The collection routes
-     *
-     * @var RouteInterface[]
-     */
-    private $routes;
-
     /**
      * Constructor of the class
      *
@@ -42,7 +33,7 @@ class RouteCollection implements RouteCollectionInterface, Countable
      */
     public function __construct(RouteInterface ...$routes)
     {
-        $this->routes = $routes;
+        parent::__construct($routes, ArrayObject::ARRAY_AS_PROPS);
     }
 
     /**
@@ -51,25 +42,7 @@ class RouteCollection implements RouteCollectionInterface, Countable
     public function add(RouteInterface ...$routes): void
     {
         foreach ($routes as $route) {
-            $this->routes[] = $route;
+            $this[] = $route;
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function count(): int
-    {
-        return \count($this->routes);
-    }
-
-    /**
-     * Gets all routes from the collection
-     *
-     * {@inheritDoc}
-     */
-    public function getIterator()
-    {
-        return new CachingIterator(new ArrayIterator($this->routes), CachingIterator::FULL_CACHE);
     }
 }

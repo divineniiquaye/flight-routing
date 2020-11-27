@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Containerable;
 
+use Flight\Routing\Annotation\Route;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
 /**

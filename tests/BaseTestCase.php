@@ -21,11 +21,11 @@ use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteCollectorInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCollector;
 use Flight\Routing\Router;
+use Flight\Routing\Services\SimpleRouteMatcher;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use GuzzleHttp\Psr7\Uri;
@@ -96,13 +96,14 @@ class BaseTestCase extends TestCase
         $routeFactory = $this->createMock(RouteFactoryInterface::class);
         $routeFactory->method('createRoute')->willReturn($expectedRoute);
         $routeFactory->method('createCollection')->willReturn($expectedCollection);
+        $routeFactory->method('createMatcher')->willReturn(new SimpleRouteMatcher());
 
         return $routeFactory;
     }
 
     /**
      * @param string                     $uri
-     * @param null|RouteMatcherInterface $matcher
+     * @param null|RouteFactoryInterface $factory
      * @param null|InvokerInterface      $resolver
      * @param null|ContainerInterface    $container
      *
@@ -110,21 +111,20 @@ class BaseTestCase extends TestCase
      */
     public function getRouter(
         string $uri = '',
-        ?RouteMatcherInterface $matcher = null,
+        ?RouteFactoryInterface $factory = null,
         ?InvokerInterface $resolver = null,
-        ?ContainerInterface $container = null
+        bool $profiler = false
     ): Router {
         return new Router(
             $this->getResponseFactory(),
             $this->getUriFactory($uri),
-            $matcher,
+            $factory,
             $resolver,
-            $container
+            $profiler
         );
     }
 
     /**
-     * @param Route                    $route
      * @param RouteCollectionInterface $collection
      *
      * @return RouteCollectorInterface

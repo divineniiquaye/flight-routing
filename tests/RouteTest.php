@@ -116,9 +116,6 @@ class RouteTest extends TestCase
             $routeRequestHandler
         );
 
-        $serialized = $route->serialize();
-        $this->assertNull($route->unserialize($serialized));
-
         $route->addMiddleware(...$routeMiddlewares)
             ->setDomain('https://biurad.com')
             ->setPatterns($routeAttributes)
