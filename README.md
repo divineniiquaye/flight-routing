@@ -134,13 +134,14 @@ return static function (Router &$collector): void {
 };
 ```
 
-There are two ways of dispatching a router, either by using the default [Publisher] or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
+For dispatching a router, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
 **This is an example of a basic `index.php` file:**
 
 ```php
-use Flight\Routing\{RouteCollector, Router, Publisher};
+use Flight\Routing\{RouteCollector, Router};
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
 $collector = new RouteCollector();
 
@@ -148,7 +149,9 @@ $collector = new RouteCollector();
 (require_once __DIR__.'/routes.php')($collector);
 
 // Need to have an idea about php before using this dependency, though it easy to use.
-$router = new Router(new Psr17Factory);
+$psr17Factory = new Psr17Factory();
+
+$router = new Router($psr17Factory, $psr17Factory);
 $router->addRoute(...$collector->getCollection());
 
 /**
@@ -158,9 +161,7 @@ $router->addRoute(...$collector->getCollection());
 $router->setNamespace('Demo\\Controllers\\');
 
 // Start the routing
-(new Publisher)->publish($router->handle(Psr17Factory::fromGlobalRequest()));
-
-// or use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface`
+(new SapiStreamEmitter())->emit($router->handle(Psr17Factory::fromGlobalRequest()));
 ```
 
 Remember the `routes.php` file you required in your `index.php`? This file be where you place all your custom rules for routing.
@@ -178,8 +179,6 @@ This library is shipped with annotation and file callable loading, the `Flight\R
 ```php
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\{RouteCollector, RouteLoader};
-
-AnnotationRegistry::registerLoader('class_exists');
 
 $loader = new RouteLoader(new RouteCollector());
 $loader->attach('src/Controller'); // Load annotations from classes
