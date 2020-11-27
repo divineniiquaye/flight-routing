@@ -57,6 +57,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Updated `Flight\Routing\Publisher::publish` method and it's interface second arguments default to null.
 - Updated `Flight\Routing\Router::generateUri` method return type to `Psr\Http\Message\UriInterface` instance
 - Updated `Flight\Routing\Router` class constructor to add `Psr\Http\Message\UriFactoryInterface` to arguments
+- Renamed `Flight\Routing\ProfileRoute` class to `Flight\Routing\DebugRoute`
 
 ### Fixed
 - Fixed validating request methods with strict array in `Flight\Routing\RouteValidation::compareMethod` method
@@ -78,10 +79,11 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Removed tests for php 8.0 due to phpunit's `PHPUnit\Framework\TestCase::createMock` method
 - Deleted `Flight\Routing\CallableResolver` class and it's `Flight\Routing\Tests\CallableResolverTest` class
 - Deleted `Flight\Routing\Interfaces\CallableResolverInterface` and implementation in `Flight\Routing\Router` class
-- Deleted `Flight\RoutingMiddlewares\ContentLengthMiddleware` class
-- Deleted `Flight\RoutingMiddlewares\ContentTypeMiddleware` class
-- Deleted `Flight\RoutingMiddlewares\ContentTypeOptionsMiddleware` class
-- Deleted `Flight\RoutingMiddlewares\MethodOverrideMiddleware` class
-- Deleted `Flight\RoutingMiddlewares\MiddlewareDispatcher` class in favor of `Flight\Routing\RoutePipeline` class
+- Deleted `Flight\Routing\Middlewares\ContentLengthMiddleware` class
+- Deleted `Flight\Routing\Middlewares\ContentTypeMiddleware` class
+- Deleted `Flight\Routing\Middlewares\ContentTypeOptionsMiddleware` class
+- Deleted `Flight\Routing\Middlewares\MethodOverrideMiddleware` class
+- Deleted `Flight\Routing\Middlewares\MiddlewareDispatcher` class in favor of `Flight\Routing\RoutePipeline` class
+- Deleted `Flight\Routing\Publisher` class and it's interface
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
