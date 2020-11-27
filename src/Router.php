@@ -104,15 +104,7 @@ class Router implements RequestHandlerInterface
      */
     public function setNamespace(string $namespace): void
     {
-        $this->namespace = rtrim($namespace, '\\/') . '\\';
-    }
-
-    /**
-     * @param ProfileRoute $profiler
-     */
-    public function setProfiler(?ProfileRoute $profiler = null): void
-    {
-        $this->profiler = $profiler ?? new ProfileRoute();
+        $this->namespace = \rtrim($namespace, '\\/') . '\\';
     }
 
     /**
@@ -133,11 +125,11 @@ class Router implements RequestHandlerInterface
                 );
             }
 
-            $this->routes[$name] = $route;
-
-            if (null !== $this->profiler) {
-                $this->profiler->addProfile(new ProfileRoute($name, $route));
+            if ($this->profiler instanceof DebugRoute) {
+                $this->profiler->addProfile(new DebugRoute($name, $route));
             }
+
+            $this->routes[$name] = $route;
         }
     }
 
@@ -213,9 +205,9 @@ class Router implements RequestHandlerInterface
     /**
      * Get the profiled routes
      *
-     * @return null|ProfileRoute
+     * @return null|DebugRoute
      */
-    public function getProfile(): ?ProfileRoute
+    public function getProfile(): ?DebugRoute
     {
         return $this->profiler;
     }
@@ -290,7 +282,7 @@ class Router implements RequestHandlerInterface
         $basePath    = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
         $requestPath = \substr($requestUri->getPath(), \strlen($basePath)) ?: '/';
 
-        if ('cli' === PHP_SAPI) {
+        if ('cli' === \PHP_SAPI) {
             $requestPath = $requestUri->getPath();
         }
 
@@ -303,22 +295,19 @@ class Router implements RequestHandlerInterface
                 \rawurldecode(\strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath),
             ]
         );
+        $request = $request->withAttribute(Route::class, $route);
 
-        if ($route instanceof RouteInterface) {
-            if (null !== $this->profiler) {
-                $this->profiler->setMatched($route->getName());
-            }
-            $request = $request->withAttribute(Route::class, $route);
+        if (!$route instanceof RouteInterface) {
+            throw new RouteNotFoundException(
+                \sprintf(
+                    'Unable to find the controller for path "%s". The route is wrongly configured.',
 
             return new RouteHandler($this->generateResponse($route), ($this->response)());
+        if ($this->profiler instanceof DebugRoute) {
+            $this->profiler->setMatched($route->getName());
         }
 
-        throw new RouteNotFoundException(
-            \sprintf(
-                'Unable to find the controller for path "%s". The route is wrongly configured.',
-                $requestPath
-            )
-        );
+        return new RouteHandler($this->generateResponse($route), $this->responseFactory->createResponse());
     }
 
     /**
