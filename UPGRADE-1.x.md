@@ -13,8 +13,6 @@
     _Before_
 
     ```php
-    <?php
-
     use Flight\Routing\Publisher;
     use Flight\Routing\RouteCollector as Router;
     use BiuradPHP\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
@@ -30,11 +28,11 @@
     _After_
 
     ```php
-    use Flight\Routing\{RouteCollector, Router, Publisher};
+    use Flight\Routing\{RouteCollector, Router};
     use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+    use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
     $collector = new RouteCollector();
-
     $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
     $factory = new Psr17Factory();
@@ -43,7 +41,7 @@
     $router->addRoute(...$collector->getCollection());
 
     // Start the routing
-    (new Publisher)->publish($router->handle($factory::fromGlobalRequest()));
+    (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
     ```
 
 -   Adding PSR-15 middlewares to routes has been improved
