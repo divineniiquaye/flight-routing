@@ -25,7 +25,7 @@ use Traversable;
 /**
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class ProfileRoute implements IteratorAggregate
+final class DebugRoute implements IteratorAggregate
 {
     /** @var null|RouteInterface */
     private $route;
@@ -42,7 +42,7 @@ final class ProfileRoute implements IteratorAggregate
     /** @var array<string,float|int> */
     private $ends = [];
 
-    /** @var ProfileRoute[] */
+    /** @var DebugRoute[] */
     private $profiles = [];
 
     public function __construct(string $name = 'main', ?RouteInterface $route = null)

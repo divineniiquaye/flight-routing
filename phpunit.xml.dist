@@ -26,7 +26,7 @@
             <directory>src</directory>
         </include>
         <exclude>
-            <file>src/Publisher.php</file>
+            <file>src/DebugRoute.php</file>
         </exclude>
     </coverage>
 </phpunit>
