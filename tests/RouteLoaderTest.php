@@ -17,23 +17,31 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Doctrine\Common\Annotations\AnnotationReader;
+use Biurad\Annotations\AnnotationLoader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
-use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Annotations\SimpleAnnotationReader;
+use Flight\Routing\Annotation\Listener;
 use Flight\Routing\Exceptions\InvalidAnnotationException;
 use Flight\Routing\RouteCollector;
-use Flight\Routing\RouteLoader;
-use PHPUnit\Framework\TestCase;
+use Spiral\Attributes\AnnotationReader;
+use Spiral\Attributes\AttributeReader;
+use Spiral\Attributes\Composite\MergeReader;
 
 /**
  * RouteLoaderTest
  */
-class RouteLoaderTest extends TestCase
+class RouteLoaderTest extends BaseTestCase
 {
+    /** @var AnnotationLoader */
+    protected $loader;
+
     protected function setUp(): void
     {
         AnnotationRegistry::registerLoader('class_exists');
+
+        $loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
+        $loader->attachListener(new Listener(new RouteCollector()));
+
+        $this->loader = $loader;
     }
 
     /**
@@ -41,13 +49,16 @@ class RouteLoaderTest extends TestCase
      */
     public function testAttach(): void
     {
-        $loader = new RouteLoader(new RouteCollector());
-        $loader->attachArray([
+        $loader = clone $this->loader;
+        $loader->attach(...[
             __DIR__ . '/Fixtures/Annotation/Route/Valid',
             'non-existing-file.php',
         ]);
 
-        $routes = Fixtures\Helper::routesToNames($loader->load());
+        $router = $this->getRouter();
+        $router->loadAnnotation($loader);
+
+        $routes = Fixtures\Helper::routesToNames($router->getRoutes());
         \sort($routes);
 
         $this->assertSame([
@@ -67,7 +78,6 @@ class RouteLoaderTest extends TestCase
             'ping',
             'sub-dir:bar',
             'sub-dir:foo',
-            'user__restful',
         ], $routes);
     }
 
@@ -76,27 +86,31 @@ class RouteLoaderTest extends TestCase
      */
     public function testAttachArray(): void
     {
-        $loader = new RouteLoader(new RouteCollector());
-        $loader->attachArray([
+        $loader = clone $this->loader;
+        $loader->attach(...[
             __DIR__ . '/Fixtures/Annotation/Route/Valid',
             __DIR__ . '/Fixtures/Annotation/Route/Containerable',
-            __DIR__ . '/Fixtures/routes/foobar.php',
+            __DIR__ . '/Fixtures/Annotation/Route/Attribute',
         ]);
 
-        $this->assertCount(19, $loader->load());
+        $router = $this->getRouter();
+        $router->loadAnnotation($loader);
+
+        $this->assertCount(19, $router->getRoutes());
     }
 
     /**
-     * @dataProvider annotationTypeData
      * @runInSeparateProcess
-     *
-     * @param Reader $annotation
      */
-    public function testLoad(Reader $annotation): void
+    public function testLoad(): void
     {
-        $loader = new RouteLoader(new RouteCollector(), $annotation);
+        $loader = clone $this->loader;
         $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Valid');
-        $routes = $loader->load();
+
+        $router = $this->getRouter();
+        $router->loadAnnotation($loader);
+
+        $routes = $router->getRoutes();
 
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
@@ -329,32 +343,22 @@ class RouteLoaderTest extends TestCase
             'patterns'    => [],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
-
-        $this->assertContains([
-            'name'        => 'user__restful',
-            'path'        => '/user/{id:\d+}',
-            'domain'      => '',
-            'methods'     => RouteCollector::HTTP_METHODS_STANDARD,
-            'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
-            'middlewares' => [],
-            'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
     }
 
     /**
-     * @requires PHP 8
-     *
      * @runInSeparateProcess
      */
     public function testLoadAttribute(): void
     {
-        $loader = new RouteLoader(new RouteCollector());
+        $loader = new AnnotationLoader(new AttributeReader());
+
+        $loader->attachListener(new Listener(new RouteCollector()));
         $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Attribute');
 
-        $routes = $loader->load();
+        $router = $this->getRouter();
+        $router->loadAnnotation($loader);
+
+        $routes = $router->getRoutes();
 
         $this->assertContains([
             'name'        => 'attribute_specific_name',
@@ -388,16 +392,19 @@ class RouteLoaderTest extends TestCase
      */
     public function testLoadWithAbstractClass(): void
     {
-        $this->expectException(InvalidAnnotationException::class);
+        $this->expectException('Biurad\Annotations\InvalidAnnotationException');
         $this->expectExceptionMessage(
             'Annotations from class "Flight\Routing\Tests\Fixtures\Annotation\Route\Abstracts\AbstractController"' .
             ' cannot be read as it is abstract.'
         );
 
-        $loader = new RouteLoader(new RouteCollector());
+        $loader = clone $this->loader;
         $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Abstracts');
 
-        $loader->load();
+        $router = $this->getRouter();
+        $router->loadAnnotation($loader);
+
+        $router->getRoutes();
     }
 
     /**
@@ -409,25 +416,16 @@ class RouteLoaderTest extends TestCase
      */
     public function testLoadInvalidAnnotatedClasses(string $class, string $message): void
     {
-        $loader = new RouteLoader(new RouteCollector());
+        $loader = clone $this->loader;
         $loader->attach($class);
+        $router = $this->getRouter();
 
         // the given exception message should be tested through annotation class...
         $this->expectException(InvalidAnnotationException::class);
         $this->expectExceptionMessage($message);
 
-        $loader->load();
-    }
-
-    /**
-     * @return string[]
-     */
-    public function annotationTypeData(): array
-    {
-        return [
-            [new SimpleAnnotationReader()],
-            [new AnnotationReader()],
-        ];
+        $router->loadAnnotation($loader);
+        $router->getRoutes();
     }
 
     /**
