@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Annotation;
 
 use Biurad\Annotations\ListenerInterface;
+use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteCollectorInterface;
 use ReflectionClass;
 
@@ -29,6 +30,9 @@ class Listener implements ListenerInterface
     /** @var int */
     private $defaultRouteIndex = 0;
 
+    /**
+     * @param RouteCollectorInterface $collector
+     */
     public function __construct(RouteCollectorInterface $collector)
     {
         $this->collector = $collector;
@@ -36,8 +40,10 @@ class Listener implements ListenerInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @param array<string,array<string,mixed>> $annotations
      */
-    public function onAnnotation(array $annotations)
+    public function onAnnotation(array $annotations): RouteCollectionInterface
     {
         foreach ($annotations as $class => $collection) {
             if (isset($collection['method'])) {
@@ -100,8 +106,8 @@ class Listener implements ListenerInterface
     /**
      * Add a routes from annotation into group
      *
-     * @param nullRoute $grouping
-     * @param array     $methods
+     * @param null|Route $grouping
+     * @param mixed[]    $methods
      */
     protected function addRouteGroup(?Route $grouping, array $methods): void
     {
@@ -153,7 +159,7 @@ class Listener implements ListenerInterface
      */
     private function getDefaultRouteName($handler): string
     {
-        $classReflection = new ReflectionClass(\is_string($handler) ? $handler : $handler[0]);
+        $classReflection = new ReflectionClass(\is_array($handler) ? $handler[0] : $handler);
         $name            = \str_replace('\\', '_', $classReflection->name);
 
         if (\is_array($handler) || $classReflection->hasMethod('__invoke')) {
