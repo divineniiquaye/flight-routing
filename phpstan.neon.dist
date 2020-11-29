@@ -23,11 +23,11 @@ parameters:
             message: "#^Parameter \\#3 \\$callable of method Flight\\\\Routing\\\\RouteCollector\\:\\:any\\(\\) expects \\(callable\\(\\): mixed\\)\\|object\\|string\\|null, array\\(object\\|string, string\\) given.$#"
             path: src/RouteCollector.php
         -
-            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.|Call to an undefined method ReflectionClass\\|ReflectionMethod\\:\\:getAttributes\\(\\).$#"
-            path: src/RouteLoader.php
+            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
+            path: src/Annotation\Listener.php
         -
-            message: "#^Anonymous function has an unused use \\$collector.|Call to an undefined method ReflectionClass<mixed>\\:\\:getAttributes\\(\\).$#"
-            path: src/RouteLoader.php
+            message: "#^Call to function is_object\\(\\) with string will always evaluate to false.$#"
+            path: src/Exceptions/InvalidMiddlewareException.php
         -
             message: "#^Strict comparison using !== between null and string will always evaluate to true.$#"
             path: src/Traits/ValidationTrait.php

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Traits;
 
 use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\Route;
 
 trait CastingTrait
 {
@@ -40,7 +41,7 @@ trait CastingTrait
             $route = $this->castDomain($route, $regex);
         }
 
-        if (false !== \strpbrk($route, '*') && false !== \preg_match(self::RCA_PATTERN, $route, $matches)) {
+        if (false !== \strpbrk($route, '*') && false !== \preg_match(Route::RCA_PATTERN, $route, $matches)) {
             if (!isset($matches['route']) || empty($matches['route'])) {
                 throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
             }

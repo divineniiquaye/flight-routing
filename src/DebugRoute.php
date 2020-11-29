@@ -108,7 +108,7 @@ final class DebugRoute implements IteratorAggregate
     }
 
     /**
-     * @return ProfileRoute[]
+     * @return DebugRoute[]
      */
     public function getProfiles(): array
     {
@@ -118,7 +118,7 @@ final class DebugRoute implements IteratorAggregate
     /**
      * Add a new profiled route
      *
-     * @param ProfileRoute $profile
+     * @param DebugRoute $profile
      */
     public function addProfile(self $profile): void
     {

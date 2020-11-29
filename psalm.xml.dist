@@ -39,12 +39,6 @@
             </errorLevel>
         </PossiblyInvalidArgument>
 
-        <PossiblyUndefinedMethod>
-            <errorLevel type="suppress">
-                <file name="src/RouteLoader.php"/>
-            </errorLevel>
-        </PossiblyUndefinedMethod>
-
         <UndefinedInterfaceMethod>
             <errorLevel type="suppress">
                 <referencedMethod name="DivineNii\Invoker\Interfaces\InvokerInterface::getContainer"/>
@@ -75,24 +69,20 @@
             </errorLevel>
         </InvalidCatch>
 
-        <UndefinedMethod>
-            <errorLevel type="suppress">
-                <referencedMethod name="ReflectionClass::getAttributes" />
-            </errorLevel>
-        </UndefinedMethod>
-
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
-                <file name="src/RouteLoader.php"/>
+                <file name="src/Annotation/Listener.php"/>
                 <file name="src/Services/SimpleRouteCompiler.php"/>
                 <file name="src/Services/SimpleRouteMatcher.php"/>
+                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
             </errorLevel>
         </TypeDoesNotContainType>
 
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Annotation/Route.php"/>
+                <file name="src/Annotation/Listener.php"/>
                 <file name="src/Traits/CastingTrait.php" />
                 <file name="src/Services/SimpleRouteCompiler.php"/>
             </errorLevel>
