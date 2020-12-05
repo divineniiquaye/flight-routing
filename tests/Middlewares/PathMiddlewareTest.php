@@ -19,7 +19,6 @@ namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Route;
-use Flight\Routing\RoutePipeline;
 use Flight\Routing\Tests\BaseTestCase;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
@@ -32,13 +31,12 @@ class PathMiddlewareTest extends BaseTestCase
 {
     public function testProcessStatus(): void
     {
-        $router   = $this->getRouter();
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
 
         $pipeline->addMiddleware(new PathMiddleware());
-        $router->addRoute(new Route('path_middleware_200', ['GET'], '/foo', [$this, 'handlePath']));
+        $pipeline->addRoute(new Route('path_middleware_200', ['GET'], '/foo', [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest('GET', 'foo'), $router);
+        $response = $pipeline->handle(new ServerRequest('GET', 'foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -54,18 +52,17 @@ class PathMiddlewareTest extends BaseTestCase
      */
     public function testProcess(string $uriPath, string $expectedPath, bool $expectsStatus): void
     {
-        $router   = $this->getRouter();
-        $pipeline = new RoutePipeline();
+        $pipeline   = $this->getRouter();
 
         $pipeline->addMiddleware(new PathMiddleware());
-        $router->addRoute(new Route('path_middleware', ['GET', 'POST'], $uriPath, [$this, 'handlePath']));
+        $pipeline->addRoute(new Route('path_middleware', ['GET', 'POST'], $uriPath, [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest('GET', $expectedPath), $router);
+        $response = $pipeline->handle(new ServerRequest('GET', $expectedPath));
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 301 : 302, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
 
-        $response = $pipeline->process(new ServerRequest('POST', $expectedPath), $router);
+        $response = $pipeline->handle(new ServerRequest('POST', $expectedPath));
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 308 : 307, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
