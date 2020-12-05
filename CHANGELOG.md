@@ -67,6 +67,7 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Fixed cache control middleware response with IE < 9 in `Flight\RoutingMiddlewares\CacheControlMiddleware` class
 - Fixed PSR-4 autoloading standard issues in tests directory: **Middlewares** and **Services**
 - Fixed matching request path with cli failure
+- Fixed complexity in `Flight\Routing\Route` class to `Flight\Routing\Triats\RouteTrait`
 
 ### Removed
 - Removed proxy usage, use `Flight\Routing\RouteCollector` class instead
@@ -85,5 +86,6 @@ Updates should follow the [Keep a CHANGELOG](https://keepachangelog.com/) princi
 - Deleted `Flight\Routing\Middlewares\MethodOverrideMiddleware` class
 - Deleted `Flight\Routing\Middlewares\MiddlewareDispatcher` class in favor of `Flight\Routing\RoutePipeline` class
 - Deleted `Flight\Routing\Publisher` class and it's interface
+- Deleted `Flight\Routing\RoutePipeline` class since it has abit of performance issues.
 
 [unreleased]: https://github.com/divineniiquaye/flight-routing/compare/v0.5.2...master
