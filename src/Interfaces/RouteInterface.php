@@ -186,4 +186,11 @@ interface RouteInterface
      * @return RouteInterface
      */
     public function addMethod(string ...$methods): RouteInterface;
+
+    /**
+     * @internal Used to see a new handler, when matched.
+     *
+     * @param mixed $handler
+     */
+    public function setController($handler): void;
 }
