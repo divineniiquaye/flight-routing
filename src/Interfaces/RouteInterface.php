@@ -39,7 +39,7 @@ interface RouteInterface
     /**
      * Get the Controller used on route.
      *
-     * @return callable|object|string|string[]
+     * @return array<mixed,string>|callable|string
      */
     public function getController();
 

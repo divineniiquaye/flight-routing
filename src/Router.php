@@ -42,7 +42,9 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class Router implements RequestHandlerInterface
 {
-    use Traits\ResolveTrait, Traits\ValidationTrait, Traits\MiddlewareTrait;
+    use Traits\ResolveTrait;
+    use Traits\ValidationTrait;
+    use Traits\MiddlewareTrait;
 
     public const TYPE_REQUIREMENT = 1;
 
@@ -353,7 +355,9 @@ class Router implements RequestHandlerInterface
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
      *
-     * @param mixed[] $attributes
+     * @param string $method
+     * @param UriInterface $uri
+     * @param string $path
      *
      * @throws MethodNotAllowedException
      * @throws UriHandlerException

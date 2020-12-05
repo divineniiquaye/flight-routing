@@ -56,10 +56,10 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add route.
      *
-     * @param string                               $name    The route name
-     * @param string[]                             $methods Array of HTTP methods
-     * @param string                               $pattern The route pattern
-     * @param null|callable|object|string|string[] $handler The route callable
+     * @param string   $name    The route name
+     * @param string[] $methods Array of HTTP methods
+     * @param string   $pattern The route pattern
+     * @param mixed    $handler The route callable
      *
      * @return RouteInterface
      */
@@ -68,9 +68,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add HEAD route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -79,9 +79,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add GET route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -90,9 +90,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add POST route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -101,9 +101,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add PUT route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -112,9 +112,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add PATCH route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -123,9 +123,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add DELETE route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -134,9 +134,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add OPTIONS route.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */
@@ -145,9 +145,9 @@ interface RouteCollectorInterface extends RequestMethodInterface
     /**
      * Add route for any HTTP method.
      *
-     * @param string                      $name     The route name
-     * @param string                      $pattern  The route URI pattern
-     * @param null|callable|object|string $callable The route callback routine
+     * @param string $name     The route name
+     * @param string $pattern  The route URI pattern
+     * @param mixed  $callable The route callback routine
      *
      * @return RouteInterface
      */

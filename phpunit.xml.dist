@@ -27,6 +27,7 @@
         </include>
         <exclude>
             <file>src/DebugRoute.php</file>
+            <file>src/Middlewares/CacheControlMiddleware.php</file>
         </exclude>
     </coverage>
 </phpunit>
