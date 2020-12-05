@@ -19,7 +19,6 @@ namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\UriRedirectMiddleware;
 use Flight\Routing\Route;
-use Flight\Routing\RoutePipeline;
 use Flight\Routing\Tests\BaseTestCase;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 use Generator;
@@ -41,16 +40,15 @@ class UriRedirectMiddlewareTest extends BaseTestCase
      */
     public function testProcess(array $redirects, string $expected): void
     {
-        $router   = $this->getRouter();
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
 
         $routes = [
             new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class),
         ];
-        $router->addRoute(...$routes);
+        $pipeline->addRoute(...$routes);
 
-        $response = $pipeline->process(new ServerRequest('GET', $expected), $router);
+        $response = $pipeline->handle(new ServerRequest('GET', $expected));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -64,17 +62,16 @@ class UriRedirectMiddlewareTest extends BaseTestCase
      */
     public function testProcessWithRedirect(array $redirects, string $expected): void
     {
-        $router   = $this->getRouter();
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
 
         $routes = [
             new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class),
             new Route('uri_middleware', ['GET'], \key($redirects), BlankRequestHandler::class),
         ];
-        $router->addRoute(...$routes);
+        $pipeline->addRoute(...$routes);
 
-        $response = $pipeline->process(new ServerRequest('GET', \key($redirects)), $router);
+        $response = $pipeline->handle(new ServerRequest('GET', \key($redirects)));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301, $response->getStatusCode());
@@ -82,16 +79,15 @@ class UriRedirectMiddlewareTest extends BaseTestCase
 
     public function testProcessWithQuery(): void
     {
-        $router     = $this->getRouter();
-        $pipeline   = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $middleware = new UriRedirectMiddleware(['page?hello=me' => 'account/me']);
         $pipeline->addMiddleware($middleware->allowQueries(true));
 
         $route = new Route('uri_middleware_expected', ['GET'], 'page', BlankRequestHandler::class);
-        $router->addRoute($route);
+        $pipeline->addRoute($route);
 
         $uri      = (new Uri('page'))->withQuery('hello=me');
-        $response = $pipeline->process(new ServerRequest('GET', $uri), $router);
+        $response = $pipeline->handle(new ServerRequest('GET', $uri));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301, $response->getStatusCode());
@@ -99,15 +95,14 @@ class UriRedirectMiddlewareTest extends BaseTestCase
 
     public function testProcessWithPermanent(): void
     {
-        $router     = $this->getRouter();
-        $pipeline   = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $middleware = new UriRedirectMiddleware(['foo' => 'bar']);
         $pipeline->addMiddleware($middleware->setPermanentRedirection(false));
 
         $route = new Route('uri_middleware_expected', ['POST'], 'foo', BlankRequestHandler::class);
-        $router->addRoute($route);
+        $pipeline->addRoute($route);
 
-        $response = $pipeline->process(new ServerRequest('POST', 'foo'), $router);
+        $response = $pipeline->handle(new ServerRequest('POST', 'foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(307, $response->getStatusCode());

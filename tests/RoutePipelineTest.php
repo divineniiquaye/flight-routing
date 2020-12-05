@@ -17,10 +17,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
+use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\InvalidMiddlewareException;
+use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\RouteCollector;
-use Flight\Routing\RoutePipeline;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -38,7 +39,7 @@ class RoutePipelineTest extends BaseTestCase
             Fixtures\BlankMiddleware::class,
         ];
 
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $pipeline->addMiddleware(...$middlewares);
 
         $pipeline->addMiddleware(['hello' => new Fixtures\NamedBlankMiddleware('test')]);
@@ -55,11 +56,11 @@ class RoutePipelineTest extends BaseTestCase
             Fixtures\BlankMiddleware::class,
         ];
 
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $pipeline->addMiddleware(...$middlewares);
 
-        $this->expectExceptionMessage('Unable to run pipeline, no handler given.');
-        $this->expectException(InvalidMiddlewareException::class);
+        $this->expectExceptionMessage('Unable to find the controller for path "test". The route is wrongly configured.');
+        $this->expectException(RouteNotFoundException::class);
 
         $pipeline->handle(new ServerRequest('GET', 'test'));
     }
@@ -68,7 +69,7 @@ class RoutePipelineTest extends BaseTestCase
     {
         $middleware = new Fixtures\BlankMiddleware();
 
-        $pipeline = new RoutePipeline();
+        $pipeline = $this->getRouter();
         $pipeline->addMiddleware($middleware);
 
         $this->expectException(DuplicateRouteException::class);
@@ -87,24 +88,22 @@ class RoutePipelineTest extends BaseTestCase
             [new Fixtures\BlankMiddleware(), 'process'],
         ];
 
-        ($router = $this->getRouter())->addRoute($route);
-        $pipeline = new RoutePipeline();
+        ($pipeline = $this->getRouter())->addRoute($route);
         $pipeline->addMiddleware(...$middlewares);
 
-        $response = $pipeline->process(new ServerRequest(
+        $response = $pipeline->handle(new ServerRequest(
             $route->getMethods()[0],
             $route->getPath(),
             [],
             null,
             '1.1',
             ['Broken' => 'test']
-        ), $router);
+        ));
 
         $this->assertTrue($middlewares[0]->isRunned());
         $this->assertTrue($middlewares[1]->isRunned());
         $this->assertTrue($response->hasHeader('Middleware'));
         $this->assertEquals('broken', $response->getHeaderLine('Middleware-Broken'));
-        $this->assertTrue($route->getController()->isRunned());
     }
 
     public function testHandleMiddlewareWithContainer(): void
@@ -115,14 +114,10 @@ class RoutePipelineTest extends BaseTestCase
         $container->method('has')->willReturn(true);
         $container->method('get')->willReturn(new Fixtures\BlankMiddleware());
 
-        ($router = $this->getRouter())->addRoute($route);
-        $pipeline = new RoutePipeline($container);
+        ($pipeline = $this->getRouter(null, new Invoker([], $container)))->addRoute($route);
         $pipeline->addMiddleware('container');
 
-        $response = $pipeline->process(
-            new ServerRequest($route->getMethods()[0], $route->getPath()),
-            $router
-        );
+        $response = $pipeline->handle(new ServerRequest($route->getMethods()[0], $route->getPath()));
 
         $this->assertTrue($response->hasHeader('Middleware'));
         $this->assertInstanceOf(ResponseInterface::class, $response);
@@ -138,27 +133,21 @@ class RoutePipelineTest extends BaseTestCase
             new Fixtures\BlankMiddleware(),
         ];
 
-        ($router = $this->getRouter())->addRoute($route);
-        $pipeline = new RoutePipeline();
+        ($pipeline = $this->getRouter())->addRoute($route);
         $pipeline->addMiddleware(...$middlewares);
 
-        $pipeline->process(
-            new ServerRequest($route->getMethods()[0], $route->getPath()),
-            $router
-        );
+        $pipeline->handle(new ServerRequest($route->getMethods()[0], $route->getPath()));
 
         $this->assertTrue($middlewares[0]->isRunned());
         $this->assertTrue($middlewares[1]->isRunned());
         $this->assertFalse($middlewares[2]->isRunned());
-        $this->assertFalse($route->getController()->isRunned());
     }
 
     public function testHandleInvalidMiddleware(): void
     {
         $route = new Fixtures\TestRoute();
 
-        ($router = $this->getRouter())->addRoute($route);
-        $pipeline = (new RoutePipeline())->withHandler($router);
+        ($pipeline = $this->getRouter())->addRoute($route);
         $pipeline->addMiddleware('none');
 
         $this->expectExceptionMessage(
@@ -193,11 +182,10 @@ class RoutePipelineTest extends BaseTestCase
             ->addDomain('https://biurad.com');
         })->addPrefix('/api')->setName('api.');
 
-        ($router = $this->getRouter())->addRoute(...$collector->getCollection());
-        $pipeline = new RoutePipeline();
+        ($pipeline = $this->getRouter())->addRoute(...$collector->getCollection());
         $pipeline->addMiddleware(['hello' => Fixtures\BlankMiddleware::class]);
 
-        $response = $pipeline->process(new ServerRequest($expectedMethod, $expectedUri), $router);
+        $response = $pipeline->handle(new ServerRequest($expectedMethod, $expectedUri));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
     }
