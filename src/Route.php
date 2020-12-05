@@ -38,7 +38,8 @@ use Flight\Routing\Interfaces\RouteInterface;
  */
 class Route implements RouteInterface
 {
-    use Traits\RouteTrait, Traits\CastingTrait;
+    use Traits\RouteTrait;
+    use Traits\CastingTrait;
 
     /**
      * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
@@ -53,10 +54,10 @@ class Route implements RouteInterface
     /**
      * Create a new Route constructor.
      *
-     * @param string                               $name    The route name
-     * @param string[]                             $methods The route HTTP methods
-     * @param string                               $pattern The route pattern
-     * @param null|callable|object|string|string[] $handler The route callable
+     * @param string                                   $name    The route name
+     * @param string[]                                 $methods The route HTTP methods
+     * @param string                                   $pattern The route pattern
+     * @param null|array<mixed,string>|callable|string $handler The route callable
      */
     public function __construct(string $name, array $methods, string $pattern, $handler)
     {

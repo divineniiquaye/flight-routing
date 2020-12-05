@@ -27,7 +27,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 trait ResolveTrait
 {
-    /** @var null|RouteInterface */
+    /** @var RouteInterface */
     private $route;
 
     /** @var InvokerInterface */
@@ -66,7 +66,8 @@ trait ResolveTrait
             return $controller;
         }
 
-        if ((\is_string($controller) && !\class_exists($controller)) &&
+        if (
+            (\is_string($controller) && !\class_exists($controller)) &&
             !str_starts_with($controller, $namespace)
         ) {
             $controller = \is_callable($controller) ? $controller : $this->namespace . \ltrim($controller, '\\/');

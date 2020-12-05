@@ -35,7 +35,7 @@
 
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
-                <file name="src/Traits/ValidationTrait.php"/>
+                <file name="src/Traits/ResolveTrait.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
 
@@ -87,5 +87,11 @@
                 <file name="src/Services/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
+
+        <LessSpecificImplementedReturnType>
+            <errorLevel type="suppress">
+                <file name="src/Traits/RouteTrait.php"/>
+            </errorLevel>
+        </LessSpecificImplementedReturnType>
     </issueHandlers>
 </psalm>

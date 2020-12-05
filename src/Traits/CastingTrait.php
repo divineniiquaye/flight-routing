@@ -22,7 +22,7 @@ use Flight\Routing\Route;
 
 trait CastingTrait
 {
-    /** @var callable|object|string|string[] */
+    /** @var array<mixed,string>|callable|string */
     private $controller;
 
     /**
