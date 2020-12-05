@@ -22,6 +22,7 @@ use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
 use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
+use Laminas\Stratigility\MiddlewarePipe;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -65,7 +66,7 @@ trait MiddlewareTrait
                 continue;
             }
 
-            $hash = $this->getHash($middleware);
+            $hash = $this->getMiddlewareHash($middleware);
 
             if (isset($this->middlewares[$hash])) {
                 throw new DuplicateRouteException(\sprintf('A middleware with the hash "%s" already exists.', $hash));
@@ -73,6 +74,39 @@ trait MiddlewareTrait
 
             $this->middlewares[$hash] = $middleware;
         }
+    }
+
+    /**
+     * Create a middleware pipeline from an array of middleware.
+     *
+     * Each item is passed to prepare() before being passed to the
+     * MiddlewarePipe instance the method returns.
+     *
+     * @throws InvalidMiddlewareException if middleware has not one of
+     *                                    the specified types
+     *
+     * @return MiddlewarePipe
+     */
+    public function pipeline(): MiddlewarePipe
+    {
+        $pipeline    = new MiddlewarePipe();
+        $middlewares = $this->getMiddlewares();
+
+        foreach ($middlewares as $middleware) {
+            $pipeline->pipe($this->prepare($middleware));
+        }
+
+        return $pipeline;
+    }
+
+    /**
+     * Gets the middlewares from stack
+     *
+     * @return array<int,MiddlewareInterface|string>
+     */
+    public function getMiddlewares(): array
+    {
+        return \array_values($this->middlewares);
     }
 
     /**
@@ -107,13 +141,15 @@ trait MiddlewareTrait
      */
     protected function prepare($middleware): MiddlewareInterface
     {
+        $container = $this->resolver->getContainer();
+
         if (\is_string($middleware) && \array_key_exists($middleware, $this->nameMiddlewares)) {
             $middleware = $this->nameMiddlewares[$middleware];
         }
 
-        if (\is_string($middleware) && null !== $this->container) {
+        if (\is_string($middleware) && null !== $container) {
             try {
-                $middleware = $this->container->get($middleware);
+                $middleware = $container->get($middleware);
             } catch (NotFoundExceptionInterface $e) {
                 // ... handled at the end
             }
@@ -143,7 +179,7 @@ trait MiddlewareTrait
      *
      * @return string
      */
-    private function getHash($middleware): string
+    private function getMiddlewareHash($middleware): string
     {
         if ($middleware instanceof Closure || \is_object($middleware)) {
             return \spl_object_hash($middleware);
