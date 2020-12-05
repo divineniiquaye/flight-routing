@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Biurad\Annotations\LoaderInterface;
+use Closure;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
@@ -41,7 +42,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class Router implements RequestHandlerInterface
 {
-    use Traits\ValidationTrait;
+    use Traits\ResolveTrait, Traits\ValidationTrait, Traits\MiddlewareTrait;
 
     public const TYPE_REQUIREMENT = 1;
 
@@ -49,9 +50,6 @@ class Router implements RequestHandlerInterface
 
     /** @var RouteMatcherInterface */
     private $matcher;
-
-    /** @var InvokerInterface */
-    private $resolver;
 
     /** @var ResponseFactoryInterface */
     private $responseFactory;
@@ -252,11 +250,10 @@ class Router implements RequestHandlerInterface
             );
         }
 
-        $prefix     = '.'; // Append missing "." at the beginning of the $uri.
-        $createdUri = $this->matcher->buildPath($route, $parameters);
+        $prefix  = '.'; // Append missing "." at the beginning of the $uri.
 
         // Making routing on sub-folders easier
-        if (\strpos($createdUri, '/') !== 0) {
+        if (\strpos($createdUri = $this->matcher->buildPath($route, $parameters), '/') !== 0) {
             $prefix .= '/';
         }
 
@@ -283,26 +280,13 @@ class Router implements RequestHandlerInterface
      *
      * @return RouteHandler
      */
-    public function match(ServerRequestInterface &$request): RouteHandler
+    public function match(ServerRequestInterface $request): RouteHandler
     {
         $requestUri  = $request->getUri();
-        $basePath    = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
-        $requestPath = \substr($requestUri->getPath(), \strlen($basePath)) ?: '/';
-
-        if ('cli' === \PHP_SAPI) {
-            $requestPath = $requestUri->getPath();
-        }
+        $requestPath = $this->resolvePath($request, $requestUri->getPath());
 
         // Get the request matching format.
-        $route = $this->marshalMatchedRoute(
-            [
-                $request->getMethod(),
-                $requestUri->getScheme(),
-                $requestUri->getHost(),
-                \rawurldecode(\strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath),
-            ]
-        );
-        $request = $request->withAttribute(Route::class, $route);
+        $route = $this->marshalMatchedRoute($request->getMethod(), $requestUri, $requestPath);
 
         if (!$route instanceof RouteInterface) {
             throw new RouteNotFoundException(
@@ -313,11 +297,16 @@ class Router implements RequestHandlerInterface
             );
         }
 
+        $this->resolveListeners($request, $route);
+
         if ($this->profiler instanceof DebugRoute) {
             $this->profiler->setMatched($route->getName());
         }
 
-        return new RouteHandler($this->generateResponse($route), $this->responseFactory->createResponse());
+        return new RouteHandler(
+            Closure::fromCallable([$this, 'resolveRoute']),
+            $this->responseFactory->createResponse()
+        );
     }
 
     /**
@@ -328,21 +317,23 @@ class Router implements RequestHandlerInterface
         // Get the Route Handler ready for dispatching
         $routingResults = $this->match($request);
 
-        /** @var RouteInterface $route */
-        $route = $request->getAttribute(Route::class);
+        try {
+            if (\count($this->getMiddlewares()) > 0) {
+                // This middleware is in the priority map; but, this is the first middleware we have
+                // encountered from the map thus far. We'll save its current index plus its index
+                // from the priority map so we can compare against them on the next iterations.
+                return $this->pipeline()
+                    ->process($request->withAttribute(Route::class, $this->route), $routingResults);
+            }
 
-        // Add Middlewares on route ...
-        $pipeline = new RoutePipeline($this->resolver->getContainer());
-        $pipeline->addMiddleware(...$route->getMiddlewares());
-
-        if (\count($pipeline->getMiddlewares()) > 0) {
-            // This middleware is in the priority map; but, this is the first middleware we have
-            // encountered from the map thus far. We'll save its current index plus its index
-            // from the priority map so we can compare against them on the next iterations.
-            return $pipeline->process($request, $routingResults);
+            return $routingResults->handle($request);
+        } finally {
+            if ($this->profiler instanceof DebugRoute) {
+                foreach ($this->profiler->getProfiles() as $profiler) {
+                    $profiler->leave();
+                }
+            }
         }
-
-        return $routingResults->handle($request);
     }
 
     /**
@@ -360,100 +351,42 @@ class Router implements RequestHandlerInterface
     }
 
     /**
-     * Generate the response so it can be served
-     *
-     * @param RouteInterface $route
-     *
-     * @return callable
-     */
-    private function generateResponse(RouteInterface $route): callable
-    {
-        return function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-            $handler   = $this->resolveController($request, $route);
-            $arguments = [\get_class($request) => $request, \get_class($response) => $response];
-
-            if ($handler instanceof ResponseInterface) {
-                return $handler;
-            }
-
-            foreach ($this->listeners as $listener) {
-                $listener->onRoute($request, $route, $this->resolver->getCallableResolver()->resolve($handler));
-            }
-
-            try {
-                return $this->resolver->call($handler, \array_merge($route->getArguments(), $arguments));
-            } finally {
-                if (null !== $this->profiler) {
-                    foreach ($this->profiler->getProfiles() as $profiler) {
-                        $profiler->leave();
-                    }
-                }
-            }
-        };
-    }
-
-    /**
      * Marshals a route result based on the results of matching URL from set of routes.
      *
-     * @param string[] $process
+     * @param mixed[] $attributes
      *
      * @throws MethodNotAllowedException
      * @throws UriHandlerException
      *
      * @return null|RouteInterface
      */
-    private function marshalMatchedRoute(array $process): ?RouteInterface
+    private function marshalMatchedRoute(string $method, UriInterface $uri, string $path): ?RouteInterface
     {
+        [$scheme, $host] = [$uri->getScheme(), $uri->getHost()];
+
         foreach ($this->routes as $route) {
             // Let's match the routes
-            $match      = $this->matcher->compileRoute($this->mergeAttributes($route));
-            $parameters = $hostParameters = [];
+            $match         = $this->matcher->compileRoute($this->mergeAttributes($route));
+            $uriParameters = $hostParameters = [];
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if (!$this->compareUri($match->getRegex(), $process[3], $parameters)) {
+            if (!$this->compareUri($match->getRegex(), $path, $uriParameters)) {
                 continue;
             }
 
-            $this->assertRoute($route, $match->getRegex(true), $hostParameters, $process);
+            if (!$this->compareDomain($match->getRegex(true), $host, $hostParameters)) {
+                throw new UriHandlerException(
+                    \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $host, $path),
+                    400
+                );
+            }
 
-            return $route->setArguments($this->mergeDefaults(
-                \array_replace($parameters, $hostParameters) ?? $match->getVariables(),
-                $route->getDefaults()
-            ));
+            $this->assertRoute($route, [$method, $scheme, $path]);
+            $parameters = \array_replace($uriParameters, $hostParameters) ?? $match->getVariables();
+
+            return $route->setArguments($this->mergeDefaults($parameters, $route->getDefaults()));
         }
 
         return null;
-    }
-
-    /**
-     * Asserts the Route's method and domain scheme.
-     *
-     * @param RouteInterface           $route
-     * @param string                   $domain
-     * @param array<int|string,string> $parameters
-     * @param array<int,mixed>         $attributes
-     */
-    private function assertRoute(RouteInterface $route, string $domain, array &$parameters, array $attributes): void
-    {
-        [$method, $scheme, $host, $path] = $attributes;
-        $parameters                      = [];
-
-        if (!$this->compareMethod($route->getMethods(), $method)) {
-            throw new MethodNotAllowedException($route->getMethods(), $path, $method);
-        }
-
-        if (!$this->compareDomain($domain, $host, $parameters)) {
-            throw new UriHandlerException(
-                \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $host, $path),
-                400
-            );
-        }
-
-        if (!$this->compareScheme($route->getSchemes(), $scheme)) {
-            throw new UriHandlerException(
-                \sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $scheme, $path),
-                400
-            );
-        }
     }
 }
