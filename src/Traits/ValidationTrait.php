@@ -17,86 +17,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Closure;
+use Flight\Routing\Exceptions\MethodNotAllowedException;
+use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Router;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 
 trait ValidationTrait
 {
-    /**
-     * @param callable|object|string|string[] $controller
-     *
-     * @return mixed
-     */
-    protected function resolveNamespace($controller)
-    {
-        $namespace = $this->namespace;
-
-        if (null !== $namespace && (\is_string($controller) || !$controller instanceof Closure)) {
-            if (
-                (
-                    \is_string($controller) &&
-                    !\class_exists($controller)
-                ) &&
-                !str_starts_with($controller, $namespace)
-            ) {
-                $controller = \is_callable($controller) ? $controller : $this->namespace . \ltrim($controller, '\\/');
-            }
-
-            if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
-                $controller[0] = $this->namespace . \ltrim($controller[0], '\\/');
-            }
-        }
-
-        return $controller;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
-     *
-     * @return mixed
-     */
-    protected function resolveController(ServerRequestInterface $request, RouteInterface &$route)
-    {
-        $controller = $route->getController();
-
-        // Disable or enable HTTP request method prefix for action.
-        if (str_ends_with($route->getName(), '__restful')) {
-            switch (true) {
-                case \is_array($controller):
-                    $controller[1] = $this->getResourceMethod($request, $controller[1]);
-
-                    break;
-
-                case \is_string($controller) && \class_exists($controller):
-                    $controller = [
-                        $controller,
-                        $this->getResourceMethod($request, \substr($route->getName(), -0, -9)),
-                    ];
-
-                    break;
-            }
-        }
-
-        $handler = $this->resolveNamespace($controller);
-
-        // For a class that implements RequestHandlerInterface, we will call handle()
-        // if no method has been specified explicitly
-        if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
-            $handler = [$handler, 'handle'];
-        }
-
-        // If controller is instance of RequestHandlerInterface
-        if ($handler instanceof RequestHandlerInterface) {
-            return $handler->handle($request);
-        }
-
-        return $handler;
-    }
-
     /**
      * Check if given request method matches given route method.
      *
@@ -150,6 +78,28 @@ trait ValidationTrait
     private function compareScheme(array $routeScheme, string $requestScheme): bool
     {
         return empty($routeScheme) || \in_array($requestScheme, $routeScheme, true);
+    }
+
+    /**
+     * Asserts the Route's method and domain scheme.
+     *
+     * @param RouteInterface   $route
+     * @param array<int,mixed> $attributes
+     */
+    private function assertRoute(RouteInterface $route, array $attributes): void
+    {
+        [$method, $scheme, $path] = $attributes;
+
+        if (!$this->compareMethod($route->getMethods(), $method)) {
+            throw new MethodNotAllowedException($route->getMethods(), $path, $method);
+        }
+
+        if (!$this->compareScheme($route->getSchemes(), $scheme)) {
+            throw new UriHandlerException(
+                \sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $scheme, $path),
+                400
+            );
+        }
     }
 
     /**
