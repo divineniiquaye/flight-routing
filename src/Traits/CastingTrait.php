@@ -22,6 +22,27 @@ use Flight\Routing\Route;
 
 trait CastingTrait
 {
+    /** @var callable|object|string|string[] */
+    private $controller;
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getController()
+    {
+        return $this->controller;
+    }
+
+    /**
+     * @internal Used to see a new handler, when matched.
+     *
+     * @param mixed $handler
+     */
+    public function setController($handler): void
+    {
+        $this->controller = $handler;
+    }
+
     /**
      * Locates appropriate route by name. Support dynamic route allocation using following pattern:
      * Pattern route:   `pattern/*<controller@action>`
