@@ -177,22 +177,28 @@ Remember the `routes.php` file you required in your `index.php`? This file be wh
 This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteCollectorInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
 
 ```php
-use Doctrine\Common\Annotations\AnnotationRegistry;
-use Flight\Routing\{RouteCollector, RouteLoader};
+use Biurad\Annotations\AnnotationLoader;
+use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+use Flight\Routing\Annotation\Listener;
+use Flight\Routing\RouteCollector;
+use Flight\Routing\Router;
+use Spiral\Attributes\AnnotationReader;
+use Spiral\Attributes\AttributeReader;
+use Spiral\Attributes\Composite\MergeReader;
 
-$loader = new RouteLoader(new RouteCollector());
-$loader->attach('src/Controller'); // Load annotations from classes
-$loader->attach('routes/api.php'); // Load routes from file
+$loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
+$loader->attachListener(new Listener(new RouteCollector()));
 
-// or attach an array
-$loader->attachArray([
+$loader->attach(
     'src/Controller',
     'src/Bundle/BundleName/Controller',
-    'routes/api.php',
-]);
+];
 
-// Load all attached routes into router
-$router->addRoute(...$loader->load());
+// Need to have an idea about php before using this dependency, though it easy to use.
+$psr17Factory = new Psr17Factory();
+
+$router = new Router($psr17Factory, $psr17Factory);
+$router->loadAnnotation($loader);
 
 ```
 
