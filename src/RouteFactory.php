@@ -20,12 +20,11 @@ namespace Flight\Routing;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
 
 class RouteFactory implements RouteFactoryInterface
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function createCollection(RouteInterface ...$routes): RouteCollectionInterface
     {
@@ -33,18 +32,10 @@ class RouteFactory implements RouteFactoryInterface
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function createRoute(string $name, array $methods, string $path, $handler): RouteInterface
     {
         return new Route($name, $methods, $path, $handler);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function createMatcher(): RouteMatcherInterface
-    {
-        return new Services\SimpleRouteMatcher();
     }
 }

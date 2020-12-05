@@ -17,18 +17,18 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
+use BiuradPHP\Http\Factory\UriFactory;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteCollectorInterface;
 use Flight\Routing\Interfaces\RouteFactoryInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCollector;
 use Flight\Routing\Router;
-use Flight\Routing\Services\SimpleRouteMatcher;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
-use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -53,16 +53,11 @@ class BaseTestCase extends TestCase
     }
 
     /**
-     * @param string $uri
-     *
      * @return UriFactoryInterface
      */
-    public function getUriFactory(string $uri = '')
+    public function getUriFactory()
     {
-        $uriFactory = $this->createMock(UriFactoryInterface::class);
-        $uriFactory->method('createUri')->willReturn(new Uri($uri));
-
-        return $uriFactory;
+        return new UriFactory();
     }
 
     /**
@@ -96,29 +91,26 @@ class BaseTestCase extends TestCase
         $routeFactory = $this->createMock(RouteFactoryInterface::class);
         $routeFactory->method('createRoute')->willReturn($expectedRoute);
         $routeFactory->method('createCollection')->willReturn($expectedCollection);
-        $routeFactory->method('createMatcher')->willReturn(new SimpleRouteMatcher());
 
         return $routeFactory;
     }
 
     /**
-     * @param string                     $uri
-     * @param null|RouteFactoryInterface $factory
+     * @param null|RouteMatcherInterface $matcher
      * @param null|InvokerInterface      $resolver
      * @param null|ContainerInterface    $container
      *
      * @return Router
      */
     public function getRouter(
-        string $uri = '',
-        ?RouteFactoryInterface $factory = null,
+        ?RouteMatcherInterface $matcher = null,
         ?InvokerInterface $resolver = null,
         bool $profiler = false
     ): Router {
         return new Router(
             $this->getResponseFactory(),
-            $this->getUriFactory($uri),
-            $factory,
+            $this->getUriFactory(),
+            $matcher,
             $resolver,
             $profiler
         );

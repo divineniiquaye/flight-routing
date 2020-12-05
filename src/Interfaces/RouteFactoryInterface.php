@@ -39,11 +39,4 @@ interface RouteFactoryInterface
      * @return RouteInterface
      */
     public function createRoute(string $name, array $methods, string $path, $handler): RouteInterface;
-
-    /**
-     * Create a route compiler matcher.
-     *
-     * @return RouteMatcherInterface
-     */
-    public function createMatcher(): RouteMatcherInterface;
 }
