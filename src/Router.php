@@ -26,7 +26,6 @@ use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteCollectionInterface;
-use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
@@ -78,12 +77,11 @@ class Router implements RequestHandlerInterface
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
-        ?RouteFactoryInterface $routeFactory = null,
+        ?RouteMatcherInterface $matcher = null,
         ?InvokerInterface $resolver = null,
         bool $profileRoutes = false
     ) {
-        $routeFactory  = $routeFactory ?? new RouteFactory();
-        $this->matcher = $routeFactory->createMatcher();
+        $this->matcher = $matcher ?? new Services\SimpleRouteMatcher();
 
         $this->uriFactory      = $uriFactory;
         $this->responseFactory = $responseFactory;
