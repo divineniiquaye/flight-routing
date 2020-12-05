@@ -29,9 +29,9 @@ class PhpInfoListener implements RouteListenerInterface
     /**
      * {@inheritDoc}
      */
-    public function onRoute(ServerRequestInterface $request, RouteInterface &$route, callable $callable): void
+    public function onRoute(ServerRequestInterface $request, RouteInterface &$route): void
     {
-        if (is_string($callable) && 'phpinfo' === $callable) {
+        if (is_string($callable = $route->getController()) && 'phpinfo' === $callable) {
             $route->setArguments(['what' => -1]);
         }
     }

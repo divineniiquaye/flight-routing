@@ -30,7 +30,6 @@ interface RouteListenerInterface
     /**
      * @param ServerRequestInterface $request
      * @param RouteInterface         $route
-     * @param callable               $callable The callable resolved from $route to be passed on response
      */
-    public function onRoute(ServerRequestInterface $request, RouteInterface &$route, callable $callable): void;
+    public function onRoute(ServerRequestInterface $request, RouteInterface &$route): void;
 }
