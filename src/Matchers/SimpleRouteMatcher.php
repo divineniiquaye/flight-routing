@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Services;
+namespace Flight\Routing\Matchers;
 
 use Closure;
 use Flight\Routing\Interfaces\RouteInterface;

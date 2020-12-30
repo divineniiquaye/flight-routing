@@ -15,11 +15,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Services;
+namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
-use Flight\Routing\Services\SimpleRouteMatcher;
+use Flight\Routing\Matchers\SimpleRouteMatcher;
 use Generator;
 use PHPUnit\Framework\TestCase;
 
