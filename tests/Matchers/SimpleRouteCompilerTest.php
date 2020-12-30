@@ -15,11 +15,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Services;
+namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Route;
-use Flight\Routing\Services\SimpleRouteCompiler;
+use Flight\Routing\Matchers\SimpleRouteCompiler;
 use Generator;
 use PHPUnit\Framework\TestCase;
 
