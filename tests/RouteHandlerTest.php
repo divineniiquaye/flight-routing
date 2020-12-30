@@ -19,7 +19,7 @@ namespace Flight\Routing\Tests;
 
 use BiuradPHP\Http\Factories\GuzzleHttpPsr7Factory;
 use BiuradPHP\Http\Factory\ResponseFactory;
-use Flight\Routing\RouteHandler;
+use Flight\Routing\Handlers\RouteHandler;
 use Generator;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
