@@ -1,4 +1,4 @@
-## UPGRADE FROM 0.5.x to 1.x.x
+## UPGRADE FROM 0.5.x to 1.0.0
 
 ---
 
@@ -44,38 +44,6 @@
     (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
     ```
 
--   Adding PSR-15 middlewares to routes has been improved
-
-    _Before_
-
-    ```php
-    $response = $router->handle(Psr17Factory::fromGlobalRequest());
-    ```
-
-    _After_
-
-    ```php
-    use Flight\Routing\RoutePipeline;
-
-    $pipeline = (new RoutePipeline())->withRouter($router);
-
-    // If you want to add global middlewares, use the $pipeline, addMiddleware method.
-
-    $response = $pipeline->handle(Psr17Factory::fromGlobalRequest());
-    ```
-
-    OR
-
-    ```php
-    use Flight\Routing\RoutePipeline;
-
-    $pipeline = new RoutePipeline();
-
-    // If you want to add global middlewares, use the $pipeline, addMiddleware method.
-
-    $response = $pipeline->process(Psr17Factory::fromGlobalRequest(), $router);
-    ```
-
 -   Changed how route grouping is handled
 
     _Before_
@@ -102,3 +70,82 @@
         }
     );
     ```
+
+## UPGRADE FROM 1.0.0 to 1.x.x
+
+---
+
+- Removed `Flight\Routing\RouteCollector` class (BR Changes)
+- Removed `Flight\Routing\RouteGroup` class (BR Changes)
+- Removed `Flight\Routing\RouteFactory` class (BR Changes)
+- Changed how routes are handled and dispatched
+
+    _Before_
+
+    ```php
+    use Flight\Routing\{RouteCollector, Router};
+    use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+    use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
+
+    $collector = new RouteCollector();
+    $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+
+    $factory = new Psr17Factory();
+    $router = new Router($factory, $factory);
+
+    $router->addRoute(...$collector->getCollection());
+
+    // Start the routing
+    (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
+    ```
+
+    _After_
+
+    ```php
+    use Flight\Routing\{RouteList, Route, Router};
+    use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+    use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
+
+    $collector = new RouteList();
+    $collector->add(Route::get('phpinfo', '/phpinfo', 'phpinfo')); // Will create a phpinfo route.
+
+    $factory = new Psr17Factory();
+    $router = new Router($factory, $factory);
+
+    $router->addRoute(...$collector->getRoutes());
+
+    // Start the routing
+    (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
+    ```
+
+-   Changed how route grouping is handled
+
+    _Before_
+
+    ```php
+    use Flight\Routing\RouteCollector;
+    use Flight\Routing\Interfaces\RouteCollectorInterface;
+
+    $collector = new RouteCollector();
+
+    $collector->group(
+        function (RouteCollectorInterface $route) {
+            // Define your routes using $route...
+        }
+    );
+    ```
+
+    _After_
+
+    ```php
+    $collector = (new RouteList)
+        ->withDomain('admin.biurad.com')
+            ->addRoute(...)
+            ->addRoute(...)
+        ->end()
+        ->withDomain('biurad.com')
+            ->withPath('export')
+                ->addRoute(...)
+                ...
+    ```
+
