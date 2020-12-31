@@ -19,11 +19,6 @@ namespace Flight\Routing\Traits;
 
 use Closure;
 use Flight\Routing\Exceptions\DuplicateRouteException;
-use Flight\Routing\Exceptions\InvalidMiddlewareException;
-use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
-use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
-use Laminas\Stratigility\MiddlewarePipe;
-use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -77,29 +72,6 @@ trait MiddlewareTrait
     }
 
     /**
-     * Create a middleware pipeline from an array of middleware.
-     *
-     * Each item is passed to prepare() before being passed to the
-     * MiddlewarePipe instance the method returns.
-     *
-     * @throws InvalidMiddlewareException if middleware has not one of
-     *                                    the specified types
-     *
-     * @return MiddlewarePipe
-     */
-    public function pipeline(): MiddlewarePipe
-    {
-        $pipeline    = new MiddlewarePipe();
-        $middlewares = $this->getMiddlewares();
-
-        foreach ($middlewares as $middleware) {
-            $pipeline->pipe($this->prepare($middleware));
-        }
-
-        return $pipeline;
-    }
-
-    /**
      * Gets the middlewares from stack
      *
      * @return array<int,MiddlewareInterface|string>
@@ -123,55 +95,6 @@ trait MiddlewareTrait
 
             $this->addMiddleware($middleware);
         }
-    }
-
-    /**
-     * Add a new middleware to the stack.
-     *
-     * Middleware are organized as a stack. That means middleware
-     * that have been added before will be executed after the newly
-     * added one (last in, first out).
-     *
-     * @param mixed $middleware
-     *
-     * @throws InvalidMiddlewareException if argument is not one of
-     *                                    the specified types
-     *
-     * @return MiddlewareInterface
-     */
-    protected function prepare($middleware): MiddlewareInterface
-    {
-        $container = $this->resolver->getContainer();
-
-        if (\is_string($middleware) && \array_key_exists($middleware, $this->nameMiddlewares)) {
-            $middleware = $this->nameMiddlewares[$middleware];
-        }
-
-        if (\is_string($middleware) && null !== $container) {
-            try {
-                $middleware = $container->get($middleware);
-            } catch (NotFoundExceptionInterface $e) {
-                // ... handled at the end
-            }
-        }
-
-        if (\is_string($middleware) && \class_exists($middleware)) {
-            $middleware = new $middleware();
-        }
-
-        if ($middleware instanceof RequestHandlerInterface) {
-            return new RequestHandlerMiddleware($middleware);
-        }
-
-        if (\is_callable($middleware)) {
-            return new CallableMiddlewareDecorator($middleware);
-        }
-
-        if (!$middleware instanceof MiddlewareInterface) {
-            throw InvalidMiddlewareException::forMiddleware($middleware);
-        }
-
-        return $middleware;
     }
 
     /**
