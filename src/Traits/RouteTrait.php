@@ -247,7 +247,13 @@ trait RouteTrait
      */
     public function addMiddleware(...$middlewares): RouteInterface
     {
-        foreach ($middlewares as $middleware) {
+        foreach ($middlewares as $index => $middleware) {
+            if (!\is_callable($middleware) && (\is_int($index) && \is_array($middleware))) {
+                $this->addMiddleware(...$middleware);
+
+                continue;
+            }
+
             $this->middlewares[] = $middleware;
         }
 
