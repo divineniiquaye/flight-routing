@@ -78,24 +78,6 @@ class BaseTestCase extends TestCase
     }
 
     /**
-     * @param Route                    $route
-     * @param RouteCollectionInterface $collection
-     *
-     * @return RouteFactoryInterface
-     */
-    public function getRouteFactory(Route $route = null, RouteCollectionInterface $collection = null)
-    {
-        $expectedRoute      = $route ?? new Fixtures\TestRoute();
-        $expectedCollection = $collection ?? new RouteCollection();
-
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-        $routeFactory->method('createRoute')->willReturn($expectedRoute);
-        $routeFactory->method('createCollection')->willReturn($expectedCollection);
-
-        return $routeFactory;
-    }
-
-    /**
      * @param null|RouteMatcherInterface $matcher
      * @param null|InvokerInterface      $resolver
      * @param null|ContainerInterface    $container
@@ -107,22 +89,12 @@ class BaseTestCase extends TestCase
         ?InvokerInterface $resolver = null,
         bool $profiler = false
     ): Router {
-        return new Router(
-            $this->getResponseFactory(),
-            $this->getUriFactory(),
-            $matcher,
-            $resolver,
-            $profiler
-        );
-    }
+        $router = new Router($this->getResponseFactory(), $this->getUriFactory(), $matcher, $resolver);
 
-    /**
-     * @param RouteCollectionInterface $collection
-     *
-     * @return RouteCollectorInterface
-     */
-    public function getRouteCollector(Route $route = null, RouteCollectionInterface $collection = null)
-    {
-        return new RouteCollector($this->getRouteFactory($route, $collection));
+        if ($profiler) {
+            $router->setProfile();
+        }
+
+        return $router;
     }
 }
