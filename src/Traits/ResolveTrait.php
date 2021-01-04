@@ -21,12 +21,16 @@ use Closure;
 use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Handlers\RouteHandler;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 trait ResolveTrait
 {
+    /** @var null|string */
+    private $namespace;
+
     /** @var RouteInterface */
     private $route;
 
@@ -86,7 +90,7 @@ trait ResolveTrait
      *
      * @throws NotCallableException
      *
-     * @return callable|ResponseInterface
+     * @return callable|RequestHandlerInterface
      */
     protected function resolveController(ServerRequestInterface $request, RouteInterface $route)
     {
@@ -100,7 +104,7 @@ trait ResolveTrait
 
         // If controller is instance of RequestHandlerInterface
         if ($handler instanceof RequestHandlerInterface) {
-            return $handler->handle($request);
+            return $handler;
         }
 
         return $this->resolver->getCallableResolver()->resolve($handler);
@@ -138,40 +142,87 @@ trait ResolveTrait
     }
 
     /**
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface      $response
+     * @param RouteInterface $route
      *
-     * @return mixed
+     * @return RequestHandlerInterface
      */
-    protected function resolveRoute(ServerRequestInterface $request, ResponseInterface $response)
+    protected function resolveRoute(RouteInterface $route): RequestHandlerInterface
     {
-        $handler = $this->route->getController();
+        $handler = $route->getController();
 
-        if ($handler instanceof ResponseInterface) {
-            return $handler;
+        if (!$handler instanceof RequestHandlerInterface) {
+            $handler = new RouteHandler(
+                function (ServerRequestInterface $request, ResponseInterface $response) use ($handler, $route) {
+                    $arguments = \array_merge(
+                        $route->getArguments(),
+                        [\get_class($request) => $request, \get_class($response) => $response]
+                    );
+        
+                    return $this->resolver->call($handler, $arguments);
+                },
+                $this->responseFactory->createResponse()
+            );
         }
 
-        $arguments = \array_merge(
-            $this->route->getArguments(),
-            [\get_class($request) => $request, \get_class($response) => $response]
-        );
+        return $handler;
+    }
 
-        return $this->resolver->call($handler, $arguments);
+    /**
+     * @param RouteInterface $route
+     * @param array<string,string>         $parameters
+     * @param array<int|string,int|string> $queryParams
+     * 
+     * @return string
+     */
+    protected function resolveUri(RouteInterface $route, array $parameters, array $queryParams): string
+    {
+        $prefix  = '.'; // Append missing "." at the beginning of the $uri.
+
+        // Making routing on sub-folders easier
+        if (\strpos($createdUri = $this->matcher->buildPath($route, $parameters), '/') !== 0) {
+            $prefix .= '/';
+        }
+
+        // Incase query is added to uri.
+        if (!empty($queryParams)) {
+            $createdUri .= '?' . \http_build_query($queryParams);
+        }
+
+        if (\strpos($createdUri, '://') === false) {
+            $createdUri = $prefix . $createdUri;
+        }
+
+        return \rtrim($createdUri, '/');
+    }
+
+    /**
+     * @param RouteInterface $route
+     * 
+     * @return array<int,mixed>
+     */
+    protected function resolveMiddlewares(RouteInterface $route): array
+    {
+        $middlewares = [];
+
+        foreach ($route->getMiddlewares() as $middleware) {
+            if (is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
+                $middlewares[] = $this->nameMiddlewares[$middleware];
+
+                continue;
+            }
+
+            $middlewares[] = $middleware;
+        }
+
+        return $middlewares;
     }
 
     /**
      * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
+     * @param string                 $name
      */
-    protected function resolveListeners(ServerRequestInterface $request, RouteInterface $route): void
+    private function getResourceMethod(ServerRequestInterface $request, string $name): string
     {
-        $route->setController($this->resolveController($request, $route));
-        $this->addMiddleware(...$route->getMiddlewares());
-
-        foreach ($this->listeners as $listener) {
-            $listener->onRoute($request, $route);
-        }
-
-        $this->route = clone $route;
+        return \strtolower($request->getMethod()) . \ucfirst($name);
     }
 }
