@@ -20,8 +20,6 @@ namespace Flight\Routing\Traits;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Router;
-use Psr\Http\Message\ServerRequestInterface;
 
 trait ValidationTrait
 {
@@ -100,55 +98,5 @@ trait ValidationTrait
                 400
             );
         }
-    }
-
-    /**
-     * Get merged default parameters.
-     *
-     * @param array<int|string,mixed> $params
-     * @param array<string,string>    $defaults
-     *
-     * @return array<string,string> Merged default parameters
-     */
-    private function mergeDefaults(array $params, array $defaults): array
-    {
-        foreach ($params as $key => $value) {
-            if (!\is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
-                $defaults[$key] = $value;
-            }
-        }
-
-        return $defaults;
-    }
-
-    /**
-     * Merge Router attributes in route default and patterns.
-     *
-     * @param RouteInterface $route
-     *
-     * @return RouteInterface
-     */
-    private function mergeAttributes(RouteInterface $route): RouteInterface
-    {
-        foreach ($this->attributes as $type => $attributes) {
-            if (Router::TYPE_DEFAULT === $type) {
-                $route->setDefaults($attributes);
-
-                continue;
-            }
-
-            $route->setPatterns($attributes);
-        }
-
-        return $route;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param string                 $name
-     */
-    private function getResourceMethod(ServerRequestInterface $request, string $name): string
-    {
-        return \strtolower($request->getMethod()) . \ucfirst($name);
     }
 }

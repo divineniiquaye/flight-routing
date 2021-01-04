@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Biurad\Annotations\LoaderInterface;
-use Closure;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
 use Flight\Routing\Exceptions\DuplicateRouteException;
@@ -26,9 +24,7 @@ use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -45,71 +41,22 @@ class Router implements RequestHandlerInterface
     use Traits\ResolveTrait;
     use Traits\ValidationTrait;
     use Traits\MiddlewareTrait;
+    use Traits\RouterTrait;
 
     public const TYPE_REQUIREMENT = 1;
 
     public const TYPE_DEFAULT = 0;
 
-    /** @var RouteMatcherInterface */
-    private $matcher;
-
-    /** @var ResponseFactoryInterface */
-    private $responseFactory;
-
-    /** @var UriFactoryInterface */
-    private $uriFactory;
-
-    /** @var string */
-    private $namespace;
-
-    /** @var RouteInterface[] */
-    private $routes = [];
-
-    /** @var RouteListenerInterface[] */
-    private $listeners = [];
-
-    /** @var array<int,array<string,mixed>> */
-    private $attributes = [];
-
-    /** @var null|DebugRoute */
-    private $profiler;
-
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
         ?RouteMatcherInterface $matcher = null,
-        ?InvokerInterface $resolver = null,
-        bool $profileRoutes = false
+        ?InvokerInterface $resolver = null
     ) {
-        $this->matcher = $matcher ?? new Services\SimpleRouteMatcher();
-
         $this->uriFactory      = $uriFactory;
         $this->responseFactory = $responseFactory;
         $this->resolver        = $resolver ?? new Invoker();
-
-        if (false !== $profileRoutes) {
-            $this->profiler = new DebugRoute();
-        }
-    }
-
-    /**
-     * Gets the router routes
-     *
-     * @return RouteInterface[]
-     */
-    public function getRoutes(): array
-    {
-        return \array_values($this->routes);
-    }
-
-    /**
-     * Set Namespace for route handlers/controllers
-     *
-     * @param string $namespace
-     */
-    public function setNamespace(string $namespace): void
-    {
-        $this->namespace = \rtrim($namespace, '\\/') . '\\';
+        $this->matcher         = $matcher ?? new Matchers\SimpleRouteMatcher();
     }
 
     /**
@@ -136,85 +83,6 @@ class Router implements RequestHandlerInterface
 
             $this->routes[$name] = $route;
         }
-    }
-
-    /**
-     * Adds the given route(s) listener to the router
-     *
-     * @param RouteListenerInterface ...$listeners
-     */
-    public function addRouteListener(RouteListenerInterface ...$listeners): void
-    {
-        foreach ($listeners as $listener) {
-            $this->listeners[] = $listener;
-        }
-    }
-
-    /**
-     * Adds parameters.
-     *
-     * This method implements a fluent interface.
-     *
-     * @param array<string,mixed> $parameters The parameters
-     * @param int                 $type
-     */
-    public function addParameters(array $parameters, int $type = self::TYPE_REQUIREMENT): void
-    {
-        foreach ($parameters as $key => $regex) {
-            if (self::TYPE_DEFAULT === $type) {
-                $this->attributes[self::TYPE_DEFAULT] = [$key => $regex];
-
-                continue;
-            }
-
-            $this->attributes[self::TYPE_REQUIREMENT] = [$key => $regex];
-        }
-    }
-
-    /**
-     * Gets allowed methods
-     *
-     * @return string[]
-     */
-    public function getAllowedMethods(): array
-    {
-        $methods = [];
-
-        foreach ($this->routes as $route) {
-            foreach ($route->getMethods() as $method) {
-                $methods[$method] = true;
-            }
-        }
-
-        return \array_keys($methods);
-    }
-
-    /**
-     * Gets a route for the given name
-     *
-     * @param string $name
-     *
-     * @throws RouteNotFoundException
-     *
-     * @return RouteInterface
-     */
-    public function getRoute(string $name): RouteInterface
-    {
-        if (!isset($this->routes[$name])) {
-            throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
-        }
-
-        return $this->routes[$name];
-    }
-
-    /**
-     * Get the profiled routes
-     *
-     * @return null|DebugRoute
-     */
-    public function getProfile(): ?DebugRoute
-    {
-        return $this->profiler;
     }
 
     /**
@@ -252,23 +120,7 @@ class Router implements RequestHandlerInterface
             );
         }
 
-        $prefix  = '.'; // Append missing "." at the beginning of the $uri.
-
-        // Making routing on sub-folders easier
-        if (\strpos($createdUri = $this->matcher->buildPath($route, $parameters), '/') !== 0) {
-            $prefix .= '/';
-        }
-
-        // Incase query is added to uri.
-        if (!empty($queryParams)) {
-            $createdUri .= '?' . \http_build_query($queryParams);
-        }
-
-        if (\strpos($createdUri, '://') === false) {
-            $createdUri = $prefix . $createdUri;
-        }
-
-        return $this->uriFactory->createUri(\rtrim($createdUri, '/'));
+        return $this->uriFactory->createUri($this->resolveUri($route, $parameters, $queryParams));
     }
 
     /**
@@ -280,35 +132,39 @@ class Router implements RequestHandlerInterface
      * @throws UriHandlerException
      * @throws RouteNotFoundException
      *
-     * @return RouteHandler
+     * @return RouteInterface
      */
-    public function match(ServerRequestInterface $request): RouteHandler
+    public function match(ServerRequestInterface $request): RouteInterface
     {
-        $requestUri  = $request->getUri();
-        $requestPath = $this->resolvePath($request, $requestUri->getPath());
-
         // Get the request matching format.
-        $route = $this->marshalMatchedRoute($request->getMethod(), $requestUri, $requestPath);
+        $route = $this->marshalMatchedRoute(
+            $request->getMethod(),
+            $requestUri = $request->getUri(),
+            $this->resolvePath($request, $requestUri->getPath())
+        );
 
         if (!$route instanceof RouteInterface) {
             throw new RouteNotFoundException(
                 \sprintf(
                     'Unable to find the controller for path "%s". The route is wrongly configured.',
-                    $requestPath
+                    $requestUri->getPath()
                 )
             );
         }
+        $route->setController($this->resolveController($request, $route));
 
-        $this->resolveListeners($request, $route);
+        // Run listeners on route not more than once ...
+        if (null === $this->route) {
+            foreach ($this->listeners as $listener) {
+                $listener->onRoute($request, $route);
+            }
+        }
 
         if ($this->profiler instanceof DebugRoute) {
             $this->profiler->setMatched($route->getName());
         }
 
-        return new RouteHandler(
-            Closure::fromCallable([$this, 'resolveRoute']),
-            $this->responseFactory->createResponse()
-        );
+        return $this->route = clone $route;
     }
 
     /**
@@ -317,39 +173,30 @@ class Router implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // Get the Route Handler ready for dispatching
-        $routingResults = $this->match($request);
+        if (!$this->route instanceof RouteInterface) {
+            $this->match($request);
+        }
 
-        try {
-            if (\count($this->getMiddlewares()) > 0) {
-                // This middleware is in the priority map; but, this is the first middleware we have
-                // encountered from the map thus far. We'll save its current index plus its index
-                // from the priority map so we can compare against them on the next iterations.
-                return $this->pipeline()
-                    ->process($request->withAttribute(Route::class, $this->route), $routingResults);
-            }
+        $middlewareDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
 
-            return $routingResults->handle($request);
-        } finally {
-            if ($this->profiler instanceof DebugRoute) {
-                foreach ($this->profiler->getProfiles() as $profiler) {
-                    $profiler->leave();
+        return $middlewareDispatcher->dispatch(
+            $this->getMiddlewares(),
+            new Handlers\CallbackHandler(function (ServerRequestInterface $request) use ($middlewareDispatcher) {
+                try {
+                    $route   = $request->getAttribute(Route::class, $this->route);
+                    $handler = $this->resolveRoute($route);
+
+                    return $middlewareDispatcher->dispatch($this->resolveMiddlewares($route), $handler, $request);
+                } finally {
+                    if ($this->profiler instanceof DebugRoute) {
+                        foreach ($this->profiler->getProfiles() as $profiler) {
+                            $profiler->leave();
+                        }
+                    }
                 }
-            }
-        }
-    }
-
-    /**
-     * Load routes from annotation.
-     *
-     * @param LoaderInterface $loader
-     */
-    public function loadAnnotation(LoaderInterface $loader): void
-    {
-        foreach ($loader->load() as $annotation) {
-            if ($annotation instanceof RouteCollectionInterface) {
-                $this->addRoute(...$annotation);
-            }
-        }
+            }),
+            $request->withAttribute(Route::class, $this->route),
+        );
     }
 
     /**
@@ -366,8 +213,6 @@ class Router implements RequestHandlerInterface
      */
     private function marshalMatchedRoute(string $method, UriInterface $uri, string $path): ?RouteInterface
     {
-        [$scheme, $host] = [$uri->getScheme(), $uri->getHost()];
-
         foreach ($this->routes as $route) {
             // Let's match the routes
             $match         = $this->matcher->compileRoute($this->mergeAttributes($route));
@@ -378,15 +223,15 @@ class Router implements RequestHandlerInterface
                 continue;
             }
 
-            if (!$this->compareDomain($match->getRegex(true), $host, $hostParameters)) {
+            if (!$this->compareDomain($match->getRegex(true), $uri->getHost(), $hostParameters)) {
                 throw new UriHandlerException(
-                    \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $host, $path),
+                    \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $uri->getHost(), $path),
                     400
                 );
             }
+            $this->assertRoute($route, [$method, $uri->getScheme(), $path]);
 
-            $this->assertRoute($route, [$method, $scheme, $path]);
-            $parameters = \array_replace($uriParameters, $hostParameters) ?? $match->getVariables();
+            $parameters = \array_replace($match->getVariables(), $uriParameters, $hostParameters);
 
             return $route->setArguments($this->mergeDefaults($parameters, $route->getDefaults()));
         }
