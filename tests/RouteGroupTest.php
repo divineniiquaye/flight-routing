@@ -17,10 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Flight\Routing\Interfaces\RouteCollectorInterface;
 use Flight\Routing\Route;
-use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteGroup;
+use Flight\Routing\RouteList;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -40,10 +39,10 @@ class RouteGroupTest extends TestCase
         $routes[1]->setName('bar');
         $routes[2]->setName('baz');
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->setName('api.');
 
         $this->assertSame('api.foo', $routes[0]->getName());
@@ -54,9 +53,9 @@ class RouteGroupTest extends TestCase
     public function testsetDefaults(): void
     {
         $routes = [
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/foo', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/bar', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/baz', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/foo', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/bar', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/baz', 'phpinfo'),
         ];
 
         $newDefaults = [
@@ -75,10 +74,10 @@ class RouteGroupTest extends TestCase
         $routes[1]->setDefaults($newDefaults);
         $routes[2]->setDefaults($newDefaults);
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->setDefaults($additionalDefaults);
 
         $expectedDefaults = \array_merge($newDefaults, $additionalDefaults);
@@ -91,14 +90,14 @@ class RouteGroupTest extends TestCase
     public function testAddPrefix(): void
     {
         $routes = [
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/foo', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/bar', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/foo', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/bar', 'phpinfo'),
         ];
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->addPrefix('/api');
 
         $this->assertSame('/api/foo', $routes[0]->getPath());
@@ -108,16 +107,16 @@ class RouteGroupTest extends TestCase
     public function testAddDomain(): void
     {
         $routes = [
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/foo', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/bar', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/foo', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/bar', 'phpinfo'),
         ];
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
         $routes[0]->setDomain('tests.com');
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->addDomain('biurad.com');
 
         $this->assertSame('biurad.com', $routes[0]->getDomain());
@@ -127,17 +126,17 @@ class RouteGroupTest extends TestCase
     public function testAddScheme(): void
     {
         $routes = [
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/foo', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/bar', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/foo', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/bar', 'phpinfo'),
         ];
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
         $routes[0]->setScheme('ftp');
         $routes[1]->setScheme('ftp');
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->addScheme('wss');
 
         $this->assertSame(['ftp', 'wss'], $routes[0]->getSchemes());
@@ -151,10 +150,10 @@ class RouteGroupTest extends TestCase
             new Route(\uniqid(), ['BAR'], '/bar', 'phpinfo'),
         ];
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->addMethod('QUX', 'QUUX');
 
         $this->assertSame(['FOO', 'QUX', 'QUUX'], $routes[0]->getMethods());
@@ -164,9 +163,9 @@ class RouteGroupTest extends TestCase
     public function testAddMiddleware(): void
     {
         $routes = [
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/foo', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/bar', 'phpinfo'),
-            new Route(\uniqid(), [RouteCollectorInterface::METHOD_GET], '/baz', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/foo', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/bar', 'phpinfo'),
+            new Route(\uniqid(), [Route::METHOD_GET], '/baz', 'phpinfo'),
         ];
 
         $newMiddlewares = [
@@ -185,10 +184,10 @@ class RouteGroupTest extends TestCase
         $routes[1]->addMiddleware(...$newMiddlewares);
         $routes[2]->addMiddleware(...$newMiddlewares);
 
-        $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection = new RouteList();
+        $collection->addForeach(...$routes);
 
-        $groupAction = new RouteGroup($collection);
+        $groupAction = new RouteGroup($collection->getRoutes());
         $groupAction->addMiddleware(...$additionalMiddlewares);
 
         $expectedMiddlewares = \array_merge($newMiddlewares, $additionalMiddlewares);

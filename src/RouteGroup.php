@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Interfaces\RouteCollectionInterface;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 
@@ -26,16 +25,16 @@ class RouteGroup implements RouteGroupInterface
     /**
      * Route collection for group activities
      *
-     * @var RouteCollectionInterface|RouteInterface[]
+     * @var RouteInterface[]
      */
     private $collection;
 
     /**
      * Constructor of the class
      *
-     * @param RouteCollectionInterface $collection
+     * @param RouteInterface[] $collection
      */
-    public function __construct(RouteCollectionInterface $collection)
+    public function __construct(array $collection)
     {
         $this->collection = $collection;
     }
