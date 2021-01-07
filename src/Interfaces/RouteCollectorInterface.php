@@ -17,33 +17,33 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Fig\Http\Message\RequestMethodInterface;
-
-interface RouteCollectorInterface extends RequestMethodInterface
+/**
+ * Aggregate routes for the router.
+ *
+ * This class provides all(*) methods for creating path+HTTP method-based routes and
+ * injecting them into the router:
+ *
+ * - head
+ * - get
+ * - post
+ * - put
+ * - patch
+ * - delete
+ * - options
+ * - any
+ * - resource
+ *
+ * A general `addRoute()` method allows specifying multiple request methods and/or
+ * arbitrary request methods when creating a path-based route.
+ *
+ * Internally, the class performs some checks for duplicate routes when
+ * attaching via one of the exposed methods, and will raise an exception when a
+ * collision occurs.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
+interface RouteCollectorInterface
 {
-    /**
-     * Standard HTTP methods against which to test HEAD/OPTIONS requests.
-     */
-    public const HTTP_METHODS_STANDARD = [
-        self::METHOD_HEAD,
-        self::METHOD_GET,
-        self::METHOD_POST,
-        self::METHOD_PUT,
-        self::METHOD_PATCH,
-        self::METHOD_DELETE,
-        self::METHOD_PURGE,
-        self::METHOD_OPTIONS,
-        self::METHOD_TRACE,
-        self::METHOD_CONNECT,
-    ];
-
-    /**
-     * Gets the collector collection
-     *
-     * @return RouteCollectionInterface
-     */
-    public function getCollection(): RouteCollectionInterface;
-
     /**
      * Add route group.
      *
@@ -52,18 +52,6 @@ interface RouteCollectorInterface extends RequestMethodInterface
      * @return RouteGroupInterface
      */
     public function group($callable): RouteGroupInterface;
-
-    /**
-     * Add route.
-     *
-     * @param string   $name    The route name
-     * @param string[] $methods Array of HTTP methods
-     * @param string   $pattern The route pattern
-     * @param mixed    $handler The route callable
-     *
-     * @return RouteInterface
-     */
-    public function map(string $name, array $methods, string $pattern, $handler): RouteInterface;
 
     /**
      * Add HEAD route.
