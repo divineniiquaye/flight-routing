@@ -120,39 +120,26 @@ composer require biurad/http-galaxy
 
 Flight routing allows you to call any controller action with namespace using `*<namespace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
 
-> Create a new file, name it `routes.php` and place it in your library folder or any private folder. This will be the file where you define all the routes for your project.
-
-In your `index.php` require your newly-created `routes.php` and call the `$collector->handle()` method on [Publisher] `publish` method, passing an instance of [PSR-7] `ServerRequestInterface`. This will trigger and do the actual routing of the requests to response.
-
-```php
-use Flight\Routing\RouteCollector as Router;
-
-return static function (Router &$collector): void {
-    $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
-
-    // Add more routes here...
-};
-```
-
 For dispatching a router, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
 **This is an example of a basic `index.php` file:**
 
 ```php
-use Flight\Routing\{RouteCollector, Router};
+use Flight\Routing\{Router, RouteList};
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-$collector = new RouteCollector();
+$collector = new RouteList();
 
-/* Load external routes file */
-(require_once __DIR__.'/routes.php')($collector);
+// Add routes
+$collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+
 
 // Need to have an idea about php before using this dependency, though it easy to use.
 $psr17Factory = new Psr17Factory();
 
 $router = new Router($psr17Factory, $psr17Factory);
-$router->addRoute(...$collector->getCollection());
+$router->addRoute(...$collector->getRoutes());
 
 /**
  * The default namespace for route-callbacks, so we don't have to specify it each time.
@@ -174,20 +161,19 @@ Remember the `routes.php` file you required in your `index.php`? This file be wh
 
 ---
 
-This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteCollectorInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
+This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteListInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
 
 ```php
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 use Flight\Routing\Annotation\Listener;
-use Flight\Routing\RouteCollector;
 use Flight\Routing\Router;
 use Spiral\Attributes\AnnotationReader;
 use Spiral\Attributes\AttributeReader;
 use Spiral\Attributes\Composite\MergeReader;
 
 $loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
-$loader->attachListener(new Listener(new RouteCollector()));
+$loader->attachListener(new Listener());
 
 $loader->attach(
     'src/Controller',
@@ -546,10 +532,10 @@ $url = $collector->generateUri('profile', ['id' => 1]); // will produce "user/1/
 Route groups allow you to share route attributes, such as middlewares, namespace, domain, name, prefix, patterns, or defaults, across a large number of routes without needing to define those attributes on each individual route. Shared attributes are specified in an array format as the first parameter to the `$collector->group` method.
 
 ```php
-use Flight\Routing\Interfaces\RouteCollectorInterface;
+use Flight\Routing\Interfaces\RouteListInterface;
 
 $collector->group(
-    function (RouteCollectorInterface $route) {
+    function (RouteListInterface $route) {
         // Define your routes using $route...
     }
 );
@@ -663,7 +649,7 @@ $collector->get(
 Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
 
 ```php
-use Flight\Routing\Interfaces\RouteCollectorInterface;
+use Flight\Routing\Interfaces\RouteListInterface;
 
 // Domain
 $collector->get('domain', '/', 'Controller@method')->setDomain('domain.com');
@@ -674,7 +660,7 @@ $collector->get('sub_domain', '/', 'Controller:method')->setDomain('server2.doma
 // Subdomain regex pattern
 $collector->get('account_domain', '/', ['Controller', 'method'])->setDomain('{accounts:.*}.domain.com');
 
-$collector->group(function (RouteCollectorInterface $route) {
+$collector->group(function (RouteListInterface $route) {
     $route->get('/user/{id}', function ($id) {
         //
     });
@@ -685,7 +671,7 @@ $collector->group(function (RouteCollectorInterface $route) {
 
 ---
 
-All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteCollector::resource` method to automatically prefix all the methods in `Flight\Routing\Interfaces\RouteCollectorInterface::HTTP_METHODS_STANDARD` with HTTP verb.
+All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteCollector::resource` method to automatically prefix all the methods in `Flight\Routing\Interfaces\RouteListInterface::HTTP_METHODS_STANDARD` with HTTP verb.
 
 For example, we can use the following controller:
 
@@ -855,7 +841,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [docs]: https://docs.biurad.com/flight-routing
 [commit]: https://commits.biurad.com/flight-routing.git
 [UPGRADE]: UPGRADE-1.x.md
-[CHANGELOG]: CHANGELOG-0.x.md
+[CHANGELOG]: CHANGELOG-1.x.md
 [CONTRIBUTING]: ./.github/CONTRIBUTING.md
 [All Contributors]: https://github.com/divineniiquaye/flight-routing/contributors
 [Biurad Lap]: https://team.biurad.com
