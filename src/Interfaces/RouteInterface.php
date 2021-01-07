@@ -17,11 +17,28 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
+use Fig\Http\Message\RequestMethodInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-interface RouteInterface
+interface RouteInterface extends RequestMethodInterface
 {
+    /**
+     * Standard HTTP methods against which to test HEAD/OPTIONS requests.
+     */
+    public const HTTP_METHODS_STANDARD = [
+        self::METHOD_HEAD,
+        self::METHOD_GET,
+        self::METHOD_POST,
+        self::METHOD_PUT,
+        self::METHOD_PATCH,
+        self::METHOD_DELETE,
+        self::METHOD_PURGE,
+        self::METHOD_OPTIONS,
+        self::METHOD_TRACE,
+        self::METHOD_CONNECT,
+    ];
+
     /**
      * Get route methods.
      *
