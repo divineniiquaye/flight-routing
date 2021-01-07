@@ -21,7 +21,7 @@ use Biurad\Annotations\AnnotationLoader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\Annotation\Listener;
 use Flight\Routing\Exceptions\InvalidAnnotationException;
-use Flight\Routing\RouteCollector;
+use Flight\Routing\Route;
 use Spiral\Attributes\AnnotationReader;
 use Spiral\Attributes\AttributeReader;
 use Spiral\Attributes\Composite\MergeReader;
@@ -39,7 +39,7 @@ class RouteLoaderTest extends BaseTestCase
         AnnotationRegistry::registerLoader('class_exists');
 
         $loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
-        $loader->attachListener(new Listener(new RouteCollector()));
+        $loader->attachListener(new Listener());
 
         $this->loader = $loader;
     }
@@ -67,10 +67,10 @@ class RouteLoaderTest extends BaseTestCase
             'do.action_two',
             'english_locale',
             'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
+            'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
-            'flight_routing_tests_fixtures_annotation_route_valid_restfulcontroller',
             'hello_with_default',
             'hello_without_default',
             'home',
@@ -78,6 +78,7 @@ class RouteLoaderTest extends BaseTestCase
             'ping',
             'sub-dir:bar',
             'sub-dir:foo',
+            'user__restful',
         ], $routes);
     }
 
@@ -96,7 +97,7 @@ class RouteLoaderTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $this->assertCount(19, $router->getRoutes());
+        $this->assertCount(20, $router->getRoutes());
     }
 
     /**
@@ -116,7 +117,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
             'path'        => '/default',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultNameController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -129,7 +130,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
             'path'        => '/get',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -142,7 +143,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
             'path'        => '/post',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -155,7 +156,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
             'path'        => '/put',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_PUT],
+            'methods'     => [Route::METHOD_PUT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -165,11 +166,11 @@ class RouteLoaderTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_restfulcontroller',
+            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
             'path'        => 'testing/',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
-            'handler'     => [Fixtures\Annotation\Route\Valid\RestfulController::class, 'handleSomething'],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MethodOnRoutePattern::class, 'handleSomething'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
@@ -181,7 +182,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'english_locale',
             'path'        => '/en/locale',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -194,7 +195,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'action',
             'path'        => '/{default}/path',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'action'],
             'middlewares' => [],
             'schemes'     => [],
@@ -207,7 +208,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'hello_without_default',
             'path'        => '/hello/{name:\w+}',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
             'middlewares' => [],
             'schemes'     => [],
@@ -220,7 +221,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'hello_with_default',
             'path'        => '/cool/{name=<Symfony>}',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
             'middlewares' => [],
             'schemes'     => [],
@@ -233,7 +234,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'home',
             'path'        => '/',
             'domain'      => 'biurad.com',
-            'methods'     => [RouteCollector::METHOD_HEAD, RouteCollector::METHOD_GET],
+            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\HomeRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -252,7 +253,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'lol',
             'path'        => '/here',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => Fixtures\Annotation\Route\Valid\InvokableController::class,
             'middlewares' => [],
             'schemes'     => ['https'],
@@ -265,7 +266,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'ping',
             'path'        => '/ping',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_HEAD, RouteCollector::METHOD_GET],
+            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\PingRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -284,7 +285,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'do.action',
             'path'        => '/prefix/path',
             'domain'      => 'biurad.com',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\RouteWithPrefixController::class, 'action'],
             'middlewares' => [],
             'schemes'     => [],
@@ -297,7 +298,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'do.action_two',
             'path'        => '/prefix/path_two',
             'domain'      => 'biurad.com',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\RouteWithPrefixController::class, 'actionTwo'],
             'middlewares' => [],
             'schemes'     => [],
@@ -310,7 +311,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'sub-dir:foo',
             'path'        => '/sub-dir/foo',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_HEAD, RouteCollector::METHOD_GET],
+            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\Subdir\FooRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -329,7 +330,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'sub-dir:bar',
             'path'        => '/sub-dir/bar',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_HEAD, RouteCollector::METHOD_GET],
+            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\Subdir\BarRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -343,6 +344,19 @@ class RouteLoaderTest extends BaseTestCase
             'patterns'    => [],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'user__restful',
+            'path'        => '/user/{id:\d+}',
+            'domain'      => '',
+            'methods'     => Route::HTTP_METHODS_STANDARD,
+            'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
     }
 
     /**
@@ -352,7 +366,7 @@ class RouteLoaderTest extends BaseTestCase
     {
         $loader = new AnnotationLoader(new AttributeReader());
 
-        $loader->attachListener(new Listener(new RouteCollector()));
+        $loader->attachListener(new Listener());
         $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Attribute');
 
         $router = $this->getRouter();
@@ -364,7 +378,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'attribute_specific_name',
             'path'        => '/defaults/specific-name',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET],
+            'methods'     => [Route::METHOD_GET],
             'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'withName'],
             'middlewares' => [],
             'schemes'     => [],
@@ -377,7 +391,7 @@ class RouteLoaderTest extends BaseTestCase
             'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultsclass_noname',
             'path'        => '/defaults/specific-none',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'noName'],
             'middlewares' => [],
             'schemes'     => [],

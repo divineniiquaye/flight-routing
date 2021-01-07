@@ -157,7 +157,7 @@ trait ResolveTrait
                         $route->getArguments(),
                         [\get_class($request) => $request, \get_class($response) => $response]
                     );
-        
+
                     return $this->resolver->call($handler, $arguments);
                 },
                 $this->responseFactory->createResponse()
@@ -171,7 +171,7 @@ trait ResolveTrait
      * @param RouteInterface $route
      * @param array<string,string>         $parameters
      * @param array<int|string,int|string> $queryParams
-     * 
+     *
      * @return string
      */
     protected function resolveUri(RouteInterface $route, array $parameters, array $queryParams): string
@@ -197,7 +197,7 @@ trait ResolveTrait
 
     /**
      * @param RouteInterface $route
-     * 
+     *
      * @return array<int,mixed>
      */
     protected function resolveMiddlewares(RouteInterface $route): array
