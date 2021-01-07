@@ -18,123 +18,26 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use Flight\Routing\Exceptions\InvalidControllerException;
-use Flight\Routing\Interfaces\RouteCollectionInterface;
-use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\RouteCollection;
-use Flight\Routing\RouteCollector;
+use Flight\Routing\Interfaces\RouteListInterface;
+use Flight\Routing\Route;
+use Flight\Routing\RouteList;
 
 /**
- * RouteCollectorTest
+ * RouteListTest
  */
-class RouteCollectorTest extends BaseTestCase
+class RouteListTest extends BaseTestCase
 {
-    public function testDefaultCollection(): void
+    public function testAdd(): void
     {
-        $collector = new RouteCollector();
+        $route = new Fixtures\TestRoute();
+        $route->setName('foo');
 
-        $this->assertInstanceOf(RouteCollectionInterface::class, $collector->getCollection());
-    }
+        $collector = new RouteList();
+        $collector->add($route);
 
-    public function testRouteFactory(): void
-    {
-        $expectedRoute      = new Fixtures\TestRoute();
-        $expectedCollection = new RouteCollection();
-
-        $collector  = $this->getRouteCollector($expectedRoute, $expectedCollection);
-        $builtRoute = $collector->map(
-            'test',
-            [$collector::METHOD_GET],
-            '/test',
-            new Fixtures\BlankRequestHandler()
-        );
-
-        $this->assertSame($expectedRoute, $builtRoute);
-        $this->assertSame($expectedCollection, $collector->getCollection());
-        $this->assertNotEmpty($collector->__debugInfo());
-    }
-
-    public function testRouteFactoryThroughHeadMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->head('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testRouteFactoryThroughGetMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->get('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testRouteFactoryThroughPostMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->post('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testRouteFactoryThroughPutMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->put('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testRouteFactoryThroughPatchMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->patch('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testRouteFactoryThroughDeleteMethod(): void
-    {
-        $expectedRoute = new Fixtures\TestRoute();
-
-        $collector  = $this->getRouteCollector($expectedRoute);
-        $builtRoute = $collector->delete('test', '/test', new Fixtures\BlankRequestHandler());
-
-        $this->assertSame($expectedRoute, $builtRoute);
-    }
-
-    public function testFactoriesTransferringDuringGrouping(): void
-    {
-        $routeFactory = $this->createMock(RouteFactoryInterface::class);
-
-        $routeFactory->expects($this->exactly(4))
-            ->method('createCollection')
-            ->willReturn(new RouteCollection());
-
-        $routeFactory->expects($this->exactly(1))
-            ->method('createRoute')
-            ->willReturn(new Fixtures\TestRoute());
-
-        $collector = new RouteCollector($routeFactory);
-
-        $collector->group(function ($collector): void {
-            $collector->group(function ($collector): void {
-                $collector->group(function ($collector): void {
-                    $collector->map('test', ['GET'], '/test', new Fixtures\BlankRequestHandler());
-                });
-            });
-        });
+        $this->assertCount(1, $collector->getRoutes());
+        $this->assertSame('foo', \current($collector->getRoutes())->getName());
     }
 
     public function testRoute(): void
@@ -144,9 +47,9 @@ class RouteCollectorTest extends BaseTestCase
         $routeMethods        = Fixtures\TestRoute::getTestRouteMethods();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
-        $route = $collector->map(
+        $route = $collector->addRoute(
             $routeName,
             $routeMethods,
             $routePath,
@@ -177,9 +80,9 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
-        $route = $collector->map(
+        $route = $collector->addRoute(
             $routeName,
             $routeMethods,
             $routePath,
@@ -202,7 +105,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->head(
             $routeName,
@@ -214,7 +117,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_HEAD], $route->getMethods());
+        $this->assertSame([Route::METHOD_HEAD], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -233,7 +136,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->head(
             $routeName,
@@ -245,7 +148,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_HEAD], $route->getMethods());
+        $this->assertSame([Route::METHOD_HEAD], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -257,7 +160,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->get(
             $routeName,
@@ -269,7 +172,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_GET, $collector::METHOD_HEAD], $route->getMethods());
+        $this->assertSame([Route::METHOD_GET, Route::METHOD_HEAD], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -288,7 +191,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->get(
             $routeName,
@@ -300,7 +203,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_GET, $collector::METHOD_HEAD], $route->getMethods());
+        $this->assertSame([Route::METHOD_GET, Route::METHOD_HEAD], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -312,7 +215,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->post(
             $routeName,
@@ -324,7 +227,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_POST], $route->getMethods());
+        $this->assertSame([Route::METHOD_POST], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -343,7 +246,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->post(
             $routeName,
@@ -355,7 +258,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_POST], $route->getMethods());
+        $this->assertSame([Route::METHOD_POST], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -367,7 +270,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->put(
             $routeName,
@@ -379,7 +282,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_PUT], $route->getMethods());
+        $this->assertSame([Route::METHOD_PUT], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -398,7 +301,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->put(
             $routeName,
@@ -410,7 +313,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_PUT], $route->getMethods());
+        $this->assertSame([Route::METHOD_PUT], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -422,7 +325,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->patch(
             $routeName,
@@ -434,7 +337,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_PATCH], $route->getMethods());
+        $this->assertSame([Route::METHOD_PATCH], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -453,7 +356,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->patch(
             $routeName,
@@ -465,7 +368,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_PATCH], $route->getMethods());
+        $this->assertSame([Route::METHOD_PATCH], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -477,7 +380,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->delete(
             $routeName,
@@ -489,7 +392,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_DELETE], $route->getMethods());
+        $this->assertSame([Route::METHOD_DELETE], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -508,7 +411,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->delete(
             $routeName,
@@ -520,7 +423,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_DELETE], $route->getMethods());
+        $this->assertSame([Route::METHOD_DELETE], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -532,7 +435,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->options(
             $routeName,
@@ -544,7 +447,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_OPTIONS], $route->getMethods());
+        $this->assertSame([Route::METHOD_OPTIONS], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -563,7 +466,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->options(
             $routeName,
@@ -575,7 +478,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([$collector::METHOD_OPTIONS], $route->getMethods());
+        $this->assertSame([Route::METHOD_OPTIONS], $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -587,7 +490,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->any(
             $routeName,
@@ -599,7 +502,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame($collector::HTTP_METHODS_STANDARD, $route->getMethods());
+        $this->assertSame(Route::HTTP_METHODS_STANDARD, $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
 
         // default property values...
@@ -618,7 +521,7 @@ class RouteCollectorTest extends BaseTestCase
         $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
         $routeAttributes     = Fixtures\TestRoute::getTestRouteAttributes();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $route = $collector->any(
             $routeName,
@@ -630,7 +533,7 @@ class RouteCollectorTest extends BaseTestCase
 
         $this->assertSame($routeName, $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame($collector::HTTP_METHODS_STANDARD, $route->getMethods());
+        $this->assertSame(Route::HTTP_METHODS_STANDARD, $route->getMethods());
         $this->assertSame($routeRequestHandler, $route->getController());
         $this->assertSame($routeMiddlewares, $route->getMiddlewares());
         $this->assertSame($routeAttributes, $route->getArguments());
@@ -638,28 +541,28 @@ class RouteCollectorTest extends BaseTestCase
 
     public function testGroup(): void
     {
-        $collector = new RouteCollector();
+        $collector = new RouteList();
         $collector->get('home', '/', new Fixtures\BlankRequestHandler());
 
-        $collector->group(function (RouteCollector $group): void {
+        $collector->group(function (RouteListInterface $group): void {
             $group->get('home', '/', new Fixtures\BlankRequestHandler());
             $group->get('ping', '/ping', new Fixtures\BlankRequestHandler());
 
-            $group->group(function (RouteCollector $group): void {
+            $group->group(function (RouteListInterface $group): void {
                 $group->head('hello', 'hello', new Fixtures\BlankRequestHandler())
                     ->setArguments(['hello']);
             })
             ->addScheme('https', 'http')
-            ->addMethod($group::METHOD_CONNECT)
+            ->addMethod(Route::METHOD_CONNECT)
             ->setDefaults(['hello' => 'world']);
 
-            $group->group(function (RouteCollector $group): void {
-                $group->group(function (RouteCollector $group): void {
+            $group->group(function (RouteListInterface $group): void {
+                $group->group(function (RouteListInterface $group): void {
                     $group->post('section.create', '/create', new Fixtures\BlankRequestHandler());
                     $group->patch('section.update', '/update/{id}', new Fixtures\BlankRequestHandler());
                 })->addPrefix('/section')->addMiddleware(Fixtures\BlankMiddleware::class);
 
-                $group->group(function (RouteCollector $group): void {
+                $group->group(function (RouteListInterface $group): void {
                     $group->post('product.create', 'create', new Fixtures\BlankRequestHandler());
                     $group->patch('product.update', '/update/{id}', new Fixtures\BlankRequestHandler());
                 })
@@ -671,13 +574,13 @@ class RouteCollectorTest extends BaseTestCase
 
         $collector->get('about-us', '/about-us', new Fixtures\BlankRequestHandler());
 
-        $routes = $collector->getCollection();
+        $routes = $collector->getRoutes();
 
         $this->assertContains([
             'name'        => 'home',
             'path'        => '/',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => [],
@@ -690,7 +593,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.home',
             'path'        => '/api/',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => [],
@@ -703,7 +606,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.ping',
             'path'        => '/api/ping',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => [],
@@ -716,7 +619,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.hello',
             'path'        => '/api/hello',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_HEAD, RouteCollector::METHOD_CONNECT],
+            'methods'     => [Route::METHOD_HEAD, Route::METHOD_CONNECT],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => ['https', 'http'],
@@ -729,7 +632,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.section.create',
             'path'        => '/api/v1/section/create',
             'domain'      => 'youtube.com',
-            'methods'     => [RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_POST],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [Fixtures\BlankMiddleware::class],
             'schemes'     => ['https'],
@@ -742,7 +645,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.section.update',
             'path'        => '/api/v1/section/update/{id}',
             'domain'      => 'youtube.com',
-            'methods'     => [RouteCollector::METHOD_PATCH],
+            'methods'     => [Route::METHOD_PATCH],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [Fixtures\BlankMiddleware::class],
             'schemes'     => ['https'],
@@ -755,7 +658,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.product.create',
             'path'        => '/api/v1/product/create',
             'domain'      => 'youtube.com',
-            'methods'     => [RouteCollector::METHOD_POST],
+            'methods'     => [Route::METHOD_POST],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => ['https'],
@@ -768,7 +671,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'api.product.update',
             'path'        => '/api/v1/product/update/{id}',
             'domain'      => 'youtube.com',
-            'methods'     => [RouteCollector::METHOD_PATCH],
+            'methods'     => [Route::METHOD_PATCH],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => ['https'],
@@ -781,7 +684,7 @@ class RouteCollectorTest extends BaseTestCase
             'name'        => 'about-us',
             'path'        => '/about-us',
             'domain'      => '',
-            'methods'     => [RouteCollector::METHOD_GET, RouteCollector::METHOD_HEAD],
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => Fixtures\BlankRequestHandler::class,
             'middlewares' => [],
             'schemes'     => [],
@@ -797,17 +700,19 @@ class RouteCollectorTest extends BaseTestCase
         $routePath     = Fixtures\TestRoute::getTestRoutePath();
         $routeResource = new Fixtures\BlankRestful();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
-        $route = $collector->resource(
+        $collector->resource(
             $routeName,
             $routePath,
             $routeResource
         );
 
+        $route = current($collector->getRoutes());
+
         $this->assertSame($routeName . '__restful', $route->getName());
         $this->assertSame($routePath, $route->getPath());
-        $this->assertSame($collector::HTTP_METHODS_STANDARD, $route->getMethods());
+        $this->assertSame(Route::HTTP_METHODS_STANDARD, $route->getMethods());
         $this->assertSame([$routeResource, $routeName], $route->getController());
     }
 
@@ -817,7 +722,7 @@ class RouteCollectorTest extends BaseTestCase
         $routePath           = Fixtures\TestRoute::getTestRoutePath();
         $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
 
-        $collector = new RouteCollector();
+        $collector = new RouteList();
 
         $this->expectException(InvalidControllerException::class);
         $this->getExpectedExceptionMessage('Resource handler type should be a string or object, but not a callable');
