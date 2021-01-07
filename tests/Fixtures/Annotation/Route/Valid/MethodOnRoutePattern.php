@@ -19,10 +19,23 @@ namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
 use Flight\Routing\Annotation\Route;
 use Flight\Routing\Tests\Fixtures\BlankRestful;
+use JsonSerializable;
 
 /**
- * @Route("/user/{id:\d+}", name="user__restful")
+ * @Route("testing/*<handleSomething>", methods={"GET", "HEAD"})
  */
-class RestfulController extends BlankRestful
+class MethodOnRoutePattern implements JsonSerializable
 {
+    public function handleSomething(): JsonSerializable
+    {
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function jsonSerialize()
+    {
+        return ['Hello' => 'World to Flight Routing'];
+    }
 }

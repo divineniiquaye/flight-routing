@@ -43,10 +43,8 @@ class UriRedirectMiddlewareTest extends BaseTestCase
         $pipeline = $this->getRouter();
         $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
 
-        $routes = [
-            new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class),
-        ];
-        $pipeline->addRoute(...$routes);
+        $route = new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class);
+        $pipeline->addRoute($route);
 
         $response = $pipeline->handle(new ServerRequest('GET', $expected));
 
