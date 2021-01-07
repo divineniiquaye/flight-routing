@@ -76,7 +76,6 @@
 ---
 
 - Removed `Flight\Routing\RouteCollector` class (BR Changes)
-- Removed `Flight\Routing\RouteGroup` class (BR Changes)
 - Removed `Flight\Routing\RouteFactory` class (BR Changes)
 - Changed how routes are handled and dispatched
 
@@ -138,14 +137,14 @@
     _After_
 
     ```php
-    $collector = (new RouteList)
-        ->withDomain('admin.biurad.com')
-            ->addRoute(...)
-            ->addRoute(...)
-        ->end()
-        ->withDomain('biurad.com')
-            ->withPath('export')
-                ->addRoute(...)
-                ...
+    $collector = new RouteList();
+
+    $collector->group(
+        function (RouteListInterface $group) {
+            // Define your routes using $route...
+        }
+    );
+
+    $collector->addForeach(...);
     ```
 
