@@ -27,27 +27,21 @@
             </errorLevel>
         </ArgumentTypeCoercion>
 
-        <PossiblyInvalidFunctionCall>
-            <errorLevel type="suppress">
-                <file name="src/RouteCollector.php"/>
-            </errorLevel>
-        </PossiblyInvalidFunctionCall>
-
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
                 <file name="src/Traits/ResolveTrait.php"/>
             </errorLevel>
         </PossiblyInvalidArgument>
 
-        <UndefinedInterfaceMethod>
+        <PossiblyInvalidFunctionCall>
             <errorLevel type="suppress">
-                <referencedMethod name="DivineNii\Invoker\Interfaces\InvokerInterface::getContainer"/>
+                <file name="src/RouteList.php"/>
             </errorLevel>
-        </UndefinedInterfaceMethod>
+        </PossiblyInvalidFunctionCall>
 
         <InvalidScalarArgument>
             <errorLevel type="suppress">
-                <file name="src/Services/SimpleRouteCompiler.php"/>
+                <file name="src/Matchers/SimpleRouteCompiler.php"/>
             </errorLevel>
         </InvalidScalarArgument>
 
@@ -69,12 +63,18 @@
             </errorLevel>
         </InvalidCatch>
 
+        <RedundantCondition>
+            <errorLevel type="suppress">
+                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
+            </errorLevel>
+        </RedundantCondition>
+
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Router.php"/>
                 <file name="src/Annotation/Listener.php"/>
-                <file name="src/Services/SimpleRouteCompiler.php"/>
-                <file name="src/Services/SimpleRouteMatcher.php"/>
+                <file name="src/Matchers/SimpleRouteCompiler.php"/>
+                <file name="src/Matchers/SimpleRouteMatcher.php"/>
                 <file name="src/Exceptions/InvalidMiddlewareException.php"/>
             </errorLevel>
         </TypeDoesNotContainType>
@@ -84,7 +84,7 @@
                 <file name="src/Annotation/Route.php"/>
                 <file name="src/Annotation/Listener.php"/>
                 <file name="src/Traits/CastingTrait.php" />
-                <file name="src/Services/SimpleRouteCompiler.php"/>
+                <file name="src/Matchers/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
 

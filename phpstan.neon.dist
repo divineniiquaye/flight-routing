@@ -12,22 +12,19 @@ parameters:
         - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
         -
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
-            path: src/RouteCollector.php
+            path: src/RouteList.php
         -
             message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
-            path: src/Services/SimpleRouteCompiler.php
+            path: src/Matchers/SimpleRouteCompiler.php
         -
             message: "#^Parameter \\#1 \\$defaults of method Flight\\\\Routing\\\\Interfaces\\\\RouteInterface\\:\\:setDefaults\\(\\) expects array<string, mixed>, array<int\\|string, mixed> given.$#"
-            path: src/Services/SimpleRouteCompiler.php
+            path: src/Matchers/SimpleRouteCompiler.php
         -
             message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
-            path: src/Annotation\Listener.php
+            path: src/Annotation/Listener.php
         -
             message: "#^Call to function is_object\\(\\) with string will always evaluate to false.$#"
             path: src/Exceptions/InvalidMiddlewareException.php
-        -
-            message: "#^Strict comparison using === between null and string will always evaluate to false.$#"
-            path: src/Traits/ResolveTrait.php
         -
             message: "#^Call to function is_callable\\(\\) with mixed will always evaluate to false.$#"
             path: src/Traits/MiddlewareTrait.php

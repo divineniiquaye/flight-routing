@@ -36,7 +36,7 @@ interface RouteListInterface extends RouteCollectorInterface
      * @param string $pattern
      * @param mixed $handler
      *
-     * @return RouteListInterface
+     * @return RouteInterface
      */
     public function addRoute(string $name, array $methods, string $pattern, $handler): RouteInterface;
 

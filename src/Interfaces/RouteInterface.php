@@ -170,7 +170,7 @@ interface RouteInterface extends RequestMethodInterface
      *
      * NB: Adding a request handler as middleware ends the middlewares cycle.
      *
-     * @param callable|MiddlewareInterface|RequestHandlerInterface|string ...$middlewares
+     * @param callable|MiddlewareInterface|RequestHandlerInterface|string|mixed[] ...$middlewares
      *
      * @return RouteInterface
      */
