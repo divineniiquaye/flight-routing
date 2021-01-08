@@ -31,7 +31,7 @@ trait ResolveTrait
     /** @var null|string */
     private $namespace;
 
-    /** @var RouteInterface */
+    /** @var null|RouteInterface */
     private $route;
 
     /** @var InvokerInterface */

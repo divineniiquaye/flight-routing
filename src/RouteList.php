@@ -26,9 +26,9 @@ use Flight\Routing\Interfaces\RouteListInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteList implements RouteListInterface
+final class RouteList implements RouteListInterface
 {
-    /** @var RouteListInterface[] */
+    /** @var RouteInterface[] */
     private $list = [];
 
     public function __construct()

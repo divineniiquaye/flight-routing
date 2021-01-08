@@ -177,16 +177,14 @@ class Router implements RequestHandlerInterface
             $this->match($request);
         }
 
-        $middlewareDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
-
-        return $middlewareDispatcher->dispatch(
+        return ($handler = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer()))->dispatch(
             $this->getMiddlewares(),
-            new Handlers\CallbackHandler(function (ServerRequestInterface $request) use ($middlewareDispatcher) {
+            new Handlers\CallbackHandler(function (ServerRequestInterface $request) use ($handler): ResponseInterface {
                 try {
                     $route   = $request->getAttribute(Route::class, $this->route);
-                    $handler = $this->resolveRoute($route);
+                    $routeHandler = $this->resolveRoute($route);
 
-                    return $middlewareDispatcher->dispatch($this->resolveMiddlewares($route), $handler, $request);
+                    return $handler->dispatch($this->resolveMiddlewares($route), $routeHandler, $request);
                 } finally {
                     if ($this->profiler instanceof DebugRoute) {
                         foreach ($this->profiler->getProfiles() as $profiler) {

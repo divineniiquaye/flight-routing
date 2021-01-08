@@ -39,7 +39,7 @@ final class MiddlewareDispatcher
     }
 
     /**
-     * @param array<MiddlewareInterface> $middlewares
+     * @param array<int,MiddlewareInterface|string> $middlewares
      */
     public function dispatch(
         array $middlewares,
