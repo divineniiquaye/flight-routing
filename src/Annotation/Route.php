@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Flight\Routing\Exceptions\InvalidAnnotationException;
+use Biurad\Annotations\InvalidAnnotationException;
 
 /**
  * Annotation class for @Route().
@@ -67,7 +67,7 @@ use Flight\Routing\Exceptions\InvalidAnnotationException;
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
 final class Route
 {
-    /** @var string @Required */
+    /** @var null|string @Required */
     private $path;
 
     /** @var null|string @Required */
@@ -150,9 +150,9 @@ final class Route
     }
 
     /**
-     * @return string
+     * @return null|string
      */
-    public function getPath(): string
+    public function getPath(): ?string
     {
         return $this->path;
     }
@@ -239,6 +239,10 @@ final class Route
      */
     private function assertParamsContainValidPath(array $params): void
     {
+        if (null === $params['path']) {
+            return;
+        }
+
         if (empty($params['path']) || !\is_string($params['path'])) {
             throw new InvalidAnnotationException('@Route.path must be not an empty string.');
         }

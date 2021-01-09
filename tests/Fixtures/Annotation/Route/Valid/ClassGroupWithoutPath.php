@@ -15,11 +15,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Exceptions;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
-use Flight\Routing\Interfaces\ExceptionInterface;
-use RuntimeException;
+use Flight\Routing\Annotation\Route;
 
-class InvalidAnnotationException extends RuntimeException implements ExceptionInterface
+/**
+ * @Route(name="class_group@", methods={"CONNECT"})
+ */
+class ClassGroupWithoutPath extends MultipleMethodRouteController
 {
 }

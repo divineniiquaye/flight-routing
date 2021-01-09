@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
+use Biurad\Annotations\InvalidAnnotationException;
 use Biurad\Annotations\ListenerInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
@@ -49,15 +50,16 @@ class Listener implements ListenerInterface
     {
         foreach ($annotations as $class => $collection) {
             if (isset($collection['method'])) {
-                $this->addRouteGroup($collection['class'] ?? null, $collection['method']);
+                $this->addRouteGroup($collection['class'] ?? [], $collection['method']);
 
                 continue;
             }
 
             $this->defaultRouteIndex = 0;
 
-            $route = $this->addRoute($collection['class'], $class);
-            $this->collector->add($route);
+            foreach ($collection['class'] ?? [] as $annotation) {
+                $this->collector->add($this->addRoute($annotation, $class));
+            }
         }
 
         return $this->collector;
@@ -82,27 +84,30 @@ class Listener implements ListenerInterface
     /**
      * Add a route from annotation
      *
-     * @param Route                   $annotation
-     * @param string|string[]         $handler
+     * @param Route           $annotation
+     * @param string|string[] $handler
+     * @param null|Route      $group
+     *
+     * @return RouteInterface
      */
-    protected function addRoute(Route $annotation, $handler): RouteInterface
+    protected function addRoute(Route $annotation, $handler, ?Route $group = null): RouteInterface
     {
-        $routeName    = $annotation->getName() ?? $this->getDefaultRouteName($handler);
-        $routeMethods = $annotation->getMethods();
-
-        // Incase of API Resource
-        if (str_ends_with($routeName, '__restful')) {
-            $routeMethods = Router::HTTP_METHODS_STANDARD;
+        if (null === $annotation->getPath()) {
+            throw new InvalidAnnotationException('@Route.path must not be left empty.');
         }
 
-        $route = (new Router($routeName, $routeMethods, $annotation->getPath(), $handler))
+        $name    = $annotation->getName() ?? $this->getDefaultRouteName($handler);
+        $methods = str_ends_with($name, '__restful') ? Router::HTTP_METHODS_STANDARD : $annotation->getMethods();
+        $route   = new Router($name, $methods, $annotation->getPath(), $handler);
+
+        $route->setDomain($annotation->getDomain() ?? '')
             ->setScheme(...$annotation->getSchemes())
             ->setPatterns($annotation->getPatterns())
             ->setDefaults($annotation->getDefaults())
         ->addMiddleware(...$annotation->getMiddlewares());
 
-        if (null !== $annotation->getDomain()) {
-            $route->setDomain($annotation->getDomain());
+        if (null !== $group) {
+            $route = $this->mergeGroup($group, $route);
         }
 
         return $route;
@@ -111,44 +116,57 @@ class Listener implements ListenerInterface
     /**
      * Add a routes from annotation into group
      *
-     * @param null|Route $grouping
-     * @param mixed[]    $methods
+     * @param Route[] $grouping
+     * @param mixed[] $methods
      */
-    protected function addRouteGroup(?Route $grouping, array $methods): void
+    protected function addRouteGroup(array $grouping, array $methods): void
     {
-        $routes = $this->mergeAnnotations($methods);
-
-        if ($grouping instanceof Route) {
-            foreach ($routes as $route) {
-                $route->setDomain($grouping->getDomain() ?? '')
-                    ->setName($grouping->getName() . $route->getName())
-                    ->setScheme(...$grouping->getSchemes())
-                    ->setDefaults($grouping->getDefaults())
-                    ->addPrefix($grouping->getPath())
-                    ->addMethod(...$grouping->getMethods())
-                ->addMiddleware(...$grouping->getMiddlewares());
+        if (!empty($grouping)) {
+            foreach ($grouping as $group) {
+                $this->mergeAnnotations($methods, $group);
             }
+
+            return;
         }
 
-        $this->collector->addForeach(...$routes);
+        $this->mergeAnnotations($methods);
     }
 
     /**
-     * @param mixed[] $methods
-     *
-     * @return RouteInterface[]
+     * @param mixed[]    $methods
+     * @param null|Route $group
      */
-    protected function mergeAnnotations(array $methods): array
+    protected function mergeAnnotations(array $methods, ?Route $group = null): void
     {
         $this->defaultRouteIndex = 0;
 
         $routes = [];
 
         foreach ($methods as [$method, $annotation]) {
-            $routes[] = $this->addRoute($annotation, [$method->class, $method->getName()]);
+            $routes[] = $this->addRoute($annotation, [$method->class, $method->getName()], $group);
         }
 
-        return $routes;
+        $this->collector->addForeach(...$routes);
+    }
+
+    /**
+     * @param Route          $group
+     * @param RouteInterface $route
+     *
+     * @return RouteInterface
+     */
+    protected function mergeGroup(Route $group, RouteInterface $route): RouteInterface
+    {
+        $route = $route->setDomain($group->getDomain() ?? '')
+            ->setName($group->getName() . $route->getName())
+            ->setScheme(...$group->getSchemes())
+            ->setDefaults($group->getDefaults())
+            ->setPatterns($group->getPatterns())
+            ->addPrefix($group->getPath() ?? '')
+            ->addMethod(...$group->getMethods())
+        ->addMiddleware(...$group->getMiddlewares());
+
+        return $route;
     }
 
     /**

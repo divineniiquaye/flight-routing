@@ -21,6 +21,7 @@ use Flight\Routing\Annotation\Route;
 
 /**
  * @Route("/en", name="english")
+ * @Route("/fr", name="french")
  */
 class MultipleClassRouteController
 {

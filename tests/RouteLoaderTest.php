@@ -18,9 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use Biurad\Annotations\AnnotationLoader;
+use Biurad\Annotations\InvalidAnnotationException;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\Annotation\Listener;
-use Flight\Routing\Exceptions\InvalidAnnotationException;
 use Flight\Routing\Route;
 use Spiral\Attributes\AnnotationReader;
 use Spiral\Attributes\AttributeReader;
@@ -63,6 +63,9 @@ class RouteLoaderTest extends BaseTestCase
 
         $this->assertSame([
             'action',
+            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
             'do.action',
             'do.action_two',
             'english_locale',
@@ -71,6 +74,7 @@ class RouteLoaderTest extends BaseTestCase
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
             'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'french_locale',
             'hello_with_default',
             'hello_without_default',
             'home',
@@ -97,7 +101,7 @@ class RouteLoaderTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $this->assertCount(20, $router->getRoutes());
+        $this->assertCount(24, $router->getRoutes());
     }
 
     /**
@@ -166,6 +170,45 @@ class RouteLoaderTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
+            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'path'        => '/get',
+            'domain'      => '',
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD, Route::METHOD_CONNECT],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'path'        => '/post',
+            'domain'      => '',
+            'methods'     => [Route::METHOD_POST, Route::METHOD_CONNECT],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'path'        => '/put',
+            'domain'      => '',
+            'methods'     => [Route::METHOD_PUT, Route::METHOD_CONNECT],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
             'path'        => 'testing/',
             'domain'      => '',
@@ -181,6 +224,19 @@ class RouteLoaderTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'english_locale',
             'path'        => '/en/locale',
+            'domain'      => '',
+            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], Fixtures\Helper::routesToArray($routes));
+
+        $this->assertContains([
+            'name'        => 'french_locale',
+            'path'        => '/fr/locale',
             'domain'      => '',
             'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
@@ -456,7 +512,7 @@ class RouteLoaderTest extends BaseTestCase
             [Fixtures\Annotation\Route\Invalid\NameEmpty::class, '@Route.name must be not an empty string.'],
             [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a string.'],
             [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must be not an empty string.'],
-            [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must not be left empty.'],
             [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must be not an empty string.'],
         ];
     }

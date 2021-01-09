@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Annotation;
 
+use Biurad\Annotations\InvalidAnnotationException;
 use Flight\Routing\Annotation\Route;
-use Flight\Routing\Exceptions\InvalidAnnotationException;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -84,13 +84,12 @@ class RouteTest extends TestCase
 
     public function testConstructorParamsNotContainPath(): void
     {
-        $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.path must be not an empty string.');
-
-        new Route([
+        $route = new Route([
             'name'    => 'foo',
             'methods' => ['GET'],
         ]);
+
+        $this->assertNull($route->getPath());
     }
 
     public function testConstructorParamsContainStringMethods(): void
@@ -146,7 +145,7 @@ class RouteTest extends TestCase
         $this->expectException(InvalidAnnotationException::class);
         $this->expectExceptionMessage('@Route.path must be not an empty string.');
 
-        new Route(['name' => 'foo', 'path' => $invalidPath, 'methods' => ['GET']]);
+        new Route(['name' => 'foo', 'path' => $invalidPath ?? '', 'methods' => ['GET']]);
     }
 
     /**
