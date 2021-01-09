@@ -59,6 +59,13 @@ class Router implements RequestHandlerInterface
         $this->matcher         = $matcher ?? new Matchers\SimpleRouteMatcher();
     }
 
+    public function __clone()
+    {
+        foreach ($this->routes as $name => $route) {
+            $this->routes[$name] = clone $route;
+        }
+    }
+
     /**
      * Adds the given route(s) to the router
      *
