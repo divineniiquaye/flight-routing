@@ -17,10 +17,10 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use BiuradPHP\Http\Factories\GuzzleHttpPsr7Factory;
-use BiuradPHP\Http\Factory\ResponseFactory;
 use Flight\Routing\Handlers\RouteHandler;
 use Generator;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Nyholm\Psr7Server\ServerRequestCreator;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -42,7 +42,7 @@ class RouteHandlerTest extends TestCase
     public function testHandle(): void
     {
         $factory  = $this->getHandler('resmsg', true);
-        $response = $factory->handle(GuzzleHttpPsr7Factory::fromGlobalRequest());
+        $response = $factory->handle($this->serverCreator());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals('I am a [GET] method', (string) $response->getBody());
@@ -59,8 +59,8 @@ class RouteHandlerTest extends TestCase
         $handler = static function (ServerRequestInterface $request, ResponseInterface $response): void {
             throw new RuntimeException('An error occurred');
         };
-        $factory  = new RouteHandler($handler, (new ResponseFactory())->createResponse());
-        $factory->handle(GuzzleHttpPsr7Factory::fromGlobalRequest());
+        $factory  = new RouteHandler($handler, new Psr17Factory());
+        $factory->handle($this->serverCreator());
     }
 
     /**
@@ -72,7 +72,7 @@ class RouteHandlerTest extends TestCase
     public function testHandleResponse(string $contentType, $body): void
     {
         $handler  = $this->getHandler($body, true);
-        $response = $handler->handle(GuzzleHttpPsr7Factory::fromGlobalRequest());
+        $response = $handler->handle($this->serverCreator());
 
         if (\is_array($body)) {
             $body = \json_encode($body);
@@ -89,8 +89,8 @@ class RouteHandlerTest extends TestCase
             echo 'Hello World To Flight Routing';
         };
 
-        $response =  (new RouteHandler($call, (new ResponseFactory())->createResponse()))
-            ->handle(GuzzleHttpPsr7Factory::fromGlobalRequest());
+        $response =  (new RouteHandler($call, new Psr17Factory()))
+            ->handle($this->serverCreator());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals('Hello World To Flight Routing', (string) $response->getBody());
@@ -144,5 +144,19 @@ class RouteHandlerTest extends TestCase
         }
 
         return $call;
+    }
+
+    private function serverCreator(): ServerRequestInterface
+    {
+        $psr17Factory = new Psr17Factory();
+
+        $creator = new ServerRequestCreator(
+            $psr17Factory, // ServerRequestFactory
+            $psr17Factory, // UriFactory
+            $psr17Factory, // UploadedFileFactory
+            $psr17Factory  // StreamFactory
+        );
+
+        return $creator->fromGlobals();
     }
 }
