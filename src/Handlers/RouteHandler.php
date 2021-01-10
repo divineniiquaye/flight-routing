@@ -18,9 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing\Handlers;
 
 use JsonSerializable;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\StreamInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use stdClass;
 use Throwable;
@@ -37,14 +37,14 @@ final class RouteHandler implements RequestHandlerInterface
     /** @var callable */
     private $callable;
 
-    /** @var ResponseInterface */
+    /** @var ResponseFactoryInterface */
     private $responseFactory;
 
     /**
      * @param callable          $callable
      * @param ResponseInterface $responseFactory
      */
-    public function __construct(callable $callable, ResponseInterface $responseFactory)
+    public function __construct(callable $callable, ResponseFactoryInterface $responseFactory)
     {
         $this->callable        = $callable;
         $this->responseFactory = $responseFactory;
@@ -57,13 +57,11 @@ final class RouteHandler implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $outputLevel = \ob_get_level();
-        \ob_start();
+        static $result;
 
-        $output = '';
-        $result = null;
+        \ob_start(); // Start buffering response output
 
-        $response = $this->responseFactory
+        $response = $this->responseFactory->createResponse()
             ->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
 
         try {
@@ -72,15 +70,9 @@ final class RouteHandler implements RequestHandlerInterface
             \ob_get_clean();
 
             throw $e;
-        } finally {
-            // @codeCoverageIgnoreStart
-            while (\ob_get_level() > $outputLevel + 1) {
-                $output = \ob_get_clean() . $output;
-            }
-            // @codeCoverageIgnoreEnd
         }
 
-        return $this->wrapResponse($response, $result, \ob_get_clean() . $output);
+        return $this->wrapResponse($response, $result, \ob_get_clean());
     }
 
     /**
@@ -97,59 +89,68 @@ final class RouteHandler implements RequestHandlerInterface
     {
         // Always return the response...
         if ($result instanceof ResponseInterface) {
-            // @codeCoverageIgnoreStart
-            if (!empty($output) && $result->getBody()->isWritable()) {
-                $result->getBody()->write($output);
-            }
-            // @codeCoverageIgnoreEnd
-
             return $result;
         }
 
-        if (\is_array($result) || $result instanceof JsonSerializable || $result instanceof stdClass) {
+        if (\is_array($result) || ($result instanceof JsonSerializable || $result instanceof stdClass)) {
             $result = \json_encode($result);
         }
 
-        $response->getBody()->write((string) $result);
-        $response->getBody()->write($output);
+        $response->getBody()->write((string) $result . $output);
 
         //Always detect response anf glue buffered output
         return $this->detectResponse($response);
     }
 
+    /**
+     * @param ResponseInterface $response
+     *
+     * @return ResponseInterface
+     */
     private function detectResponse(ResponseInterface $response): ResponseInterface
     {
-        if ($this->isJson($response->getBody())) {
+        $responseBody = $response->getBody();
+        $responseBody->rewind();
+
+        $contents = $responseBody->getContents();
+
+        if ($this->isJson($contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'application/json');
         }
 
-        if ($this->isXml($response->getBody())) {
+        if ($this->isXml($contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
-        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', (string) $response->getBody())) {
+        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', $contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
         }
 
         return $response;
     }
 
-    private function isJson(StreamInterface $stream): bool
+    /**
+     * @param string $contents
+     *
+     * @return bool
+     */
+    private function isJson(string $contents): bool
     {
-        $stream->rewind();
-
-        \json_decode($stream->getContents(), true);
+        \json_decode($contents, true);
 
         return \JSON_ERROR_NONE === \json_last_error();
     }
 
-    private function isXml(StreamInterface $stream): bool
+    /**
+     * @param string $contents
+     *
+     * @return bool
+     */
+    private function isXml(string $contents): bool
     {
-        $stream->rewind();
-
         $previousValue = \libxml_use_internal_errors(true);
-        $isXml         = \simplexml_load_string($contents = $stream->getContents());
+        $isXml         = \simplexml_load_string($contents);
         \libxml_use_internal_errors($previousValue);
 
         return false !== $isXml && false !== \strpos($contents, '<?xml');
