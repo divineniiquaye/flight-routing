@@ -49,7 +49,23 @@ class Route implements RouteInterface
      *
      * @var string
      */
-    public const RCA_PATTERN = '/^(?:(?P<route>[^(.*)]+)\*<)?(?:(?P<controller>[^@]+)@+)?(?P<action>[a-z_\-]+)\>$/i';
+    public const RCA_PATTERN = '/^(?P<route>[^.*]+?)?(?P<handler>\*<(?:(?<c>[a-zA-Z0-9\\\\]+?@))?(?<a>[a-zA-Z0-9_\-]+)?\>)?$/mi';
+
+    /**
+     * A Pattern to match protocol, host and port from a url
+     * 
+     * Examples of urls that can be matched:
+     * http://en.example.domain
+     * //example.domain
+     * //example.com
+     * https://example.com:34
+     * //example.com
+     * example.com
+     * localhost:8000
+     * 
+     * @var string
+     */
+    public const URL_PATTERN = '/^(?:(?P<scheme>https?):)?(?P<domain>(?:\/\/)?([\d\w\.-]+)?(:\d+)?)\/*?$/m';
 
     /**
      * Create a new Route constructor.
