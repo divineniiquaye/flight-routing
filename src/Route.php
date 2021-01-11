@@ -66,4 +66,23 @@ class Route implements RouteInterface
         $this->methods    = \array_map('strtoupper', $methods);
         $this->path       = $this->castRoute($pattern);
     }
+
+    /**
+     * @internal This is handled different by router
+     *
+     * @param array $properties
+     */
+    public static function __set_state(array $properties)
+    {
+        $controller = $properties[4];
+
+        $recovered = new self($properties[0], $properties[1], $properties[2], $controller);
+        $recovered->setDomain($properties[3]);
+        $recovered->addMiddleware(...$properties[5]);
+        $recovered->setPatterns($properties[6]);
+        $recovered->setDefaults($properties[7]);
+        $recovered->setArguments($properties[8]);
+
+        return $recovered;
+    }
 }
