@@ -7,6 +7,9 @@ parameters:
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
 
+    excludes_analyse:
+        - %currentWorkingDirectory%/src/Traits/DumperTrait.php
+
     ignoreErrors:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
         - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
@@ -14,10 +17,10 @@ parameters:
             message: "#^Trying to invoke \\(callable\\(\\): mixed\\)\\|object but it might not be a callable.$#"
             path: src/RouteList.php
         -
-            message: "#^Parameter \\#1 \\$str of function (stripslashes|strtr) expects string, array\\|string given.$#"
-            path: src/Matchers/SimpleRouteCompiler.php
+            message: "#^Parameter \\#3 \\$output of method Flight\\\\Routing\\\\Handlers\\\\RouteHandler\\:\\:wrapResponse\\(\\) expects string, string\\|false given.$#"
+            path: src/Handlers/RouteHandler.php
         -
-            message: "#^Parameter \\#1 \\$defaults of method Flight\\\\Routing\\\\Interfaces\\\\RouteInterface\\:\\:setDefaults\\(\\) expects array<string, mixed>, array<int\\|string, mixed> given.$#"
+            message: "#^Call to function is_int\\(\\) with string will always evaluate to false.$#"
             path: src/Matchers/SimpleRouteCompiler.php
         -
             message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
