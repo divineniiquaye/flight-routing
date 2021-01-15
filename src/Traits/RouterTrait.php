@@ -30,6 +30,9 @@ use Psr\Http\Message\UriFactoryInterface;
 
 trait RouterTrait
 {
+    use ResolveTrait;
+    use DumperTrait;
+
     /** @var RouteMatcherInterface */
     private $matcher;
 
@@ -58,7 +61,7 @@ trait RouterTrait
      */
     public function getRoutes(): array
     {
-        return \array_values($this->routes);
+        return \array_values($this->cachedRoutes ?: $this->routes);
     }
 
     /**
@@ -70,7 +73,7 @@ trait RouterTrait
     {
         $methods = [];
 
-        foreach ($this->routes as $route) {
+        foreach ($this->getRoutes() as $route) {
             foreach ($route->getMethods() as $method) {
                 $methods[$method] = true;
             }
@@ -90,11 +93,13 @@ trait RouterTrait
      */
     public function getRoute(string $name): RouteInterface
     {
-        if (!isset($this->routes[$name])) {
+        $routes = $this->cachedRoutes ?: $this->routes;
+
+        if (!isset($routes[$name])) {
             throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
         }
 
-        return $this->routes[$name];
+        return $routes[$name];
     }
 
     /**
