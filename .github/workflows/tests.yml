@@ -60,7 +60,7 @@ jobs:
 
       - name: Test with Phpstan
         run: |
-          if [ "${{ matrix.coverage }}" == "true" ]; then
+          if [ "${{ matrix.coverage }}" == "false" ]; then
             vendor/bin/phpstan analyse
           fi
 
