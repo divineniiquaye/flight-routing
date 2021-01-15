@@ -17,18 +17,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use BiuradPHP\Http\Factory\UriFactory;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Interfaces\RouteCollectionInterface;
-use Flight\Routing\Interfaces\RouteCollectorInterface;
-use Flight\Routing\Interfaces\RouteFactoryInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Route;
-use Flight\Routing\RouteCollection;
-use Flight\Routing\RouteCollector;
 use Flight\Routing\Router;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\ServerRequest;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -57,7 +51,7 @@ class BaseTestCase extends TestCase
      */
     public function getUriFactory()
     {
-        return new UriFactory();
+        return new Psr17Factory();
     }
 
     /**

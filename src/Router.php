@@ -38,9 +38,6 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class Router implements RequestHandlerInterface
 {
-    use Traits\ResolveTrait;
-    use Traits\ValidationTrait;
-    use Traits\MiddlewareTrait;
     use Traits\RouterTrait;
 
     public const TYPE_REQUIREMENT = 1;
@@ -59,13 +56,6 @@ class Router implements RequestHandlerInterface
         $this->matcher         = $matcher ?? new Matchers\SimpleRouteMatcher();
     }
 
-    public function __clone()
-    {
-        foreach ($this->routes as $name => $route) {
-            $this->routes[$name] = clone $route;
-        }
-    }
-
     /**
      * Adds the given route(s) to the router
      *
@@ -75,6 +65,10 @@ class Router implements RequestHandlerInterface
      */
     public function addRoute(RouteInterface ...$routes): void
     {
+        if (!empty($this->cachedRoutes)) {
+            return;
+        }
+
         foreach ($routes as $route) {
             $name = $route->getName();
 
@@ -88,7 +82,7 @@ class Router implements RequestHandlerInterface
                 $this->profiler->addProfile(new DebugRoute($name, $route));
             }
 
-            $this->routes[$name] = $route;
+            $this->routes[$name] = $this->mergeAttributes($route);
         }
     }
 
@@ -144,21 +138,19 @@ class Router implements RequestHandlerInterface
     public function match(ServerRequestInterface $request): RouteInterface
     {
         // Get the request matching format.
-        $route = $this->marshalMatchedRoute(
-            $request->getMethod(),
-            $requestUri = $request->getUri(),
-            $this->resolvePath($request, $requestUri->getPath())
-        );
+        $route = $this->matcher->matchRoutes($this, $request);
 
         if (!$route instanceof RouteInterface) {
             throw new RouteNotFoundException(
                 \sprintf(
                     'Unable to find the controller for path "%s". The route is wrongly configured.',
-                    $requestUri->getPath()
+                    $request->getUri()->getPath()
                 )
             );
         }
+
         $route->setController($this->resolveController($request, $route));
+        $route->setArguments($this->mergeDefaults($route->getArguments(), $route->getDefaults()));
 
         // Run listeners on route not more than once ...
         if (null === $this->route) {
@@ -184,63 +176,28 @@ class Router implements RequestHandlerInterface
             $this->match($request);
         }
 
-        return ($handler = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer()))->dispatch(
-            $this->getMiddlewares(),
-            new Handlers\CallbackHandler(function (ServerRequestInterface $request) use ($handler): ResponseInterface {
-                try {
-                    $route   = $request->getAttribute(Route::class, $this->route);
-                    $routeHandler = $this->resolveRoute($route);
+        $middleDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
 
-                    return $handler->dispatch($this->resolveMiddlewares($route), $routeHandler, $request);
-                } finally {
-                    if ($this->profiler instanceof DebugRoute) {
-                        foreach ($this->profiler->getProfiles() as $profiler) {
-                            $profiler->leave();
+        return $middleDispatcher->dispatch(
+            $this->getMiddlewares(),
+            new Handlers\CallbackHandler(
+                function (ServerRequestInterface $request) use ($middleDispatcher): ResponseInterface {
+                    try {
+                        $route   = $request->getAttribute(Route::class, $this->route);
+                        $handler = $this->resolveRoute($route);
+                        $mididlewars = $this->resolveMiddlewares($route);
+
+                        return $middleDispatcher->dispatch($mididlewars, $handler, $request);
+                    } finally {
+                        if ($this->profiler instanceof DebugRoute) {
+                            foreach ($this->profiler->getProfiles() as $profiler) {
+                                $profiler->leave();
+                            }
                         }
                     }
                 }
-            }),
+            ),
             $request->withAttribute(Route::class, $this->route),
         );
-    }
-
-    /**
-     * Marshals a route result based on the results of matching URL from set of routes.
-     *
-     * @param string $method
-     * @param UriInterface $uri
-     * @param string $path
-     *
-     * @throws MethodNotAllowedException
-     * @throws UriHandlerException
-     *
-     * @return null|RouteInterface
-     */
-    private function marshalMatchedRoute(string $method, UriInterface $uri, string $path): ?RouteInterface
-    {
-        foreach ($this->routes as $route) {
-            // Let's match the routes
-            $match         = $this->matcher->compileRoute($this->mergeAttributes($route));
-            $uriParameters = $hostParameters = [];
-
-            // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if (!$this->compareUri($match->getRegex(), $path, $uriParameters)) {
-                continue;
-            }
-
-            if (!$this->compareDomain($match->getRegex(true), $uri->getHost(), $hostParameters)) {
-                throw new UriHandlerException(
-                    \sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $uri->getHost(), $path),
-                    400
-                );
-            }
-            $this->assertRoute($route, [$method, $uri->getScheme(), $path]);
-
-            $parameters = \array_replace($match->getVariables(), $uriParameters, $hostParameters);
-
-            return $route->setArguments($this->mergeDefaults($parameters, $route->getDefaults()));
-        }
-
-        return null;
     }
 }

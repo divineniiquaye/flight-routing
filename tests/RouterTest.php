@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use BiuradPHP\Http\Response\HtmlResponse;
 use DivineNii\Invoker\Exceptions\NotEnoughParametersException;
 use DivineNii\Invoker\Invoker;
 use Exception;
@@ -28,12 +27,11 @@ use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Handlers\CallbackHandler;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteList;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -66,7 +64,7 @@ class RouterTest extends BaseTestCase
         $this->assertSame($routes, $router->getRoutes());
     }
 
-    public function testaddRouteListener(): void
+    public function testAddRouteListener(): void
     {
         $router  = $this->getRouter();
         $route   = new Route('phpinfo', [Route::METHOD_GET], 'phpinfo', 'phpinfo');
@@ -81,7 +79,7 @@ class RouterTest extends BaseTestCase
         $this->assertEquals('text/plain; charset=utf-8', $response->getHeaderLine('Content-Type'));
     }
 
-    public function testaddRouteListenerWithExcetion(): void
+    public function testAddRouteListenerWithExcetion(): void
     {
         $router  = $this->getRouter();
         $route   = new Route('phpinfo', [Route::METHOD_GET], 'phpinfo', 'phpinfo');
@@ -89,10 +87,14 @@ class RouterTest extends BaseTestCase
 
         $router->addRoute($route);
 
-        $this->expectExceptionMessage('Unable to invoke the callable because no value was given for parameter 1 ($what)');
-        $this->expectException(NotEnoughParametersException::class);
-
-        $router->handle($request);
+        try {
+            $this->assertInstanceOf(ResponseInterface::class, $router->handle($request));
+        } catch (NotEnoughParametersException $e) {
+            $this->assertEquals(
+                'Unable to invoke the callable because no value was given for parameter 1 ($what)',
+                $e->getMessage()
+            );
+        }
     }
 
     public function testSetNamespace(): void
@@ -108,7 +110,7 @@ class RouterTest extends BaseTestCase
         ));
 
         $request = new ServerRequest($route->getMethods()[0], $route->getPath());
-        $route = $router->match($request);
+        $route   = $router->match($request);
 
         $this->assertInstanceOf(RouteInterface::class, $route);
         $this->assertInstanceOf(ResponseInterface::class, $router->handle($request));
@@ -244,7 +246,7 @@ class RouterTest extends BaseTestCase
         $router->addRoute(...$routes);
 
         $request = new ServerRequest($routes[2]->getMethods()[1], $routes[2]->getPath());
-        $route = $router->match($request);
+        $route   = $router->match($request);
 
         $this->assertInstanceOf(RouteInterface::class, $route);
     }
@@ -273,7 +275,7 @@ class RouterTest extends BaseTestCase
         try {
             $router->match($request);
         } catch (MethodNotAllowedException $e) {
-            $this->assertSame($routes[1]->getMethods(), $e->getAllowedMethods());
+            $this->assertSame($routes[3]->getMethods(), $e->getAllowedMethods());
 
             throw $e;
         }
@@ -312,6 +314,35 @@ class RouterTest extends BaseTestCase
         ));
 
         $response = $router->handle(new ServerRequest(Route::METHOD_GET, $route->getPath()));
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertSame('I am a GET method', (string) $response->getBody());
+    }
+
+    public function testHandleResponseOnSubDirectory(): void
+    {
+        $subPath = '/sub-directory';
+
+        $router = $this->getRouter();
+        $router->addRoute($route = new Route(
+            Fixtures\TestRoute::getTestRouteName(),
+            [Route::METHOD_GET],
+            Fixtures\TestRoute::getTestRoutePath(),
+            function (ResponseInterface $response): ResponseInterface {
+                $response->getBody()->write('I am a GET method');
+
+                return $response;
+            }
+        ));
+
+        $response = $router->handle(new ServerRequest(
+            Route::METHOD_GET,
+            $subPath . $route->getPath(),
+            [],
+            null,
+            '1.1',
+            ['SCRIPT_NAME' => $subPath . '/index.php']
+        ));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertSame('I am a GET method', (string) $response->getBody());
@@ -457,12 +488,14 @@ class RouterTest extends BaseTestCase
         $route = new Fixtures\TestRoute();
 
         $route->setController(
-            new CallbackHandler(function (ServerRequestInterface $request) {
+            function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
                 $this->assertArrayHasKey('Broken', $request->getServerParams());
                 $this->assertInstanceOf(RouteInterface::class, $request->getAttribute(Route::class));
 
-                return new HtmlResponse(sprintf('I am a %s method', strtoupper($request->getMethod())));
-            })
+                $response->getBody()->write(\sprintf('I am a %s method', \strtoupper($request->getMethod())));
+
+                return $response;
+            }
         );
         $route->addMiddleware($middleware = new Fixtures\BlankMiddleware());
 
@@ -480,7 +513,7 @@ class RouterTest extends BaseTestCase
         $this->assertTrue($middleware->isRunned());
         $this->assertTrue($response->hasHeader('Middleware'));
         $this->assertEquals('broken', $response->getHeaderLine('Middleware-Broken'));
-        $this->assertSame(sprintf('I am a %s method', $method), (string) $response->getBody());
+        $this->assertSame(\sprintf('I am a %s method', $method), (string) $response->getBody());
     }
 
     public function testHandleMiddlewareWithContainer(): void
@@ -739,7 +772,7 @@ class RouterTest extends BaseTestCase
 
         $router = $this->getRouter();
         $router->addRoute($route);
-        $response = $router->handle(new ServerRequest($method, 'user/23'));
+        $response = $router->handle(new ServerRequest($method, '/user/23'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(\strtolower($method) . ' 23', (string) $response->getBody());
@@ -800,7 +833,7 @@ class RouterTest extends BaseTestCase
     public function hasCollectionGroupData(): array
     {
         return [
-            [Route::METHOD_GET, '/api'],
+            [Route::METHOD_GET, '/api/'],
             [Route::METHOD_GET, '/api/ping'],
             [Route::METHOD_HEAD, 'https://biurad.com/api/v1/hello/23'],
         ];
