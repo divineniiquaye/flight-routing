@@ -17,22 +17,58 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use ArrayIterator;
+use Countable;
 use Flight\Routing\Interfaces\RouteGroupInterface;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
+use IteratorAggregate;
 
 /**
- * The route broker.
+ * A RouteCollection represents a set of Route instances.
  *
+ * When adding a route at the end of the collection, an existing route
+ * with the same name is removed first. So there can only be one route
+ * with a given name.
+ *
+ * @author Fabien Potencier <fabien@symfony.com>
+ * @author Tobias Schultze <http://tobion.de>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteList implements RouteListInterface
+final class RouteList implements RouteListInterface, IteratorAggregate, Countable
 {
     /** @var RouteInterface[] */
     private $list = [];
 
-    public function __construct()
+    public function __clone()
     {
+        foreach ($this->list as $index => $route) {
+            $this->list[$index] = clone $route;
+        }
+    }
+
+    /**
+     * Gets the current RouteCollection as an Iterator that includes all routes.
+     *
+     * It implements \IteratorAggregate.
+     *
+     * @see all()
+     *
+     * @return ArrayIterator<int,RouteInterface> An \ArrayIterator object for iterating over routes
+     */
+    public function getIterator()
+    {
+        return new ArrayIterator($this->getRoutes());
+    }
+
+    /**
+     * Gets the number of Routes in this collection.
+     *
+     * @return int The number of routes
+     */
+    public function count()
+    {
+        return \iterator_count($this);
     }
 
     /**
@@ -51,6 +87,20 @@ final class RouteList implements RouteListInterface
         $this->list[] = $route;
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function addCollection(RouteListInterface $collection): void
+    {
+        // we need to remove all routes with the same names first because just replacing them
+        // would not place the new route at the end of the merged array
+        foreach ($collection->getRoutes() as $index => $route) {
+            unset($this->list[$index]);
+
+            $this->list[$index] = $route;
+        }
     }
 
     /**
@@ -164,5 +214,86 @@ final class RouteList implements RouteListInterface
         }
 
         return $this->any($name . '__restful', $pattern, [$resource, $name]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withDefaults(array $defaults): void
+    {
+
+        foreach ($this->list as $route) {
+            $route->setDefaults($defaults);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withName(string $name): void
+    {
+        foreach ($this->list as $route) {
+            $route->setName($name . $route->getName());
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withPrefix(string $prefix): void
+    {
+        foreach ($this->list as $route) {
+            $route->addPrefix($prefix);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withDomain(string $domain): void
+    {
+        foreach ($this->list as $route) {
+            $route->setDomain($domain);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withScheme(string ...$schemes): void
+    {
+        foreach ($this->list as $route) {
+            $route->setScheme(...$schemes);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withMethod(string ...$methods): void
+    {
+        foreach ($this->list as $route) {
+            $route->addMethod(...$methods);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withMiddleware(...$middlewares): void
+    {
+        foreach ($this->list as $route) {
+            $route->addMiddleware(...$middlewares);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function withPatterns(array $patterns): void
+    {
+        foreach ($this->list as $route) {
+            $route->setPatterns($patterns);
+        }
     }
 }
