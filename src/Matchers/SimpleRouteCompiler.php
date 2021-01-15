@@ -37,9 +37,25 @@ class SimpleRouteCompiler implements Serializable
      * optional placeholders (with default and no static text following). Such a single separator
      * can be left out together with the optional placeholder from matching and generating URLs.
      */
-    private const PATTERN_REPLACES = ['/' => '\\/', '/[' => '/?(?:', '[' => '(?:', ']' => ')?', '.' => '\.'];
+    private const PATTERN_REPLACES = ['/' => '\\/', '/[' => '\/?(?:', '[' => '(?:', ']' => ')?', '.' => '\.'];
 
     private const SEGMENT_REPLACES = ['/' => '\\/', '.' => '\.'];
+
+    /**
+     * This regex is used to match a certain rule of pattern to be used for routing.
+     *
+     * List of string patterns that regex matches:
+     * - /{var} - A required variable pattern
+     * - /[{var}] - An optional variable pattern
+     * - /foo[/{var}] - A path with an optional sub variable pattern
+     * - /foo[/{var}[.{format}]] - A path with optional nested variables
+     * - /{var:[a-z]+} - A required variable with lowercase rule
+     * - /{var=<foo>} - A required variable with default value
+     * - /{var}[.{format:(html|php)=<html>}] - A required variable with an optional variable, a rule & default
+     */
+    private const COMPILER_REGEX = '#{(?<names>\w+)?(?:\:(?<rules>.*?))?(?:=<(?<defaults>[^>]+)>)?}#i';
+
+    private const TEMPLATE_REGEX = '#\{(\w+)\:?.*?\}#';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
@@ -47,6 +63,10 @@ class SimpleRouteCompiler implements Serializable
     private const SEGMENT_TYPES = [
         'int'     => '\d+',
         'integer' => '\d+',
+        'lower'   => '[a-z]+',
+        'upper'   => '[A-Z]+',
+        'alpha'   => '[A-Za-z]+',
+        'alnum'   => '[A-Za-z0-9]+',
         'year'    => '[12][0-9]{3}',
         'month'   => '0[1-9]|1[012]',
         'day'     => '0[1-9]|[12][0-9]|3[01]',
@@ -70,7 +90,7 @@ class SimpleRouteCompiler implements Serializable
     /** @var null|string */
     private $hostRegex;
 
-    /** @var string */
+    /** @var null|string */
     private $hostTemplate;
 
     /** @var array<int|string,mixed> */
@@ -121,29 +141,27 @@ class SimpleRouteCompiler implements Serializable
      */
     public function compile(RouteInterface $route): self
     {
-        $hostVariables = $variables = [];
+        $hostVariables = [];
         $hostRegex     = $hostTemplate = null;
 
         if ('' !== $host = $route->getDomain()) {
-            $result = $this->compilePattern($route, $host);
+            $result = $this->compilePattern($route, $host, true);
 
             $hostVariables = $result['variables'];
-            $variables     = $hostVariables;
-
-            $hostRegex    = $result['regex'] . 'i';
-            $hostTemplate = $result['template'];
+            $hostRegex     = $result['regex'] . 'i';
+            $hostTemplate  = $result['template'];
         }
 
         $result        = $this->compilePattern($route, $route->getPath());
         $pathVariables = $result['variables'];
 
-        $this->compiled      = $result['regex'];
+        $this->compiled      = $result['regex'] . 'u';
         $this->template      = $result['template'];
         $this->pathVariables = $pathVariables;
         $this->hostRegex     = $hostRegex;
         $this->hostTemplate  = $hostTemplate;
         $this->hostVariables = $hostVariables;
-        $this->variables     = \array_merge($variables, $pathVariables);
+        $this->variables     = \array_merge($hostVariables, $pathVariables);
 
         return $this;
     }
@@ -157,11 +175,7 @@ class SimpleRouteCompiler implements Serializable
      */
     public function getRegexTemplate(bool $host = true): ?string
     {
-        if (true === $host) {
-            return $this->hostTemplate;
-        }
-
-        return $this->template;
+        return $host ? $this->hostTemplate : $this->template;
     }
 
     /**
@@ -272,99 +286,121 @@ class SimpleRouteCompiler implements Serializable
     /**
      * @param RouteInterface $route
      * @param string         $uriPattern
+     * @param bool           $isHost
+     *
+     * @throws UriHandlerException if a variable name starts with a digit or
+     *                             if it is too long to be successfully used as a PCRE subpattern or
+     *                             if a variable is referenced more than once
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(RouteInterface $route, string $uriPattern): array
+    private function compilePattern(RouteInterface $route, string $uriPattern, $isHost = false): array
     {
-        $options = $replaces = [];
-
-        $pattern     = \rtrim(\ltrim($uriPattern, ':/'), '/') ?? '/';
-        $leadingChar = 0 === \substr_compare($uriPattern, $pattern, 0) ? '' : '/?';
+        if (\strlen($uriPattern) > 1) {
+            $uriPattern = \trim($uriPattern, '/');
+        }
 
         // correct [/ first occurrence]
-        if (\strpos($pattern, '[/') === 0) {
+        if (\strpos($pattern = (!$isHost ? '/' : '') . $uriPattern, '[/') === 0) {
             $pattern = '[' . \substr($pattern, 2);
         }
 
-        // Add defaults and requirements found on given $pattern to $route
-        $this->prepareRoute($route, $pattern);
-
         // Match all variables enclosed in "{}" and iterate over them...
-        if (false !== \preg_match_all('#\{(\w+)\:?(.*?)?\}#', $pattern, $matches)) {
-            [$options, $replaces] = $this->computePattern(
-                (array) \array_combine($matches[1], $matches[2]),
-                $route
-            );
-        }
+        \preg_match_all(self::COMPILER_REGEX, $pattern, $matches);
 
-        $template = \str_replace(['{', '}'], '', \preg_replace('#\{(\w+)\:?.*?\}#', '<\1>', $pattern));
+        // Return only grouped named captures.
+        $matches  = \array_filter($matches, 'is_string', \ARRAY_FILTER_USE_KEY);
+        $template = \str_replace(['{', '}'], '', (string) \preg_replace(self::TEMPLATE_REGEX, '<\1>', $pattern));
+
+        list($variables, $replaces) = $this->computePattern($matches, $pattern, $route);
 
         return [
             'template'  => \stripslashes(\str_replace('?', '', $template)),
-            'regex'     => '#^' . $leadingChar . \strtr($template, $replaces) . '$#sD',
-            'variables' => \array_fill_keys($options, null),
+            'regex'     => '/^' . ($isHost ? '\/?' : '') . \strtr($template, $replaces) . '$/sD',
+            'variables' => \array_fill_keys($variables, null),
         ];
     }
 
     /**
      * Compute prepared pattern and return it's replacements and arguments.
      *
-     * @param array<string,string> $variables
-     * @param RouteInterface       $route
+     * @param array<string,array<string,string>> $matches
+     * @param string                             $pattern
+     * @param RouteInterface                     $route
      *
-     * @return array<int,array<int|string,string>>
+     * @return array<int,array<int|string,mixed>>
      */
-    private function computePattern(array $variables, RouteInterface $route): array
+    private function computePattern(array $matches, string $pattern, RouteInterface $route): array
     {
-        $options = $replaces = [];
+        $parameters   = $replaces = [];
+        $requirements = $this->getRequirements($route->getPatterns());
+        $varNames     = $this->filterVariableNames($matches['names'], $pattern);
+        $variables    = \array_combine($varNames, $matches['rules']) ?: [];
+        $defaults     = \array_combine($varNames, $matches['defaults']) ?: [];
 
         foreach ($variables as $key => $segment) {
+            // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
+            // variable would not be usable as a Controller action argument.
+            if (\is_int($key)) {
+                throw new UriHandlerException(
+                    \sprintf(
+                        'Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.',
+                        $key,
+                        $pattern
+                    )
+                );
+            }
+
             if (\strlen($key) > self::VARIABLE_MAXIMUM_LENGTH) {
                 throw new UriHandlerException(
                     \sprintf(
                         'Variable name "%s" cannot be longer than %s characters in route pattern "%s".',
                         $key,
                         self::VARIABLE_MAXIMUM_LENGTH,
-                        $route->getPath()
+                        $pattern
                     )
                 );
             }
-            $nested = null; // Match all nested variables enclosed in "{}"
 
-            if (!empty($segment) && ('{' === $segment[0] && substr($segment, -1, 1) !== '}')) {
-                [$key, $nested, $segment] = [\substr($segment, 1, \strlen($segment) - 1), $key, ''];
+            // Add defaults found on given $pattern to $route
+            if (isset($defaults[$key]) && !empty($default = $defaults[$key])) {
+                $route->setDefaults([$key => $default]);
             }
 
-            $segment            = $this->prepareSegment($key, $segment, $this->getRequirements($route->getPatterns()));
-            $replaces["<$key>"] = \sprintf('(?P<%s>(?U)%s)', $key, $segment);
-            $options[]          = $key;
-
-            if (null !== $nested) {
-                $replaces["<$nested>"] = $nested . $replaces["<$key>"];
-            }
+            $replaces["<$key>"] = \sprintf('(?P<%s>(?U)%s)', $key, $this->prepareSegment($key, $segment, $requirements));
+            $parameters[]       = $key;
         }
 
-        return [$options, \array_merge($replaces, self::PATTERN_REPLACES)];
+        return [$parameters, \array_merge($replaces, self::PATTERN_REPLACES)];
     }
 
     /**
-     * Prepare Route by adding defaults and requirements found,
-     * on the given $pattern.
+     * Prevent variables with same name used more than once.
      *
-     * @param RouteInterface $route
-     * @param string         $pattern
+     * @param string[] $names
+     * @param string   $pattern
+     *
+     * @return string[]
      */
-    private function prepareRoute(RouteInterface $route, string &$pattern): void
+    private function filterVariableNames(array $names, string $pattern): array
     {
-        $path = '/(?:([a-zA-Z0-9_.-]+)=)?<([^> ]+) *([^>]*)>/';
+        $variables = [];
 
-        if (false !== \preg_match_all($path, $pattern, $matches, \PREG_SET_ORDER)) {
-            foreach ($matches as [$match, $parameter, $name, $regex]) { // $regex is not used
-                $pattern = \str_replace($match, $parameter, $pattern);
-                $route->setDefaults([$parameter => $name]);
+        foreach ($names as $varName) {
+            if (\in_array($varName, $variables, true)) {
+                throw new UriHandlerException(
+                    \sprintf(
+                        'Route pattern "%s" cannot reference variable name "%s" more than once.',
+                        $pattern,
+                        $varName
+                    )
+                );
             }
+
+            $variables[] = $varName;
         }
+
+        return $names;
     }
 
     /**
