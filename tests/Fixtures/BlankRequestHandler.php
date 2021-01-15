@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use BiuradPHP\Http\Factory\ResponseFactory;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -83,6 +83,6 @@ class BlankRequestHandler implements RequestHandlerInterface
         $this->isRunned   = true;
         $this->attributes = $request->getAttributes();
 
-        return (new ResponseFactory())->createResponse();
+        return (new Psr17Factory())->createResponse();
     }
 }
