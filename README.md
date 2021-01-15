@@ -134,7 +134,6 @@ $collector = new RouteList();
 // Add routes
 $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
-
 // Need to have an idea about php before using this dependency, though it easy to use.
 $psr17Factory = new Psr17Factory();
 
@@ -151,17 +150,15 @@ $router->setNamespace('Demo\\Controllers\\');
 (new SapiStreamEmitter())->emit($router->handle(Psr17Factory::fromGlobalRequest()));
 ```
 
-Remember the `routes.php` file you required in your `index.php`? This file be where you place all your custom rules for routing.
-
 > **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be a bit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
 
 > The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callable,invocable class, or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it to be constructed on demand.
 
-### Loading Routes
+### Loading Annotated Routes
 
 ---
 
-This library is shipped with annotation and file callable loading, the `Flight\Routing\RouteLoader` class takes an instance of `Flight\Routing\Interfaces\RouteListInterface`. Then use `Flight\Routing\Router::addRoute` to load the attached routes from collection using `Flight\Routing\RouteLoader::load` method.
+This library is shipped with annotations support, check **Annotation** directory to find out more collection using `Flight\Routing\Router::loadAnnotation` method.
 
 ```php
 use Biurad\Annotations\AnnotationLoader;
@@ -195,27 +192,39 @@ $router->loadAnnotation($loader);
 Below is a very basic example of setting up a route. First parameter is the url which the route should match - next parameter is a `Closure` or callback function that will be triggered once the route matches.
 
 ```php
-$collector->get('home', '/', function() {
-  return 'Hello world';
-}); // $collector from routes.php file.
+use Flight\Routing\Route;
+
+$route = new Route('home', [Route::METHOD_GET, Route::METHOD_HEAD], '/', fn () => 'Hello world'});
+
+// Create a new route using $router.
+$router->addRoute($route);
 ```
 
 ### Closure Handler
 
 ---
 
-It is possible to pass the `closure` as route handler, in this case our function will receive two
-arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface`. Patterned name from path can be added, including from [PSR-11] container.
+It is possible to pass the `closure` as route handler, in this case our callable will receive two
+arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface` by default, including from [PSR-11] container services. The problem with routes with closure handlers are that, it cannot be cached or serialized.
 
 ```php
-$collector->get(
+use Flight\Routing\Route;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+$route = new Route(
     'hello',
+    [Route::METHOD_GET, Route::METHOD_HEAD],
     '/{name}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         $response->getBody()->write("hello world");
 
         return $response;
     }
+);
+
+
+$router->addRoute($route);
 ));
 ```
 
@@ -226,13 +235,16 @@ $collector->get(
 You can catch the request object like this example:
 
 ```php
-use Biurad\Http\ServerRequest;
 use Biurad\Http\Response\{EmptyResponse, JsonResponse};
+use Flight\Routing\RouteList;
+use Psr\Http\Message\ServerRequestInterface;
+
+$collector = new RouteList();
 
 $collector->get(
     'api_home',
     '/',
-    function (ServerRequest $request) {
+    function (ServerRequestInterface $request) {
         return new JsonResponse([
             'method'            => $request->getMethod(),
             'uri'               => $request->getUri(),
@@ -248,7 +260,7 @@ $collector->get(
 $collector->post(
     'api_post',
     '/blog/posts',
-    function (ServerRequest $request) {
+    function (ServerRequestInterface $request) {
         $post           = new \Demo\Models\Post();
         $post->title    = $request->getQueryParams()['title'];
         $post->content  = $request->getQueryParams()['content'];
@@ -257,6 +269,8 @@ $collector->post(
         return new EmptyResponse(201);
     }
 );
+
+$router->addRoute(...$collector); // Add new collection list to $router
 ```
 
 ### Route Response
@@ -266,7 +280,10 @@ $collector->post(
 The example below illustrates supported kinds of responses.
 
 ```php
-use Biurad\Http\Response\{EmptyResponse, HtmlResponse, JsonResponse, TextResponse};
+use Biurad\Http\Response\{EmptyResponse, HtmlResponse, JsonResponse, TextResponse, RedirectResponse};
+use Flight\Routing\RouteList;
+
+$collector = new RouteList();
 
 $collector
     ->get(
@@ -309,29 +326,27 @@ $collector
         }
     );
 
-```
-
-### Route Redirection Response
-
----
-
-In case of needing to redirecting user to another URL:
-
-```php
-use Biurad\Http\Response\RedirectResponse;
-
+// In case of needing to redirecting user to another URL
 $collector
-    ->get('redirect', '/redirect', function () {
-        return new RedirectResponse('https://biurad.com');
-    });
+    ->get(
+        'redirect',
+        '/redirect',
+        function () {
+            return new RedirectResponse('https://biurad.com');
+        }
+    );
+
+$router->addRoute(...$collector); // Add new collection list to $router
 ```
 
-## Available Methods
+## Available Methods in RouteList
 
 Here you can see how to declare different routes with different http methods:
 
 ```php
-<?php
+use Flight\Routing\RouteList;
+
+$collector = new RouteList();
 
 $collector
     ->head('head', '/', function () {
@@ -361,6 +376,8 @@ $collector
     ->delete('delete', '/', function () {
         return '<b>DELETE method</b>';
     });
+
+$router->addRoute(...$collector); // Add new collection list to $router
 ```
 
 ### Multiple HTTP-Verbs
@@ -370,7 +387,7 @@ $collector
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
 ```php
-$collector->map('map', ['get', 'post'], '/', function() {
+$collector->addRoute('map', ['get', 'post'], '/', function() {
   // ...
 });
 
@@ -384,7 +401,7 @@ $collector->any('any', 'foo', function() {
 ---
 
 You can use route pattern to specify any number of required and optional parameters, these parameters will later be passed
-to our route handler via `ServerRequestInterface` attribute `route`.
+to our route handler via `ServerRequestInterface` attribute `Flight\Routing\Route::class`.
 
 Use the `{parameter_name:pattern}` form to define a route parameter, where pattern is a regexp friendly expression. You can
 omit pattern and just use `{parameter_name}`, in this case the parameter will match `[^\/]+`.
@@ -433,6 +450,10 @@ $collector->get('optional_without_slash', '/user/[{name}]', function ($name = 'S
 });
 //or
 $collector->get('optional_with_default', '/user/[{name=<Simon>}]', function ($name) {
+  return $name;
+});
+//or with rule
+$collector->get('optional_with_default', '/user/[{name:\w+=<Simon>}]', function ($name) {
   return $name;
 });
 ```
@@ -497,7 +518,9 @@ $collector->get('profile', '/user/profile', function () {
 You can also specify names for grouping route with a prefixed name:
 
 ```php
-$collector->group(function ($group) {
+use Flight\Routing\Interface\RouteListInterface;
+
+$collector->group(function (RouteListInterface $group) {
     $group->get('profile', '/user/profile', 'UserController@profile');
 })->setName('user.'); // Will produce "user.profile"
 ```
@@ -616,7 +639,7 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 ---
 
-Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
+Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), (**NB:** static routes priority is highest and runned first), while the other routes are never reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
 
 > Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes.
 
@@ -671,7 +694,7 @@ $collector->group(function (RouteListInterface $route) {
 
 ---
 
-All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteCollector::resource` method to automatically prefix all the methods in `Flight\Routing\Interfaces\RouteListInterface::HTTP_METHODS_STANDARD` with HTTP verb.
+All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteList::resource` method to automatically prefix all the methods in `Flight\Routing\Interfaces\RouteInterface::HTTP_METHODS_STANDARD` with HTTP verb.
 
 For example, we can use the following controller:
 
@@ -709,7 +732,7 @@ $router->addRoute(new Route(
 ));
 ```
 
-Add route using `Flight\Routing\RouteCollector::resource`:
+Add route using `Flight\Routing\RouteList::resource`:
 
 ```php
 use Demo\UserController;
@@ -727,17 +750,20 @@ $collector->resource('user', '/user/{id:\d+}', UserController::class);
 If these offered routes do not fit your needs, you may create your own router matcher and add it to your `router collector`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its four methods:
 
 ```php
-use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Interfaces\RouteListInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
+use Flight\Routing\Router;
+use Psr\Http\Message\ServerRequestInterface;
 
 class MyRouteMatcher implements RouteMatcherInterface
 {
     /**
      * {@inheritdoc}
      */
-    public function compileRoute(RouteInterface $route): RouteMatcherInterface
+    public function matchRoutes(Router $router, ServerRequestInterface $request): ?RouteInterface
     {
-        // ... compile the route for matching
+        // ... compile the routes from $router->getRoutes() method and match using $request
     }
 
 	/**
@@ -747,19 +773,13 @@ class MyRouteMatcher implements RouteMatcherInterface
     {
         // ... generate a named route path using $substitutions
     }
+
     /**
      * {@inheritdoc}
      */
-    public function getRegex(bool $domain = false): string
+    public function warmCompiler(RouteListInterface $routes)
     {
-        // ... the regex generated using this class "compileRoute" method
-    }
-    /**
-     * {@inheritdoc}
-     */
-    public function getVariables(): array
-    {
-        // ... the variables generated using this class "compileRoute" method
+        // ... return the compiles routes to be cached, null or false.
     }
 }
 ```
