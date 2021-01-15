@@ -209,6 +209,19 @@ class RouteTest extends TestCase
 
         $this->assertIsCallable($route1->getController());
         $this->assertIsArray($route2->getController());
+        $this->assertEquals([Fixtures\BlankRequestHandler::class, 'handle'], $route2->getController());
+    }
+
+    public function testControllerMethodFromPath(): void
+    {
+        $routeName    = Fixtures\TestRoute::getTestRouteName();
+        $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
+
+        $route = new Route($routeName, $routeMethods, '/*<phpinfo>', null);
+
+        $this->assertIsCallable($route->getController());
+        $this->assertEquals('/', $route->getPath());
+        $this->assertEquals('phpinfo', $route->getController());
     }
 
     public function testExceptionOnPath(): void
@@ -216,17 +229,10 @@ class RouteTest extends TestCase
         $routeName    = Fixtures\TestRoute::getTestRouteName();
         $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
 
-        $this->expectErrorMessage(
-            'Unable to locate route candidate on `*<Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle>`'
-        );
+        $this->expectErrorMessage('Unable to locate route candidate on `//localhost.com`');
         $this->expectException(InvalidControllerException::class);
 
-        $route = new Route(
-            $routeName,
-            $routeMethods,
-            '*<Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle>',
-            null
-        );
+        new Route($routeName, $routeMethods, '//localhost.com', null);
     }
 
     public function testSetArguments(): void
