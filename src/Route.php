@@ -90,14 +90,15 @@ class Route implements RouteInterface
      */
     public static function __set_state(array $properties)
     {
-        $controller = $properties[4];
+        $controller = $properties[5];
 
         $recovered = new self($properties[0], $properties[1], $properties[2], $controller);
-        $recovered->setDomain($properties[3]);
-        $recovered->addMiddleware(...$properties[5]);
-        $recovered->setPatterns($properties[6]);
-        $recovered->setDefaults($properties[7]);
-        $recovered->setArguments($properties[8]);
+        $recovered->setScheme(...$properties[3]);
+        $recovered->addMiddleware(...$properties[6]);
+        $recovered->setPatterns($properties[7]);
+        $recovered->setDefaults($properties[8]);
+        $recovered->setArguments($properties[9]);
+        $recovered->domain = $properties[4];
 
         return $recovered;
     }
