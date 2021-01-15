@@ -20,14 +20,16 @@ namespace Flight\Routing\Traits;
 use Closure;
 use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Handlers\RouteHandler;
+use Flight\Routing\Interfaces\RouteInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 trait ResolveTrait
 {
+    use MiddlewareTrait;
+
     /** @var null|string */
     private $namespace;
 
@@ -36,28 +38,6 @@ trait ResolveTrait
 
     /** @var InvokerInterface */
     private $resolver;
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param string                 $path
-     *
-     * @return string
-     */
-    protected function resolvePath(ServerRequestInterface $request, string $path): string
-    {
-        $requestPath = $path;
-
-        if ('cli' !== \PHP_SAPI) {
-            $basePath    = \dirname($request->getServerParams()['SCRIPT_NAME'] ?? '');
-            $requestPath = \substr($requestPath, \strlen($basePath)) ?: '/';
-        }
-
-        if (\strlen($requestPath) > 1) {
-            $requestPath = \rtrim($requestPath, '/');
-        }
-
-        return \rawurldecode($requestPath);
-    }
 
     /**
      * @param callable|object|string|string[] $controller
@@ -152,15 +132,15 @@ trait ResolveTrait
 
         if (!$handler instanceof RequestHandlerInterface) {
             $handler = new RouteHandler(
-                function (ServerRequestInterface $request, ResponseInterface $response) use ($handler, $route) {
+                function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
                     $arguments = \array_merge(
                         $route->getArguments(),
                         [\get_class($request) => $request, \get_class($response) => $response]
                     );
 
-                    return $this->resolver->call($handler, $arguments);
+                    return $this->resolver->call($route->getController(), $arguments);
                 },
-                $this->responseFactory->createResponse()
+                $this->responseFactory
             );
         }
 
@@ -168,7 +148,7 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param RouteInterface               $route
      * @param array<string,string>         $parameters
      * @param array<int|string,int|string> $queryParams
      *
@@ -205,7 +185,7 @@ trait ResolveTrait
         $middlewares = [];
 
         foreach ($route->getMiddlewares() as $middleware) {
-            if (is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
+            if (\is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
                 $middlewares[] = $this->nameMiddlewares[$middleware];
 
                 continue;

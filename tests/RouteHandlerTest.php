@@ -140,7 +140,7 @@ class RouteHandlerTest extends TestCase
         };
 
         if (false !== $handler) {
-            return new RouteHandler($call, (new ResponseFactory())->createResponse());
+            return new RouteHandler($call, new Psr17Factory());
         }
 
         return $call;

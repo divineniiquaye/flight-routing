@@ -41,8 +41,8 @@ final class RouteHandler implements RequestHandlerInterface
     private $responseFactory;
 
     /**
-     * @param callable          $callable
-     * @param ResponseInterface $responseFactory
+     * @param callable                 $callable
+     * @param ResponseFactoryInterface $responseFactory
      */
     public function __construct(callable $callable, ResponseFactoryInterface $responseFactory)
     {
