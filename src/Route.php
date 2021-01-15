@@ -53,7 +53,7 @@ class Route implements RouteInterface
 
     /**
      * A Pattern to match protocol, host and port from a url
-     * 
+     *
      * Examples of urls that can be matched:
      * http://en.example.domain
      * //example.domain
@@ -62,10 +62,11 @@ class Route implements RouteInterface
      * //example.com
      * example.com
      * localhost:8000
-     * 
+     * {foo}.domain.com
+     *
      * @var string
      */
-    public const URL_PATTERN = '/^(?:(?P<scheme>https?):)?(?P<domain>(?:\/\/)?([\d\w\.-]+)?(:\d+)?)\/*?$/m';
+    public const URL_PATTERN = '/^(?:(?P<scheme>https?):)?(?P<domain>(?:\/\/)?([^\/\*]+)?(:\d+)?)\/*?$/m';
 
     /**
      * Create a new Route constructor.
