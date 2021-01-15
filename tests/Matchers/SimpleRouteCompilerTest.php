@@ -18,8 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Route;
 use Flight\Routing\Matchers\SimpleRouteCompiler;
+use Flight\Routing\Route;
 use Generator;
 use PHPUnit\Framework\TestCase;
 
@@ -61,7 +61,7 @@ class SimpleRouteCompilerTest extends TestCase
         $compiled = $compiler->compile($route);
 
         $this->assertEquals($regex, $compiled->getRegex());
-        $this->assertEquals($variables, \array_merge($compiled->getPathVariables(), $route->getDefaults()));
+        $this->assertEquals($variables, \array_replace($compiled->getPathVariables(), $route->getDefaults()));
 
         // Match every pattern...
         foreach ($matches as $match) {
@@ -100,10 +100,15 @@ class SimpleRouteCompilerTest extends TestCase
         }
     }
 
-    public function testCompileWithMaxVariable(): void
+    /**
+     * @dataProvider getInvalidVariableName
+     *
+     * @param string $variable
+     * @param string $exceptionMessage
+     */
+    public function testCompileVariables(string $variable, string $exceptionMessage): void
     {
-        $variable = 'sfkdfglrjfdgrfhgklfhgjhfdjghrtnhrnktgrelkrngldrjhglhkjdfhgkj';
-        $route    = new Route(
+        $route = new Route(
             'test_compile',
             ['FOO', 'BAR'],
             '/{' . $variable . '}',
@@ -111,13 +116,7 @@ class SimpleRouteCompilerTest extends TestCase
         );
         $compiler = new SimpleRouteCompiler();
 
-        $this->expectExceptionMessage(
-            \sprintf(
-                'Variable name "%s" cannot be longer than 32 characters in route pattern "/{%s}".',
-                $variable,
-                $variable
-            )
-        );
+        $this->expectExceptionMessage(\sprintf($exceptionMessage, $variable));
         $this->expectException(UriHandlerException::class);
 
         $compiler->compile($route);
@@ -135,9 +134,35 @@ class SimpleRouteCompilerTest extends TestCase
         $route->addPattern('foo', $req);
 
         $compiler = new SimpleRouteCompiler();
-        $compiled = $compiler->compile($route);
+        $compiler->compile($route);
+    }
 
-        $compiled->getRegex();
+    public function testSameMultipleVariable(): void
+    {
+        $this->expectErrorMessage('Route pattern "/{foo}{foo}" cannot reference variable name "foo" more than once.');
+        $this->expectException(UriHandlerException::class);
+
+        $route = new Route('test_compile', ['FOO', 'BAR'], '/{foo}{foo}', null);
+
+        $compiler = new SimpleRouteCompiler();
+        $compiler->compile($route);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getInvalidVariableName(): array
+    {
+        return [
+            [
+                'sfkdfglrjfdgrfhgklfhgjhfdjghrtnhrnktgrelkrngldrjhglhkjdfhgkj',
+                'Variable name "%s" cannot be longer than 32 characters in route pattern "/{%1$s}".',
+            ],
+            [
+                '2425',
+                'Variable name "%s" cannot start with a digit in route pattern "/{%1$s}". Use a different name.',
+            ],
+        ];
     }
 
     /**
@@ -160,119 +185,133 @@ class SimpleRouteCompilerTest extends TestCase
     {
         yield 'Static route' => [
             '/foo',
-            ['/foo', 'foo'],
-            '#^/?foo$#sD',
+            ['/foo'],
+            '/^\/foo$/sDu',
         ];
 
         yield 'Route with a variable' => [
             '/foo/{bar}',
-            ['/foo/bar', 'foo/bar'],
-            '#^/?foo\/(?P<bar>(?U)[^\/]+)$#sD',
+            ['/foo/bar'],
+            '/^\/foo\/(?P<bar>(?U)[^\/]+)$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with a variable that has a default value' => [
             '/foo/{bar=<bar>}',
-            ['/foo/bar', 'foo/bar'],
-            '#^/?foo\/(?P<bar>(?U)[^\/]+)$#sD',
+            ['/foo/bar'],
+            '/^\/foo\/(?P<bar>(?U)[^\/]+)$/sDu',
             ['bar' => 'bar'],
         ];
 
         yield 'Route with several variables' => [
             '/foo/{bar}/{foobar}',
-            ['/foo/bar/baz', 'foo/bar/baz'],
-            '#^/?foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$#sD',
+            ['/foo/bar/baz'],
+            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
             ['bar' => null, 'foobar' => null],
         ];
 
         yield 'Route with several variables that have default values' => [
             '/foo/{bar=<bar>}/{foobar=<0>}',
-            ['/foo/bar/baz', 'foo/bar/baz'],
-            '#^/?foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$#sD',
-            ['bar' => 'bar', 'foobar' => '0'],
+            ['/foo/foobar/baz'],
+            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
+            ['bar' => 'bar', 'foobar' => null],
         ];
 
         yield 'Route with several variables but some of them have no default values' => [
             '/foo/{bar=<bar>}/{foobar}',
-            ['/foo/bar/baz', 'foo/bar/baz'],
-            '#^/?foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$#sD',
+            ['/foo/barfoo/baz'],
+            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
             ['bar' => 'bar', 'foobar' => null],
         ];
 
         yield 'Route with an optional variable as the first segment' => [
             '/[{bar}]',
             ['/', 'bar', '/bar'],
-            '#^/?(?:(?P<bar>(?U)[^\/]+))?$#sD',
+            '/^\/?(?:(?P<bar>(?U)[^\/]+))?$/sDu',
             ['bar' => null],
         ];
 
+        yield 'Route with an optional variable as the first occurrence' => [
+            '[/{foo}]',
+            ['/', '/foo'],
+            '/^\/?(?:\/(?P<foo>(?U)[^\/]+))?$/sDu',
+            ['foo' => null],
+        ];
+
         yield 'Route with an optional variable with inner separator /' => [
-            '[/{bar}]',
-            ['bar'],
-            '#^(?:(?P<bar>(?U)[^\/]+))?$#sD',
+            'foo[/{bar}]',
+            ['/foo', '/foo/bar'],
+            '/^\/foo(?:\/(?P<bar>(?U)[^\/]+))?$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with a requirement of 0' => [
             '/{bar:0}',
-            ['/0', '0'],
-            '#^/?(?P<bar>(?U)0)$#sD',
+            ['/0'],
+            '/^\/(?P<bar>(?U)0)$/sDu',
             ['bar' => 0],
         ];
 
         yield 'Route with a requirement and in optional placeholder' => [
             '/[{lang:[a-z]{2}}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
-            '#^/?(?:(?P<lang>(?U)[a-z]{2})\/)?hello$#sD',
+            '/^\/?(?:(?P<lang>(?U)[a-z]{2})\/)?hello$/sDu',
             ['lang' => null],
+        ];
+
+        yield 'Route with a requirement and in optional placeholder and default' => [
+            '/[{lang:lower=<english>}/]hello',
+            ['/hello', 'hello', '/en/hello', 'en/hello'],
+            '/^\/?(?:(?P<lang>(?U)[a-z]+)\/)?hello$/sDu',
+            ['lang' => 'english'],
         ];
 
         yield  'Route with a requirement, optional and required placeholder' => [
             '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
             ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
-            '#^/?(?:(?P<lang>(?U)[a-z]{2})(?:-(?P<sublang>(?U)[^\/]+))?\/)?(?P<name>(?U)[^\/]+)(?:\/page-(?P<page>(?U)[^\/]+))?$#sD',
+            '/^\/?(?:(?P<lang>(?U)[a-z]{2})(?:-(?P<sublang>(?U)[^\/]+))?\/)?(?P<name>(?U)[^\/]+)(?:\/page-(?P<page>(?U)[^\/]+))?$/sDu',
             ['lang' => null, 'sublang' => null, 'name' => null, 'page' => 0],
         ];
 
         yield 'Route with an optional variable as the first segment with requirements' => [
             '/[{bar:(foo|bar)}]',
             ['/', '/foo', 'bar', 'foo', 'bar'],
-            '#^/?(?:(?P<bar>(?U)(foo|bar)))?$#sD',
+            '/^\/?(?:(?P<bar>(?U)(foo|bar)))?$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with only optional variables with separator /' => [
             '/[{foo}]/[{bar}]',
             ['/', '/foo/', '/foo/bar', 'foo'],
-            '#^/?(?:(?P<foo>(?U)[^\/]+))?/?(?:(?P<bar>(?U)[^\/]+))?$#sD',
+            '/^\/?(?:(?P<foo>(?U)[^\/]+))?\/?(?:(?P<bar>(?U)[^\/]+))?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with only optional variables with inner separator /' => [
             '/[{foo}][/{bar}]',
-            ['/', '/foo/bar', 'foo'],
-            '#^/?(?:(?P<foo>(?U)[^\/]+))?(?:\/(?P<bar>(?U)[^\/]+))?$#sD',
+            ['/', '/foo/bar', 'foo', '/foo'],
+            '/^\/?(?:(?P<foo>(?U)[^\/]+))?(?:\/(?P<bar>(?U)[^\/]+))?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with a variable in last position' => [
             '/foo-{bar}',
-            ['/foo-bar', 'foo-bar'],
-            '#^/?foo-(?P<bar>(?U)[^\/]+)$#sD',
+            ['/foo-bar'],
+            '/^\/foo-(?P<bar>(?U)[^\/]+)$/sDu',
             ['bar' => null],
         ];
 
-        yield 'Route with nested placeholders' => [
-            '/{static{var}static}',
-            ['/staticfoostatic', 'staticfoostatic'],
-            '#^/?static(?P<var>(?U)[^\/]+)static$#sD',
+        yield 'Route with a variable and no real seperator' => [
+            '/static{var}static',
+            ['/staticfoostatic'],
+            '/^\/static(?P<var>(?U)[^\/]+)static$/sDu',
             ['var' => null],
         ];
 
         yield 'Route with nested optional paramters' => [
             '/[{foo}/[{bar}]]',
             ['/foo', '/foo', '/foo/', '/foo/bar', 'foo/bar'],
-            '#^/?(?:(?P<foo>(?U)[^\/]+)/?(?:(?P<bar>(?U)[^\/]+))?)?$#sD',
+            '/^\/?(?:(?P<foo>(?U)[^\/]+)\/?(?:(?P<bar>(?U)[^\/]+))?)?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
     }
@@ -283,37 +322,37 @@ class SimpleRouteCompilerTest extends TestCase
     public function provideCompileHostData(): Generator
     {
         yield 'Route domain with variable' => [
-            '//{foo}.example.com',
+            '//{foo}.example.com/',
             ['cool.example.com'],
-            '#^(?P<foo>(?U)[^\/]+)\.example\.com$#sDi',
+            '/^\/?(?P<foo>(?U)[^\/]+)\.example\.com$/sDi',
             ['foo' => null],
         ];
 
         yield 'Route domain with requirement' => [
-            '//{lang:[a-z]{2}}.example.com',
+            '//{lang:[a-z]{2}}.example.com/',
             ['en.example.com'],
-            '#^(?P<lang>(?U)[a-z]{2})\.example\.com$#sDi',
+            '/^\/?(?P<lang>(?U)[a-z]{2})\.example\.com$/sDi',
             ['lang' => null],
         ];
 
         yield 'Route with variable at beginning of host' => [
-            '//{locale}.example.{tld}',
+            '//{locale}.example.{tld}/',
             ['en.example.com'],
-            '#^(?P<locale>(?U)[^\/]+)\.example\.(?P<tld>(?U)[^\/]+)$#sDi',
+            '/^\/?(?P<locale>(?U)[^\/]+)\.example\.(?P<tld>(?U)[^\/]+)$/sDi',
             ['locale' => null, 'tld' => null],
         ];
 
         yield 'Route domain with requirement and optional variable' => [
-            '//[{lang:[a-z]{2}}.]example.com',
+            '//[{lang:[a-z]{2}}.]example.com/',
             ['en.example.com', 'example.com'],
-            '#^(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$#sDi',
+            '/^\/?(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$/sDi',
             ['lang' => null],
         ];
 
         yield 'Route domain with a default requirement on variable and path variable' => [
-            '//{id:int}.example.com',
+            '//{id:int}.example.com/',
             ['23.example.com'],
-            '#^(?P<id>(?U)\d+)\.example\.com$#sDi',
+            '/^\/?(?P<id>(?U)\d+)\.example\.com$/sDi',
             ['id' => 0],
         ];
     }
