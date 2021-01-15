@@ -22,7 +22,7 @@ use Flight\Routing\Route;
 
 trait CastingTrait
 {
-    /** @var array<mixed,string>|callable|string */
+    /** @var mixed */
     private $controller;
 
     /**
@@ -34,7 +34,7 @@ trait CastingTrait
     }
 
     /**
-     * @internal Used to see a new handler, when matched.
+     * @internal used to see a new handler, when matched
      *
      * @param mixed $handler
      */
@@ -57,41 +57,58 @@ trait CastingTrait
      */
     private function castRoute(string $route): string
     {
-        // Match domain + scheme from pattern...
-        if (false !== \preg_match($regex = '@^(?:(https?):)?(//[^/]+)@i', $route)) {
-            $route = $this->castDomain($route, $regex);
+        $urlRegex = \strtr(Route::URL_PATTERN, ['/^' => '/^(?:', '$/m' => ')']);
+
+        // Match url + rca from pattern...
+        \preg_match($urlRegex . \strtr(Route::RCA_PATTERN, ['/^' => '?']), $route, $matches);
+
+        if (empty($matches)) {
+            return $route;
         }
 
-        if (false !== \strpbrk($route, '*') && false !== \preg_match(Route::RCA_PATTERN, $route, $matches)) {
-            if (!isset($matches['route']) || empty($matches['route'])) {
-                throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
+        if (isset($matches['c'], $matches['a'])) {
+            if (\is_string($handler = $matches['c'] ?: $this->controller)) {
+                $handler = \rtrim($handler, '@');
             }
 
-            if (isset($matches['controller'], $matches['action'])) {
-                $this->controller = [$matches['controller'] ?: $this->controller, $matches['action']];
-            }
-
-            $route = $matches['route'];
+            $this->controller = !$handler ? $matches['a'] : [$handler, $matches['a']];
         }
 
-        return (empty($route) || '/' === $route) ? '/' : $route;
+        if (isset($matches['domain'])) {
+            $route = $this->castDomain($matches, $route);
+        }
+
+        return $route;
     }
 
     /**
      * Match scheme and domain from route patterned path
      *
+     * @param array<int|string,null|string> $matches
      * @param string $route
-     * @param string $regex
      *
      * @return string
      */
-    private function castDomain(string $route, string $regex): string
+    private function castDomain(array $matches, string $route): string
     {
-        return (string) \preg_replace_callback($regex, function (array $matches): string {
-            $this->setDomain(isset($matches[1]) ? $matches[0] : $matches[2]);
+        $domain = $matches['domain'] ?? null;
 
-            return '';
-        }, $route);
+        if (isset($matches['scheme']) && !empty($matches['scheme'])) {
+            $this->setScheme($matches['scheme']);
+        }
+
+        if ((!isset($matches[4]) || empty($matches[4])) && false === strpos($domain ?? '', '//')) {
+            $matches['route'] = $domain . ($matches['route'] ?? null);
+            $domain           = null;
+        }
+
+        $this->domain = null === $domain ? $domain : \strtr($domain, ['//' => '']);
+
+        if (!isset($matches['route']) || empty($matches['route'])) {
+            throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
+        }
+
+        return $matches['route'];
     }
 
     /**
@@ -110,10 +127,10 @@ trait CastingTrait
             return \rtrim($prefix, '/') . $uri;
         }
 
-        if (1 === \preg_match('/^([^\|\/|&|-|_|~|@]+)(&|-|_|~|@)/i', $prefix, $matches)) {
-            $newPattern = \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
+        if (1 === \preg_match('/^([^\/&\-_~\|@]+)(&|-|_|~|@)$/', $prefix, $matches)) {
+            return \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
         }
 
-        return !empty($newPattern) ? $newPattern : \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');
+        return \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');
     }
 }
