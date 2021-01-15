@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Traits;
 
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Route;
 
 trait RouteTrait
 {
@@ -117,18 +118,13 @@ trait RouteTrait
      */
     public function setDomain(string $domain): RouteInterface
     {
-        if (false !== \preg_match('@^(?:(https?):)?(\/\/[^/]+)@i', $domain, $matches)) {
-            if (empty($matches)) {
-                $matches = [$domain, null, $domain];
-            }
+        \preg_match(Route::URL_PATTERN, $domain, $matches);
 
-            [, $scheme, $domain] = $matches;
-
-            if (!empty($scheme)) {
-                $this->setScheme($scheme);
-            }
+        if (isset($matches['scheme']) && !empty($scheme = $matches['scheme'])) {
+            $this->setScheme($scheme);
         }
-        $this->domain = \trim((string) $domain, '//');
+
+        $this->domain = \ltrim($matches['domain'] ?? $domain, '//');
 
         return $this;
     }
