@@ -18,6 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Router;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Interface defining required router compiling capabilities.
@@ -27,13 +29,14 @@ use Flight\Routing\Exceptions\UrlGenerationException;
 interface RouteMatcherInterface
 {
     /**
-     * Compile route matcher into regexp.
+     * Marshals a route result based on the results of matching URL from set of routes.
      *
-     * @param RouteInterface $route
+     * @param Router $router
+     * @param ServerRequestInterface $request
      *
-     * @return RouteMatcherInterface
+     * @return null|RouteInterface
      */
-    public function compileRoute(RouteInterface $route): self;
+    public function matchRoutes(Router $router, ServerRequestInterface $request): ?RouteInterface;
 
     /**
      * Generate a URI from the named route.
@@ -56,24 +59,15 @@ interface RouteMatcherInterface
      */
     public function buildPath(RouteInterface $route, array $substitutions): string;
 
-    /**
-     * Returns the compiled regexp for request matching
-     *
-     * @param bool $domain used only if route domain was compiled, else
-     *                     return an empty string
-     *
-     * @return string
-     */
-    public function getRegex(bool $domain = false): string;
 
     /**
-     * Return the parameters found in `getRegex()` method.
+     * This warms up compiler used to compile route, to increase performance.
      *
-     * If parameters exists, but allowed not to be used when matched,
-     * return a null statements each.
-     * Include parameters from compiled domain if available.
+     * Implement this fluent method or return it as false.
      *
-     * @return array<int|string,string>
+     * @param RouteListInterface $routes
+     *
+     * @return mixed return false if not implemented
      */
-    public function getVariables(): array;
+    public function warmCompiler(RouteListInterface $routes);
 }
