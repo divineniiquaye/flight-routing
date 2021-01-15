@@ -27,6 +27,12 @@
             </errorLevel>
         </ArgumentTypeCoercion>
 
+        <InvalidOperand>
+            <errorLevel type="suppress">
+                <file name="src/Traits/DumperTrait.php"/>
+            </errorLevel>
+        </InvalidOperand>
+
         <PossiblyInvalidArgument>
             <errorLevel type="suppress">
                 <file name="src/Traits/ResolveTrait.php"/>
@@ -65,6 +71,7 @@
 
         <RedundantCondition>
             <errorLevel type="suppress">
+                <file name="src/Traits/DumperTrait.php"/>
                 <file name="src/Exceptions/InvalidMiddlewareException.php"/>
             </errorLevel>
         </RedundantCondition>
