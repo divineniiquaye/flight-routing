@@ -112,15 +112,15 @@ class UriRedirectMiddlewareTest extends BaseTestCase
     public function redirectionData(): Generator
     {
         yield 'Redirect string with symbols' => [
-            ['@come_here' => 'ch'], 'ch',
+            ['@come_here' => '/ch'], 'ch',
         ];
 
         yield 'Redirect string with format' => [
-            ['index.html' => 'home'], 'home',
+            ['index.html' => '/home'], 'home',
         ];
 
         yield 'Redirect string with format reverse' => [
-            ['home' => 'index.html'], 'index.html',
+            ['home' => '/index.html'], 'index.html',
         ];
 
         yield 'Redirect string with Uri instance' => [

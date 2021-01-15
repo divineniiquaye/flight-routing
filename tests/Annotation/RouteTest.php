@@ -92,6 +92,22 @@ class RouteTest extends TestCase
         $this->assertNull($route->getPath());
     }
 
+    public function testConstructorParamsContainStringPath(): void
+    {
+        $route = new Route('/hello');
+
+        $this->assertNull($route->getName());
+        $this->assertSame('/hello', $route->getPath());
+        $this->assertEmpty($route->getMethods());
+
+        // default property values...
+        $this->assertSame([], $route->getMiddlewares());
+        $this->assertSame([], $route->getDefaults());
+        $this->assertSame([], $route->getPatterns());
+        $this->assertSame([], $route->getSchemes());
+        $this->assertSame(null, $route->getDomain());
+    }
+
     public function testConstructorParamsContainStringMethods(): void
     {
         $this->expectException(InvalidAnnotationException::class);

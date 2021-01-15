@@ -36,11 +36,11 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->addMiddleware(new PathMiddleware());
         $pipeline->addRoute(new Route('path_middleware_200', ['GET'], '/foo', [$this, 'handlePath']));
 
-        $response = $pipeline->handle(new ServerRequest('GET', 'foo'));
+        $response = $pipeline->handle(new ServerRequest('GET', '/foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('foo', $response->getHeaderLine('Expected'));
+        $this->assertEquals('/foo', $response->getHeaderLine('Expected'));
     }
 
     /**
@@ -54,7 +54,7 @@ class PathMiddlewareTest extends BaseTestCase
     {
         $pipeline   = $this->getRouter();
 
-        $pipeline->addMiddleware(new PathMiddleware());
+        $pipeline->addMiddleware(new PathMiddleware($expectsStatus));
         $pipeline->addRoute(new Route('path_middleware', ['GET', 'POST'], $uriPath, [$this, 'handlePath']));
 
         $response = $pipeline->handle(new ServerRequest('GET', $expectedPath));
@@ -68,7 +68,7 @@ class PathMiddlewareTest extends BaseTestCase
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
     }
 
-    public function handlePath(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    public function handlePath(RequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return $response->withHeader('Expected', $request->getUri()->getPath());
     }
@@ -80,9 +80,10 @@ class PathMiddlewareTest extends BaseTestCase
     {
         return [
             // name                      => [$uriPath, $expectedPath,   $expectsStatus ]
-            'prefix-bare-bare'           => ['/foo',   'foo/',          true],
-            'root-prefix-tail'           => ['/foo',   '/foo/',         true],
+            'root-prefix-tail'           => ['/foo',   '/foo/',        true],
             'prefix-surround-tail'       => ['/foo/',  '/foo',         true],
+            'root-prefix-tail'           => ['/foo',   '/foo/',        false],
+            'prefix-surround-tail'       => ['/foo/',  '/foo',         false],
         ];
     }
 }
