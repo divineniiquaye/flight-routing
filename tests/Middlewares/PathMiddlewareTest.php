@@ -20,9 +20,9 @@ namespace Flight\Routing\Tests\Middlewares;
 use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Route;
 use Flight\Routing\Tests\BaseTestCase;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * PathMiddlewareTest

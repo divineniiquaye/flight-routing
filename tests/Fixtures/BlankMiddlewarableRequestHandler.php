@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use BiuradPHP\Http\Factory\ResponseFactory;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -41,6 +41,6 @@ class BlankMiddlewarableRequestHandler implements MiddlewareInterface, RequestHa
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return (new ResponseFactory())->createResponse();
+        return (new Psr17Factory())->createResponse();
     }
 }
