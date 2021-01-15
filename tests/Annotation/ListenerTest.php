@@ -15,21 +15,23 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests;
+namespace Flight\Routing\Tests\Annotation;
 
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\Annotation\Listener;
 use Flight\Routing\Route;
+use Flight\Routing\Tests\BaseTestCase;
 use Spiral\Attributes\AnnotationReader;
 use Spiral\Attributes\AttributeReader;
 use Spiral\Attributes\Composite\MergeReader;
+use Flight\Routing\Tests\Fixtures;
 
 /**
- * RouteLoaderTest
+ * ListenerTest
  */
-class RouteLoaderTest extends BaseTestCase
+class ListenerTest extends BaseTestCase
 {
     /** @var AnnotationLoader */
     protected $loader;
@@ -51,7 +53,7 @@ class RouteLoaderTest extends BaseTestCase
     {
         $loader = clone $this->loader;
         $loader->attach(...[
-            __DIR__ . '/Fixtures/Annotation/Route/Valid',
+            __DIR__ . '/../Fixtures/Annotation/Route/Valid',
             'non-existing-file.php',
         ]);
 
@@ -93,9 +95,9 @@ class RouteLoaderTest extends BaseTestCase
     {
         $loader = clone $this->loader;
         $loader->attach(...[
-            __DIR__ . '/Fixtures/Annotation/Route/Valid',
-            __DIR__ . '/Fixtures/Annotation/Route/Containerable',
-            __DIR__ . '/Fixtures/Annotation/Route/Attribute',
+            __DIR__ . '/../Fixtures/Annotation/Route/Valid',
+            __DIR__ . '/../Fixtures/Annotation/Route/Containerable',
+            __DIR__ . '/../Fixtures/Annotation/Route/Attribute',
         ]);
 
         $router = $this->getRouter();
@@ -110,7 +112,7 @@ class RouteLoaderTest extends BaseTestCase
     public function testLoad(): void
     {
         $loader = clone $this->loader;
-        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Valid');
+        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
@@ -423,7 +425,7 @@ class RouteLoaderTest extends BaseTestCase
         $loader = new AnnotationLoader(new AttributeReader());
 
         $loader->attachListener(new Listener());
-        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Attribute');
+        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Attribute');
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
@@ -469,7 +471,7 @@ class RouteLoaderTest extends BaseTestCase
         );
 
         $loader = clone $this->loader;
-        $loader->attach(__DIR__ . '/Fixtures/Annotation/Route/Abstracts');
+        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Abstracts');
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
@@ -512,7 +514,6 @@ class RouteLoaderTest extends BaseTestCase
             [Fixtures\Annotation\Route\Invalid\NameEmpty::class, '@Route.name must be not an empty string.'],
             [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a string.'],
             [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must be not an empty string.'],
-            [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must not be left empty.'],
             [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must be not an empty string.'],
         ];
     }
