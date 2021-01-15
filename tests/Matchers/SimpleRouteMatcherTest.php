@@ -17,16 +17,18 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Matchers;
 
+use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Flight\Routing\Tests\BaseTestCase;
 use Generator;
-use PHPUnit\Framework\TestCase;
+use Nyholm\Psr7\ServerRequest;
 
 /**
  * SimpleRouteMatcherTest
  */
-class SimpleRouteMatcherTest extends TestCase
+class SimpleRouteMatcherTest extends BaseTestCase
 {
     public function testConstructor(): void
     {
@@ -35,25 +37,28 @@ class SimpleRouteMatcherTest extends TestCase
         $this->assertInstanceOf(RouteMatcherInterface::class, $factory);
     }
 
-    public function testCompileRoute(): void
+    /**
+     * @dataProvider routeCompileData
+     *
+     * @param string $path
+     * @param array<string,null|int|string> $variables
+     */
+    public function testCompileRoute(string $path, array $variables): void
     {
-        $factory    = new SimpleRouteMatcher();
-        $route      = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null);
-        $regexMatch = 'assertMatchesRegularExpression';
+        $factory = new SimpleRouteMatcher();
 
-        $factory->compileRoute($route);
+        $router = $this->getRouter($factory);
+        $router->addRoute($route = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null));
+        $route = $factory->matchRoutes($router, new ServerRequest($route->getMethods()[0], $path));
 
-        $this->assertEquals('#^/?(?P<foo>(?U)[^\/]+)$#sD', $factory->getRegex());
-        $this->assertEquals('#^(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$#sDi', $factory->getRegex(true));
+        $this->assertInstanceOf(RouteInterface::class, $route);
+        $this->assertEquals($variables, $route->getArguments());
+
+        $factory = $factory->getCompiler()->compile($route);
+
+        $this->assertEquals('/^\/(?P<foo>(?U)[^\/]+)$/sDu', $factory->getRegex());
+        $this->assertEquals('/^\/?(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$/sDi', $factory->getHostRegex());
         $this->assertEquals(['foo' => null, 'lang' => null], $factory->getVariables());
-
-        if (\PHP_VERSION_ID < 70300) {
-            $regexMatch = 'assertRegExp';
-        }
-
-        $this->{$regexMatch}($factory->getRegex(), '/foo');
-        $this->{$regexMatch}($factory->getRegex(true), 'example.com');
-        $this->{$regexMatch}($factory->getRegex(true), 'en.example.com');
     }
 
     /**
@@ -77,7 +82,18 @@ class SimpleRouteMatcherTest extends TestCase
         $route   = new Route('test', ['FOO', 'BAR'], '/{foo}', null);
         $route->setDefaults(['foo' => 'fifty']);
 
-        $this->assertEquals('fifty', $factory->buildPath($route, []));
+        $this->assertEquals('/fifty', $factory->buildPath($route, []));
+    }
+
+    /**
+     * @return string[]
+     */
+    public function routeCompileData(): array
+    {
+        return [
+            ['http://en.example.com/english', ['lang' => 'en', 'foo' => 'english']],
+            ['http://example.com/locale', ['lang' => null, 'foo' => 'locale']],
+        ];
     }
 
     /**
@@ -87,13 +103,13 @@ class SimpleRouteMatcherTest extends TestCase
     {
         yield 'Build route with variable' => [
             '/{foo}',
-            'two',
+            '/two',
             ['foo' => 'two'],
         ];
 
         yield 'Build route with variable position' => [
             '/{foo}',
-            'twelve',
+            '/twelve',
             ['twelve'],
         ];
 
@@ -105,13 +121,13 @@ class SimpleRouteMatcherTest extends TestCase
 
         yield 'Build route with variable and default' => [
             '/{foo=<cool>}',
-            'cool',
+            '/cool',
             [],
         ];
 
         yield 'Build route with variable and override default' => [
             '/{foo=<cool>}',
-            'yeah',
+            '/yeah',
             ['foo' => 'yeah'],
         ];
     }
