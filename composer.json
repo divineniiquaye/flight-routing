@@ -2,7 +2,15 @@
     "name": "divineniiquaye/flight-routing",
     "type": "library",
     "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers.",
-    "keywords": ["router","url routing","psr-15","psr-7","php","biurad","php7"],
+    "keywords": [
+        "router",
+        "url routing",
+        "php-17",
+        "psr-15",
+        "psr-7",
+        "php",
+        "biurad"
+    ],
     "homepage": "https://www.biurad.com",
     "license": "BSD-3-Clause",
     "authors": [
@@ -32,10 +40,10 @@
     },
     "require-dev": {
         "biurad/annotations": "1.x-dev",
-        "biurad/http-galaxy": "^0.1",
         "composer/package-versions-deprecated": "^1.11",
         "doctrine/annotations": "^1.11",
-        "doctrine/cache": "^1.10",
+        "nyholm/psr7": "^1.3",
+        "nyholm/psr7-server": "^1.0",
         "phpstan/phpstan": "^0.12",
         "phpstan/phpstan-strict-rules": "^0.12",
         "phpunit/phpunit": "^8.5 || ^9.4",
@@ -44,7 +52,7 @@
     },
     "suggest": {
         "biurad/annotations": "For annotation routing on classes and methods using Annotation/Listener class",
-        "biurad/http-galaxy": "For managing request and response in browser, an alternative is slim/psr7 or laminas/laminas-diactoros"
+        "biurad/http-galaxy": "For handling router, an alternative is nyholm/psr7, slim/psr7 or laminas/laminas-diactoros"
     },
     "autoload": {
         "psr-4": {
