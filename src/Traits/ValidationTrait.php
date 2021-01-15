@@ -20,6 +20,7 @@ namespace Flight\Routing\Traits;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
+use Psr\Http\Message\UriInterface;
 
 trait ValidationTrait
 {
@@ -81,20 +82,23 @@ trait ValidationTrait
     /**
      * Asserts the Route's method and domain scheme.
      *
-     * @param RouteInterface   $route
-     * @param array<int,mixed> $attributes
+     * @param RouteInterface $route
+     * @param UriInterface   $requestUri
+     * @param string         $method
      */
-    private function assertRoute(RouteInterface $route, array $attributes): void
+    private function assertRoute(RouteInterface $route, UriInterface $requestUri, string $method): void
     {
-        [$method, $scheme, $path] = $attributes;
-
         if (!$this->compareMethod($route->getMethods(), $method)) {
-            throw new MethodNotAllowedException($route->getMethods(), $path, $method);
+            throw new MethodNotAllowedException($route->getMethods(), $requestUri->getPath(), $method);
         }
 
-        if (!$this->compareScheme($route->getSchemes(), $scheme)) {
+        if (!$this->compareScheme($route->getSchemes(), $requestUri->getScheme())) {
             throw new UriHandlerException(
-                \sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $scheme, $path),
+                \sprintf(
+                    'Unfortunately current scheme "%s" is not allowed on requested uri [%s]',
+                    $requestUri->getScheme(),
+                    $requestUri->getPath()
+                ),
                 400
             );
         }
