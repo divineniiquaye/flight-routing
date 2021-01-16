@@ -176,9 +176,7 @@ class Router implements RequestHandlerInterface
             $this->match($request);
         }
 
-        $middleDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
-
-        return $middleDispatcher->dispatch(
+        return ($middleDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer()))->dispatch(
             $this->getMiddlewares(),
             new Handlers\CallbackHandler(
                 function (ServerRequestInterface $request) use ($middleDispatcher): ResponseInterface {
@@ -197,7 +195,7 @@ class Router implements RequestHandlerInterface
                     }
                 }
             ),
-            $request->withAttribute(Route::class, $this->route),
+            $request->withAttribute(Route::class, $this->route)
         );
     }
 }
