@@ -4,13 +4,24 @@ on: [push, pull_request]
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        php: ['7.2', '7.3', '7.4']
+        operating-system: [ubuntu-latest, windows-latest, macos-latest]
+        php-versions: ['7.4', '8.0']
         coverage: ["true"]
         composer-flags: [""]
+        static-tests: ["true"]
         include:
-          - php: "8.0"
+          - php-versions: "7.2"
+            static-tests: "false"
+
+          - php-versions: "7.3"
+            static-tests: "false"
+
+          - php-versions: "8.0"
+            composer-flags: "--ignore-platform-req=php"
+
+          - php-versions: "8.1"
             coverage: "false"
             composer-flags: "--ignore-platform-req=php"
     runs-on: ubuntu-latest
@@ -22,8 +33,8 @@ jobs:
       - name: Setup PHP, with composer and extensions
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
-          extensions: mbstring, curl
+          php-version: ${{ matrix.php-versions }}
+          extensions: mbstring, xml, ctype, iconv, curl
           coverage: xdebug
           tools: composer:v2
 
@@ -41,13 +52,10 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer update --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
+        run: composer install --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
 
       - name: Check Coding Standard
-        run: |
-          if [ "${{ matrix.coverage }}" == "true" ]; then
-            vendor/bin/phpcs
-          fi
+        run: vendor/bin/phpcs
 
       - name: Test with Phpunit
         run: |
@@ -60,9 +68,12 @@ jobs:
 
       - name: Test with Phpstan
         run: |
-          if [ "${{ matrix.coverage }}" == "false" ]; then
+          if [ "${{ matrix.static-tests }}" == "true" ]; then
             vendor/bin/phpstan analyse
           fi
 
       - name: Test with Psalm
-        run: vendor/bin/psalm
+        run: |
+          if [ "${{ matrix.static-tests }}" == "true" ]; then
+            vendor/bin/psalm --output-format=github
+          fi
