@@ -829,17 +829,12 @@ class RouteListTest extends BaseTestCase
         $router = $this->getRouter();
         $cacheFile = __DIR__ . '/Fixtures/routes/cache_router.php';
 
-        if ($cached) {
-            $router->warmRoutes($cacheFile, false);
-        }
-
         $router->addRoute(...$demoCollection);
         $router->addRoute(...$groupOptimisedCollection->getRoutes());
         $router->addRoute(...$chunkedCollection->getIterator()->getArrayCopy());
 
         if ($cached) {
             $router->warmRoutes($cacheFile);
-            $this->assertNotEmpty($router->getCompiledRoutes());
         }
 
         $this->assertCount(1028, $mergedCollection);
@@ -848,6 +843,13 @@ class RouteListTest extends BaseTestCase
         $route = $router->match(new ServerRequest(current($testRoute->getMethods()), $testRoute->getPath()));
 
         $this->assertInstanceOf(RouteInterface::class, $route);
+
+        if ($cached) {
+            $router->warmRoutes($cacheFile, false);
+            $this->assertNotEmpty($router->getCompiledRoutes());
+
+            unlink($cacheFile);
+        }
     }
 
     /**
