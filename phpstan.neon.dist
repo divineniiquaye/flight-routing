@@ -23,8 +23,8 @@ parameters:
             message: "#^Call to function is_int\\(\\) with string will always evaluate to false.$#"
             path: src/Matchers/SimpleRouteCompiler.php
         -
-            message: "#^Parameter \\#1 \\$argument of class ReflectionClass constructor expects class-string<T of object>\\|T of object, string given.$#"
-            path: src/Annotation/Listener.php
+            message: "#^Parameter \\#1 \\$value of function count expects array\\|Countable, callable given.|Cannot access offset 1 on callable\\(\\): mixed.$#"
+            path: src/Traits/MiddlewareTrait.php
         -
             message: "#^Call to function is_object\\(\\) with string will always evaluate to false.$#"
             path: src/Exceptions/InvalidMiddlewareException.php
@@ -32,11 +32,5 @@ parameters:
             message: "#^Call to function is_callable\\(\\) with mixed will always evaluate to false.$#"
             path: src/Traits/MiddlewareTrait.php
         -
-            message: "#^Parameter \\#1 \\$var of function count expects array\\|Countable, callable given.$#"
-            path: src/Traits/MiddlewareTrait.php
-        -
-            message: "#^Result of && is always false.$#"
-            path: src/Traits/MiddlewareTrait.php
-        -
-            message: "#^Cannot access offset 1 on callable\\(\\): mixed.$#"
+            message: "#^Parameter \\#1 \\$var of function count expects array\\|Countable, callable given.|Result of && is always false.$#"
             path: src/Traits/MiddlewareTrait.php

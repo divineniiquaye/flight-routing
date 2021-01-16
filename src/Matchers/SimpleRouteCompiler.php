@@ -241,6 +241,8 @@ class SimpleRouteCompiler implements Serializable
     /**
      * {@inheritdoc}
      *
+     * @param string $serialized The string representation of the object.
+     *
      * @internal
      */
     final public function unserialize($serialized): void

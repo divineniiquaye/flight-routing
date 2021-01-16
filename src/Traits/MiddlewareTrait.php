@@ -30,7 +30,7 @@ trait MiddlewareTrait
     /**
      * Set of middleware to be applied for every request.
      *
-     * @var array<int|string,mixed>
+     * @var array<string,mixed>
      */
     protected $middlewares = [];
 
@@ -38,7 +38,7 @@ trait MiddlewareTrait
      * Set of route middleware to be used in $middlewares
      * Stack, if string name is equal to a given middleware.
      *
-     * @var array<int|string,mixed>
+     * @var array<string,mixed>
      */
     protected $nameMiddlewares = [];
 
