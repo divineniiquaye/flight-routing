@@ -158,7 +158,7 @@ $router->setNamespace('Demo\\Controllers\\');
 
 ---
 
-This library is shipped with annotations support, check **Annotation** directory to find out more collection using `Flight\Routing\Router::loadAnnotation` method.
+This library is shipped with annotations support, check **Annotation** directory to find out more about collecting anotations using `Flight\Routing\Router::loadAnnotation` method.
 
 ```php
 use Biurad\Annotations\AnnotationLoader;
@@ -868,7 +868,6 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
 [biurad-http-galaxy]: https://github.com/biurad/php-http-galaxy
-[Publisher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Publisher.php
-[DefaultMatcher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Services/SimpleRouteMatcher.php
+[DefaultMatcher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Matchers/SimpleRouteMatcher.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router
