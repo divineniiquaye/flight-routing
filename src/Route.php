@@ -71,15 +71,15 @@ class Route implements RouteInterface
     /**
      * Create a new Route constructor.
      *
-     * @param string                                   $name    The route name
-     * @param string[]                                 $methods The route HTTP methods
-     * @param string                                   $pattern The route pattern
-     * @param null|array<mixed,string>|callable|string $handler The route callable
+     * @param string   $name    The route name
+     * @param string[] $methods The route HTTP methods
+     * @param string   $pattern The route pattern
+     * @param mixed    $handler The route callable
      */
     public function __construct(string $name, array $methods, string $pattern, $handler)
     {
         $this->name       = $name;
-        $this->controller = null === $handler ? '' : $handler;
+        $this->controller = $handler;
         $this->methods    = \array_map('strtoupper', $methods);
         $this->path       = $this->castRoute($pattern);
     }

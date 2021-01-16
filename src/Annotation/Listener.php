@@ -48,6 +48,7 @@ class Listener implements ListenerInterface
      */
     public function onAnnotation(array $annotations): RouteListInterface
     {
+        /** @var class-string $class */
         foreach ($annotations as $class => $collection) {
             if (isset($collection['method'])) {
                 $this->addRouteGroup($collection['class'] ?? [], $collection['method']);
@@ -84,9 +85,9 @@ class Listener implements ListenerInterface
     /**
      * Add a route from annotation
      *
-     * @param Route           $annotation
-     * @param string|string[] $handler
-     * @param null|Route      $group
+     * @param Route                 $annotation
+     * @param class-string|string[] $handler
+     * @param null|Route            $group
      *
      * @return RouteInterface
      */
@@ -172,7 +173,7 @@ class Listener implements ListenerInterface
     /**
      * Gets the default route name for a class method.
      *
-     * @param string|string[] $handler
+     * @param class-string|mixed[] $handler
      *
      * @return string
      */
