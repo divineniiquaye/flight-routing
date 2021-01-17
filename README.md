@@ -769,7 +769,7 @@ $collector->resource('user', '/user/{id:\d+}', UserController::class);
 
 ---
 
-If these offered routes do not fit your needs, you may create your own router matcher and add it to your `router collector`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its four methods:
+If these offered route pattern do not fit your needs, you may create your own route matcher and add it to `router`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its three methods:
 
 ```php
 use Flight\Routing\Interfaces\RouteInterface;
