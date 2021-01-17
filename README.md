@@ -17,18 +17,18 @@
 - Basic routing (`GET`, `POST`, `PUT`, `PATCH`, `UPDATE`, `DELETE`) with support for custom multiple verbs.
 - Regular Expression Constraints for parameters.
 - Named routes.
-- Generating url to routes.
+- Generating named routes to [PSR-15] URL.
 - Route groups.
 - [PSR-15] Middleware (classes that intercepts before the route is rendered).
 - Namespaces.
-- Route prefixes.
-- Optional parameters
+- Advanced route pattern syntax.
 - Sub-domain routing and more.
 - Restful Routing
+- Custom matching strategy
 
 ## 📦 Installation & Basic Usage
 
-This project requires [PHP] 7.1 or higher. The recommended way to install, is via [Composer]. Simply run:
+This project requires [PHP] 7.2 or higher. The recommended way to install, is via [Composer]. Simply run:
 
 ```bash
 $ composer require divineniiquaye/flight-routing
@@ -106,9 +106,9 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
 
 ---
 
-Please note that the following snippets only covers how to use this router in a project without an existing framework using [DefaultMatcher] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouteMatcherInterface` class instance in your project, the implementation varies.
+Please note that the following documentation only covers how to use this router in a project without an existing framework using [DefaultMatcher] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouteMatcherInterface` class instance in your project, the implementation varies.
 
-It's not required, but you can set `namespace method parameter's value to eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
+It's not required, but you can set `namespace for classes eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
 
 This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http-galaxy] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware
 
@@ -188,6 +188,28 @@ $router->loadAnnotation($loader);
 ### Basic Routing
 
 ---
+
+As stated earlier, this documentation for route pattern is based on [DefaultMatcher] class. Route pattern are path string with curly brace placeholders. Possible placeholder format are:
+
+- `{name}` - required placeholder.
+- `{name=<foo>}` - placeholder with default value.
+- `{name:regex}` - placeholder with regex definition.
+- `{name:regex=<foo>}` - placeholder with regex definition and default value.
+- `[{name}]` - optionnal placeholder.
+
+Variable placeholders may contain only word characters (latin letters, digits, and underscore) and must be unique within the pattern. For placeholders without an explicit regex, a variable placeholder matches any number of characters other than '/' (i.e [^/]+).
+
+> **NB:** Do not use digit for placeholder or it's value shouldn't be greater than 31 characters.
+
+Examples:
+
+- `/foo/` - Matches only if the path is exactly '/foo/'. There is no special treatment for trailing slashes, and patterns have to match the entire path, not just a prefix.
+- `/user/{id}` - Matches '/user/bob' or '/user/1234!!!' but not '/user/' or '/user' or even '/user/bob/details'.
+- `/user/{id:[^/]+}` - Same as the previous example.
+- `/user[/{id}]` - Same as the previous example, but also match '/user'.
+- `/user[/{id}]/` - Same as the previous example, but also match '/user/'.
+- `/user/{id:[0-9a-fA-F]{1,8}}` - Only matches if the id parameter consists of 1 to 8 hex digits.
+- `/files/{path:.*}` - Matches any URL starting with '/files/' and captures the rest of the path into the parameter 'path'.
 
 Below is a very basic example of setting up a route. First parameter is the url which the route should match - next parameter is a `Closure` or callback function that will be triggered once the route matches.
 
