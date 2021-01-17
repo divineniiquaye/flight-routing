@@ -21,12 +21,6 @@
     </projectFiles>
 
     <issueHandlers>
-        <ArgumentTypeCoercion>
-            <errorLevel type="suppress">
-                <referencedFunction name="ReflectionClass::__construct"/>
-            </errorLevel>
-        </ArgumentTypeCoercion>
-
         <InvalidOperand>
             <errorLevel type="suppress">
                 <file name="src/Traits/DumperTrait.php"/>
@@ -44,12 +38,6 @@
                 <file name="src/RouteList.php"/>
             </errorLevel>
         </PossiblyInvalidFunctionCall>
-
-        <InvalidScalarArgument>
-            <errorLevel type="suppress">
-                <file name="src/Matchers/SimpleRouteCompiler.php"/>
-            </errorLevel>
-        </InvalidScalarArgument>
 
         <InvalidArgument>
             <errorLevel type="suppress">
@@ -78,10 +66,7 @@
 
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
-                <file name="src/Router.php"/>
                 <file name="src/Annotation/Listener.php"/>
-                <file name="src/Matchers/SimpleRouteCompiler.php"/>
-                <file name="src/Matchers/SimpleRouteMatcher.php"/>
                 <file name="src/Exceptions/InvalidMiddlewareException.php"/>
             </errorLevel>
         </TypeDoesNotContainType>
@@ -89,8 +74,6 @@
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Annotation/Route.php"/>
-                <file name="src/Annotation/Listener.php"/>
-                <file name="src/Traits/CastingTrait.php" />
                 <file name="src/Matchers/SimpleRouteCompiler.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
