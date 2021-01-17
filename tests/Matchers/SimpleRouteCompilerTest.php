@@ -314,6 +314,13 @@ class SimpleRouteCompilerTest extends TestCase
             '/^\/?(?:(?P<foo>(?U)[^\/]+)\/?(?:(?P<bar>(?U)[^\/]+))?)?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
+
+        yield 'Route with complex matches' => [
+            '/hello/{foo:[a-z]{3}=<bar>}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
+            ['/hello/foobar/', '/hello/foobar', '/hello/foobar/0A0AB5', '/hello/foobar/0A0AB5.html'],
+            '/^\/hello\/(?P<foo>(?U)[a-z]{3})(?P<baz>(?U)[^\/]+)\/?(?:(?P<id>(?U)[0-9a-fA-F]{1,8})(?:\.(?P<format>(?U)html|php))?)?$/sDu',
+            ['foo' => 'bar', 'baz' => null, 'id' => null, 'format' => null],
+        ];
     }
 
     /**

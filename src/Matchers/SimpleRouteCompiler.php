@@ -53,9 +53,7 @@ class SimpleRouteCompiler implements Serializable
      * - /{var=<foo>} - A required variable with default value
      * - /{var}[.{format:(html|php)=<html>}] - A required variable with an optional variable, a rule & default
      */
-    private const COMPILER_REGEX = '#{(?<names>\w+)?(?:\:(?<rules>.*?))?(?:=<(?<defaults>[^>]+)>)?}#i';
-
-    private const TEMPLATE_REGEX = '#\{(\w+)\:?.*?\}#';
+    private const COMPILER_REGEX = '#\{(?<names>\w+)?(?:\:(?<rules>[^{}=]*(?:\{(?-1)\}[^{}]?)*))?(?:\=\<(?<defaults>[^>]+)\>)?\}#xi';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
@@ -241,7 +239,7 @@ class SimpleRouteCompiler implements Serializable
     /**
      * {@inheritdoc}
      *
-     * @param string $serialized The string representation of the object.
+     * @param string $serialized the string representation of the object
      *
      * @internal
      */
@@ -312,7 +310,7 @@ class SimpleRouteCompiler implements Serializable
 
         // Return only grouped named captures.
         $matches  = \array_filter($matches, 'is_string', \ARRAY_FILTER_USE_KEY);
-        $template = \str_replace(['{', '}'], '', (string) \preg_replace(self::TEMPLATE_REGEX, '<\1>', $pattern));
+        $template = (string) \preg_replace(self::COMPILER_REGEX, '<\1>', $pattern);
 
         list($variables, $replaces) = $this->computePattern($matches, $pattern, $route);
 
@@ -326,9 +324,9 @@ class SimpleRouteCompiler implements Serializable
     /**
      * Compute prepared pattern and return it's replacements and arguments.
      *
-     * @param array<string,array<string,string>> $matches
-     * @param string                             $pattern
-     * @param RouteInterface                     $route
+     * @param array<string,string[]> $matches
+     * @param string                 $pattern
+     * @param RouteInterface         $route
      *
      * @return array<int,array<int|string,mixed>>
      */
@@ -417,11 +415,6 @@ class SimpleRouteCompiler implements Serializable
     private function prepareSegment(string $name, string $segment, array $requirements): string
     {
         if ($segment !== '') {
-            // If PCRE subpattern name starts with a digit. Append the missing symbol "}"
-            if (1 === \preg_match('#\{(\d+)#', $segment)) {
-                $segment = $segment . '}';
-            }
-
             return self::SEGMENT_TYPES[$segment] ?? $segment;
         }
 
