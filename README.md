@@ -122,8 +122,6 @@ Flight routing allows you to call any controller action with namespace using `*<
 
 For dispatching a router, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
-**This is an example of a basic `index.php` file:**
-
 ```php
 use Flight\Routing\{Router, RouteList};
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
@@ -138,13 +136,15 @@ $collector->get('phpinfo', '/phpinfo', 'phpinfo'); // Will create a phpinfo rout
 $psr17Factory = new Psr17Factory();
 
 $router = new Router($psr17Factory, $psr17Factory);
-$router->addRoute(...$collector->getRoutes());
 
 /**
  * The default namespace for route-callbacks, so we don't have to specify it each time.
  * Can be overwritten by using the namespace config option on your routes.
  */
 $router->setNamespace('Demo\\Controllers\\');
+
+// All router configurations should be set before adding routes
+$router->addRoute(...$collector->getRoutes());
 
 // Start the routing
 (new SapiStreamEmitter())->emit($router->handle(Psr17Factory::fromGlobalRequest()));
@@ -220,6 +220,32 @@ $route = new Route('home', [Route::METHOD_GET, Route::METHOD_HEAD], '/', fn () =
 
 // Create a new route using $router.
 $router->addRoute($route);
+```
+
+Incase you do not want to use the `Flight\Routing\Router` class, Flight Routing provides option to use only the [DefaultMatcher] while skipping the rest of routes handling processes.
+
+```php
+use Flight\Routing\{Route, RouteList as RouteCollection};
+use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+
+$route = new Route('blog_show', [Route::METHOD_GET], '/blog/{slug}', BlogController::class);
+
+$routes = new RouteCollection();
+$routes->add($route);
+
+// Routing can match routes with incoming requests
+$matcher = new SimpleRouteMatcher();
+$parameters = $matcher->match($routes, new ServerRequest(Route::METHOD_GET, '/blog/lorem-ipsum'));
+
+// Will match and return a $route with new aeguments accesed from $route->getArguments() method.
+// [ 'slug' => 'lorem-ipsum']
+
+// Routing can also generate URLs for a given route
+$url = $matcher->buildPath($route, [
+    'slug' => 'my-blog-post',
+]);
+// $url = '/blog/my-blog-post'
 ```
 
 ### Closure Handler
@@ -557,7 +583,7 @@ Once you have assigned a name to a given route, you may use the route's name, it
 
 ```php
 // Generating URLs...
-$url = $collector->generateUri('profile');
+$url = $router->generateUri('profile');
 ```
 
 If the named route defines parameters, you may pass the parameters as the second argument to the `url` function. The given parameters will automatically be inserted into the URL in their correct positions:
@@ -567,7 +593,9 @@ $collector->get('profile', '/user/{id}/profile', function ($id) {
     //
 });
 
-$url = $collector->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
+$url = $router->generateUri('profile', ['id' => 1]); // will produce "user/1/profile"
+// or
+$url = $router->generateUri('profile', [1]); // will produce "user/1/profile"
 ```
 
 ### Route Groups
@@ -775,7 +803,6 @@ If these offered route pattern do not fit your needs, you may create your own ro
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Router;
 use Psr\Http\Message\ServerRequestInterface;
 
 class MyRouteMatcher implements RouteMatcherInterface
@@ -783,9 +810,9 @@ class MyRouteMatcher implements RouteMatcherInterface
     /**
      * {@inheritdoc}
      */
-    public function matchRoutes(Router $router, ServerRequestInterface $request): ?RouteInterface
+    public function match(RouteListInterface $routes, ServerRequestInterface $request): ?RouteInterface
     {
-        // ... compile the routes from $router->getRoutes() method and match using $request
+        // ... compile the routes from $routes collection and match using $request
     }
 
 	/**
