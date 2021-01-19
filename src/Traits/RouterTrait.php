@@ -180,15 +180,16 @@ trait RouterTrait
     /**
      * Get merged default parameters.
      *
-     * @param array<int|string,mixed> $params
-     * @param array<string,string>    $defaults
+     * @param RouteInterface $route
      *
      * @return array<string,string> Merged default parameters
      */
-    private function mergeDefaults(array $params, array $defaults): array
+    private function mergeDefaults(RouteInterface $route): array
     {
-        foreach ($params as $key => $value) {
-            if (!\is_int($key) && (!isset($defaults[$key]) || null !== $value)) {
+        $defaults = $route->getDefaults();
+
+        foreach ($route->getArguments() as $key => $value) {
+            if (!isset($defaults[$key]) || null !== $value) {
                 $defaults[$key] = $value;
             }
         }

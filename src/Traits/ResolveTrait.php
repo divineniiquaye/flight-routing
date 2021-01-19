@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Closure;
 use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Handlers\RouteHandler;
@@ -46,7 +45,7 @@ trait ResolveTrait
      */
     protected function resolveNamespace($controller)
     {
-        if ($controller instanceof Closure || null === $namespace = $this->namespace) {
+        if (\is_callable($controller) || null === $namespace = $this->namespace) {
             return $controller;
         }
 
@@ -54,7 +53,7 @@ trait ResolveTrait
             (\is_string($controller) && !\class_exists($controller)) &&
             !str_starts_with($controller, $namespace)
         ) {
-            $controller = \is_callable($controller) ? $controller : $this->namespace . \ltrim($controller, '\\/');
+            $controller = $this->namespace . \ltrim($controller, '\\/');
         }
 
         if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
@@ -62,32 +61,6 @@ trait ResolveTrait
         }
 
         return $controller;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
-     *
-     * @throws NotCallableException
-     *
-     * @return callable|RequestHandlerInterface
-     */
-    protected function resolveController(ServerRequestInterface $request, RouteInterface $route)
-    {
-        $handler = $this->resolveNamespace($this->resolveRestFul($request, $route));
-
-        // For a class that implements RequestHandlerInterface, we will call handle()
-        // if no method has been specified explicitly
-        if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
-            $handler = [$handler, 'handle'];
-        }
-
-        // If controller is instance of RequestHandlerInterface
-        if ($handler instanceof RequestHandlerInterface) {
-            return $handler;
-        }
-
-        return $this->resolver->getCallableResolver()->resolve($handler);
     }
 
     /**
@@ -124,26 +97,40 @@ trait ResolveTrait
     /**
      * @param RouteInterface $route
      *
+     * @throws NotCallableException
+     *
      * @return RequestHandlerInterface
      */
-    protected function resolveRoute(RouteInterface $route): RequestHandlerInterface
+    protected function resolveHandler(RouteInterface $route): RequestHandlerInterface
     {
         $handler = $route->getController();
 
         if (!$handler instanceof RequestHandlerInterface) {
             $handler = new RouteHandler(
                 function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-                    $arguments = \array_merge(
-                        $route->getArguments(),
-                        [\get_class($request) => $request, \get_class($response) => $response]
-                    );
+                    $handler  = $this->resolveNamespace($this->resolveRestFul($request, $route));
+                    $resolver = $this->resolver;
 
-                    return $this->resolver->call($route->getController(), $arguments);
+                    // For a class that implements RequestHandlerInterface, we will call handle()
+                    // if no method has been specified explicitly
+                    if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
+                        $handler = [$handler, 'handle'];
+                    }
+
+                    $route->setController($resolver->getCallableResolver()->resolve($handler));
+                    $route->setArguments([\get_class($request) => $request, \get_class($response) => $response]);
+
+                    foreach ($this->listeners as $listener) {
+                        $listener->onRoute($request, $route);
+                    }
+
+                    return $resolver->call($route->getController(), $route->getArguments());
                 },
                 $this->responseFactory
             );
         }
 
+        // If controller is instance of RequestHandlerInterface
         return $handler;
     }
 

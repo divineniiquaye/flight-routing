@@ -149,15 +149,7 @@ class Router implements RequestHandlerInterface
             );
         }
 
-        $route->setController($this->resolveController($request, $route));
-        $route->setArguments($this->mergeDefaults($route->getArguments(), $route->getDefaults()));
-
-        // Run listeners on route not more than once ...
-        if (null === $this->route) {
-            foreach ($this->listeners as $listener) {
-                $listener->onRoute($request, $route);
-            }
-        }
+        $route->setArguments($this->mergeDefaults($route));
 
         if (null !== $this->debug) {
             $this->debug->setMatched(new DebugRoute($route->getName(), $route));
@@ -176,16 +168,18 @@ class Router implements RequestHandlerInterface
             $this->match($request);
         }
 
-        return ($middleDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer()))->dispatch(
+        $middlewareDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
+
+        return $middlewareDispatcher->dispatch(
             $this->getMiddlewares(),
             new Handlers\CallbackHandler(
-                function (ServerRequestInterface $request) use ($middleDispatcher): ResponseInterface {
+                function (ServerRequestInterface $request) use ($middlewareDispatcher): ResponseInterface {
                     try {
                         $route   = $request->getAttribute(Route::class, $this->route);
-                        $handler = $this->resolveRoute($route);
+                        $handler = $this->resolveHandler($route);
                         $mididlewars = $this->resolveMiddlewares($route);
 
-                        return $middleDispatcher->dispatch($mididlewars, $handler, $request);
+                        return $middlewareDispatcher->dispatch($mididlewars, $handler, $request);
                     } finally {
                         if (null !== $this->debug) {
                             foreach ($this->debug->getProfiles() as $profiler) {
