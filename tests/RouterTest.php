@@ -53,15 +53,24 @@ class RouterTest extends BaseTestCase
     public function testAddRoute(): void
     {
         $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
+            $route1 = new Fixtures\TestRoute(),
+            $route2 = new Fixtures\TestRoute(),
+            $route3 = new Fixtures\TestRoute(),
         ];
 
         $router = $this->getRouter();
         $router->addRoute(...$routes);
 
-        $this->assertSame($routes, $router->getRoutes());
+        $collection = $router->getCollection();
+        $routes = $collection->getRoutes();
+
+        $this->assertContains($route1, $routes);
+        $this->assertContains($route2, $routes);
+        $this->assertContains($route3, $routes);
+
+        $collection->add(new Fixtures\TestRoute());
+
+        $this->assertCount(4, $collection->getRoutes());
     }
 
     public function testAddRouteListener(): void

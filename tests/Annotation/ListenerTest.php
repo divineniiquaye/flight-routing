@@ -60,7 +60,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = Fixtures\Helper::routesToNames($router->getRoutes());
+        $routes = Fixtures\Helper::routesToNames($router->getCollection()->getRoutes());
         \sort($routes);
 
         $this->assertSame([
@@ -103,7 +103,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $this->assertCount(24, $router->getRoutes());
+        $this->assertCount(24, $router->getCollection()->getRoutes());
     }
 
     /**
@@ -117,7 +117,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getRoutes();
+        $routes = $router->getCollection()->getRoutes();
 
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
@@ -430,7 +430,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getRoutes();
+        $routes = $router->getCollection()->getRoutes();
 
         $this->assertContains([
             'name'        => 'attribute_specific_name',
@@ -476,7 +476,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $router->getRoutes();
+        $router->getCollection()->getRoutes();
     }
 
     /**
@@ -497,7 +497,7 @@ class ListenerTest extends BaseTestCase
         $this->expectExceptionMessage($message);
 
         $router->loadAnnotation($loader);
-        $router->getRoutes();
+        $router->getCollection()->getRoutes();
     }
 
     /**

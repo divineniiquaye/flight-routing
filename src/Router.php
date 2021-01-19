@@ -87,6 +87,19 @@ class Router implements RequestHandlerInterface
     }
 
     /**
+     * Gets the router routes
+     *
+     * @return RouteListInterface
+     */
+    public function getCollection(): RouteListInterface
+    {
+        $collection = new RouteList();
+        $collection->addForeach(...array_values($this->routes));
+
+        return $collection;
+    }
+
+    /**
      * Generate a URI from the named route.
      *
      * Takes the named route and any parameters, and attempts to generate a
