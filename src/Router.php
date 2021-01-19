@@ -78,11 +78,11 @@ class Router implements RequestHandlerInterface
                 );
             }
 
-            if ($this->profiler instanceof DebugRoute) {
-                $this->profiler->addProfile(new DebugRoute($name, $route));
-            }
-
             $this->routes[$name] = $this->mergeAttributes($route);
+
+            if (null !== $this->debug) {
+                $this->debug->addProfile(new DebugRoute($name, $route));
+            }
         }
     }
 
@@ -159,8 +159,8 @@ class Router implements RequestHandlerInterface
             }
         }
 
-        if ($this->profiler instanceof DebugRoute) {
-            $this->profiler->setMatched($route->getName());
+        if (null !== $this->debug) {
+            $this->debug->setMatched(new DebugRoute($route->getName(), $route));
         }
 
         return $this->route = clone $route;
@@ -187,8 +187,8 @@ class Router implements RequestHandlerInterface
 
                         return $middleDispatcher->dispatch($mididlewars, $handler, $request);
                     } finally {
-                        if ($this->profiler instanceof DebugRoute) {
-                            foreach ($this->profiler->getProfiles() as $profiler) {
+                        if (null !== $this->debug) {
+                            foreach ($this->debug->getProfiles() as $profiler) {
                                 $profiler->leave();
                             }
                         }

@@ -55,23 +55,23 @@ final class DebugRoute implements IteratorAggregate
     /**
      * Add Matched info of route
      *
-     * @param string $name
-     * @param bool   $matched
+     * @param DebugRoute $matched
      */
-    public function setMatched(string $name, bool $matched = true): void
+    public function setMatched(self $matched): void
     {
         if (!empty($this->profiles)) {
-            foreach ($this->profiles as $profile) {
-                if ($name === $profile->getName()) {
-                    $profile->matched = $matched;
+            foreach ($this->profiles as $index => $profile) {
+                if ($matched->getName() === $profile->getName()) {
+                    $matched->matched = true;
+                    $this->profiles[$index] = $matched;
                 }
             }
 
             return;
         }
 
-        if ($name === $this->name) {
-            $this->matched = $matched;
+        if ($matched->getName() === $this->name) {
+            $this->matched = true;
         }
     }
 
