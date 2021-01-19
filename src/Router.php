@@ -25,6 +25,7 @@ use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -43,6 +44,8 @@ class Router implements RequestHandlerInterface
     public const TYPE_REQUIREMENT = 1;
 
     public const TYPE_DEFAULT = 0;
+
+    public const TYPE_CACHE = 2;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
@@ -65,10 +68,6 @@ class Router implements RequestHandlerInterface
      */
     public function addRoute(RouteInterface ...$routes): void
     {
-        if (!empty($this->cachedRoutes)) {
-            return;
-        }
-
         foreach ($routes as $route) {
             $name = $route->getName();
 
@@ -151,7 +150,7 @@ class Router implements RequestHandlerInterface
     public function match(ServerRequestInterface $request): RouteInterface
     {
         // Get the request matching format.
-        $route = $this->matcher->matchRoutes($this, $request);
+        $route = $this->getMatcher()->match($this->getCollection(), $request);
 
         if (!$route instanceof RouteInterface) {
             throw new RouteNotFoundException(
@@ -204,5 +203,25 @@ class Router implements RequestHandlerInterface
             ),
             $request->withAttribute(Route::class, $this->route)
         );
+    }
+
+    /**
+     * Gets the RouteMatcherInterface instance associated with this Router.
+     *
+     * @return RouteMatcherInterface
+     */
+    public function getMatcher(): RouteMatcherInterface
+    {
+        $cacheFile = $this->attributes[self::TYPE_CACHE] ?? '';
+
+        if (is_null($this->debug) && (!empty($cacheFile) && !is_file($cacheFile))) {
+            $this->generateCompiledRoutes($cacheFile);
+        }
+
+        if (file_exists($cacheFile)) {
+            $this->matcher->warmCompiler($cacheFile);
+        }
+
+        return $this->matcher;
     }
 }

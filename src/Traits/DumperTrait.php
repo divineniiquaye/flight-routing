@@ -17,65 +17,15 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Closure;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Matchers\SimpleRouteMatcher;
 use Flight\Routing\Route;
-use Flight\Routing\RouteList;
 
 /**
  * @codeCoverageIgnore
  */
 trait DumperTrait
 {
-    /** @var array<string,RouteInterface> */
-    private $cachedRoutes = [];
-
-    /** @var mixed */
-    private $compiledRoutes;
-
-    /**
-     * Get the compiled routes after warmpRoutes
-     *
-     * @return mixed
-     */
-    public function getCompiledRoutes()
-    {
-        return $this->compiledRoutes;
-    }
-
-    /**
-     * Warm up routes to speed up routes handling.
-     *
-     * @param string $cacheFile
-     * @param bool   $dump
-     */
-    public function warmRoutes(string $cacheFile, bool $dump = true): void
-    {
-        $cachedRoutes = \is_file($cacheFile) ? require $cacheFile : [[], []];
-
-        if (!$dump || !empty(\current($cachedRoutes))) {
-            list($this->compiledRoutes, $this->cachedRoutes) = $cachedRoutes;
-
-            return;
-        }
-
-        $generatedCode = <<<EOF
-<?php
-
-/**
- * This file has been auto-generated
- * by the Flight Routing.
- */
-
-return [
-{$this->generateCompiledRoutes()}];
-
-EOF;
-
-        \file_put_contents($cacheFile, $generatedCode);
-    }
-
     /**
      * @internal
      *
@@ -128,46 +78,11 @@ EOF;
     }
 
     /**
-     * @return string
-     */
-    protected function generateCompiledRoutes(): string
-    {
-        $collection = new RouteList();
-        $collection->addForeach(...$this->getRoutes());
-
-        $compiledRoutes = $this->matcher->warmCompiler($collection);
-
-        $code = '[ // $compiledRoutes' . "\n";
-
-        if ($this->matcher instanceof SimpleRouteMatcher) {
-            $code .= $this->simpleRouteCompilerCode($compiledRoutes);
-        } elseif (null !== $compiledRoutes || false !== $compiledRoutes) {
-            $code .= self::export($compiledRoutes);
-        }
-        $code .= "],\n";
-
-        $code .= '[ // $routes' . "\n";
-
-        foreach ($collection->getRoutes() as $route) {
-            if ($route->getController() instanceof Closure) {
-                continue;
-            }
-
-            $code .= \sprintf('    %s => ', self::export($route->getName()));
-            $code .= self::export($route);
-            $code .= ", \n";
-        }
-        $code .= "],\n";
-
-        return (string) \preg_replace('/^./m', \str_repeat('    ', 1) . '$0', $code);
-    }
-
-    /**
      * @param RouteInterface $route
      *
      * @return string
      */
-    private static function exportRoute(RouteInterface $route): string
+    protected static function exportRoute(RouteInterface $route): string
     {
         $controller = $route->getController();
 
@@ -192,41 +107,91 @@ EOF;
     }
 
     /**
-     * @param mixed[] $compiledRoutes
+     * Export the matcher, this method can be override if
+     * RouteMatcherInterfaqce implementation changes.
+     *
+     * @param mixed $compiledRoutes
      *
      * @return string
      */
-    private function simpleRouteCompilerCode(array $compiledRoutes): string
+    protected function exportMatcher($compiledRoutes): string
     {
-        [$staticRoutes, $dynamicRoutes] = $compiledRoutes;
-
         $code = '';
-        $code .= '    [ // $staticRoutes' . "\n";
 
-        foreach ($staticRoutes as $path => $route) {
-            $code .= \sprintf('        %s => ', self::export($path));
+        if ($this->matcher instanceof SimpleRouteMatcher) {
+            [$staticRoutes, $dynamicRoutes] = $compiledRoutes;
+            $code .= '[ // $staticRoutes' . "\n";
 
-            if (\is_array($route)) {
+            foreach ($staticRoutes as $path => $route) {
+                $code .= \sprintf('    %s => ', self::export($path));
+
+                if (\is_array($route)) {
+                    $code .= \sprintf(
+                        "[\n        %s,\n        %s\n    ]",
+                        self::export(\current($route)),
+                        \sprintf('\unserialize(\'%s\')', \serialize(\end($route)))
+                    );
+                } else {
+                    $code .= self::export($route);
+                }
+                $code .= ", \n";
+            }
+            $code .= "],\n";
+
+            $code .= '[ // $dynamicRoutes' . "\n";
+
+            foreach ($dynamicRoutes as $name => $route) {
+                $code .= \sprintf('    %s =>', self::export($name));
                 $code .= \sprintf(
-                    "[\n            %s,\n            %s\n        ]",
+                    "[\n        %s,\n        %s\n    ], \n",
                     self::export(\current($route)),
                     \sprintf('\unserialize(\'%s\')', \serialize(\end($route)))
                 );
-            } else {
-                $code .= self::export($route);
             }
-            $code .= ", \n";
+            $code .= "],\n";
+        } elseif (null !== $compiledRoutes || false !== $compiledRoutes) {
+            $code .= self::export($compiledRoutes);
         }
-        $code .= "    ],\n";
-
-        $code .= '    [ // $dynamicRoutes' . "\n";
-
-        foreach ($dynamicRoutes as $name => $route) {
-            $code .= \sprintf('        %s =>', self::export($name));
-            $code .= \sprintf(' \unserialize(\'%s\'),' . "\n", \serialize($route));
-        }
-        $code .= "    ],\n";
 
         return $code;
+    }
+
+    /**
+     * Warm up routes to speed up routes handling.
+     *
+     * @internal
+     *
+     * @param string $cacheFile
+     */
+    private function generateCompiledRoutes(string $cacheFile): void
+    {
+        $compiledRoutes = $this->matcher->warmCompiler($this->getCollection());
+
+        $generatedCode = (string) \preg_replace(
+            '/^./m',
+            \str_repeat('    ', 1) . '$0',
+            $this->exportMatcher($compiledRoutes)
+        );
+
+        $dumpCode = <<<EOF
+<?php
+
+/**
+ * This file has been auto-generated by the Flight Routing.
+ */
+
+return [
+{$generatedCode}];
+
+EOF;
+
+        \file_put_contents($cacheFile, $dumpCode);
+
+        if (
+            \function_exists('opcache_invalidate') &&
+            \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)
+        ) {
+            @opcache_invalidate($cacheFile, true);
+        }
     }
 }

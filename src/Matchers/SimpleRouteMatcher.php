@@ -22,8 +22,6 @@ use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\RouteList;
-use Flight\Routing\Router;
 use Flight\Routing\Traits\ValidationTrait;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -44,6 +42,9 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /** @var SimpleRouteCompiler */
     private $compiler;
 
+    /** @var mixed[] */
+    private $compiledRoutes = [];
+
     public function __construct()
     {
         $this->compiler = new SimpleRouteCompiler();
@@ -52,9 +53,9 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /**
      * {@inheritdoc}
      */
-    public function matchRoutes(Router $router, ServerRequestInterface $request): ?RouteInterface
+    public function match(RouteListInterface $routes, ServerRequestInterface $request): ?RouteInterface
     {
-        list($staticRoutes, $dynamicRoutes) = $this->getCompiledRoutes($router);
+        list($staticRoutes, $dynamicRoutes) = $this->getCompiledRoutes($routes);
 
         $requestUri    = $request->getUri();
         $requestMethod = $request->getMethod();
@@ -65,22 +66,23 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             return $this->matchRoute($staticRoutes[$resolvedPath], $requestUri, $requestMethod);
         }
 
-        /** @var SimpleRouteCompiler $route */
-        foreach ($dynamicRoutes as $name => $route) {
+        /** @var SimpleRouteCompiler $compiledRoute */
+        foreach ($dynamicRoutes as [$route, $compiledRoute]) {
             $uriParameters = [];
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if ($this->compareUri($route->getRegex(), $resolvedPath, $uriParameters)) {
-                $requestRoutes = [$router->getRoute($name), $route];
-                $foundRoute    = $this->matchRoute($requestRoutes, $requestUri, $requestMethod);
-
-                return $foundRoute->setArguments(
-                    \array_filter(
-                        \array_replace($route->getPathVariables(), $uriParameters),
-                        'is_string',
-                        \ARRAY_FILTER_USE_KEY
-                    )
+            if ($this->compareUri($compiledRoute->getRegex(), $resolvedPath, $uriParameters)) {
+                $foundRoute = $this->matchRoute(
+                    [$route, $compiledRoute],
+                    $requestUri,
+                    $requestMethod
                 );
+                $parameters = \array_replace(
+                    $compiledRoute->getPathVariables(),
+                    $uriParameters
+                );
+
+                return $foundRoute->setArguments(\array_filter($parameters, 'is_string', \ARRAY_FILTER_USE_KEY));
             }
         }
 
@@ -126,9 +128,19 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /**
      * {@inheritdoc}
      */
-    public function warmCompiler(RouteListInterface $routes)
+    public function warmCompiler($routes)
     {
         $staticRoutes = $dynamicRoutes = [];
+
+        if ([] !== $this->compiledRoutes) {
+            return $this->compiledRoutes;
+        }
+
+        if (\is_string($routes)) {
+            $this->compiledRoutes = require $routes;
+
+            return null;
+        }
 
         foreach ($routes->getRoutes() as $route) {
             $compiledRoute = clone $this->compiler->compile($route);
@@ -142,10 +154,10 @@ class SimpleRouteMatcher implements RouteMatcherInterface
                 continue;
             }
 
-            $dynamicRoutes[$route->getName()] = $compiledRoute;
+            $dynamicRoutes[] = [$route, $compiledRoute];
         }
 
-        return [$staticRoutes, $dynamicRoutes];
+        return $this->compiledRoutes = [$staticRoutes, $dynamicRoutes];
     }
 
     /**
@@ -160,6 +172,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         $hostParameters = [];
 
         if (\is_array($route)) {
+            /** @var SimpleRouteCompiler $compiledRoute */
             list($route, $compiledRoute) = $route;
 
             if (!$this->compareDomain($compiledRoute->getHostRegex(), $requestUri->getHost(), $hostParameters)) {
@@ -182,18 +195,15 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * @param Router $router
+     * @param RouteListInterface $collection
      *
      * @return mixed[]
      */
-    private function getCompiledRoutes(Router $router): array
+    private function getCompiledRoutes(RouteListInterface $collection): array
     {
-        if (!empty($compiledRoutes = $router->getCompiledRoutes())) {
-            return $compiledRoutes;
+        if ([] !== $this->compiledRoutes) {
+            return $this->compiledRoutes;
         }
-
-        $collection = new RouteList();
-        $collection->addForeach(...$router->getRoutes());
 
         return $this->warmCompiler(clone $collection);
     }

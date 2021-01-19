@@ -21,14 +21,15 @@ use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\Matchers\SimpleRouteMatcher;
-use Flight\Routing\Tests\BaseTestCase;
+use Flight\Routing\RouteList;
 use Generator;
 use Nyholm\Psr7\ServerRequest;
+use PHPUnit\Framework\TestCase;
 
 /**
  * SimpleRouteMatcherTest
  */
-class SimpleRouteMatcherTest extends BaseTestCase
+class SimpleRouteMatcherTest extends TestCase
 {
     public function testConstructor(): void
     {
@@ -47,9 +48,9 @@ class SimpleRouteMatcherTest extends BaseTestCase
     {
         $factory = new SimpleRouteMatcher();
 
-        $router = $this->getRouter($factory);
-        $router->addRoute($route = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null));
-        $route = $factory->matchRoutes($router, new ServerRequest($route->getMethods()[0], $path));
+        $collection = new RouteList();
+        $collection->add($route = new Route('test', ['FOO', 'BAR'], 'http://[{lang:[a-z]{2}}.]example.com/{foo}', null));
+        $route = $factory->match($collection, new ServerRequest($route->getMethods()[0], $path));
 
         $this->assertInstanceOf(RouteInterface::class, $route);
         $this->assertEquals($variables, $route->getArguments());
