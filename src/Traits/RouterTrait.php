@@ -55,16 +55,6 @@ trait RouterTrait
     private $attributes = [];
 
     /**
-     * Gets the router routes
-     *
-     * @return RouteInterface[]
-     */
-    public function getRoutes(): array
-    {
-        return \array_values($this->cachedRoutes ?: $this->routes);
-    }
-
-    /**
      * Gets allowed methods
      *
      * @return string[]
@@ -93,13 +83,11 @@ trait RouterTrait
      */
     public function getRoute(string $name): RouteInterface
     {
-        $routes = $this->cachedRoutes ?: $this->routes;
-
-        if (!isset($routes[$name])) {
+        if (!isset($this->routes[$name])) {
             throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
         }
 
-        return $routes[$name];
+        return $this->routes[$name];
     }
 
     /**
