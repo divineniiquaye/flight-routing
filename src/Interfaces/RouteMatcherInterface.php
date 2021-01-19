@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Router;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -31,12 +30,12 @@ interface RouteMatcherInterface
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
      *
-     * @param Router $router
+     * @param RouteListInterface     $routes
      * @param ServerRequestInterface $request
      *
      * @return null|RouteInterface
      */
-    public function matchRoutes(Router $router, ServerRequestInterface $request): ?RouteInterface;
+    public function match(RouteListInterface $routes, ServerRequestInterface $request): ?RouteInterface;
 
     /**
      * Generate a URI from the named route.
@@ -59,15 +58,15 @@ interface RouteMatcherInterface
      */
     public function buildPath(RouteInterface $route, array $substitutions): string;
 
-
     /**
      * This warms up compiler used to compile route, to increase performance.
      *
      * Implement this fluent method or return it as false.
      *
-     * @param RouteListInterface $routes
+     * @param RouteListInterface|string $routes routes collection
+     *                                          or a file containing compiled routes
      *
-     * @return mixed return false if not implemented
+     * @return mixed return false if not implemented or null if $routes is string
      */
-    public function warmCompiler(RouteListInterface $routes);
+    public function warmCompiler($routes);
 }

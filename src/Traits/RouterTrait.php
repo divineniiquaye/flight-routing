@@ -51,7 +51,7 @@ trait RouterTrait
     /** @var RouteListenerInterface[] */
     private $listeners = [];
 
-    /** @var array<int,array<string,mixed>> */
+    /** @var array<int,mixed> */
     private $attributes = [];
 
     /**
@@ -63,7 +63,7 @@ trait RouterTrait
     {
         $methods = [];
 
-        foreach ($this->getRoutes() as $route) {
+        foreach ($this->getCollection()->getRoutes() as $route) {
             foreach ($route->getMethods() as $method) {
                 $methods[$method] = true;
             }
@@ -133,6 +133,10 @@ trait RouterTrait
                 $this->attributes[Router::TYPE_DEFAULT] = [$key => $regex];
 
                 continue;
+            } elseif (Router::TYPE_CACHE === $type) {
+                $this->attributes[Router::TYPE_CACHE] = $regex;
+
+                continue;
             }
 
             $this->attributes[Router::TYPE_REQUIREMENT] = [$key => $regex];
@@ -195,6 +199,10 @@ trait RouterTrait
     private function mergeAttributes(RouteInterface $route): RouteInterface
     {
         foreach ($this->attributes as $type => $attributes) {
+            if (Router::TYPE_CACHE === $type) {
+                continue;
+            }
+
             if (Router::TYPE_DEFAULT === $type) {
                 $route->setDefaults($attributes);
 

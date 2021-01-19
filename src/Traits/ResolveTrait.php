@@ -146,7 +146,7 @@ trait ResolveTrait
         $prefix  = '.'; // Append missing "." at the beginning of the $uri.
 
         // Making routing on sub-folders easier
-        if (\strpos($createdUri = $this->matcher->buildPath($route, $parameters), '/') !== 0) {
+        if (\strpos($createdUri = $this->getMatcher()->buildPath($route, $parameters), '/') !== 0) {
             $prefix .= '/';
         }
 

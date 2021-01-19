@@ -22,6 +22,7 @@ use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteList;
+use Flight\Routing\Router;
 use Nyholm\Psr7\ServerRequest;
 
 /**
@@ -829,27 +830,24 @@ class RouteListTest extends BaseTestCase
         $router = $this->getRouter();
         $cacheFile = __DIR__ . '/Fixtures/routes/cache_router.php';
 
+        if (!$cached && file_exists($cacheFile)) {
+            unlink($cacheFile);
+        }
+
+        if ($cached) {
+            $router->addParameters([$cacheFile], Router::TYPE_CACHE);
+        }
+
         $router->addRoute(...$demoCollection);
         $router->addRoute(...$groupOptimisedCollection->getRoutes());
         $router->addRoute(...$chunkedCollection->getIterator()->getArrayCopy());
 
-        if ($cached) {
-            $router->warmRoutes($cacheFile);
-        }
-
         $this->assertCount(1028, $mergedCollection);
-        $this->assertEquals($mergedCollection->getRoutes(), $router->getRoutes());
+        $this->assertEquals($mergedCollection->getRoutes(), $router->getCollection()->getRoutes());
 
         $route = $router->match(new ServerRequest(current($testRoute->getMethods()), $testRoute->getPath()));
 
         $this->assertInstanceOf(RouteInterface::class, $route);
-
-        if ($cached) {
-            $router->warmRoutes($cacheFile, false);
-            $this->assertNotEmpty($router->getCompiledRoutes());
-
-            unlink($cacheFile);
-        }
     }
 
     /**
@@ -857,6 +855,6 @@ class RouteListTest extends BaseTestCase
      */
     public function provideCollectionData(): array
     {
-        return [[false], [true]];
+        return [[false], [true], [true], [false]];
     }
 }
