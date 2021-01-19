@@ -43,7 +43,7 @@ trait RouterTrait
     private $uriFactory;
 
     /** @var null|DebugRoute */
-    private $profiler;
+    private $debug;
 
     /** @var RouteInterface[] */
     private $routes = [];
@@ -109,7 +109,7 @@ trait RouterTrait
      */
     public function getProfile(): ?DebugRoute
     {
-        return $this->profiler;
+        return $this->debug;
     }
 
     /**
@@ -117,7 +117,7 @@ trait RouterTrait
      */
     public function setProfile(): void
     {
-        $this->profiler = new DebugRoute();
+        $this->debug = new DebugRoute();
     }
 
     /**
