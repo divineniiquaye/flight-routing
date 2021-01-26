@@ -18,12 +18,11 @@ declare(strict_types=1);
 namespace Flight\Routing\Exceptions;
 
 use Flight\Routing\Interfaces\ExceptionInterface;
-use RuntimeException;
 
 /**
  * HTTP 405 exception.
  */
-class MethodNotAllowedException extends RuntimeException implements ExceptionInterface
+class MethodNotAllowedException extends \RuntimeException implements ExceptionInterface
 {
     /** @var string[] */
     private $methods;

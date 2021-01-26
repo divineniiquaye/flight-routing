@@ -19,7 +19,6 @@ namespace Flight\Routing\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteInterface;
-use Serializable;
 
 /**
  * RouteCompiler compiles Route instances to regex.
@@ -28,7 +27,7 @@ use Serializable;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class SimpleRouteCompiler implements Serializable
+class SimpleRouteCompiler implements \Serializable
 {
     private const DEFAULT_SEGMENT = '[^\/]+';
 
