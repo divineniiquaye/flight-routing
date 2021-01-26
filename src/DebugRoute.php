@@ -17,17 +17,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use ArrayIterator;
-use Flight\Routing\Interfaces\RouteInterface;
-use IteratorAggregate;
-use Traversable;
-
 /**
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class DebugRoute implements IteratorAggregate
+final class DebugRoute implements \IteratorAggregate
 {
-    /** @var null|RouteInterface */
+    /** @var null|Route */
     private $route;
 
     /** @var string */
@@ -45,7 +40,7 @@ final class DebugRoute implements IteratorAggregate
     /** @var DebugRoute[] */
     private $profiles = [];
 
-    public function __construct(string $name = 'main', ?RouteInterface $route = null)
+    public function __construct(string $name = 'main', ?Route $route = null)
     {
         $this->route = $route;
         $this->name  = $name;
@@ -62,7 +57,7 @@ final class DebugRoute implements IteratorAggregate
         if (!empty($this->profiles)) {
             foreach ($this->profiles as $index => $profile) {
                 if ($matched->getName() === $profile->getName()) {
-                    $matched->matched = true;
+                    $matched->matched       = true;
                     $this->profiles[$index] = $matched;
                 }
             }
@@ -76,9 +71,9 @@ final class DebugRoute implements IteratorAggregate
     }
 
     /**
-     * @return null|RouteInterface
+     * @return null|Route
      */
-    public function getRoute(): ?RouteInterface
+    public function getRoute(): ?Route
     {
         return $this->route;
     }
@@ -96,7 +91,7 @@ final class DebugRoute implements IteratorAggregate
      */
     public function isRoute(): bool
     {
-        return $this->route instanceof RouteInterface;
+        return $this->route instanceof Route;
     }
 
     /**
@@ -149,7 +144,7 @@ final class DebugRoute implements IteratorAggregate
     /**
      * Returns the memory usage in bytes.
      *
-     * @return int|float
+     * @return float|int
      */
     public function getMemoryUsage()
     {
@@ -159,7 +154,7 @@ final class DebugRoute implements IteratorAggregate
     /**
      * Returns the peak memory usage in bytes.
      *
-     * @return int|float
+     * @return float|int
      */
     public function getPeakMemoryUsage()
     {
@@ -199,8 +194,8 @@ final class DebugRoute implements IteratorAggregate
     /**
      * {@inheritdoc}
      */
-    public function getIterator(): Traversable
+    public function getIterator(): \Traversable
     {
-        return new ArrayIterator($this->profiles);
+        return new \ArrayIterator($this->profiles);
     }
 }
