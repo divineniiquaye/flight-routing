@@ -18,10 +18,15 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Route;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Interface defining required router compiling capabilities.
+ * 
+ * This fluent implementation should contain a `constructor` method.
+ * The implementation should be writen to receive a RouteCollection instance
+ * and a file when `getCompiledRoutes` method is used by the router.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
@@ -30,12 +35,11 @@ interface RouteMatcherInterface
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
      *
-     * @param RouteListInterface     $routes
      * @param ServerRequestInterface $request
      *
-     * @return null|RouteInterface
+     * @return null|Route
      */
-    public function match(RouteListInterface $routes, ServerRequestInterface $request): ?RouteInterface;
+    public function match(ServerRequestInterface $request): ?Route;
 
     /**
      * Generate a URI from the named route.
@@ -47,7 +51,7 @@ interface RouteMatcherInterface
      * the URI, this should be performed afterwards; consider passing the URI
      * to league/uri to encode it.
      *
-     * @param RouteInterface     $route
+     * @param Route              $route
      * @param array<mixed,mixed> $substitutions key => value option pairs to pass to the
      *                                          router for purposes of generating a URI; takes precedence over options
      *                                          present in route used to generate URI
@@ -56,17 +60,15 @@ interface RouteMatcherInterface
      *
      * @return string
      */
-    public function buildPath(RouteInterface $route, array $substitutions): string;
+    public function buildPath(Route $route, array $substitutions): string;
 
     /**
      * This warms up compiler used to compile route, to increase performance.
      *
      * Implement this fluent method or return it as false.
      *
-     * @param RouteListInterface|string $routes routes collection
-     *                                          or a file containing compiled routes
      *
-     * @return mixed return false if not implemented or null if $routes is string
+     * @return mixed|false return false if not implemented;
      */
-    public function warmCompiler($routes);
+    public function getCompiledRoutes();
 }
