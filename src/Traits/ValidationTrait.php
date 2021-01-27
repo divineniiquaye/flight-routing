@@ -19,7 +19,7 @@ namespace Flight\Routing\Traits;
 
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Route;
 use Psr\Http\Message\UriInterface;
 
 trait ValidationTrait
@@ -27,29 +27,34 @@ trait ValidationTrait
     /**
      * Check if given request method matches given route method.
      *
-     * @param string[] $routeMethod
-     * @param string   $requestMethod
+     * @param array<string,bool> $routeMethods
+     * @param string             $requestMethod
      *
      * @return bool
      */
-    private function compareMethod(array $routeMethod, string $requestMethod): bool
+    private function compareMethod(array $routeMethods, string $requestMethod): bool
     {
-        return \in_array($requestMethod, $routeMethod, true);
+        return isset($routeMethods[$requestMethod]);
     }
 
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param null|string              $routeDomain
+     * @param array<string,bool>       $routeDomains
      * @param string                   $requestDomain
      * @param array<int|string,string> $parameters
      *
      * @return bool
      */
-    private function compareDomain(?string $routeDomain, string $requestDomain, array &$parameters): bool
+    private function compareDomain(array $routeDomains, string $requestDomain, array &$parameters): bool
     {
-        return ($routeDomain === null || empty($routeDomain)) ||
-            (bool) \preg_match($routeDomain, $requestDomain, $parameters);
+        foreach ($routeDomains as $routeDomain) {
+            if (1 === \preg_match($routeDomain, $requestDomain, $parameters)) {
+                return true;
+            }
+        }
+
+        return empty($routeDomains);
     }
 
     /**
@@ -63,33 +68,33 @@ trait ValidationTrait
      */
     private function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
-        return (bool) \preg_match($routeUri, $requestUri, $parameters);
+        return 1 === \preg_match($routeUri, $requestUri, $parameters);
     }
 
     /**
      * Check if given request uri scheme matches given route scheme.
      *
-     * @param string[] $routeScheme
+     * @param string[] $routeSchemes
      * @param string   $requestScheme
      *
      * @return bool
      */
-    private function compareScheme(array $routeScheme, string $requestScheme): bool
+    private function compareScheme(array $routeSchemes, string $requestScheme): bool
     {
-        return empty($routeScheme) || \in_array($requestScheme, $routeScheme, true);
+        return empty($routeScheme) || isset($routeSchemes[$requestScheme]);
     }
 
     /**
      * Asserts the Route's method and domain scheme.
      *
-     * @param RouteInterface $route
-     * @param UriInterface   $requestUri
-     * @param string         $method
+     * @param Route        $route
+     * @param UriInterface $requestUri
+     * @param string       $method
      */
-    private function assertRoute(RouteInterface $route, UriInterface $requestUri, string $method): void
+    private function assertRoute(Route $route, UriInterface $requestUri, string $method): void
     {
         if (!$this->compareMethod($route->getMethods(), $method)) {
-            throw new MethodNotAllowedException($route->getMethods(), $requestUri->getPath(), $method);
+            throw new MethodNotAllowedException(array_keys($route->getMethods()), $requestUri->getPath(), $method);
         }
 
         if (!$this->compareScheme($route->getSchemes(), $requestUri->getScheme())) {
