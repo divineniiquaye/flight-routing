@@ -20,23 +20,23 @@ namespace Flight\Routing\Annotation;
 use Biurad\Annotations\InvalidAnnotationException;
 use Biurad\Annotations\ListenerInterface;
 use Flight\Routing\Route as BaseRoute;
-use Flight\Routing\RouteList;
+use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
 
 class Listener implements ListenerInterface
 {
-    /** @var RouteList */
+    /** @var RouteCollection */
     private $collector;
 
     /** @var int */
     private $defaultRouteIndex = 0;
 
     /**
-     * @param null|RouteList $collector
+     * @param null|RouteCollection $collector
      */
-    public function __construct(?RouteList $collector = null)
+    public function __construct(?RouteCollection $collector = null)
     {
-        $this->collector = $collector ?? new RouteList();
+        $this->collector = $collector ?? new RouteCollection();
     }
 
     /**
@@ -44,7 +44,7 @@ class Listener implements ListenerInterface
      *
      * @param array<string,array<string,mixed>> $annotations
      */
-    public function onAnnotation(array $annotations): RouteList
+    public function onAnnotation(array $annotations): RouteCollection
     {
         /** @var class-string $class */
         foreach ($annotations as $class => $collection) {

@@ -20,7 +20,7 @@ namespace Flight\Routing\Matchers;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
-use Flight\Routing\RouteList;
+use Flight\Routing\RouteCollection;
 use Flight\Routing\Traits\ValidationTrait;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -48,7 +48,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     private $staticRoutes = [];
 
     /**
-     * @param RouteList|string $collection
+     * @param RouteCollection|string $collection
      */
     public function __construct($collection)
     {
@@ -144,7 +144,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * @param RouteList|string $routes
+     * @param RouteCollection|string $routes
      */
     private function warmCompiler($routes): void
     {
