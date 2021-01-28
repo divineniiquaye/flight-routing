@@ -80,7 +80,7 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
         $this->responseFactory = $responseFactory;
         $this->resolver        = $resolver ?? new Invoker();
 
-        $this->routes  = new RouteList();
+        $this->routes  = new RouteCollection();
         $this->attributes[self::TYPE_MATCHER] = $matcher ?? Matchers\SimpleRouteMatcher::class;
     }
 
@@ -115,9 +115,9 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
     /**
      * Gets the router routes
      *
-     * @return RouteList
+     * @return RouteCollection
      */
-    public function getCollection(): RouteList
+    public function getCollection(): RouteCollection
     {
         return $this->routes;
     }

@@ -54,7 +54,7 @@ use Flight\Routing\Exceptions\InvalidControllerException;
  * @author Tobias Schultze <http://tobion.de>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteList extends \ArrayIterator
+final class RouteCollection extends \ArrayIterator
 {
     /** @var null|string */
     private $namePrefix;

@@ -23,7 +23,7 @@ use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
-use Flight\Routing\RouteList;
+use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
@@ -45,10 +45,10 @@ trait RouterTrait
     /** @var null|DebugRoute */
     private $debug;
 
-    /** @var RouteList */
+    /** @var RouteCollection */
     private $routes;
 
-    /** @var RouteListenerInterface[] */
+    /** @var RouteCollectionenerInterface[] */
     private $listeners = [];
 
     /** @var array<int,mixed> */
@@ -160,7 +160,7 @@ trait RouterTrait
     public function loadAnnotation(LoaderInterface $loader): void
     {
         foreach ($loader->load() as $annotation) {
-            if ($annotation instanceof RouteList) {
+            if ($annotation instanceof RouteCollection) {
                 $this->addRoute(...$annotation->getRoutes());
             }
         }
