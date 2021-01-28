@@ -19,15 +19,13 @@ namespace Flight\Routing\Annotation;
 
 use Biurad\Annotations\InvalidAnnotationException;
 use Biurad\Annotations\ListenerInterface;
-use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouteListInterface;
-use Flight\Routing\Route as Router;
+use Flight\Routing\Route as BaseRoute;
 use Flight\Routing\RouteList;
-use ReflectionClass;
+use Flight\Routing\Router;
 
 class Listener implements ListenerInterface
 {
-    /** @var RouteListInterface */
+    /** @var RouteList */
     private $collector;
 
     /** @var int */
@@ -36,7 +34,7 @@ class Listener implements ListenerInterface
     /**
      * @param null|RouteList $collector
      */
-    public function __construct(?RouteListInterface $collector = null)
+    public function __construct(?RouteList $collector = null)
     {
         $this->collector = $collector ?? new RouteList();
     }
@@ -46,7 +44,7 @@ class Listener implements ListenerInterface
      *
      * @param array<string,array<string,mixed>> $annotations
      */
-    public function onAnnotation(array $annotations): RouteListInterface
+    public function onAnnotation(array $annotations): RouteList
     {
         /** @var class-string $class */
         foreach ($annotations as $class => $collection) {
@@ -58,6 +56,7 @@ class Listener implements ListenerInterface
 
             $this->defaultRouteIndex = 0;
 
+            /** @var Route $annotation */
             foreach ($collection['class'] ?? [] as $annotation) {
                 $this->collector->add($this->addRoute($annotation, $class));
             }
@@ -89,23 +88,32 @@ class Listener implements ListenerInterface
      * @param class-string|string[] $handler
      * @param null|Route            $group
      *
-     * @return RouteInterface
+     * @return BaseRoute
      */
-    protected function addRoute(Route $annotation, $handler, ?Route $group = null): RouteInterface
+    protected function addRoute(Route $annotation, $handler, ?Route $group = null): BaseRoute
     {
         if (null === $annotation->getPath()) {
             throw new InvalidAnnotationException('@Route.path must not be left empty.');
         }
 
-        $name    = $annotation->getName() ?? $this->getDefaultRouteName($handler);
-        $methods = str_ends_with($name, '__restful') ? Router::HTTP_METHODS_STANDARD : $annotation->getMethods();
-        $route   = new Router($name, $methods, $annotation->getPath(), $handler);
+        $name = $annotation->getName() ?? $this->getDefaultRouteName($handler);
 
-        $route->setDomain($annotation->getDomain() ?? '')
-            ->setScheme(...$annotation->getSchemes())
-            ->setPatterns($annotation->getPatterns())
-            ->setDefaults($annotation->getDefaults())
-        ->addMiddleware(...$annotation->getMiddlewares());
+        $methods = str_ends_with($name, '__restful') ? Router::HTTP_METHODS_STANDARD : $annotation->getMethods();
+        $route   = new BaseRoute($annotation->getPath(), \join('|', $methods), $handler);
+
+        $route->scheme(...$annotation->getSchemes())->middleware(...$annotation->getMiddlewares())->bind($name);
+
+        if (null !== $annotation->getDomain()) {
+            $route->domain($annotation->getDomain());
+        }
+
+        foreach ($annotation->getDefaults() as $variable => $default) {
+            $route->default($variable, $default);
+        }
+
+        foreach ($annotation->getPatterns() as $variable => $regexp) {
+            $route->assert($variable, $regexp);
+        }
 
         if (null !== $group) {
             $route = $this->mergeGroup($group, $route);
@@ -147,25 +155,34 @@ class Listener implements ListenerInterface
             $routes[] = $this->addRoute($annotation, [$method->class, $method->getName()], $group);
         }
 
-        $this->collector->addForeach(...$routes);
+        $this->collector->add(...$routes);
     }
 
     /**
-     * @param Route          $group
-     * @param RouteInterface $route
+     * @param Route     $group
+     * @param BaseRoute $route
      *
-     * @return RouteInterface
+     * @return BaseRoute
      */
-    protected function mergeGroup(Route $group, RouteInterface $route): RouteInterface
+    protected function mergeGroup(Route $group, BaseRoute $route): BaseRoute
     {
-        $route = $route->setDomain($group->getDomain() ?? '')
-            ->setName($group->getName() . $route->getName())
-            ->setScheme(...$group->getSchemes())
-            ->setDefaults($group->getDefaults())
-            ->setPatterns($group->getPatterns())
-            ->addPrefix($group->getPath() ?? '')
-            ->addMethod(...$group->getMethods())
-        ->addMiddleware(...$group->getMiddlewares());
+        $route = $route->bind($group->getName() . $route->getName())
+            ->scheme(...$group->getSchemes())
+            ->prefix($group->getPath() ?? '')
+            ->method(...$group->getMethods())
+        ->middleware(...$group->getMiddlewares());
+
+        if (null !== $group->getDomain()) {
+            $route->domain($group->getDomain());
+        }
+
+        foreach ($group->getDefaults() as $variable => $default) {
+            $route->default($variable, $default);
+        }
+
+        foreach ($group->getPatterns() as $variable => $regexp) {
+            $route->assert($variable, $regexp);
+        }
 
         return $route;
     }
@@ -179,7 +196,7 @@ class Listener implements ListenerInterface
      */
     private function getDefaultRouteName($handler): string
     {
-        $classReflection = new ReflectionClass(\is_array($handler) ? $handler[0] : $handler);
+        $classReflection = new \ReflectionClass(\is_array($handler) ? $handler[0] : $handler);
         $name            = \str_replace('\\', '_', $classReflection->name);
 
         if (\is_array($handler) || $classReflection->hasMethod('__invoke')) {

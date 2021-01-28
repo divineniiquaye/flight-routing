@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Route;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -47,7 +46,7 @@ class PathMiddleware implements MiddlewareInterface
         $path     = $this->comparePath($route->getPath(), $request->getUri()->getPath());
 
         // Allow Redirection if exists and avoid static request.
-        if ($route instanceof RouteInterface && null !== $path) {
+        if ($route instanceof Route && null !== $path) {
             $response = $response
                 ->withAddedHeader('Location', $path)
                 ->withStatus($this->determineResponseCode($request));
