@@ -20,10 +20,10 @@ namespace Flight\Routing\Traits;
 use Biurad\Annotations\LoaderInterface;
 use Flight\Routing\DebugRoute;
 use Flight\Routing\Exceptions\RouteNotFoundException;
-use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListenerInterface;
-use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
+use Flight\Routing\Route;
+use Flight\Routing\RouteList;
 use Flight\Routing\Router;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
@@ -33,7 +33,7 @@ trait RouterTrait
     use ResolveTrait;
     use DumperTrait;
 
-    /** @var RouteMatcherInterface */
+    /** @var null|RouteMatcherInterface */
     private $matcher;
 
     /** @var ResponseFactoryInterface */
@@ -45,8 +45,8 @@ trait RouterTrait
     /** @var null|DebugRoute */
     private $debug;
 
-    /** @var RouteInterface[] */
-    private $routes = [];
+    /** @var RouteList */
+    private $routes;
 
     /** @var RouteListenerInterface[] */
     private $listeners = [];
@@ -64,8 +64,8 @@ trait RouterTrait
         $methods = [];
 
         foreach ($this->getCollection()->getRoutes() as $route) {
-            foreach ($route->getMethods() as $method) {
-                $methods[$method] = true;
+            foreach ($route->getMethods() as $method => $has) {
+                $methods[$method] = $has;
             }
         }
 
@@ -79,15 +79,18 @@ trait RouterTrait
      *
      * @throws RouteNotFoundException
      *
-     * @return RouteInterface
+     * @return Route
      */
-    public function getRoute(string $name): RouteInterface
+    public function getRoute(string $name): Route
     {
-        if (!isset($this->routes[$name])) {
-            throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
+        // To Allow merging incase routes after this method doesn't exist
+        $this->routes->getRoutes();
+
+        if (null !== $this->routes->find($name)) {
+            return $this->routes->find($name);
         }
 
-        return $this->routes[$name];
+        throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
     }
 
     /**
@@ -128,18 +131,12 @@ trait RouterTrait
      */
     public function addParameters(array $parameters, int $type = Router::TYPE_REQUIREMENT): void
     {
-        foreach ($parameters as $key => $regex) {
-            if (Router::TYPE_DEFAULT === $type) {
-                $this->attributes[Router::TYPE_DEFAULT] = [$key => $regex];
-
-                continue;
-            } elseif (Router::TYPE_CACHE === $type) {
-                $this->attributes[Router::TYPE_CACHE] = $regex;
-
-                continue;
-            }
-
-            $this->attributes[Router::TYPE_REQUIREMENT] = [$key => $regex];
+        if (Router::TYPE_DEFAULT === $type) {
+            $this->attributes[Router::TYPE_DEFAULT] = $parameters;
+        } elseif (Router::TYPE_CACHE === $type) {
+            $this->attributes[Router::TYPE_CACHE] = \current($parameters);
+        } elseif (Router::TYPE_REQUIREMENT === $type) {
+            $this->attributes[Router::TYPE_REQUIREMENT] = $parameters;
         }
     }
 
@@ -163,7 +160,7 @@ trait RouterTrait
     public function loadAnnotation(LoaderInterface $loader): void
     {
         foreach ($loader->load() as $annotation) {
-            if ($annotation instanceof RouteListInterface) {
+            if ($annotation instanceof RouteList) {
                 $this->addRoute(...$annotation->getRoutes());
             }
         }
@@ -172,44 +169,51 @@ trait RouterTrait
     /**
      * Get merged default parameters.
      *
-     * @param RouteInterface $route
-     *
-     * @return array<string,string> Merged default parameters
+     * @param Route $route
      */
-    private function mergeDefaults(RouteInterface $route): array
+    private function mergeDefaults(Route $route): void
     {
         $defaults = $route->getDefaults();
+        $param    = $defaults['_arguments'] ?? [];
+        $excludes = [
+            '_arguments' => true,
+            '_compiler' => true,
+            '_domain' => true,
+        ];
 
-        foreach ($route->getArguments() as $key => $value) {
-            if (!isset($defaults[$key]) || null !== $value) {
-                $defaults[$key] = $value;
+        foreach ($defaults as $key => $value) {
+            if (isset($excludes[$key])) {
+                continue;
+            }
+
+            if (
+                (isset($param[$key]) && null === $param[$key]) || 
+                (!\is_int($key) && null !== $value)
+            ) {
+                $route->argument($key, $value);
             }
         }
-
-        return $defaults;
     }
 
     /**
      * Merge Router attributes in route default and patterns.
      *
-     * @param RouteInterface $route
+     * @param Route $route
      *
-     * @return RouteInterface
+     * @return Route
      */
-    private function mergeAttributes(RouteInterface $route): RouteInterface
+    private function mergeAttributes(Route $route): Route
     {
         foreach ($this->attributes as $type => $attributes) {
-            if (Router::TYPE_CACHE === $type) {
-                continue;
-            }
-
             if (Router::TYPE_DEFAULT === $type) {
-                $route->setDefaults($attributes);
-
-                continue;
+                foreach ($attributes as $variable => $default) {
+                    $route->default($variable, $default);
+                }
+            } elseif (Router::TYPE_REQUIREMENT === $type) {
+                foreach ($attributes as $variable => $regexp) {
+                    $route->assert($variable, $regexp);
+                }
             }
-
-            $route->setPatterns($attributes);
         }
 
         return $route;

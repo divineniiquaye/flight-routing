@@ -21,6 +21,7 @@ use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Route;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -65,11 +66,11 @@ trait ResolveTrait
 
     /**
      * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
+     * @param Route                  $route
      *
      * @return mixed
      */
-    protected function resolveRestFul(ServerRequestInterface $request, RouteInterface $route)
+    protected function resolveRestFul(ServerRequestInterface $request, Route $route)
     {
         $controller = $route->getController();
 
@@ -95,13 +96,13 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param Route $route
      *
      * @throws NotCallableException
      *
      * @return RequestHandlerInterface
      */
-    protected function resolveHandler(RouteInterface $route): RequestHandlerInterface
+    protected function resolveHandler(Route $route): RequestHandlerInterface
     {
         $handler = $route->getController();
 
@@ -117,14 +118,18 @@ trait ResolveTrait
                         $handler = [$handler, 'handle'];
                     }
 
-                    $route->setController($resolver->getCallableResolver()->resolve($handler));
-                    $route->setArguments([\get_class($request) => $request, \get_class($response) => $response]);
+                    $route->run($resolver->getCallableResolver()->resolve($handler));
 
                     foreach ($this->listeners as $listener) {
                         $listener->onRoute($request, $route);
                     }
 
-                    return $resolver->call($route->getController(), $route->getArguments());
+                    $requestResponse = [\get_class($request) => $request, \get_class($response) => $response];
+
+                    return $resolver->call(
+                        $route->getController(),
+                        \array_merge($requestResponse, $route->getDefaults()['_arguments'] ?? [])
+                    );
                 },
                 $this->responseFactory
             );
@@ -135,13 +140,13 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface               $route
+     * @param Route                        $route
      * @param array<string,string>         $parameters
      * @param array<int|string,int|string> $queryParams
      *
      * @return string
      */
-    protected function resolveUri(RouteInterface $route, array $parameters, array $queryParams): string
+    protected function resolveUri(Route $route, array $parameters, array $queryParams): string
     {
         $prefix  = '.'; // Append missing "." at the beginning of the $uri.
 
@@ -163,11 +168,11 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param Route $route
      *
      * @return array<int,mixed>
      */
-    protected function resolveMiddlewares(RouteInterface $route): array
+    protected function resolveMiddlewares(Route $route): array
     {
         $middlewares = [];
 
