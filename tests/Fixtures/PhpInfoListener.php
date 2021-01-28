@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Interfaces\RouteListenerInterface;
+use Flight\Routing\Route;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -29,10 +29,10 @@ class PhpInfoListener implements RouteListenerInterface
     /**
      * {@inheritDoc}
      */
-    public function onRoute(ServerRequestInterface $request, RouteInterface &$route): void
+    public function onRoute(ServerRequestInterface $request, Route &$route): void
     {
         if (is_string($callable = $route->getController()) && 'phpinfo' === $callable) {
-            $route->setArguments(['what' => -1]);
+            $route->argument('what', INFO_ALL);
         }
     }
 }
