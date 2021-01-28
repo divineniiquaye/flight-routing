@@ -22,26 +22,32 @@ use Flight\Routing\Route;
 
 trait CastingTrait
 {
+    /** @var null|string */
+    private $name;
+
+    /** @var string */
+    private $path;
+
+    /** @var array<string,bool> */
+    private $methods = [];
+
+    /** @var array<string,bool> */
+    private $domain = [];
+
+    /** @var array<string,bool> */
+    private $schemes = [];
+
+    /** @var array<string,mixed> */
+    private $defaults = [];
+
+    /** @var array<string,string|string[]> */
+    private $patterns = [];
+
+    /** @var array<int,mixed> */
+    private $middlewares = [];
+
     /** @var mixed */
     private $controller;
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getController()
-    {
-        return $this->controller;
-    }
-
-    /**
-     * @internal used to see a new handler, when matched
-     *
-     * @param mixed $handler
-     */
-    public function setController($handler): void
-    {
-        $this->controller = $handler;
-    }
 
     /**
      * Locates appropriate route by name. Support dynamic route allocation using following pattern:
@@ -57,7 +63,7 @@ trait CastingTrait
      */
     private function castRoute(string $route): string
     {
-        $urlRegex = \strtr(Route::URL_PATTERN, ['/^' => '/^(?:', '$/m' => ')']);
+        $urlRegex = \strtr(Route::URL_PATTERN, ['/^' => '/^(?:', '$/u' => ')']);
 
         // Match url + rca from pattern...
         \preg_match($urlRegex . \strtr(Route::RCA_PATTERN, ['/^' => '?']), $route, $matches);
@@ -67,10 +73,7 @@ trait CastingTrait
         }
 
         if (isset($matches['c'], $matches['a'])) {
-            if (\is_string($handler = $matches['c'] ?: $this->controller)) {
-                $handler = \rtrim($handler, '@');
-            }
-
+            $handler          = $matches['c'] ?: $this->controller;
             $this->controller = !$handler ? $matches['a'] : [$handler, $matches['a']];
         }
 
@@ -85,7 +88,7 @@ trait CastingTrait
      * Match scheme and domain from route patterned path
      *
      * @param array<int|string,null|string> $matches
-     * @param string $route
+     * @param string                        $route
      *
      * @return string
      */
@@ -94,15 +97,17 @@ trait CastingTrait
         $domain = $matches['domain'] ?? null;
 
         if (isset($matches['scheme']) && !empty($matches['scheme'])) {
-            $this->setScheme($matches['scheme']);
+            $this->schemes[$matches['scheme']] = true;
         }
 
-        if ((!isset($matches[4]) || empty($matches[4])) && false === strpos($domain ?? '', '//')) {
+        if ((!isset($matches[4]) || empty($matches[4])) && false === \strpos($domain ?? '', '//')) {
             $matches['route'] = $domain . ($matches['route'] ?? null);
             $domain           = null;
         }
 
-        $this->domain = null === $domain ? $domain : \strtr($domain, ['//' => '']);
+        if (!empty($domain)) {
+            $this->domain[$matches['host']] = true;
+        }
 
         if (!isset($matches['route']) || empty($matches['route'])) {
             throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
@@ -123,7 +128,7 @@ trait CastingTrait
     private function castPrefix(string $uri, string $prefix): string
     {
         // Allow homepage uri on prefix just like python django url style.
-        if (\in_array($uri, ['', '/'], true)) {
+        if (empty($uri) || '/' === $uri) {
             return \rtrim($prefix, '/') . $uri;
         }
 
