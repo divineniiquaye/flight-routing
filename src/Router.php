@@ -19,13 +19,12 @@ namespace Flight\Routing;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
+use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouteListInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -35,11 +34,33 @@ use Psr\Http\Message\UriInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Router
+ * Aggregate routes for matching and Dispatching.
+ * 
+ * Internally, the class performs some checks for duplicate routes when
+ * attaching via one of the exposed methods, and will raise an exception when a
+ * collision occurs.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router implements RequestHandlerInterface
+class Router implements RequestHandlerInterface, RequestMethodInterface
 {
     use Traits\RouterTrait;
+
+    /**
+     * Standard HTTP methods for browser requests.
+     */
+    public const HTTP_METHODS_STANDARD = [
+        self::METHOD_HEAD,
+        self::METHOD_GET,
+        self::METHOD_POST,
+        self::METHOD_PUT,
+        self::METHOD_PATCH,
+        self::METHOD_DELETE,
+        self::METHOD_PURGE,
+        self::METHOD_OPTIONS,
+        self::METHOD_TRACE,
+        self::METHOD_CONNECT,
+    ];
 
     public const TYPE_REQUIREMENT = 1;
 
@@ -47,37 +68,43 @@ class Router implements RequestHandlerInterface
 
     public const TYPE_CACHE = 2;
 
+    private const TYPE_MATCHER = 3;
+
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
-        ?RouteMatcherInterface $matcher = null,
+        ?string $matcher = null,
         ?InvokerInterface $resolver = null
     ) {
         $this->uriFactory      = $uriFactory;
         $this->responseFactory = $responseFactory;
         $this->resolver        = $resolver ?? new Invoker();
-        $this->matcher         = $matcher ?? new Matchers\SimpleRouteMatcher();
+
+        $this->routes  = new RouteList();
+        $this->attributes[self::TYPE_MATCHER] = $matcher ?? Matchers\SimpleRouteMatcher::class;
     }
 
     /**
      * Adds the given route(s) to the router
      *
-     * @param RouteInterface ...$routes
+     * @param Route ...$routes
      *
      * @throws DuplicateRouteException
      */
-    public function addRoute(RouteInterface ...$routes): void
+    public function addRoute(Route ...$routes): void
     {
         foreach ($routes as $route) {
-            $name = $route->getName();
+            if (null === $name = $route->getName()) {
+                $route->bind($name = $route->generateRouteName(''));
+            }
 
-            if (isset($this->routes[$name])) {
+            if (null !== $this->routes->find($name)) {
                 throw new DuplicateRouteException(
                     \sprintf('A route with the name "%s" already exists.', $name)
                 );
             }
 
-            $this->routes[$name] = $this->mergeAttributes($route);
+            $this->routes->add($this->mergeAttributes($route));
 
             if (null !== $this->debug) {
                 $this->debug->addProfile(new DebugRoute($name, $route));
@@ -88,14 +115,11 @@ class Router implements RequestHandlerInterface
     /**
      * Gets the router routes
      *
-     * @return RouteListInterface
+     * @return RouteList
      */
-    public function getCollection(): RouteListInterface
+    public function getCollection(): RouteList
     {
-        $collection = new RouteList();
-        $collection->addForeach(...array_values($this->routes));
-
-        return $collection;
+        return $this->routes;
     }
 
     /**
@@ -145,14 +169,14 @@ class Router implements RequestHandlerInterface
      * @throws UriHandlerException
      * @throws RouteNotFoundException
      *
-     * @return RouteInterface
+     * @return Route
      */
-    public function match(ServerRequestInterface $request): RouteInterface
+    public function match(ServerRequestInterface $request): Route
     {
         // Get the request matching format.
-        $route = $this->getMatcher()->match($this->getCollection(), $request);
+        $route = $this->getMatcher()->match($request);
 
-        if (!$route instanceof RouteInterface) {
+        if (!$route instanceof Route) {
             throw new RouteNotFoundException(
                 \sprintf(
                     'Unable to find the controller for path "%s". The route is wrongly configured.',
@@ -161,7 +185,7 @@ class Router implements RequestHandlerInterface
             );
         }
 
-        $route->setArguments($this->mergeDefaults($route));
+        $this->mergeDefaults($route);
 
         if (null !== $this->debug) {
             $this->debug->setMatched(new DebugRoute($route->getName(), $route));
@@ -176,7 +200,7 @@ class Router implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // Get the Route Handler ready for dispatching
-        if (!$this->route instanceof RouteInterface) {
+        if (!$this->route instanceof Route) {
             $this->match($request);
         }
 
@@ -212,16 +236,23 @@ class Router implements RequestHandlerInterface
      */
     public function getMatcher(): RouteMatcherInterface
     {
+        if (null !== $this->matcher) {
+            return $this->matcher;
+        }
+
         $cacheFile = $this->attributes[self::TYPE_CACHE] ?? '';
+        $matcher = $this->attributes[self::TYPE_MATCHER];
 
-        if (is_null($this->debug) && (!empty($cacheFile) && !is_file($cacheFile))) {
-            $this->generateCompiledRoutes($cacheFile);
+        if (null === $this->debug && (!empty($cacheFile) && \is_string($cacheFile))) {
+            if (!file_exists($cacheFile)) {
+                $this->generateCompiledRoutes($cacheFile, $matcher = new $matcher($this->getCollection()));
+
+                return $this->matcher = $matcher;
+            }
+
+            return $this->matcher = new $matcher($cacheFile);
         }
 
-        if (file_exists($cacheFile)) {
-            $this->matcher->warmCompiler($cacheFile);
-        }
-
-        return $this->matcher;
+        return $this->matcher = new $matcher($this->getCollection());
     }
 }
