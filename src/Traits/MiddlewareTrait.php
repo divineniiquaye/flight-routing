@@ -107,7 +107,7 @@ trait MiddlewareTrait
             return \spl_object_hash($middleware);
         }
 
-        if (\is_callable($middleware) && \count($middleware) === 2) {
+        if (\is_array($middleware) && \count($middleware) === 2) {
             return $middleware[1];
         }
 

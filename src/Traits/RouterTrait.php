@@ -33,7 +33,7 @@ trait RouterTrait
     use ResolveTrait;
     use DumperTrait;
 
-    /** @var null|RouteMatcherInterface */
+    /** @var null|object|RouteMatcherInterface */
     private $matcher;
 
     /** @var ResponseFactoryInterface */
@@ -48,7 +48,7 @@ trait RouterTrait
     /** @var RouteCollection */
     private $routes;
 
-    /** @var RouteCollectionenerInterface[] */
+    /** @var RouteListenerInterface[] */
     private $listeners = [];
 
     /** @var array<int,mixed> */
@@ -86,8 +86,8 @@ trait RouterTrait
         // To Allow merging incase routes after this method doesn't exist
         $this->routes->getRoutes();
 
-        if (null !== $this->routes->find($name)) {
-            return $this->routes->find($name);
+        if (null !== $route = $this->routes->find($name)) {
+            return $route;
         }
 
         throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
@@ -186,10 +186,7 @@ trait RouterTrait
                 continue;
             }
 
-            if (
-                (isset($param[$key]) && null === $param[$key]) ||
-                (!\is_int($key) && null !== $value)
-            ) {
+            if (isset($param[$key]) || (!\is_int($key) && null !== $value)) {
                 $route->argument($key, $value);
             }
         }

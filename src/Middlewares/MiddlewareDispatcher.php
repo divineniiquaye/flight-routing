@@ -21,6 +21,7 @@ use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
 use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
 use Laminas\Stratigility\MiddlewarePipe;
+use Laminas\Stratigility\MiddlewarePipeInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -33,12 +34,13 @@ final class MiddlewareDispatcher
     /** @var null|ContainerInterface */
     private $container;
 
+    /** @var MiddlewarePipeInterface */
     private $pipeline;
 
     public function __construct(?ContainerInterface $container = null)
     {
         $this->container = $container;
-        $this->pipeline = new MiddlewarePipe();
+        $this->pipeline  = new MiddlewarePipe();
     }
 
     /**
