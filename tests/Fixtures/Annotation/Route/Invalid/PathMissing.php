@@ -15,20 +15,16 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Attribute;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
 use Flight\Routing\Annotation\Route;
+use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
-#[Route(path: '/defaults/{locale}', name: 'attribute_', defaults: ['foo' => 'bar'], patterns: ['locale' => 'en|fr'])]
-class GlobalDefaultsClass
+/**
+ * @Route(
+ *   methods={"GET"}
+ * )
+ */
+class PathMissing extends BlankRequestHandler
 {
-    #[Route(path: '/specific-name', name: 'specific_name', methods: ['GET'])]
-    public function withName()
-    {
-    }
-
-    #[Route('/specific-none', methods: ['GET', 'HEAD'])]
-    public function noName()
-    {
-    }
 }

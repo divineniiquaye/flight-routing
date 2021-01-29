@@ -136,11 +136,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     {
         $compiledRoutes = [$this->staticRoutes, $this->dynamicRoutes];
 
-        if (count($compiledRoutes, COUNT_RECURSIVE) > 2) {
-            return $compiledRoutes;
-        }
-
-        return false;
+        return count($compiledRoutes, COUNT_RECURSIVE) > 2 ? $compiledRoutes : false;
     }
 
     /**
@@ -265,8 +261,8 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         $basePath    = $request->getServerParams()['SCRIPT_NAME'] ?? '';
 
         if (
-            $basePath !== $requestPath && 
-            \strlen($basePath = \dirname($basePath)) > 1 && 
+            $basePath !== $requestPath &&
+            \strlen($basePath = \dirname($basePath)) > 1 &&
             $basePath !== '/index.php'
         ) {
             $requestPath = \substr($requestPath, strcmp($basePath, $requestPath)) ?: '';

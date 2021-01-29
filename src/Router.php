@@ -35,7 +35,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Aggregate routes for matching and Dispatching.
- * 
+ *
  * Internally, the class performs some checks for duplicate routes when
  * attaching via one of the exposed methods, and will raise an exception when a
  * collision occurs.

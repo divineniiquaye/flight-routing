@@ -81,7 +81,7 @@ trait ValidationTrait
      */
     private function compareScheme(array $routeSchemes, string $requestScheme): bool
     {
-        return empty($routeScheme) || isset($routeSchemes[$requestScheme]);
+        return empty($routeSchemes) || isset($routeSchemes[$requestScheme]);
     }
 
     /**

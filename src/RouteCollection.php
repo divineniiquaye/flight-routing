@@ -21,7 +21,7 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 
 /**
  * A RouteCollection represents a set of Route instances.
- * 
+ *
  * This class provides all(*) methods for creating path+HTTP method-based routes and
  * injecting them into the router:
  *
@@ -143,7 +143,7 @@ final class RouteCollection extends \ArrayIterator
     {
         $route      = clone $this->defaultRoute;
         $controller = null === $handler ? $route->getController() : $handler;
-        
+
         $route->path($pattern)->method(...$methods);
 
         $this[] = $route;
