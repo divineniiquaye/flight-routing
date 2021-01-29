@@ -69,7 +69,7 @@ final class RouteHandler implements RequestHandlerInterface
             throw $e;
         }
 
-        return $this->wrapResponse($response, $result, \ob_get_clean());
+        return $this->wrapResponse($response, $result, (string) \ob_get_clean());
     }
 
     /**

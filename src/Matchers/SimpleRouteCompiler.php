@@ -168,7 +168,6 @@ class SimpleRouteCompiler implements \Serializable
     /**
      * The path template regex for matching.
      *
-     * @param bool $host either host or path template
      *
      * @return string The static regex
      */
@@ -180,7 +179,6 @@ class SimpleRouteCompiler implements \Serializable
     /**
      * The hosts template regex for matching.
      *
-     * @param bool $host either host or path template
      *
      * @return string[] The static regexps
      */
@@ -377,8 +375,8 @@ class SimpleRouteCompiler implements \Serializable
     /**
      * Prevent variables with same name used more than once.
      *
-     * @param int|string $varName
-     * @param string     $pattern
+     * @param string $varName
+     * @param string $pattern
      */
     private function filterVariableName($varName, string $pattern): void
     {

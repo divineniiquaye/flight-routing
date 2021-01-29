@@ -63,17 +63,24 @@ final class RouteCollection extends \ArrayIterator
     private $defaultRoute;
 
     /**
-     * @param Route|null $defaultRoute
-     * @param mixed $defaultHandler
+     * @param null|Route $defaultRoute
+     * @param mixed      $defaultHandler
      */
     public function __construct(?Route $defaultRoute = null, $defaultHandler = null)
     {
         $this->defaultRoute = $defaultRoute ?? new Route('/', '', $defaultHandler);
+        parent::__construct();
     }
 
+    /**
+     * @param string   $method
+     * @param string[] $arguments
+     *
+     * @return mixed
+     */
     public function __call($method, $arguments)
     {
-        $routeMethod = \strtolower(\preg_replace('~^with([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
+        $routeMethod = \strtolower((string) \preg_replace('~^with([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
 
         if (!\method_exists($this->defaultRoute, $routeMethod)) {
             throw new \BadMethodCallException(
@@ -155,10 +162,10 @@ final class RouteCollection extends \ArrayIterator
     /**
      * Mounts controllers under the given route prefix.
      *
-     * @param string                   $named       the route group prefixed name
+     * @param string                   $name        The route group prefixed name
      * @param callable|RouteCollection $controllers A RouteCollection instance or a callable for defining routes
      *
-     * @throws LogicException
+     * @throws \LogicException
      */
     public function group(string $name, $controllers): self
     {
@@ -294,7 +301,7 @@ final class RouteCollection extends \ArrayIterator
      */
     public function resource(string $name, string $pattern, $resource): Route
     {
-        if (!is_object($resource) || (is_string($resource) && class_exists($resource))) {
+        if (!\is_object($resource) || (\is_string($resource) && \class_exists($resource))) {
             throw new InvalidControllerException(
                 'Resource handler type should be a class string or class object, but not a callable or array'
             );
@@ -323,7 +330,13 @@ final class RouteCollection extends \ArrayIterator
         return null;
     }
 
-    private function doMerge(string $prefix, self $routes)
+    /**
+     * @param string $prefix
+     * @param self   $routes
+     *
+     * @return Route[]
+     */
+    private function doMerge(string $prefix, self $routes): array
     {
         /** @var Route|RouteCollection $route */
         foreach ($this as $route) {

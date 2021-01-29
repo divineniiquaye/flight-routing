@@ -20,7 +20,6 @@ namespace Flight\Routing\Traits;
 use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Handlers\RouteHandler;
-use Flight\Routing\Interfaces\RouteInterface;
 use Flight\Routing\Route;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -33,7 +32,7 @@ trait ResolveTrait
     /** @var null|string */
     private $namespace;
 
-    /** @var null|RouteInterface */
+    /** @var null|Route */
     private $route;
 
     /** @var InvokerInterface */
@@ -73,9 +72,10 @@ trait ResolveTrait
     protected function resolveRestFul(ServerRequestInterface $request, Route $route)
     {
         $controller = $route->getController();
+        $routeName  = (string) $route->getName();
 
         // Disable or enable HTTP request method prefix for action.
-        if (str_ends_with($route->getName(), '__restful')) {
+        if (str_ends_with($routeName, '__restful')) {
             switch (true) {
                 case \is_array($controller):
                     $controller[1] = $this->getResourceMethod($request, $controller[1]);
@@ -85,7 +85,7 @@ trait ResolveTrait
                 case \is_string($controller) && \class_exists($controller):
                     $controller = [
                         $controller,
-                        $this->getResourceMethod($request, \substr($route->getName(), -0, -9)),
+                        $this->getResourceMethod($request, \substr($routeName, -0, -9)),
                     ];
 
                     break;

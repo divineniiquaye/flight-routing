@@ -187,7 +187,7 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
 
         $this->mergeDefaults($route);
 
-        if (null !== $this->debug) {
+        if (null !== $this->debug && null !== $route->getName()) {
             $this->debug->setMatched(new DebugRoute($route->getName(), $route));
         }
 

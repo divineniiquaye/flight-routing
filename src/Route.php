@@ -76,10 +76,10 @@ class Route
     /**
      * Create a new Route constructor.
      *
-     * @param string          $pattern The route pattern
-     * @param string|string[] $methods The route HTTP methods. Multiple methods can be supplied,
-     *                                 delimited by a pipe character '|', eg. 'GET|POST'
-     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
+     * @param string $pattern The route pattern
+     * @param string $methods The route HTTP methods. Multiple methods can be supplied,
+     *                        delimited by a pipe character '|', eg. 'GET|POST'
+     * @param mixed  $handler The PHP class, object or callable that returns the response when matched
      */
     public function __construct(string $pattern, string $methods = 'GET|HEAD', $handler = null)
     {
@@ -109,9 +109,15 @@ class Route
         return $recovered;
     }
 
+    /**
+     * @param string   $method
+     * @param string[] $arguments
+     *
+     * @return mixed
+     */
     public function __call($method, $arguments)
     {
-        $routeMethod = \strtolower(\preg_replace('~^get([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
+        $routeMethod = \strtolower((string) \preg_replace('~^get([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
 
         if ('all' === $routeMethod || 'arguments' === $routeMethod) {
             return \call_user_func([$this, 'get'], $routeMethod);
@@ -124,7 +130,7 @@ class Route
                     ' or arguments, prefixed with a \'get\' name; eg: getName().',
                     Route::class,
                     $method,
-                    join(', ', array_keys($this->get('all')))
+                    \join(', ', \array_keys($this->get('all')))
                 )
             );
         }
@@ -323,6 +329,8 @@ class Route
      * And also accepts "all" and "arguments".
      *
      * @param string $name
+     *
+     * @return mixed
      */
     public function get(string $name)
     {
@@ -342,7 +350,9 @@ class Route
                 'middlewares' => $this->middlewares,
                 'defaults'    => $this->defaults,
             ];
-        } elseif ('arguments' === $name) {
+        }
+
+        if ('arguments' === $name) {
             return $this->defaults['_arguments'] ?? [];
         }
 
@@ -355,7 +365,7 @@ class Route
 
         $routeName = $methods . $prefix . $this->path;
         $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
-        $routeName = \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
+        $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 
         // Collapse consecutive underscores down into a single underscore.
         $routeName = (string) \preg_replace('/_+/', '_', $routeName);

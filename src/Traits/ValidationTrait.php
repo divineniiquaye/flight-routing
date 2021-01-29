@@ -27,8 +27,8 @@ trait ValidationTrait
     /**
      * Check if given request method matches given route method.
      *
-     * @param array<string,bool> $routeMethods
-     * @param string             $requestMethod
+     * @param string[] $routeMethods
+     * @param string   $requestMethod
      *
      * @return bool
      */
@@ -40,7 +40,7 @@ trait ValidationTrait
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param array<string,bool>       $routeDomains
+     * @param string[]                 $routeDomains
      * @param string                   $requestDomain
      * @param array<int|string,string> $parameters
      *
@@ -94,7 +94,7 @@ trait ValidationTrait
     private function assertRoute(Route $route, UriInterface $requestUri, string $method): void
     {
         if (!$this->compareMethod($route->getMethods(), $method)) {
-            throw new MethodNotAllowedException(array_keys($route->getMethods()), $requestUri->getPath(), $method);
+            throw new MethodNotAllowedException(\array_keys($route->getMethods()), $requestUri->getPath(), $method);
         }
 
         if (!$this->compareScheme($route->getSchemes(), $requestUri->getScheme())) {

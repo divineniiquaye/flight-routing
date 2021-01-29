@@ -113,7 +113,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
             // If we have s secured scheme, it should be served
             $hostScheme   = isset($schemes['https']) ? 'https' : \end($schemes);
-            $hostTemplate = $this->interpolate(\current($hostRegex), $parameters);
+            $hostTemplate = $this->interpolate((string) \current($hostRegex), $parameters);
 
             $path = \sprintf('%s://%s', $hostScheme, \trim($hostTemplate, '.'));
         }
@@ -222,7 +222,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
         }
 
-        return \strtr((string) $string, $replaces + self::URI_FIXERS);
+        return \strtr($string, $replaces + self::URI_FIXERS);
     }
 
     /**
