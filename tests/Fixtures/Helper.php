@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Route;
 
 /**
  * Helper
@@ -25,30 +25,37 @@ use Flight\Routing\Interfaces\RouteInterface;
 class Helper
 {
     /**
-     * @param iterable<int,RouteInterface> $routes
+     * @param iterable<int,Route> $routes
      *
      * @return array<int,array<string,mixed>>
      */
     public static function routesToArray(iterable $routes): array
     {
-        $result = [];
+        $result = $arguments = [];
 
         foreach ($routes as $route) {
             if (\is_object($controller = $route->getController())) {
                 $controller = \get_class($controller);
             }
 
+            $defaults = $route->getDefaults();
+
+            if (isset($defaults['_arguments'])) {
+                $arguments = $defaults['_arguments'];
+                unset($defaults['_arguments']);
+            }
+
             $item                = [];
             $item['name']        = $route->getName();
             $item['path']        = $route->getPath();
-            $item['domain']      = $route->getDomain();
-            $item['methods']     = $route->getMethods();
+            $item['domain']      = \array_keys($route->getDomain());
+            $item['methods']     = \array_keys($route->getMethods());
             $item['handler']     = $controller;
             $item['middlewares'] = [];
-            $item['schemes']     = $route->getSchemes();
-            $item['defaults']    = $route->getDefaults();
+            $item['schemes']     = \array_keys($route->getSchemes());
+            $item['defaults']    = $defaults;
             $item['patterns']    = $route->getPatterns();
-            $item['arguments']   = $route->getArguments();
+            $item['arguments']   = $arguments;
 
             foreach ($route->getMiddlewares() as $middleware) {
                 $classname = \is_string($middleware) ? $middleware : \get_class($middleware);
@@ -67,7 +74,7 @@ class Helper
     }
 
     /**
-     * @param iterable<int,RouteInterface> $routes
+     * @param iterable<int,Route> $routes
      *
      * @return string[]
      */

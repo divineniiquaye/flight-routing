@@ -23,7 +23,7 @@ use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Interface defining required router compiling capabilities.
- * 
+ *
  * This fluent implementation should contain a `constructor` method.
  * The implementation should be writen to receive a RouteCollection instance
  * and a file when `getCompiledRoutes` method is used by the router.
@@ -66,7 +66,6 @@ interface RouteMatcherInterface
      * This warms up compiler used to compile route, to increase performance.
      *
      * Implement this fluent method or return it as false.
-     *
      *
      * @return mixed|false return false if not implemented;
      */

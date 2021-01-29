@@ -39,14 +39,19 @@ class TestRoute extends BaseRoute
     public function __construct(int $flags = 0)
     {
         parent::__construct(
-            self::getTestRouteName($flags),
-            self::getTestRouteMethods($flags),
             self::getTestRoutePath($flags),
+            '',
             self::getTestRouteRequestHandler($flags)
         );
 
-        $this->addMiddleware(...self::getTestRouteMiddlewares($flags));
-        $this->setDefaults(self::getTestRouteAttributes($flags));
+        $this->bind(self::getTestRouteName($flags));
+        $this->method(...self::getTestRouteMethods($flags));
+
+        $this->middleware(...self::getTestRouteMiddlewares($flags));
+
+        foreach (self::getTestRouteAttributes($flags) as $key => $value) {
+            $this->default($key, $value);
+        }
     }
 
     /**

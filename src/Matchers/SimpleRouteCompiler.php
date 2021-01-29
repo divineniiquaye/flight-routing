@@ -314,12 +314,12 @@ class SimpleRouteCompiler implements \Serializable
         }
 
         // correct [/ first occurrence]
-        if (\strpos($pattern = (!$isHost ? '/' : '') . $uriPattern, '[/') === 0) {
-            $pattern = '[' . \substr($pattern, 2);
+        if (\strpos($uriPattern, '[/') === 0) {
+            $uriPattern = '[' . \substr($uriPattern, 2);
         }
 
         // Match all variables enclosed in "{}" and iterate over them...
-        \preg_match_all(self::COMPILER_REGEX, $pattern, $matches);
+        \preg_match_all(self::COMPILER_REGEX, $pattern = (!$isHost ? '/' : '') . $uriPattern, $matches);
 
         list($variables, $replaces) = $this->computePattern($matches, $pattern, $requirements);
 

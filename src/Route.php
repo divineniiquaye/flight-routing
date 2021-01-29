@@ -24,7 +24,7 @@ namespace Flight\Routing;
  * router implementations may allow or require additional information, such as
  * information defining how to generate a URL from the given route, qualifiers
  * for how segments of a route match, or even default values to use.
- * 
+ *
  * __call() forwards method-calls to Route, but returns mixed contents.
  * listing Route's methods below, so that IDEs know they are valid
  *
@@ -113,7 +113,7 @@ class Route
     {
         $routeMethod = \strtolower(\preg_replace('~^get([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
 
-        if ('all' === $routeMethod || 'arugments' === $routeMethod) {
+        if ('all' === $routeMethod || 'arguments' === $routeMethod) {
             return \call_user_func([$this, 'get'], $routeMethod);
         }
 

@@ -187,7 +187,7 @@ trait RouterTrait
             }
 
             if (
-                (isset($param[$key]) && null === $param[$key]) || 
+                (isset($param[$key]) && null === $param[$key]) ||
                 (!\is_int($key) && null !== $value)
             ) {
                 $route->argument($key, $value);
