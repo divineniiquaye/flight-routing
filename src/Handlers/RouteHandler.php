@@ -17,13 +17,10 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use JsonSerializable;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use stdClass;
-use Throwable;
 
 /**
  * Provides ability to invoke any handler and write it's response into ResponseInterface.
@@ -53,7 +50,7 @@ final class RouteHandler implements RequestHandlerInterface
     /**
      * {@inheritdoc}
      *
-     * @throws Throwable
+     * @throws \Throwable
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -66,13 +63,13 @@ final class RouteHandler implements RequestHandlerInterface
 
         try {
             $result = ($this->callable)($request, $response);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             \ob_get_clean();
 
             throw $e;
         }
 
-        return $this->wrapResponse($response, $result, \ob_get_clean());
+        return $this->wrapResponse($response, $result, (string) \ob_get_clean());
     }
 
     /**
@@ -92,7 +89,7 @@ final class RouteHandler implements RequestHandlerInterface
             return $result;
         }
 
-        if (\is_array($result) || ($result instanceof JsonSerializable || $result instanceof stdClass)) {
+        if (\is_array($result) || ($result instanceof \JsonSerializable || $result instanceof \stdClass)) {
             $result = \json_encode($result);
         }
 

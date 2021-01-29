@@ -19,6 +19,7 @@ namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\UriRedirectMiddleware;
 use Flight\Routing\Route;
+use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 use Generator;
@@ -43,10 +44,10 @@ class UriRedirectMiddlewareTest extends BaseTestCase
         $pipeline = $this->getRouter();
         $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
 
-        $route = new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class);
+        $route = new Route($expected, Router::METHOD_GET, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
-        $response = $pipeline->handle(new ServerRequest('GET', $expected));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $expected));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -64,12 +65,12 @@ class UriRedirectMiddlewareTest extends BaseTestCase
         $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
 
         $routes = [
-            new Route('uri_middleware_expected', ['GET'], $expected, BlankRequestHandler::class),
-            new Route('uri_middleware', ['GET'], \key($redirects), BlankRequestHandler::class),
+            new Route($expected, Router::METHOD_GET, BlankRequestHandler::class),
+            new Route(\key($redirects), Router::METHOD_GET, BlankRequestHandler::class),
         ];
         $pipeline->addRoute(...$routes);
 
-        $response = $pipeline->handle(new ServerRequest('GET', \key($redirects)));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, \key($redirects)));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301, $response->getStatusCode());
@@ -81,11 +82,11 @@ class UriRedirectMiddlewareTest extends BaseTestCase
         $middleware = new UriRedirectMiddleware(['page?hello=me' => 'account/me']);
         $pipeline->addMiddleware($middleware->allowQueries(true));
 
-        $route = new Route('uri_middleware_expected', ['GET'], 'page', BlankRequestHandler::class);
+        $route = new Route('page', Router::METHOD_GET, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
         $uri      = (new Uri('page'))->withQuery('hello=me');
-        $response = $pipeline->handle(new ServerRequest('GET', $uri));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $uri));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301, $response->getStatusCode());
@@ -97,10 +98,10 @@ class UriRedirectMiddlewareTest extends BaseTestCase
         $middleware = new UriRedirectMiddleware(['foo' => 'bar']);
         $pipeline->addMiddleware($middleware->setPermanentRedirection(false));
 
-        $route = new Route('uri_middleware_expected', ['POST'], 'foo', BlankRequestHandler::class);
+        $route = new Route('foo', Router::METHOD_POST, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
-        $response = $pipeline->handle(new ServerRequest('POST', 'foo'));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, 'foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(307, $response->getStatusCode());

@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
+use Flight\Routing\Route;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -29,7 +30,7 @@ interface RouteListenerInterface
 {
     /**
      * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
+     * @param Route                  $route
      */
-    public function onRoute(ServerRequestInterface $request, RouteInterface &$route): void;
+    public function onRoute(ServerRequestInterface $request, Route &$route): void;
 }

@@ -30,9 +30,9 @@ class SimpleRouteCompilerTest extends TestCase
 {
     public function testSerialize(): void
     {
-        $route = new Route('test_compile', ['FOO', 'BAR'], '/prefix/{foo}', null);
-        $route->setDefaults(['foo' => 'default'])
-            ->addPattern('foo', '\d+');
+        $route = new Route('/prefix/{foo}', 'FOO|BAR');
+        $route->default('foo', 'default')
+            ->assert('foo', '\d+');
 
         $compiler = new SimpleRouteCompiler();
         $compiled = $compiler->compile($route);
@@ -56,7 +56,7 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompile(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route('test_compile', ['FOO', 'BAR'], $path, null);
+        $route    = new Route($path, 'FOO|BAR');
         $compiler = new SimpleRouteCompiler();
         $compiled = $compiler->compile($route);
 
@@ -83,11 +83,11 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompileDomainRegex(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route('test_compile', ['FOO', 'BAR'], $path, null);
+        $route    = new Route($path, 'FOO|BAR');
         $compiler = new SimpleRouteCompiler();
         $compiled = $compiler->compile($route);
 
-        $this->assertEquals($regex, $compiled->getHostRegex());
+        $this->assertEquals([$regex], $compiled->getHostsRegex());
         $this->assertEquals($variables, \array_merge($compiled->getHostVariables(), $route->getDefaults()));
 
         // Match every pattern...
@@ -108,12 +108,7 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompileVariables(string $variable, string $exceptionMessage): void
     {
-        $route = new Route(
-            'test_compile',
-            ['FOO', 'BAR'],
-            '/{' . $variable . '}',
-            null
-        );
+        $route = new Route('/{' . $variable . '}', 'FOO|BAR');
         $compiler = new SimpleRouteCompiler();
 
         $this->expectExceptionMessage(\sprintf($exceptionMessage, $variable));
@@ -130,8 +125,8 @@ class SimpleRouteCompilerTest extends TestCase
         $this->expectErrorMessage('Routing requirement for "foo" cannot be empty.');
         $this->expectException(UriHandlerException::class);
 
-        $route = new Route('test_compile', ['FOO', 'BAR'], '/{foo}', null);
-        $route->addPattern('foo', $req);
+        $route = new Route('/{foo}', 'FOO|BAR');
+        $route->assert('foo', $req);
 
         $compiler = new SimpleRouteCompiler();
         $compiler->compile($route);
@@ -142,7 +137,7 @@ class SimpleRouteCompilerTest extends TestCase
         $this->expectErrorMessage('Route pattern "/{foo}{foo}" cannot reference variable name "foo" more than once.');
         $this->expectException(UriHandlerException::class);
 
-        $route = new Route('test_compile', ['FOO', 'BAR'], '/{foo}{foo}', null);
+        $route = new Route('/{foo}{foo}', 'FOO|BAR');
 
         $compiler = new SimpleRouteCompiler();
         $compiler->compile($route);
@@ -234,7 +229,7 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route with an optional variable as the first occurrence' => [
             '[/{foo}]',
             ['/', '/foo'],
-            '/^\/?(?:\/(?P<foo>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<foo>(?U)[^\/]+))?$/sDu',
             ['foo' => null],
         ];
 

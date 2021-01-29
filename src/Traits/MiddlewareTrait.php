@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Closure;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -104,11 +103,11 @@ trait MiddlewareTrait
      */
     private function getMiddlewareHash($middleware): string
     {
-        if ($middleware instanceof Closure || \is_object($middleware)) {
+        if ($middleware instanceof \Closure || \is_object($middleware)) {
             return \spl_object_hash($middleware);
         }
 
-        if (\is_callable($middleware) && \count($middleware) === 2) {
+        if (\is_array($middleware) && \count($middleware) === 2) {
             return $middleware[1];
         }
 

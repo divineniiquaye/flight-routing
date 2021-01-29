@@ -19,7 +19,7 @@ namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Attribute;
 
 use Flight\Routing\Annotation\Route;
 
-#[Route(path: '/defaults', name: 'attribute_')]
+#[Route(path: '/defaults/{locale}', name: 'attribute_', defaults: ['foo' => 'bar'], patterns: ['locale' => 'en|fr'])]
 class GlobalDefaultsClass
 {
     #[Route(path: '/specific-name', name: 'specific_name', methods: ['GET'])]

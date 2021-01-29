@@ -18,8 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Exceptions;
 
 use Flight\Routing\Interfaces\ExceptionInterface;
-use RuntimeException;
 
-class UriHandlerException extends RuntimeException implements ExceptionInterface
+class UriHandlerException extends \RuntimeException implements ExceptionInterface
 {
 }

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Matchers\SimpleRouteMatcher;
 use Flight\Routing\Route;
 
@@ -38,7 +38,7 @@ trait DumperTrait
         }
 
         if (!\is_array($value)) {
-            if ($value instanceof RouteInterface) {
+            if ($value instanceof Route) {
                 return self::exportRoute($value);
             }
 
@@ -65,7 +65,7 @@ trait DumperTrait
 
             if (\is_string($v) && 0 === \strpos($v, 'unserialize')) {
                 $v = '\\' . $v . ', ';
-            } elseif ($v instanceof RouteInterface) {
+            } elseif ($v instanceof Route) {
                 $v .= self::exportRoute($v);
             } else {
                 $v = self::export($v) . ', ';
@@ -78,30 +78,26 @@ trait DumperTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param Route $route
      *
      * @return string
      */
-    protected static function exportRoute(RouteInterface $route): string
+    protected static function exportRoute(Route $route): string
     {
-        $controller = $route->getController();
+        $properties = $route->getAll();
 
-        if (!\is_string($controller)) {
-            $controller = \sprintf('unserialize(\'%s\')', \serialize($controller));
+        if (!\is_string($controller = $properties['controller'])) {
+            $properties['controller'] = \sprintf('unserialize(\'%s\')', \serialize($controller));
         }
 
-        $exported = self::export([
-            $route->getName(),
-            $route->getMethods(),
-            $route->getPath(),
-            $route->getSchemes(),
-            $route->getDomain(),
-            $controller,
-            $route->getMiddlewares(),
-            $route->getPatterns(),
-            $route->getDefaults(),
-            $route->getArguments(),
-        ]);
+        if (isset($properties['defaults']['_compiler'])) {
+            $properties['defaults']['_compiler'] = \sprintf(
+                'unserialize(\'%s\')',
+                \serialize($properties['defaults']['_compiler'])
+            );
+        }
+
+        $exported = self::export($properties);
 
         return \sprintf('%s::__set_state(%s)', Route::class, $exported);
     }
@@ -110,30 +106,22 @@ trait DumperTrait
      * Export the matcher, this method can be override if
      * RouteMatcherInterfaqce implementation changes.
      *
-     * @param mixed $compiledRoutes
+     * @param mixed                 $compiledRoutes
+     * @param RouteMatcherInterface $matcher
      *
      * @return string
      */
-    protected function exportMatcher($compiledRoutes): string
+    protected function exportMatcher($compiledRoutes, RouteMatcherInterface $matcher): string
     {
         $code = '';
 
-        if ($this->matcher instanceof SimpleRouteMatcher) {
+        if ($matcher instanceof SimpleRouteMatcher) {
             [$staticRoutes, $dynamicRoutes] = $compiledRoutes;
             $code .= '[ // $staticRoutes' . "\n";
 
             foreach ($staticRoutes as $path => $route) {
                 $code .= \sprintf('    %s => ', self::export($path));
-
-                if (\is_array($route)) {
-                    $code .= \sprintf(
-                        "[\n        %s,\n        %s\n    ]",
-                        self::export(\current($route)),
-                        \sprintf('\unserialize(\'%s\')', \serialize(\end($route)))
-                    );
-                } else {
-                    $code .= self::export($route);
-                }
+                $code .= self::export($route);
                 $code .= ", \n";
             }
             $code .= "],\n";
@@ -141,15 +129,12 @@ trait DumperTrait
             $code .= '[ // $dynamicRoutes' . "\n";
 
             foreach ($dynamicRoutes as $name => $route) {
-                $code .= \sprintf('    %s =>', self::export($name));
-                $code .= \sprintf(
-                    "[\n        %s,\n        %s\n    ], \n",
-                    self::export(\current($route)),
-                    \sprintf('\unserialize(\'%s\')', \serialize(\end($route)))
-                );
+                $code .= \sprintf('    %s => ', self::export($name));
+                $code .= self::export($route);
+                $code .= ", \n";
             }
             $code .= "],\n";
-        } elseif (null !== $compiledRoutes || false !== $compiledRoutes) {
+        } else {
             $code .= self::export($compiledRoutes);
         }
 
@@ -161,16 +146,19 @@ trait DumperTrait
      *
      * @internal
      *
-     * @param string $cacheFile
+     * @param string                $cacheFile
+     * @param RouteMatcherInterface $matcher
      */
-    private function generateCompiledRoutes(string $cacheFile): void
+    private function generateCompiledRoutes(string $cacheFile, RouteMatcherInterface $matcher): void
     {
-        $compiledRoutes = $this->matcher->warmCompiler($this->getCollection());
+        if (false === $compiledRoutes = $matcher->getCompiledRoutes()) {
+            return;
+        }
 
         $generatedCode = (string) \preg_replace(
             '/^./m',
             \str_repeat('    ', 1) . '$0',
-            $this->exportMatcher($compiledRoutes)
+            $this->exportMatcher($compiledRoutes, $matcher)
         );
 
         $dumpCode = <<<EOF

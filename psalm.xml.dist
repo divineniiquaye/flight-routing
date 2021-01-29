@@ -21,49 +21,6 @@
     </projectFiles>
 
     <issueHandlers>
-        <InvalidOperand>
-            <errorLevel type="suppress">
-                <file name="src/Traits/DumperTrait.php"/>
-            </errorLevel>
-        </InvalidOperand>
-
-        <PossiblyInvalidArgument>
-            <errorLevel type="suppress">
-                <file name="src/Traits/ResolveTrait.php"/>
-            </errorLevel>
-        </PossiblyInvalidArgument>
-
-        <PossiblyInvalidFunctionCall>
-            <errorLevel type="suppress">
-                <file name="src/RouteList.php"/>
-            </errorLevel>
-        </PossiblyInvalidFunctionCall>
-
-        <InvalidArgument>
-            <errorLevel type="suppress">
-                <file name="src/Traits/MiddlewareTrait.php"/>
-            </errorLevel>
-        </InvalidArgument>
-
-        <InvalidArrayAccess>
-            <errorLevel type="suppress">
-                <file name="src/Traits/MiddlewareTrait.php"/>
-            </errorLevel>
-        </InvalidArrayAccess>
-
-        <InvalidCatch>
-            <errorLevel type="suppress">
-                <referencedClass name="Psr\Container\NotFoundExceptionInterface"/>
-            </errorLevel>
-        </InvalidCatch>
-
-        <RedundantCondition>
-            <errorLevel type="suppress">
-                <file name="src/Traits/DumperTrait.php"/>
-                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
-            </errorLevel>
-        </RedundantCondition>
-
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Annotation/Listener.php"/>
@@ -71,17 +28,81 @@
             </errorLevel>
         </TypeDoesNotContainType>
 
+        <RedundantCondition>
+            <errorLevel type="suppress">
+                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
+            </errorLevel>
+        </RedundantCondition>
+
+        <InvalidOperand>
+            <errorLevel type="suppress">
+                <file name="src/Traits/DumperTrait.php"/>
+            </errorLevel>
+        </InvalidOperand>
+
+        <InvalidArrayOffset>
+            <errorLevel type="suppress">
+                <file name="src/Matchers/SimpleRouteMatcher.php"/>
+            </errorLevel>
+        </InvalidArrayOffset>
+
+        <InvalidCatch>
+            <errorLevel type="suppress">
+                <referencedClass name="Psr\Container\NotFoundExceptionInterface" />
+            </errorLevel>
+        </InvalidCatch>
+
+        <NullArgument>
+            <errorLevel type="suppress">
+                <referencedFunction name="Flight\Routing\RouteCollection::offsetSet"/>
+            </errorLevel>
+        </NullArgument>
+
+        <PossiblyNullArgument>
+            <errorLevel type="suppress">
+                <referencedFunction name="Flight\Routing\DebugRoute::__construct"/>
+            </errorLevel>
+        </PossiblyNullArgument>
+
+        <ArgumentTypeCoercion>
+            <errorLevel type="suppress">
+                <referencedFunction name="Flight\Routing\Router::generateCompiledRoutes"/>
+            </errorLevel>
+        </ArgumentTypeCoercion>
+
+        <MoreSpecificReturnType>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+            </errorLevel>
+        </MoreSpecificReturnType>
+
+        <LessSpecificReturnStatement>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+            </errorLevel>
+        </LessSpecificReturnStatement>
+
+        <PossiblyNullArrayOffset>
+            <errorLevel type="suppress">
+                <file name="src/Traits/CastingTrait.php"/>
+            </errorLevel>
+        </PossiblyNullArrayOffset>
+
+        <InvalidPropertyAssignmentValue>
+            <errorLevel type="suppress">
+                <file name="src/Traits/CastingTrait.php"/>
+            </errorLevel>
+        </InvalidPropertyAssignmentValue>
+
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
+                <file name="src/Route.php"/>
                 <file name="src/Annotation/Route.php"/>
+                <file name="src/Traits/CastingTrait.php"/>
+                <file name="src/Traits/DumperTrait.php"/>
                 <file name="src/Matchers/SimpleRouteCompiler.php"/>
+                <file name="src/Matchers/SimpleRouteMatcher.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
-
-        <LessSpecificImplementedReturnType>
-            <errorLevel type="suppress">
-                <file name="src/Traits/RouteTrait.php"/>
-            </errorLevel>
-        </LessSpecificImplementedReturnType>
     </issueHandlers>
 </psalm>

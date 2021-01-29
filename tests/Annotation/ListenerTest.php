@@ -21,7 +21,7 @@ use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\Annotation\Listener;
-use Flight\Routing\Route;
+use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Spiral\Attributes\AnnotationReader;
 use Spiral\Attributes\AttributeReader;
@@ -122,8 +122,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
             'path'        => '/default',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultNameController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -135,8 +135,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
             'path'        => '/get',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -148,8 +148,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
             'path'        => '/post',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -161,8 +161,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
             'path'        => '/put',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_PUT],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_PUT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -174,8 +174,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
             'path'        => '/get',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD, Route::METHOD_CONNECT],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_CONNECT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -187,8 +187,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
             'path'        => '/post',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_POST, Route::METHOD_CONNECT],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_POST, Router::METHOD_CONNECT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -200,8 +200,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
             'path'        => '/put',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_PUT, Route::METHOD_CONNECT],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_PUT, Router::METHOD_CONNECT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -213,8 +213,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
             'path'        => 'testing/',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MethodOnRoutePattern::class, 'handleSomething'],
             'middlewares' => [],
             'schemes'     => [],
@@ -226,8 +226,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'english_locale',
             'path'        => '/en/locale',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -239,8 +239,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'french_locale',
             'path'        => '/fr/locale',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleClassRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
@@ -252,8 +252,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'action',
             'path'        => '/{default}/path',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'action'],
             'middlewares' => [],
             'schemes'     => [],
@@ -265,8 +265,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'hello_without_default',
             'path'        => '/hello/{name:\w+}',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
             'middlewares' => [],
             'schemes'     => [],
@@ -278,8 +278,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'hello_with_default',
             'path'        => '/cool/{name=<Symfony>}',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\DefaultValueController::class, 'hello'],
             'middlewares' => [],
             'schemes'     => [],
@@ -291,8 +291,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'home',
             'path'        => '/',
-            'domain'      => 'biurad.com',
-            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
+            'domain'      => ['biurad.com'],
+            'methods'     => [Router::METHOD_HEAD, Router::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\HomeRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -310,8 +310,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'lol',
             'path'        => '/here',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => Fixtures\Annotation\Route\Valid\InvokableController::class,
             'middlewares' => [],
             'schemes'     => ['https'],
@@ -323,8 +323,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'ping',
             'path'        => '/ping',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_HEAD, Router::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\PingRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -342,8 +342,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'do.action',
             'path'        => '/prefix/path',
-            'domain'      => 'biurad.com',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => ['biurad.com'],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\RouteWithPrefixController::class, 'action'],
             'middlewares' => [],
             'schemes'     => [],
@@ -355,8 +355,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'do.action_two',
             'path'        => '/prefix/path_two',
-            'domain'      => 'biurad.com',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_POST],
+            'domain'      => ['biurad.com'],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\RouteWithPrefixController::class, 'actionTwo'],
             'middlewares' => [],
             'schemes'     => [],
@@ -368,8 +368,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'sub-dir:foo',
             'path'        => '/sub-dir/foo',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_HEAD, Router::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\Subdir\FooRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -387,8 +387,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'sub-dir:bar',
             'path'        => '/sub-dir/bar',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_HEAD, Route::METHOD_GET],
+            'domain'      => [],
+            'methods'     => [Router::METHOD_HEAD, Router::METHOD_GET],
             'handler'     => Fixtures\Annotation\Route\Valid\Subdir\BarRequestHandler::class,
             'middlewares' => [
                 Fixtures\BlankMiddleware::class,
@@ -406,8 +406,8 @@ class ListenerTest extends BaseTestCase
         $this->assertContains([
             'name'        => 'user__restful',
             'path'        => '/user/{id:\d+}',
-            'domain'      => '',
-            'methods'     => Route::HTTP_METHODS_STANDARD,
+            'domain'      => [],
+            'methods'     => Router::HTTP_METHODS_STANDARD,
             'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
             'middlewares' => [],
             'schemes'     => [],
@@ -434,27 +434,27 @@ class ListenerTest extends BaseTestCase
 
         $this->assertContains([
             'name'        => 'attribute_specific_name',
-            'path'        => '/defaults/specific-name',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET],
+            'path'        => '/defaults/{locale}/specific-name',
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET],
             'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'withName'],
             'middlewares' => [],
             'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
+            'defaults'    => ['foo' => 'bar'],
+            'patterns'    => ['locale' => 'en|fr'],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
             'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultsclass_noname',
-            'path'        => '/defaults/specific-none',
-            'domain'      => '',
-            'methods'     => [Route::METHOD_GET, Route::METHOD_HEAD],
+            'path'        => '/defaults/{locale}/specific-none',
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Attribute\GlobalDefaultsClass::class, 'noName'],
             'middlewares' => [],
             'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
+            'defaults'    => ['foo' => 'bar'],
+            'patterns'    => ['locale' => 'en|fr'],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
     }
@@ -515,6 +515,7 @@ class ListenerTest extends BaseTestCase
             [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a string.'],
             [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must be not an empty string.'],
             [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must not be left empty.'],
         ];
     }
 }

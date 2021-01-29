@@ -15,10 +15,16 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Exceptions;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
-use Flight\Routing\Interfaces\ExceptionInterface;
+use Flight\Routing\Annotation\Route;
+use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
-class DuplicateRouteException extends \LogicException implements ExceptionInterface
+/**
+ * @Route(
+ *   methods={"GET"}
+ * )
+ */
+class PathMissing extends BlankRequestHandler
 {
 }

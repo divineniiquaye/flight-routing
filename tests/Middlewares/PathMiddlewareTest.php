@@ -19,6 +19,7 @@ namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Route;
+use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\RequestInterface;
@@ -34,9 +35,9 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline = $this->getRouter();
 
         $pipeline->addMiddleware(new PathMiddleware());
-        $pipeline->addRoute(new Route('path_middleware_200', ['GET'], '/foo', [$this, 'handlePath']));
+        $pipeline->addRoute(new Route('/foo', Router::METHOD_GET, [$this, 'handlePath']));
 
-        $response = $pipeline->handle(new ServerRequest('GET', '/foo'));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, '/foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -55,14 +56,14 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline   = $this->getRouter();
 
         $pipeline->addMiddleware(new PathMiddleware($expectsStatus));
-        $pipeline->addRoute(new Route('path_middleware', ['GET', 'POST'], $uriPath, [$this, 'handlePath']));
+        $pipeline->addRoute(new Route($uriPath, 'GET|POST', [$this, 'handlePath']));
 
-        $response = $pipeline->handle(new ServerRequest('GET', $expectedPath));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $expectedPath));
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 301 : 302, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
 
-        $response = $pipeline->handle(new ServerRequest('POST', $expectedPath));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, $expectedPath));
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals($expectsStatus ? 308 : 307, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));

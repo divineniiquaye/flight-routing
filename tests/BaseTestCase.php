@@ -18,11 +18,10 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Router;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
-use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -72,14 +71,14 @@ class BaseTestCase extends TestCase
     }
 
     /**
-     * @param null|RouteMatcherInterface $matcher
-     * @param null|InvokerInterface      $resolver
-     * @param null|ContainerInterface    $container
+     * @param null|class-string       $matcher
+     * @param null|InvokerInterface   $resolver
+     * @param null|ContainerInterface $container
      *
      * @return Router
      */
     public function getRouter(
-        ?RouteMatcherInterface $matcher = null,
+        ?string $matcher = null,
         ?InvokerInterface $resolver = null,
         bool $profiler = false
     ): Router {

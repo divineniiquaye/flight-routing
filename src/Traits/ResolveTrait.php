@@ -20,7 +20,7 @@ namespace Flight\Routing\Traits;
 use DivineNii\Invoker\Exceptions\NotCallableException;
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use Flight\Routing\Handlers\RouteHandler;
-use Flight\Routing\Interfaces\RouteInterface;
+use Flight\Routing\Route;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -32,7 +32,7 @@ trait ResolveTrait
     /** @var null|string */
     private $namespace;
 
-    /** @var null|RouteInterface */
+    /** @var null|Route */
     private $route;
 
     /** @var InvokerInterface */
@@ -65,16 +65,17 @@ trait ResolveTrait
 
     /**
      * @param ServerRequestInterface $request
-     * @param RouteInterface         $route
+     * @param Route                  $route
      *
      * @return mixed
      */
-    protected function resolveRestFul(ServerRequestInterface $request, RouteInterface $route)
+    protected function resolveRestFul(ServerRequestInterface $request, Route $route)
     {
         $controller = $route->getController();
+        $routeName  = (string) $route->getName();
 
         // Disable or enable HTTP request method prefix for action.
-        if (str_ends_with($route->getName(), '__restful')) {
+        if (str_ends_with($routeName, '__restful')) {
             switch (true) {
                 case \is_array($controller):
                     $controller[1] = $this->getResourceMethod($request, $controller[1]);
@@ -84,7 +85,7 @@ trait ResolveTrait
                 case \is_string($controller) && \class_exists($controller):
                     $controller = [
                         $controller,
-                        $this->getResourceMethod($request, \substr($route->getName(), -0, -9)),
+                        $this->getResourceMethod($request, \substr($routeName, -0, -9)),
                     ];
 
                     break;
@@ -95,13 +96,13 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param Route $route
      *
      * @throws NotCallableException
      *
      * @return RequestHandlerInterface
      */
-    protected function resolveHandler(RouteInterface $route): RequestHandlerInterface
+    protected function resolveHandler(Route $route): RequestHandlerInterface
     {
         $handler = $route->getController();
 
@@ -117,14 +118,18 @@ trait ResolveTrait
                         $handler = [$handler, 'handle'];
                     }
 
-                    $route->setController($resolver->getCallableResolver()->resolve($handler));
-                    $route->setArguments([\get_class($request) => $request, \get_class($response) => $response]);
+                    $route->run($resolver->getCallableResolver()->resolve($handler));
 
                     foreach ($this->listeners as $listener) {
                         $listener->onRoute($request, $route);
                     }
 
-                    return $resolver->call($route->getController(), $route->getArguments());
+                    $requestResponse = [\get_class($request) => $request, \get_class($response) => $response];
+
+                    return $resolver->call(
+                        $route->getController(),
+                        \array_merge($requestResponse, $route->getDefaults()['_arguments'] ?? [])
+                    );
                 },
                 $this->responseFactory
             );
@@ -135,13 +140,13 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface               $route
+     * @param Route                        $route
      * @param array<string,string>         $parameters
      * @param array<int|string,int|string> $queryParams
      *
      * @return string
      */
-    protected function resolveUri(RouteInterface $route, array $parameters, array $queryParams): string
+    protected function resolveUri(Route $route, array $parameters, array $queryParams): string
     {
         $prefix  = '.'; // Append missing "." at the beginning of the $uri.
 
@@ -163,11 +168,11 @@ trait ResolveTrait
     }
 
     /**
-     * @param RouteInterface $route
+     * @param Route $route
      *
      * @return array<int,mixed>
      */
-    protected function resolveMiddlewares(RouteInterface $route): array
+    protected function resolveMiddlewares(Route $route): array
     {
         $middlewares = [];
 
