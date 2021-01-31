@@ -40,6 +40,10 @@ namespace Flight\Routing;
  * @method array getArguments() Gets the arguments passed to route handler as parameters.
  * @method array getAll() Gets all the routes properties.
  *
+ * @method Route asserts(array $patterns) Add an array of route named patterns.
+ * @method Route defaults(array $values) Add an array of default values.
+ * @method Route arguments(array $properties) Add an array of handler's arguments.
+ *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class Route
@@ -117,10 +121,17 @@ class Route
      */
     public function __call($method, $arguments)
     {
+        if (\in_array($method, ['arguments', 'defaults', 'asserts'], true)) {
+            foreach (\current($arguments) as $variable => $value) {
+                $this->{\rtrim($method, 's')}($variable, $value);
+
+                return $this;
+            }
+        }
         $routeMethod = \strtolower((string) \preg_replace('~^get([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
 
-        if ('all' === $routeMethod || 'arguments' === $routeMethod) {
-            return \call_user_func([$this, 'get'], $routeMethod);
+        if (\in_array($routeMethod, ['all', 'arguments'], true)) {
+            return $this->get($routeMethod);
         }
 
         if (!\property_exists(__CLASS__, $routeMethod)) {
@@ -135,7 +146,7 @@ class Route
             );
         }
 
-        return \call_user_func([$this, 'get'], $routeMethod);
+        return $this->get($routeMethod);
     }
 
     /**
