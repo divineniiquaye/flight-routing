@@ -50,17 +50,25 @@ use Flight\Routing\Exceptions\InvalidControllerException;
  * @method RouteCollection withDomain(string ...$hosts)
  * @method RouteCollection withPrefix(string $path)
  *
+ * @method RouteCollection withDefaults(array $values)
+ * @method RouteCollection withAsserts(array $patterns)
+ * @method RouteCollection withArguments(array $patterns)
+ * @method Route getRoute() Get the default route.
+ *
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Tobias Schultze <http://tobion.de>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection extends \ArrayIterator
+final class RouteCollection implements \IteratorAggregate, \Countable
 {
     /** @var null|string */
     private $namePrefix;
 
     /** @var Route */
     private $defaultRoute;
+
+    /** @var Route[] */
+    private $routes = [];
 
     /**
      * @param null|Route $defaultRoute
@@ -69,7 +77,6 @@ final class RouteCollection extends \ArrayIterator
     public function __construct(?Route $defaultRoute = null, $defaultHandler = null)
     {
         $this->defaultRoute = $defaultRoute ?? new Route('/', '', $defaultHandler);
-        parent::__construct();
     }
 
     /**
@@ -80,6 +87,10 @@ final class RouteCollection extends \ArrayIterator
      */
     public function __call($method, $arguments)
     {
+        if ('getRoute' === $method) {
+            return $this->defaultRoute;
+        }
+
         $routeMethod = \strtolower((string) \preg_replace('~^with([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
 
         if (!\method_exists($this->defaultRoute, $routeMethod)) {
@@ -94,7 +105,7 @@ final class RouteCollection extends \ArrayIterator
 
         \call_user_func_array([$this->defaultRoute, $routeMethod], $arguments);
 
-        foreach ($this as $route) {
+        foreach ($this->routes as $route) {
             \call_user_func_array([$route, $routeMethod], $arguments);
         }
 
@@ -102,7 +113,30 @@ final class RouteCollection extends \ArrayIterator
     }
 
     /**
-     * Gets the current RouteCollection as an array that includes all routes.
+     * Gets the number of Routes in this collection.
+     *
+     * @return int The number of routes
+     */
+    public function count()
+    {
+        return \count($this->getRoutes());
+    }
+
+    /**
+     * Gets the current RouteCollection as an iterable of routes.
+     *
+     * This method can be used to fetch routes too, but if group() method
+     * is used, use getRoutes() method instead.
+     *
+     * @return \ArrayIterator<Route> The unfiltered routes
+     */
+    public function getIterator()
+    {
+        return new \ArrayIterator($this->routes);
+    }
+
+    /**
+     * Gets the filtered RouteCollection as an array that includes all routes.
      *
      * Use this method to fetch routes instead of getIterator().
      *
@@ -114,7 +148,11 @@ final class RouteCollection extends \ArrayIterator
     }
 
     /**
-     * Add route(s) to the collection
+     * Add route(s) to the collection.
+     *
+     * This method unsets all setting from default route and use new settings
+     * from new the route(s). If you want the default settings to be merged
+     * into routes, use `addRoute` method instead.
      *
      * @param Route ...$routes
      *
@@ -129,7 +167,7 @@ final class RouteCollection extends \ArrayIterator
                 $route->run($default->getController());
             }
 
-            $this[]  = $default::__set_state($route->getAll());
+            $this->routes[]  = $default::__set_state($route->getAll());
         }
 
         return $this;
@@ -153,7 +191,7 @@ final class RouteCollection extends \ArrayIterator
 
         $route->path($pattern)->method(...$methods);
 
-        $this[] = $route;
+        $this->routes[] = $route;
         $route->run($controller);
 
         return $route;
@@ -170,8 +208,7 @@ final class RouteCollection extends \ArrayIterator
     public function group(string $name, $controllers): self
     {
         if (\is_callable($controllers)) {
-            $collection = new static();
-            \call_user_func($controllers, $collection);
+            $controllers($collection = new static());
             $controllers = clone $collection;
         } elseif (!$controllers instanceof self) {
             throw new \LogicException('The "mount" method takes either a "RouteCollection" instance or callable.');
@@ -179,7 +216,7 @@ final class RouteCollection extends \ArrayIterator
 
         $controllers->namePrefix = $name;
 
-        $this[] = $controllers;
+        $this->routes[] = $controllers;
 
         return $controllers;
     }
@@ -321,7 +358,7 @@ final class RouteCollection extends \ArrayIterator
      */
     public function find(string $name): ?Route
     {
-        foreach ($this as $route) {
+        foreach ($this->routes as $route) {
             if ($name === $route->getName()) {
                 return $route;
             }
@@ -339,7 +376,7 @@ final class RouteCollection extends \ArrayIterator
     private function doMerge(string $prefix, self $routes): array
     {
         /** @var Route|RouteCollection $route */
-        foreach ($this as $route) {
+        foreach ($this->routes as $route) {
             if ($route instanceof Route) {
                 if (null === $name = $route->getName()) {
                     $name = $base = $route->generateRouteName('');
@@ -350,12 +387,13 @@ final class RouteCollection extends \ArrayIterator
                     }
                 }
 
-                $routes[] = $route->bind($prefix . $name);
+                $routes->add($route->bind($prefix . $name));
             } else {
                 $route->doMerge($prefix . $route->namePrefix, $routes);
             }
         }
+        $this->routes = [];
 
-        return $routes->getArrayCopy();
+        return $routes->routes;
     }
 }
