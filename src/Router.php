@@ -19,18 +19,20 @@ namespace Flight\Routing;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
 use DivineNii\Invoker\Invoker;
-use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
+use Flight\Routing\Interfaces\RouterInterface;
+use Laminas\Stratigility\MiddlewarePipe;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\UriInterface;
+use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
@@ -42,46 +44,69 @@ use Psr\Http\Server\RequestHandlerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router implements RequestHandlerInterface, RequestMethodInterface
+class Router implements RouterInterface, RequestHandlerInterface
 {
     use Traits\RouterTrait;
 
-    /**
-     * Standard HTTP methods for browser requests.
-     */
-    public const HTTP_METHODS_STANDARD = [
-        self::METHOD_HEAD,
-        self::METHOD_GET,
-        self::METHOD_POST,
-        self::METHOD_PUT,
-        self::METHOD_PATCH,
-        self::METHOD_DELETE,
-        self::METHOD_PURGE,
-        self::METHOD_OPTIONS,
-        self::METHOD_TRACE,
-        self::METHOD_CONNECT,
-    ];
-
-    public const TYPE_REQUIREMENT = 1;
-
-    public const TYPE_DEFAULT = 0;
-
-    public const TYPE_CACHE = 2;
-
-    private const TYPE_MATCHER = 3;
+    /** @var MiddlewarePipeInterface */
+    private $pipeline;
 
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         UriFactoryInterface $uriFactory,
-        ?string $matcher = null,
-        ?InvokerInterface $resolver = null
+        ?InvokerInterface $resolver = null,
+        array $options = []
     ) {
         $this->uriFactory      = $uriFactory;
         $this->responseFactory = $responseFactory;
-        $this->resolver        = $resolver ?? new Invoker();
+        $this->resolver        = new RouteResolver($resolver ?? new Invoker());
 
-        $this->routes  = new RouteCollection();
-        $this->attributes[self::TYPE_MATCHER] = $matcher ?? Matchers\SimpleRouteMatcher::class;
+        $this->setOptions($options);
+        $this->debug  = new DebugRoute();
+        $this->routes = new RouteCollection();
+
+        $this->pipeline = new MiddlewarePipe();
+    }
+
+    /**
+     * Sets options.
+     *
+     * Available options:
+     *
+     *   * cache_dir:              The cache directory (or null to disable caching)
+     *   * debug:                  Whether to enable debugging or not (false by default)
+     *   * namespace:              Set Namespace for route handlers/controllers
+     *   * matcher_class:          The name of a RouteMatcherInterface implementation
+     *   * matcher_dumper_class:   The name of a MatcherDumperInterface implementation
+     *
+     * @throws InvalidArgumentException When unsupported option is provided
+     */
+    public function setOptions(array $options): void
+    {
+        $this->options = [
+            'cache_dir'            => null,
+            'debug'                => false,
+            'namespace'            => null,
+            'matcher_class'        => Matchers\SimpleRouteMatcher::class,
+            'matcher_dumper_class' => CompiledUrlMatcherDumper::class,
+        ];
+
+        // check option names and live merge, if errors are encountered Exception will be thrown
+        $invalid = [];
+
+        foreach ($options as $key => $value) {
+            if (\array_key_exists($key, $this->options)) {
+                $this->options[$key] = $value;
+            } else {
+                $invalid[] = $key;
+            }
+        }
+
+        if (!empty($invalid)) {
+            throw new \InvalidArgumentException(
+                \sprintf('The Router does not support the following options: "%s".', \implode('", "', $invalid))
+            );
+        }
     }
 
     /**
@@ -104,18 +129,26 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
                 );
             }
 
-            $this->routes->add($this->mergeAttributes($route));
-
-            if (null !== $this->debug) {
-                $this->debug->addProfile(new DebugRoute($name, $route));
-            }
+            $this->routes->add($route);
         }
     }
 
     /**
-     * Gets the router routes
+     * Attach middleware to the pipeline.
      *
-     * @return RouteCollection
+     * @param array<string,mixed>|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
+     */
+    public function pipe($middleware): void
+    {
+        if (!$middleware instanceof MiddlewareInterface) {
+            $middleware = $this->resolveMiddleware($middleware);
+        }
+
+        $this->pipeline->pipe($middleware);
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function getCollection(): RouteCollection
     {
@@ -123,41 +156,15 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
     }
 
     /**
-     * Generate a URI from the named route.
-     *
-     * Takes the named route and any parameters, and attempts to generate a
-     * URI from it. Additional router-dependent query may be passed.
-     *
-     * Once there are no missing parameters in the URI we will encode
-     * the URI and prepare it for returning to the user. If the URI is supposed to
-     * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
-     *
-     * @param string                       $routeName   route name
-     * @param array<string,string>         $parameters  key => value option pairs to pass to the
-     *                                                  router for purposes of generating a URI; takes precedence over options
-     *                                                  present in route used to generate URI
-     * @param array<int|string,int|string> $queryParams Optional query string parameters
-     *
-     * @throws UrlGenerationException if the route name is not known
-     *                                or a parameter value does not match its regex
+     * {@inheritdoc}
      *
      * @return UriInterface of fully qualified URL for named route
      */
     public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): UriInterface
     {
-        try {
-            $route = $this->getRoute($routeName);
-        } catch (RouteNotFoundException $e) {
-            throw new UrlGenerationException(
-                \sprintf(
-                    'Unable to generate a URL for the named route "%s" as such route does not exist.',
-                    $routeName
-                ),
-                404
-            );
-        }
+        $createUri = $this->getMatcher()->generateUri($routeName, $parameters, $queryParams);
 
-        return $this->uriFactory->createUri($this->resolveUri($route, $parameters, $queryParams));
+        return $this->uriFactory->createUri($createUri);
     }
 
     /**
@@ -187,7 +194,7 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
 
         $this->mergeDefaults($route);
 
-        if (null !== $this->debug && null !== $route->getName()) {
+        if (isset($this->options['debug']) && null !== $route->getName()) {
             $this->debug->setMatched(new DebugRoute($route->getName(), $route));
         }
 
@@ -199,34 +206,42 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        // Get the Route Handler ready for dispatching
-        if (!$this->route instanceof Route) {
-            $this->match($request);
+        $route   = $this->match($request);
+        $handler = $route->getController();
+
+        if (!$handler instanceof RequestHandlerInterface) {
+            $handler = new RouteHandler(
+                function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
+                    if (isset($this->options['namespace'])) {
+                        $this->resolver->setNamespace($this->options['namespace']);
+                    }
+
+                    return ($this->resolver)($request, $response, $route);
+                },
+                $this->responseFactory
+            );
         }
 
-        $middlewareDispatcher = new Middlewares\MiddlewareDispatcher($this->resolver->getContainer());
+        try {
+            $middleware = $this->resolveMiddlewares(new MiddlewarePipe(), $route);
 
-        return $middlewareDispatcher->dispatch(
-            $this->getMiddlewares(),
-            new Handlers\CallbackHandler(
-                function (ServerRequestInterface $request) use ($middlewareDispatcher): ResponseInterface {
-                    try {
-                        $route   = $request->getAttribute(Route::class, $this->route);
-                        $handler = $this->resolveHandler($route);
-                        $mididlewars = $this->resolveMiddlewares($route);
-
-                        return $middlewareDispatcher->dispatch($mididlewars, $handler, $request);
-                    } finally {
-                        if (null !== $this->debug) {
-                            foreach ($this->debug->getProfiles() as $profiler) {
-                                $profiler->leave();
-                            }
-                        }
+            return $this->pipeline->process(
+                $request->withAttribute(Route::class, $route),
+                new Handlers\CallbackHandler(
+                    static function (ServerRequestInterface $request) use ($middleware, $handler) {
+                        return $middleware->process($request, $handler);
                     }
+                )
+            );
+        } finally {
+            if (isset($this->options['debug'])) {
+                foreach ($this->debug->getProfiles() as $profiler) {
+                    $profiler->leave();
                 }
-            ),
-            $request->withAttribute(Route::class, $this->route)
-        );
+            } else {
+                $this->debug->leave();
+            }
+        }
     }
 
     /**
@@ -240,11 +255,11 @@ class Router implements RequestHandlerInterface, RequestMethodInterface
             return $this->matcher;
         }
 
-        $cacheFile = $this->attributes[self::TYPE_CACHE] ?? '';
-        $matcher = $this->attributes[self::TYPE_MATCHER];
+        $cacheFile = $this->options['cache_dir'] ?? '';
+        $matcher   = $this->options['matcher_class'];
 
-        if (null === $this->debug && (!empty($cacheFile) && \is_string($cacheFile))) {
-            if (!file_exists($cacheFile)) {
+        if (!isset($this->options['debug']) && (!empty($cacheFile) && \is_string($cacheFile))) {
+            if (!\file_exists($cacheFile)) {
                 $this->generateCompiledRoutes($cacheFile, $matcher = new $matcher($this->getCollection()));
 
                 return $this->matcher = $matcher;

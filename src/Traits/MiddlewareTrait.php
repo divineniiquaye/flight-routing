@@ -17,7 +17,12 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\Exceptions\DuplicateRouteException;
+use Flight\Routing\Exceptions\InvalidMiddlewareException;
+use Flight\Routing\Route;
+use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
+use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
+use Laminas\Stratigility\MiddlewarePipeInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -26,13 +31,6 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 trait MiddlewareTrait
 {
-    /**
-     * Set of middleware to be applied for every request.
-     *
-     * @var array<string,mixed>
-     */
-    protected $middlewares = [];
-
     /**
      * Set of route middleware to be used in $middlewares
      * Stack, if string name is equal to a given middleware.
@@ -48,8 +46,6 @@ trait MiddlewareTrait
      * $this->addMiddleware(new ProxyMiddleware());
      *
      * @param array<string,mixed>|callable|MiddlewareInterface|RequestHandlerInterface|string ...$middlewares
-     *
-     * @throws DuplicateRouteException
      */
     public function addMiddleware(...$middlewares): void
     {
@@ -60,24 +56,8 @@ trait MiddlewareTrait
                 continue;
             }
 
-            $hash = $this->getMiddlewareHash($middleware);
-
-            if (isset($this->middlewares[$hash])) {
-                throw new DuplicateRouteException(\sprintf('A middleware with the hash "%s" already exists.', $hash));
-            }
-
-            $this->middlewares[$hash] = $middleware;
+            $this->pipe($middleware);
         }
-    }
-
-    /**
-     * Gets the middlewares from stack
-     *
-     * @return array<int,MiddlewareInterface|string>
-     */
-    public function getMiddlewares(): array
-    {
-        return \array_values($this->middlewares);
     }
 
     /**
@@ -97,20 +77,60 @@ trait MiddlewareTrait
     }
 
     /**
+     * Add a new middleware to the stack.
+     *
+     * Middleware are organized as a stack. That means middleware
+     * that have been added before will be executed after the newly
+     * added one (last in, first out).
+     *
      * @param mixed $middleware
      *
-     * @return string
+     * @throws InvalidMiddlewareException if argument is not one of
+     *                                    the specified types
+     *
+     * @return MiddlewareInterface
      */
-    private function getMiddlewareHash($middleware): string
+    private function resolveMiddleware($middleware): MiddlewareInterface
     {
-        if ($middleware instanceof \Closure || \is_object($middleware)) {
-            return \spl_object_hash($middleware);
+        if (\is_string($middleware) && null !== $container = $this->resolver->getContainer()) {
+            try {
+                $middleware = $container->get($middleware);
+            } catch (NotFoundExceptionInterface $e) {
+                // ... handled at the end
+            }
         }
 
-        if (\is_array($middleware) && \count($middleware) === 2) {
-            return $middleware[1];
+        if (\is_string($middleware) && \class_exists($middleware)) {
+            $middleware = new $middleware();
         }
 
-        return \md5($middleware);
+        if ($middleware instanceof RequestHandlerInterface) {
+            return new RequestHandlerMiddleware($middleware);
+        }
+
+        if (\is_callable($middleware)) {
+            return new CallableMiddlewareDecorator($middleware);
+        }
+
+        if (!$middleware instanceof MiddlewareInterface) {
+            throw InvalidMiddlewareException::forMiddleware($middleware);
+        }
+
+        return $middleware;
+    }
+
+    private function resolveMiddlewares(MiddlewarePipeInterface $pipeline, Route $route): MiddlewarePipeInterface
+    {
+        foreach ($route->getMiddlewares() as $middleware) {
+            if (\is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
+                $pipeline->pipe($this->resolveMiddleware($this->nameMiddlewares[$middleware]));
+
+                continue;
+            }
+
+            $pipeline->pipe($this->resolveMiddleware($middleware));
+        }
+
+        return $pipeline;
     }
 }
