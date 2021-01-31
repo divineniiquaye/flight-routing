@@ -20,17 +20,16 @@ namespace Flight\Routing\Traits;
 use Biurad\Annotations\LoaderInterface;
 use Flight\Routing\DebugRoute;
 use Flight\Routing\Exceptions\RouteNotFoundException;
-use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
-use Flight\Routing\Router;
+use Flight\Routing\RouteResolver;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 
 trait RouterTrait
 {
-    use ResolveTrait;
+    use MiddlewareTrait;
     use DumperTrait;
 
     /** @var null|object|RouteMatcherInterface */
@@ -48,29 +47,14 @@ trait RouterTrait
     /** @var RouteCollection */
     private $routes;
 
-    /** @var RouteListenerInterface[] */
-    private $listeners = [];
+    /** @var null|Route */
+    private $route;
 
-    /** @var array<int,mixed> */
-    private $attributes = [];
+    /** @var RouteResolver */
+    private $resolver;
 
-    /**
-     * Gets allowed methods
-     *
-     * @return string[]
-     */
-    public function getAllowedMethods(): array
-    {
-        $methods = [];
-
-        foreach ($this->getCollection()->getRoutes() as $route) {
-            foreach ($route->getMethods() as $method => $has) {
-                $methods[$method] = $has;
-            }
-        }
-
-        return \array_keys($methods);
-    }
+    /** @var array<string,mixed> */
+    private $options = [];
 
     /**
      * Gets a route for the given name
@@ -96,60 +80,17 @@ trait RouterTrait
     /**
      * Get the profiled routes
      *
-     * @return null|DebugRoute
+     * @return DebugRoute
      */
-    public function getProfile(): ?DebugRoute
+    public function getProfile(): DebugRoute
     {
+        if (isset($this->options['debug'])) {
+            foreach ($this->getCollection()->getRoutes() as $route) {
+                $this->debug->addProfile(new DebugRoute($route->getName(), $route));
+            }
+        }
+
         return $this->debug;
-    }
-
-    /**
-     * Set profiling for routes
-     */
-    public function setProfile(): void
-    {
-        $this->debug = new DebugRoute();
-    }
-
-    /**
-     * Set Namespace for route handlers/controllers
-     *
-     * @param string $namespace
-     */
-    public function setNamespace(string $namespace): void
-    {
-        $this->namespace = \rtrim($namespace, '\\/') . '\\';
-    }
-
-    /**
-     * Adds parameters.
-     *
-     * This method implements a fluent interface.
-     *
-     * @param array<string,mixed> $parameters The parameters
-     * @param int                 $type
-     */
-    public function addParameters(array $parameters, int $type = Router::TYPE_REQUIREMENT): void
-    {
-        if (Router::TYPE_DEFAULT === $type) {
-            $this->attributes[Router::TYPE_DEFAULT] = $parameters;
-        } elseif (Router::TYPE_CACHE === $type) {
-            $this->attributes[Router::TYPE_CACHE] = \current($parameters);
-        } elseif (Router::TYPE_REQUIREMENT === $type) {
-            $this->attributes[Router::TYPE_REQUIREMENT] = $parameters;
-        }
-    }
-
-    /**
-     * Adds the given route(s) listener to the router
-     *
-     * @param RouteListenerInterface ...$listeners
-     */
-    public function addRouteListener(RouteListenerInterface ...$listeners): void
-    {
-        foreach ($listeners as $listener) {
-            $this->listeners[] = $listener;
-        }
     }
 
     /**
@@ -174,12 +115,8 @@ trait RouterTrait
     private function mergeDefaults(Route $route): void
     {
         $defaults = $route->getDefaults();
-        $param    = $defaults['_arguments'] ?? [];
-        $excludes = [
-            '_arguments' => true,
-            '_compiler' => true,
-            '_domain' => true,
-        ];
+        $param    = $route->getArguments();
+        $excludes = ['_arguments' => true, '_compiler' => true, '_domain' => true];
 
         foreach ($defaults as $key => $value) {
             if (isset($excludes[$key])) {
@@ -190,29 +127,5 @@ trait RouterTrait
                 $route->argument($key, $value);
             }
         }
-    }
-
-    /**
-     * Merge Router attributes in route default and patterns.
-     *
-     * @param Route $route
-     *
-     * @return Route
-     */
-    private function mergeAttributes(Route $route): Route
-    {
-        foreach ($this->attributes as $type => $attributes) {
-            if (Router::TYPE_DEFAULT === $type) {
-                foreach ($attributes as $variable => $default) {
-                    $route->default($variable, $default);
-                }
-            } elseif (Router::TYPE_REQUIREMENT === $type) {
-                foreach ($attributes as $variable => $regexp) {
-                    $route->assert($variable, $regexp);
-                }
-            }
-        }
-
-        return $route;
     }
 }
