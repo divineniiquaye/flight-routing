@@ -120,7 +120,7 @@ final class RouteHandler implements RequestHandlerInterface
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
-        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', $contents)) {
+        if (0 === \preg_match('/^\<html\>.*\<\/html\>$/i', $contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
         }
 
