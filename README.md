@@ -229,7 +229,7 @@ Incase you do not want to use the `Flight\Routing\Router` class, Flight Routing 
 
 ```php
 use Flight\Routing\{Route, Router, RouteCollection};
-use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Flight\Routing\Matchers\{SimpleRouteMatcher, SimpleRouteDumper};
 use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
 
 $route = new Route('/blog/{slug}', 'GET', BlogController::class);
@@ -237,15 +237,19 @@ $route = new Route('/blog/{slug}', 'GET', BlogController::class);
 $routes = new RouteCollection();
 $routes->add($route->bind('blog_show'));
 
+
+$matcher = new SimpleRouteMatcher($routes); // A simple matcher for matching routes
+// or
+// $matcher = new SimpleRouteDumper($routes); A symfony's style of dumping and matching routes.
+
 // Routing can match routes with incoming requests
-$matcher = new SimpleRouteMatcher($routes);
-$parameters = $matcher->match(new ServerRequest(Router::METHOD_GET, '/blog/lorem-ipsum'));
+$matchedRoute = $matcher->match(new ServerRequest(Router::METHOD_GET, '/blog/lorem-ipsum'));
 
 // Will match and return a $route with new aeguments accesed from $route->getArguments() method.
 // [ 'slug' => 'lorem-ipsum']
 
 // Routing can also generate URLs for a given route
-$url = $matcher->buildPath($route, [
+$url = $matcher->generateUri('blog_show', [
     'slug' => 'my-blog-post',
 ]);
 // $url = '/blog/my-blog-post'
