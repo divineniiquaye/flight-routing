@@ -15,12 +15,22 @@ parameters:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.$#"
         - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
         - "#^Call to function is_callable\\(\\)|is_string\\(\\)|is_object\\(\\) with (string|object) will always evaluate to false.$#"
+        - "#^Parameter \\#1 \\$name of class Flight\\\\Routing\\\\DebugRoute constructor expects string, string\\|null given.$#"
         -
-            message: "#^Result of && is always false.|Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(mixed|Flight\\\\Routing\\\\Route, string\\) given.$#"
+            message: "#^Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(mixed|Flight\\\\Routing\\\\Route, string\\) given.$#"
+            path: src/RouteCollection.php
+        -
+            message: "#^Array \\(array<Flight\\\\Routing\\\\Route>\\) does not accept Flight\\\\Routing\\\\RouteCollection.|Result of && is always false.$#"
             path: src/RouteCollection.php
         -
             message: "#^Variable property access on Flight\\\\Routing\\\\Route|\\$this\\(Flight\\\\Routing\\\\Route\\).$#"
             path: src/Route.php
         -
-            message: "#^Method Flight\\\\Routing\\\\Router\\:\\:getMatcher\\(\\) should return Flight\\\\Routing\\\\Interfaces\\\\RouteMatcherInterface but returns object.$#"
+            message: "#^Cannot call method setMatched\\(\\)|getProfiles|\\(\\)|getController\\(\\) on Flight\\\\Routing\\\\(?:Debug)Route\\|null.|Only booleans are allowed in (a negated boolean|\\|\\|), mixed given(?: on the left side)?.$#"
             path: src/Router.php
+        -
+            message: "#^Variable (\\$i|\\$n|\\$j) might not be defined.|Only booleans are allowed in (a negated boolean|&&), int\\|false given(?: on the right side)?.$#"
+            path: src/Matchers/ExpressionCollection.php
+        -
+            message: "#^Parameter \\#1 \\$collection of method Flight\\\\Routing\\\\Matchers\\\\SimpleRouteMatcher\\:\\:__construct\\(\\) expects Flight\\\\Routing\\\\RouteCollection&iterable<Flight\\\\Routing\\\\Route>, Flight\\\\Routing\\\\RouteCollection\\|string given.|Array \\(array<string>\\) does not accept string\\|null.$#"
+            path: src/Matchers/SimpleRouteDumper.php
