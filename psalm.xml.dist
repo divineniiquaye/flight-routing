@@ -61,14 +61,29 @@
         <PossiblyNullArgument>
             <errorLevel type="suppress">
                 <referencedFunction name="Flight\Routing\DebugRoute::__construct"/>
+                <referencedFunction name="Flight\Routing\Router::resolveMiddlewares"/>
+                <referencedFunction name="Flight\Routing\RouteResolver::__invoke"/>
             </errorLevel>
         </PossiblyNullArgument>
+
+        <PossiblyInvalidArgument>
+            <errorLevel type="suppress">
+                <referencedFunction name="Flight\Routing\Matchers\SimpleRouteMatcher::__construct"/>
+            </errorLevel>
+        </PossiblyInvalidArgument>
 
         <ArgumentTypeCoercion>
             <errorLevel type="suppress">
                 <referencedFunction name="Flight\Routing\Router::generateCompiledRoutes"/>
             </errorLevel>
         </ArgumentTypeCoercion>
+
+        <PossiblyNullReference>
+            <errorLevel type="suppress">
+                <file name="src/Router.php"/>
+                <file name="src/Traits/RouterTrait.php"/>
+            </errorLevel>
+        </PossiblyNullReference>
 
         <MoreSpecificReturnType>
             <errorLevel type="suppress">
@@ -85,23 +100,28 @@
         <PossiblyNullArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Traits/CastingTrait.php"/>
+                <file name="src/Matchers/SimpleRouteDumper.php" />
             </errorLevel>
         </PossiblyNullArrayOffset>
 
         <InvalidPropertyAssignmentValue>
             <errorLevel type="suppress">
                 <file name="src/Traits/CastingTrait.php"/>
+                <file name="src/RouteCollection.php"/>
+                <file name="src/Matchers/SimpleRouteDumper.php"/>
             </errorLevel>
         </InvalidPropertyAssignmentValue>
 
         <PossiblyUndefinedStringArrayOffset>
             <errorLevel type="suppress">
                 <file name="src/Route.php"/>
+                <file name="src/Router.php"/>
                 <file name="src/Annotation/Route.php"/>
                 <file name="src/Traits/CastingTrait.php"/>
                 <file name="src/Traits/DumperTrait.php"/>
                 <file name="src/Matchers/SimpleRouteCompiler.php"/>
                 <file name="src/Matchers/SimpleRouteMatcher.php"/>
+                <file name="src/Matchers/SimpleRouteDumper.php"/>
             </errorLevel>
         </PossiblyUndefinedStringArrayOffset>
     </issueHandlers>
