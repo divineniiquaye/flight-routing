@@ -144,7 +144,10 @@ $router = new Router($psr17Factory, $psr17Factory);
  * The default namespace for route-callbacks, so we don't have to specify it each time.
  * Can be overwritten by using the namespace config option on your routes.
  */
-$router->setNamespace('Demo\\Controllers\\');
+$router->setOptions(['namespace' => 'Demo\\Controllers\\']);
+
+// Incase you working with API and need a response served on HTTP OPTIONS request method.
+$router->setOptions(['options_skip' => true]);
 
 // All router configurations should be set before adding routes
 $router->addRoute(...$collector->getRoutes());
@@ -750,7 +753,7 @@ $collector->group(function (RouteCollection $route) {
 
 ---
 
-All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `__restful` prefix to a route name or use `Flight\Routing\RouteCollection::resource` method to automatically prefix all the methods in `Flight\Routing\Router::HTTP_METHODS_STANDARD` with HTTP verb.
+All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `api://` scheme to a route path, or use `Flight\Routing\RouteCollection::resource` method to automatically prefix all the methods in `Flight\Routing\Router::HTTP_METHODS_STANDARD` with HTTP verb. you can also set `_api` to for prefixed methods, using Route's default method.
 
 For example, we can use the following controller:
 
@@ -781,11 +784,9 @@ Add route using `Flight\Routing\Router::addRoute`:
 ```php
 use Demo\UserController;
 
-$router->addRoute(new Route(
-    'user__restful',
-    '/user/{id:\d+}',
-    [UserController::class, 'user']
-));
+$router->addRoute(new Route('api://user/user/{id:\d+}', 'GET|POST', UserController::class));
+
+// The api:// means, the route is restful, the first "user" is to be prefixed on class object method. Eg: getUser() and the last part means its gonna be served on uri: /user/23
 ```
 
 Add route using `Flight\Routing\RouteCollection::resource`:
@@ -807,50 +808,76 @@ If these offered route pattern do not fit your needs, you may create your own ro
 
 ```php
 use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\Interfaces\RouteCollection;
+use Flight\Routing\RouteCollection;
+use Flight\Routing\Traits\ValidationTrait;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class MyRouteMatcher implements RouteMatcherInterface
 {
+    use ValidationTrait;
+
+    /** @var Route[] */
+    private $routes;
+
     /**
-     * @param RouteCollection|string $collection
+     * @param RouteCollection|Route[] $collection
      */
     public function __construct($collection)
     {
         if ($collection instanceof RouteCollection) {
             // compile routes from $collection->getRoutes() for matching against request
-            return;
+            $collection = $collection->getRoutes();
         }
 
-        // require the $collection if its a string
+        $this->routes = $collection;
+        // You can add your compiler instance here, if any.
     }
 
     /**
      * {@inheritdoc}
      */
-    public function match(ServerRequestInterface $request): ?RouteInterface
+    public function match(ServerRequestInterface $request): ?Route
     {
-        // ... compile the routes from $routes collection and match using $request
+        $requestUri    = $request->getUri();
+        $requestMethod = $request->getMethod();
+        $requestPath   = \rawurldecode($this->resolvePath($request));
+
+        foreach ($this->routes as $route) {
+            // ... compile the route and match using $requestUri, $requestMethod and $requestPath.
+        }
+
+        // Return null if route wasn't matched.
+        return null;
     }
 
 	/**
      * {@inheritdoc}
      */
-    public function buildPath(RouteInterface $route, array $substitutions): string
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = [])
     {
-        // ... generate a named route path using $substitutions
-    }
+        static $uriRoute;
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getCompiledRoutes()
-    {
-        // ... return the compiles routes to be cached, or false.
+        // If this route matcher support caching, then name can be found as key in $this->routes.
+        // else you can remove it and only work with code inside the `else` statement.
+        if (isset($this->routes[$routeName])) {
+            $uriRoute = $this->routes[$routeName];
+        } else {
+            foreach ($this->routes as $route) {
+                if ($routeName === $route->getName()) {
+                    $uriRoute = $route;
+
+                    break;
+                }
+            }
+        }
+
+        // ... generate a named route path using $parameters and $queryParams from $uriRoute
     }
 }
 ```
+
+If your custom route matcher support caching you can create a new class implementing [MatchDumperInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/MatchDumperInterface.php), then extend it to your newly created route matcher.
 
 ## 📓 Documentation
 
