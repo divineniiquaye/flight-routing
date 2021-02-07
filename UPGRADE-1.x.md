@@ -7,7 +7,7 @@
 -   `Flight\Routing\Route` class can be constructed with only four arguments, which are all mandatory
 -   Added a compulsory **name** string argument as first parameter of `Flight\Routing\Route` constructor
 -   Changed `Flight\Routing\Interfaces\RouterInterface` to `Flight\Routing\Interfaces\RouteMatcherInterface` for performance
--   Removed `Flight\Routing\RouteResults` class, use `Flight\Routing\RouteHandler` class instead
+-   Removed `Flight\Routing\RouteResults` class, use `Flight\Routing\Handlers\RouteHandler` class instead
 -   Changed how routes are handled and dispatched
 
     _Before_
@@ -75,7 +75,7 @@
 
 ---
 
-- Removed `Flight\Routing\RouteCollector` class (BR Changes)
+- Renamed `Flight\Routing\RouteCollector` to `Flight\Routing\RouteCollection` class (BR Changes)
 - Removed `Flight\Routing\RouteFactory` class (BR Changes)
 - Changed how routes are handled and dispatched
 
@@ -101,12 +101,12 @@
     _After_
 
     ```php
-    use Flight\Routing\{RouteList, Route, Router};
+    use Flight\Routing\{RouteCollection, Route, Router};
     use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
     use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-    $collector = new RouteList();
-    $collector->add(Route::get('phpinfo', '/phpinfo', 'phpinfo')); // Will create a phpinfo route.
+    $collector = new RouteCollection();
+    $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
     $factory = new Psr17Factory();
     $router = new Router($factory, $factory);
@@ -137,14 +137,18 @@
     _After_
 
     ```php
-    $collector = new RouteList();
+    $collection = new RouteCollection();
 
-    $collector->group(
-        function (RouteListInterface $group) {
-            // Define your routes using $route...
-        }
-    );
+    // callable grouping
+    $group1 = function (RouteCollection $group) {
+        // Define your routes using $group...
+    };
 
-    $collector->addForeach(...);
+    // or collection grouping
+    $group2 = new RouteCollection();
+    $group2->addRoute('/phpinfo', 'GET|HEAD', 'phpinfo');
+
+    $collection->group('group_name', $group1);
+    $collection->group('group_name', $group2);
     ```
 
