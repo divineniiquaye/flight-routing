@@ -52,7 +52,8 @@
     },
     "suggest": {
         "biurad/annotations": "For annotation routing on classes and methods using Annotation/Listener class",
-        "biurad/http-galaxy": "For handling router, an alternative is nyholm/psr7, slim/psr7 or laminas/laminas-diactoros"
+        "biurad/http-galaxy": "For handling router, an alternative is nyholm/psr7, slim/psr7 or laminas/laminas-diactoros",
+        "laminas/laminas-httphandlerrunner": "For emitting response headers and body contents to browser"
     },
     "autoload": {
         "psr-4": {
