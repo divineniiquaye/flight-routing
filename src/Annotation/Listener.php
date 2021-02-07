@@ -28,9 +28,6 @@ class Listener implements ListenerInterface
     /** @var RouteCollection */
     private $collector;
 
-    /** @var int */
-    private $defaultRouteIndex = 0;
-
     /**
      * @param null|RouteCollection $collector
      */
@@ -46,15 +43,12 @@ class Listener implements ListenerInterface
      */
     public function onAnnotation(array $annotations): RouteCollection
     {
-        /** @var class-string $class */
         foreach ($annotations as $class => $collection) {
             if (isset($collection['method'])) {
                 $this->addRouteGroup($collection['class'] ?? [], $collection['method']);
 
                 continue;
             }
-
-            $this->defaultRouteIndex = 0;
 
             /** @var Route $annotation */
             foreach ($collection['class'] ?? [] as $annotation) {
@@ -84,35 +78,45 @@ class Listener implements ListenerInterface
     /**
      * Add a route from annotation
      *
-     * @param Route                 $annotation
-     * @param class-string|string[] $handler
-     * @param null|Route            $group
+     * @param Route           $annotation
+     * @param string|string[] $handler
+     * @param null|Route      $group
      *
      * @return BaseRoute
      */
     protected function addRoute(Route $annotation, $handler, ?Route $group = null): BaseRoute
     {
-        if (null === $annotation->getPath()) {
+        if (null === $path = $annotation->getPath()) {
             throw new InvalidAnnotationException('@Route.path must not be left empty.');
         }
 
-        $name = $annotation->getName() ?? $this->getDefaultRouteName($handler);
+        $route   = new BaseRoute($path, '', $handler);
+        $methods = $annotation->getMethods();
 
-        $methods = str_ends_with($name, '__restful') ? Router::HTTP_METHODS_STANDARD : $annotation->getMethods();
-        $route   = new BaseRoute($annotation->getPath(), \join('|', $methods), $handler);
+        if (null === $name = $annotation->getName()) {
+            $name = $base = $route->generateRouteName('annotated_');
+            $i    = 0;
 
-        $route->scheme(...$annotation->getSchemes())->middleware(...$annotation->getMiddlewares())->bind($name);
+            while ($this->collector->find($name)) {
+                $name = $base . '_' . ++$i;
+            }
+        }
+
+        if (str_starts_with($path, 'api://') && empty($methods)) {
+            $methods = Router::HTTP_METHODS_STANDARD;
+        }
+
+        if (!empty($methods)) {
+            $route->method(...$methods);
+        }
+
+        $route->bind($name)->scheme(...$annotation->getSchemes())
+            ->middleware(...$annotation->getMiddlewares())
+            ->defaults($annotation->getDefaults())
+        ->asserts($annotation->getPatterns());
 
         if (null !== $annotation->getDomain()) {
             $route->domain($annotation->getDomain());
-        }
-
-        foreach ($annotation->getDefaults() as $variable => $default) {
-            $route->default($variable, $default);
-        }
-
-        foreach ($annotation->getPatterns() as $variable => $regexp) {
-            $route->assert($variable, $regexp);
         }
 
         if (null !== $group) {
@@ -147,8 +151,6 @@ class Listener implements ListenerInterface
      */
     protected function mergeAnnotations(array $methods, ?Route $group = null): void
     {
-        $this->defaultRouteIndex = 0;
-
         $routes = [];
 
         foreach ($methods as [$method, $annotation]) {
@@ -170,44 +172,14 @@ class Listener implements ListenerInterface
             ->scheme(...$group->getSchemes())
             ->prefix($group->getPath() ?? '')
             ->method(...$group->getMethods())
-        ->middleware(...$group->getMiddlewares());
+            ->middleware(...$group->getMiddlewares())
+            ->defaults($group->getDefaults())
+        ->asserts($group->getPatterns());
 
         if (null !== $group->getDomain()) {
             $route->domain($group->getDomain());
         }
 
-        foreach ($group->getDefaults() as $variable => $default) {
-            $route->default($variable, $default);
-        }
-
-        foreach ($group->getPatterns() as $variable => $regexp) {
-            $route->assert($variable, $regexp);
-        }
-
         return $route;
-    }
-
-    /**
-     * Gets the default route name for a class method.
-     *
-     * @param class-string|mixed[] $handler
-     *
-     * @return string
-     */
-    private function getDefaultRouteName($handler): string
-    {
-        $classReflection = new \ReflectionClass(\is_array($handler) ? $handler[0] : $handler);
-        $name            = \str_replace('\\', '_', $classReflection->name);
-
-        if (\is_array($handler) || $classReflection->hasMethod('__invoke')) {
-            $name .= '_' . $handler[1] ?? '__invoke';
-        }
-
-        if ($this->defaultRouteIndex > 0) {
-            $name .= '_' . $this->defaultRouteIndex;
-        }
-        ++$this->defaultRouteIndex;
-
-        return \strtolower($name);
     }
 }

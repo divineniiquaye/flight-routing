@@ -64,8 +64,8 @@ class SimpleRouteCompiler implements \Serializable
         'alpha'   => '[A-Za-z]+',
         'alnum'   => '[A-Za-z0-9]+',
         'year'    => '[12][0-9]{3}',
-        'month'   => '0[1-9]|1[012]',
-        'day'     => '0[1-9]|[12][0-9]|3[01]',
+        'month'   => '0[1-9]|1[012]+',
+        'day'     => '0[1-9]|[12][0-9]|3[01]+',
         'uuid'    => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
     ];
 
@@ -130,10 +130,6 @@ class SimpleRouteCompiler implements \Serializable
 
     /**
      * Match the RouteInterface instance and compiles the current route instance.
-     *
-     * @param Route $route
-     *
-     * @return SimpleRouteCompiler
      */
     public function compile(Route $route): self
     {
@@ -167,9 +163,6 @@ class SimpleRouteCompiler implements \Serializable
 
     /**
      * The path template regex for matching.
-     *
-     *
-     * @return string The static regex
      */
     public function getPathTemplate(): string
     {
@@ -179,7 +172,6 @@ class SimpleRouteCompiler implements \Serializable
     /**
      * The hosts template regex for matching.
      *
-     *
      * @return string[] The static regexps
      */
     public function getHostTemplate(): array
@@ -188,9 +180,7 @@ class SimpleRouteCompiler implements \Serializable
     }
 
     /**
-     * Returns the regex.
-     *
-     * @return string The regex
+     * Returns the path regex.
      */
     public function getRegex(): string
     {
@@ -198,9 +188,9 @@ class SimpleRouteCompiler implements \Serializable
     }
 
     /**
-     * Returns the host regex.
+     * Returns the hosts regex.
      *
-     * @return array The hosts regex
+     * @return string[] The hosts regex
      */
     public function getHostsRegex(): array
     {
@@ -296,8 +286,6 @@ class SimpleRouteCompiler implements \Serializable
 
     /**
      * @param array<string,string|string[]> $requirements
-     * @param string                        $uriPattern
-     * @param bool                          $isHost
      *
      * @throws UriHandlerException if a variable name starts with a digit or
      *                             if it is too long to be successfully used as a PCRE subpattern or
@@ -305,7 +293,7 @@ class SimpleRouteCompiler implements \Serializable
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(array $requirements, string $uriPattern, $isHost = false): array
+    private function compilePattern(array $requirements, string $uriPattern, bool $isHost = false): array
     {
         if (\strlen($uriPattern) > 1) {
             $uriPattern = \trim($uriPattern, '/');
@@ -319,14 +307,14 @@ class SimpleRouteCompiler implements \Serializable
         // Match all variables enclosed in "{}" and iterate over them...
         \preg_match_all(self::COMPILER_REGEX, $pattern = (!$isHost ? '/' : '') . $uriPattern, $matches);
 
-        list($variables, $replaces) = $this->computePattern($matches, $pattern, $requirements);
+        [$variables, $replaces] = $this->computePattern($matches, $pattern, $requirements);
 
         // Return only grouped named captures.
         $template = (string) \preg_replace(self::COMPILER_REGEX, '<\1>', $pattern);
 
         return [
             'template'  => \stripslashes(\str_replace('?', '', $template)),
-            'regex'     => '/^' . ($isHost ? '\/?' : '') . \strtr($template, $replaces) . '$/sD',
+            'regex'     => '/^' . \strtr($template, $replaces) . '$/sD',
             'variables' => $variables,
         ];
     }
@@ -335,7 +323,6 @@ class SimpleRouteCompiler implements \Serializable
      * Compute prepared pattern and return it's replacements and arguments.
      *
      * @param array<string,string[]>        $matches
-     * @param string                        $pattern
      * @param array<string,string|string[]> $requirements
      *
      * @return array<int,array<int|string,mixed>>
@@ -343,8 +330,9 @@ class SimpleRouteCompiler implements \Serializable
     private function computePattern(array $matches, string $pattern, array $requirements): array
     {
         $variables = $replaces = [];
+        [, $names, $rules, $defaults] = $matches;
 
-        list(, $names, $rules, $defaults) = $matches;
+        $count = \count($names);
 
         foreach ($names as $index => $varName) {
             // Filter variable name to meet requirement
@@ -363,10 +351,20 @@ class SimpleRouteCompiler implements \Serializable
             if (isset($rules[$index])) {
                 $replace = $this->prepareSegment($varName, $rules[$index], $requirements);
 
-                $replaces["<$varName>"] = \sprintf('(?P<%s>(?U)%s)', $varName, $replace);
+                // optimize the regex with a possessive quantifier.
+                if ($count === 1 && ('/' === $pattern[0] && '+' === $replace[-1])) {
+                    // This optimization cannot be applied when the next char is no real separator.
+                    preg_match('#\{.*\}(.+?)#', $pattern, $nextSeperator);
+
+                    $replace .= !(isset($nextSeperator[1]) && (\count($names) === 1 || '{' === $nextSeperator[1])) ? '+' : '';
+                }
+
+                $replaces["<$varName>"] = \sprintf('(?P<%s>%s)', $varName, $replace);
             }
 
-            $variables[$varName] = !empty($default = $defaults[$index]) ? $default : null;
+            $variables[$varName] = !empty($defaults[$index]) ? $defaults[$index] : null;
+
+            $count--;
         }
 
         return [$variables, $replaces + self::PATTERN_REPLACES];
@@ -374,11 +372,8 @@ class SimpleRouteCompiler implements \Serializable
 
     /**
      * Prevent variables with same name used more than once.
-     *
-     * @param string $varName
-     * @param string $pattern
      */
-    private function filterVariableName($varName, string $pattern): void
+    private function filterVariableName(string $varName, string $pattern): void
     {
         // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
         // variable would not be usable as a Controller action argument.
@@ -407,8 +402,6 @@ class SimpleRouteCompiler implements \Serializable
     /**
      * Prepares segment pattern with given constrains.
      *
-     * @param string              $name
-     * @param string              $segment
      * @param array<string,mixed> $requirements
      *
      * @return string
@@ -432,11 +425,6 @@ class SimpleRouteCompiler implements \Serializable
         return $this->filterSegment((string) $requirements[$name]);
     }
 
-    /**
-     * @param string $segment
-     *
-     * @return string
-     */
     private function filterSegment(string $segment): string
     {
         return \strtr($segment, self::SEGMENT_REPLACES);

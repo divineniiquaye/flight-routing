@@ -54,18 +54,16 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function setMatched(self $matched): void
     {
+        $name = $matched->getName();
+
         if (!empty($this->profiles)) {
-            foreach ($this->profiles as $index => $profile) {
-                if ($matched->getName() === $profile->getName()) {
-                    $matched->matched       = true;
-                    $this->profiles[$index] = $matched;
-                }
-            }
+            $matched->matched      = true;
+            $this->profiles[$name] = $matched;
 
             return;
         }
 
-        if ($matched->getName() === $this->name) {
+        if ($name === $this->name) {
             $this->matched = true;
         }
     }
@@ -117,7 +115,11 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function addProfile(self $profile): void
     {
-        $this->profiles[] = $profile;
+        $name = $profile->getName();
+
+        if (!isset($this->profiles[$name])) {
+            $this->profiles[$name] = $profile;
+        }
     }
 
     /**

@@ -19,7 +19,6 @@ namespace Flight\Routing\Traits;
 
 use Biurad\Annotations\LoaderInterface;
 use Flight\Routing\DebugRoute;
-use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
@@ -30,9 +29,8 @@ use Psr\Http\Message\UriFactoryInterface;
 trait RouterTrait
 {
     use MiddlewareTrait;
-    use DumperTrait;
 
-    /** @var null|object|RouteMatcherInterface */
+    /** @var null|RouteMatcherInterface */
     private $matcher;
 
     /** @var ResponseFactoryInterface */
@@ -53,44 +51,27 @@ trait RouterTrait
     /** @var RouteResolver */
     private $resolver;
 
-    /** @var array<string,mixed> */
+    /** @var mixed[] */
     private $options = [];
-
-    /**
-     * Gets a route for the given name
-     *
-     * @param string $name
-     *
-     * @throws RouteNotFoundException
-     *
-     * @return Route
-     */
-    public function getRoute(string $name): Route
-    {
-        // To Allow merging incase routes after this method doesn't exist
-        $this->routes->getRoutes();
-
-        if (null !== $route = $this->routes->find($name)) {
-            return $route;
-        }
-
-        throw new RouteNotFoundException(\sprintf('No route found for the name "%s".', $name));
-    }
 
     /**
      * Get the profiled routes
      *
-     * @return DebugRoute
+     * @return null|DebugRoute
      */
-    public function getProfile(): DebugRoute
+    public function getProfile(): ?DebugRoute
     {
-        if (isset($this->options['debug'])) {
-            foreach ($this->getCollection()->getRoutes() as $route) {
+        if ($this->options['debug']) {
+            $routes = $this->getCollection()->getRoutes();
+
+            foreach ($routes as $route) {
                 $this->debug->addProfile(new DebugRoute($route->getName(), $route));
             }
+
+            return $this->debug;
         }
 
-        return $this->debug;
+        return null;
     }
 
     /**
@@ -100,7 +81,14 @@ trait RouterTrait
      */
     public function loadAnnotation(LoaderInterface $loader): void
     {
-        foreach ($loader->load() as $annotation) {
+        // Guess you off debug mode and would not need to add new routes.
+        if ($this->isFrozen()) {
+            return;
+        }
+
+        $annotations = $loader->load();
+
+        foreach ($annotations as $annotation) {
             if ($annotation instanceof RouteCollection) {
                 $this->addRoute(...$annotation->getRoutes());
             }
@@ -116,14 +104,14 @@ trait RouterTrait
     {
         $defaults = $route->getDefaults();
         $param    = $route->getArguments();
-        $excludes = ['_arguments' => true, '_compiler' => true, '_domain' => true];
+        $excludes = ['_arguments' => true, '_domain' => true];
 
         foreach ($defaults as $key => $value) {
             if (isset($excludes[$key])) {
                 continue;
             }
 
-            if (isset($param[$key]) || (!\is_int($key) && null !== $value)) {
+            if (!isset($param[$key]) || (!\is_int($key) && null !== $value)) {
                 $route->argument($key, $value);
             }
         }

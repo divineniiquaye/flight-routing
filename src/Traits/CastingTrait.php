@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Route;
 
 trait CastingTrait
@@ -54,19 +53,14 @@ trait CastingTrait
      * Pattern route:   `pattern/*<controller@action>`
      * Default route: `*<controller@action>`
      * Only action:   `pattern/*<action>`.
-     *
-     * @param string $route
-     *
-     * @throws InvalidControllerException
-     *
-     * @return string
      */
     private function castRoute(string $route): string
     {
         $urlRegex = \strtr(Route::URL_PATTERN, ['/^' => '/^(?:', '$/u' => ')']);
+        $urlRegex .= \str_replace('/^', '?', Route::RCA_PATTERN);
 
         // Match url + rca from pattern...
-        \preg_match($urlRegex . \strtr(Route::RCA_PATTERN, ['/^' => '?']), $route, $matches);
+        \preg_match($urlRegex, $route, $matches);
 
         if (empty($matches)) {
             return $route;
@@ -77,53 +71,50 @@ trait CastingTrait
             $this->controller = !$handler ? $matches['a'] : [$handler, $matches['a']];
         }
 
-        if (isset($matches['domain'])) {
-            $route = $this->castDomain($matches, $route);
+        if (isset($matches['host'])) {
+            $route = $this->castDomain($matches);
         }
 
-        return $route;
+        return $route ?: '/';
     }
 
     /**
      * Match scheme and domain from route patterned path
      *
      * @param array<int|string,null|string> $matches
-     * @param string                        $route
-     *
-     * @return string
      */
-    private function castDomain(array $matches, string $route): string
+    private function castDomain(array $matches): string
     {
-        $domain = $matches['domain'] ?? null;
+        $domain = $matches['host'] ?? '';
+        $scheme = $matches['scheme'] ?? '';
+        $route  = $matches['route'] ?? '';
 
-        if (isset($matches['scheme']) && !empty($matches['scheme'])) {
-            $this->schemes[$matches['scheme']] = true;
+        if (
+            (empty($route) || '/' === $route || 0 === preg_match('/.\w+$/', $domain)) &&
+            (!empty($domain) && empty($matches[2]))
+        ) {
+            $route  = $domain . $route;
+            $domain = '';
         }
 
-        if ((!isset($matches[4]) || empty($matches[4])) && false === \strpos($domain ?? '', '//')) {
-            $matches['route'] = $domain . ($matches['route'] ?? null);
-            $domain           = null;
+        if ('api' === $scheme && !empty($domain)) {
+            $this->defaults['_api'] = \ucfirst($domain);
+
+            return $route;
+        } elseif (!empty($scheme) && 'api' !== $scheme) {
+            $this->schemes[$scheme] = true;
         }
 
-        if (!empty($domain)) {
-            $this->domain[$matches['host']] = true;
+        if (!empty($domain) && 'api' !== $scheme) {
+            $this->domain[$domain] = true;
         }
 
-        if (!isset($matches['route']) || empty($matches['route'])) {
-            throw new InvalidControllerException("Unable to locate route candidate on `{$route}`");
-        }
-
-        return $matches['route'];
+        return $route;
     }
 
     /**
      * Ensures that the right-most slash is trimmed for prefixes of more than
      * one character, and that the prefix begins with a slash.
-     *
-     * @param string $uri
-     * @param string $prefix
-     *
-     * @return string
      */
     private function castPrefix(string $uri, string $prefix): string
     {
@@ -132,8 +123,12 @@ trait CastingTrait
             return \rtrim($prefix, '/') . $uri;
         }
 
-        if (1 === \preg_match('/^([^\/&\-_~\|@]+)(&|-|_|~|@)$/', $prefix, $matches)) {
-            return \rtrim($prefix, $matches[2]) . $matches[2] . $uri;
+        if (1 === \preg_match('/^(.*)(\:|\-|\_|\~|\@)$/', $prefix, $matches)) {
+            if ($matches[2] !== $uri[0]) {
+                $uri = $matches[2] . $uri;
+            }
+
+            return \rtrim($prefix, $matches[2]) . $uri;
         }
 
         return \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');

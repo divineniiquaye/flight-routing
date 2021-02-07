@@ -58,7 +58,7 @@ class Route
      *
      * @var string
      */
-    public const RCA_PATTERN = '/^(?P<route>.*?)?(?P<handler>\*\<(?:(?<c>[a-zA-Z0-9\\\\]+?)\@)?(?<a>[a-zA-Z0-9_\-]+)?\>)?$/u';
+    public const RCA_PATTERN = '/^(?P<route>.*?)?(?P<handler>\*\<(?:(?<c>[a-zA-Z0-9\\\\]+)\@)?(?<a>[a-zA-Z0-9_\-]+)\>)?$/u';
 
     /**
      * A Pattern to match protocol, host and port from a url
@@ -73,9 +73,11 @@ class Route
      * localhost:8000
      * {foo}.domain.com
      *
+     * Also supports api resource routing, eg: api://user/path
+     *
      * @var string
      */
-    public const URL_PATTERN = '/^(?:(?P<scheme>https?)\:)?(?P<domain>(?:\/\/)?(?P<host>[^\/\*]+)?(\:\d+)?)\/*?$/u';
+    public const URL_PATTERN = '/^(?:(?P<scheme>api|https?)\:)?(\/\/)?(?P<host>[^\/\*]+)\/*?$/u';
 
     /**
      * Create a new Route constructor.
@@ -99,6 +101,8 @@ class Route
      * @internal This is handled different by router
      *
      * @param array $properties
+     *
+     * @return self
      */
     public static function __set_state(array $properties)
     {
@@ -115,32 +119,35 @@ class Route
 
     /**
      * @param string   $method
-     * @param string[] $arguments
+     * @param mixed[] $arguments
      *
      * @return mixed
      */
     public function __call($method, $arguments)
     {
-        if (\in_array($method, ['arguments', 'defaults', 'asserts'], true)) {
-            foreach (\current($arguments) as $variable => $value) {
-                $this->{\rtrim($method, 's')}($variable, $value);
+        $routeMethod = (string) \preg_replace('/^(default|assert)(s)|get([A-Z]{1}[a-z]+)$/', '\1\3', $method, 1);
 
-                return $this;
-            }
-        }
-        $routeMethod = \strtolower((string) \preg_replace('~^get([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
-
-        if (\in_array($routeMethod, ['all', 'arguments'], true)) {
+        if (\in_array($routeMethod = \strtolower($routeMethod), ['all', 'arguments'], true)) {
             return $this->get($routeMethod);
         }
 
-        if (!\property_exists(__CLASS__, $routeMethod)) {
+        if (!\property_exists($this, $routeMethod)) {
+            if (method_exists($this, $routeMethod) || 'arguments' === $method) {
+                $arguments = (array) \current($arguments) ?: [];
+
+                foreach ($arguments as $variable => $value) {
+                    $this->{$routeMethod}($variable, $value);
+                }
+
+                return $this;
+            }
+
             throw new \BadMethodCallException(
                 \sprintf(
-                    'Property "%s->%s" does not exist. should be one of [%s],' .
-                    ' or arguments, prefixed with a \'get\' name; eg: getName().',
+                    'Method "%s->%s" does not exist. should be one of [%s], all, or arguments. ' .
+                    '%2$s method should start with a \'get\' prefix.',
                     Route::class,
-                    $method,
+                    $routeMethod ?: $method,
                     \join(', ', \array_keys($this->get('all')))
                 )
             );
@@ -286,11 +293,21 @@ class Route
         foreach ($hosts as $host) {
             \preg_match(Route::URL_PATTERN, $host, $matches);
 
-            if (isset($matches['scheme']) && !empty($scheme = $matches['scheme'])) {
+            $scheme = $matches['scheme'] ?? null;
+
+            if ('api' === $scheme && isset($matches['host'])) {
+                $this->defaults['_api'] = \ucfirst($matches['host']);
+
+                continue;
+            }
+
+            if (!empty($scheme)) {
                 $this->schemes[$scheme] = true;
             }
 
-            $this->domain[$matches['host'] ?? $host] = true;
+            if (!empty($matches['host'])) {
+                $this->domain[$matches['host']] = true;
+            }
         }
 
         return $this;
@@ -345,7 +362,7 @@ class Route
      */
     public function get(string $name)
     {
-        if (\property_exists(__CLASS__, $name)) {
+        if (\property_exists($this, $name)) {
             return $this->{$name};
         }
 
