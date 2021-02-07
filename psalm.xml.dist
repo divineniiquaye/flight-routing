@@ -24,6 +24,7 @@
         <TypeDoesNotContainType>
             <errorLevel type="suppress">
                 <file name="src/Annotation/Listener.php"/>
+                <file name="src/RouteResolver.php"/>
                 <file name="src/Exceptions/InvalidMiddlewareException.php"/>
             </errorLevel>
         </TypeDoesNotContainType>
@@ -63,6 +64,8 @@
                 <referencedFunction name="Flight\Routing\DebugRoute::__construct"/>
                 <referencedFunction name="Flight\Routing\Router::resolveMiddlewares"/>
                 <referencedFunction name="Flight\Routing\RouteResolver::__invoke"/>
+                <referencedFunction name="Flight\Routing\Handlers\RouteHandler::detectResponse"/>
+                <file name="src/Traits/CastingTrait.php"/>
             </errorLevel>
         </PossiblyNullArgument>
 
@@ -118,6 +121,7 @@
                 <file name="src/Router.php"/>
                 <file name="src/Annotation/Route.php"/>
                 <file name="src/Traits/CastingTrait.php"/>
+                <file name="src/Traits/RouterTrait.php"/>
                 <file name="src/Traits/DumperTrait.php"/>
                 <file name="src/Matchers/SimpleRouteCompiler.php"/>
                 <file name="src/Matchers/SimpleRouteMatcher.php"/>
