@@ -20,13 +20,14 @@ namespace Flight\Routing\Interfaces;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Route;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * Interface defining required router compiling capabilities.
  *
  * This fluent implementation should contain a `constructor` method.
  * The implementation should be writen to receive a RouteCollection instance
- * and a file when `getCompiledRoutes` method is used by the router.
+ * and a route instances when matcher dumper instance is used by the router.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
@@ -39,35 +40,29 @@ interface RouteMatcherInterface
      *
      * @return null|Route
      */
-    public function match(ServerRequestInterface $request): ?Route;
+    public function match(ServerRequestInterface $request);
 
     /**
      * Generate a URI from the named route.
      *
-     * Takes the named route path and any substitutions, then attempts to generate a
-     * URI from it.
+     * Takes the named route and any parameters, and attempts to generate a
+     * URI from it. Additional router-dependent query may be passed.
      *
-     * The URI generated MUST NOT be escaped. If you wish to escape any part of
-     * the URI, this should be performed afterwards; consider passing the URI
-     * to league/uri to encode it.
+     * Once there are no missing parameters in the URI we will encode
+     * the URI and prepare it for returning to the user. If the URI is supposed to
+     * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
      *
-     * @param Route              $route
-     * @param array<mixed,mixed> $substitutions key => value option pairs to pass to the
-     *                                          router for purposes of generating a URI; takes precedence over options
-     *                                          present in route used to generate URI
+     * @param string                       $routeName   route name
+     * @param array<int|string,int|string> $parameters  key => value option pairs to pass to the
+     *                                                  router for purposes of generating a URI;
+     *                                                  takes precedence over options
+     *                                                  present in route used to generate URI
+     * @param array<int|string,int|string> $queryParams Optional query string parameters
      *
-     * @throws UrlGenerationException if a parameter value does not match its regex
+     * @throws UrlGenerationException if the route name is not known
+     *                                or a parameter value does not match its regex
      *
-     * @return string
+     * @return string|UriInterface of fully qualified URL for named route
      */
-    public function buildPath(Route $route, array $substitutions): string;
-
-    /**
-     * This warms up compiler used to compile route, to increase performance.
-     *
-     * Implement this fluent method or return it as false.
-     *
-     * @return mixed|false return false if not implemented;
-     */
-    public function getCompiledRoutes();
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []);
 }

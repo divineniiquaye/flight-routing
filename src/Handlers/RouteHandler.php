@@ -82,7 +82,7 @@ final class RouteHandler implements RequestHandlerInterface
      *
      * @return ResponseInterface
      */
-    private function wrapResponse(ResponseInterface $response, $result = null, string $output = ''): ResponseInterface
+    private function wrapResponse(ResponseInterface $response, $result = null, string $output): ResponseInterface
     {
         // Always return the response...
         if ($result instanceof ResponseInterface) {
@@ -93,10 +93,8 @@ final class RouteHandler implements RequestHandlerInterface
             $result = \json_encode($result);
         }
 
-        $response->getBody()->write((string) $result . $output);
-
         //Always detect response anf glue buffered output
-        return $this->detectResponse($response);
+        return $this->detectResponse($response, $output ?: $result);
     }
 
     /**
@@ -104,12 +102,9 @@ final class RouteHandler implements RequestHandlerInterface
      *
      * @return ResponseInterface
      */
-    private function detectResponse(ResponseInterface $response): ResponseInterface
+    private function detectResponse(ResponseInterface $response, string $contents): ResponseInterface
     {
-        $responseBody = $response->getBody();
-        $responseBody->rewind();
-
-        $contents = $responseBody->getContents();
+        $response->getBody()->write($contents);
 
         if ($this->isJson($contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'application/json');
@@ -120,7 +115,7 @@ final class RouteHandler implements RequestHandlerInterface
         }
 
         // Set content-type to plain text if string doesn't contain </html> tag.
-        if (0 === \preg_match('/^\<html\>.*\<\/html\>$/i', $contents)) {
+        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', $contents)) {
             return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
         }
 

@@ -17,8 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Flight\Routing\Matchers\ExpressionCollection;
 use Flight\Routing\Route;
 
 /**
@@ -26,6 +25,14 @@ use Flight\Routing\Route;
  */
 trait DumperTrait
 {
+    /** @var bool */
+    protected $export = true;
+
+    protected static function indent(string $code, int $level = 1): string
+    {
+        return (string) \preg_replace('/^./m', \str_repeat('    ', $level) . '$0', $code);
+    }
+
     /**
      * @internal
      *
@@ -40,6 +47,10 @@ trait DumperTrait
         if (!\is_array($value)) {
             if ($value instanceof Route) {
                 return self::exportRoute($value);
+            } elseif (\is_object($value)) {
+                return \sprintf('unserialize(\'%s\')', \serialize($value));
+            } elseif (is_string($value) && str_starts_with($value, 'static function ()')) {
+                return $value;
             }
 
             return \str_replace("\n", '\'."\n".\'', \var_export($value, true));
@@ -67,6 +78,8 @@ trait DumperTrait
                 $v = '\\' . $v . ', ';
             } elseif ($v instanceof Route) {
                 $v .= self::exportRoute($v);
+            } elseif (\is_object($v)) {
+                $v = \sprintf('unserialize(\'%s\'), ', \serialize($v));
             } else {
                 $v = self::export($v) . ', ';
             }
@@ -85,57 +98,66 @@ trait DumperTrait
     protected static function exportRoute(Route $route): string
     {
         $properties = $route->getAll();
+        $controller = $properties['controller'];
+        $exported   = '';
 
-        if (!\is_string($controller = $properties['controller'])) {
+        if ($controller instanceof \Closure) {
+            $closureRef = new \ReflectionFunction($controller);
+
+            if (empty($closureRef->getParameters()) && null === $closureRef->getClosureThis()) {
+                \ob_start();
+
+                $closureReturn = $controller();
+                $closureEcho   = \ob_get_clean();
+
+                $properties['controller'] = \sprintf(
+                    "static function () {\n            %s %s;\n        }",
+                    null !== $closureReturn ? 'return' : 'echo',
+                    self::export($closureReturn ?? $closureEcho),
+                );
+            }
+        } elseif (\is_object($controller) || (\is_array($controller) && \is_object($controller[0]))) {
             $properties['controller'] = \sprintf('unserialize(\'%s\')', \serialize($controller));
         }
 
-        if (isset($properties['defaults']['_compiler'])) {
-            $properties['defaults']['_compiler'] = \sprintf(
-                'unserialize(\'%s\')',
-                \serialize($properties['defaults']['_compiler'])
-            );
+        foreach ($properties as $key => $value) {
+            $exported .= \sprintf('        %s => ', self::export($key));
+            $exported .= self::export($value);
+            $exported .= ",\n";
         }
 
-        $exported = self::export($properties);
-
-        return \sprintf('%s::__set_state(%s)', Route::class, $exported);
+        return "\Flight\Routing\Route::__set_state([\n{$exported}    ])";
     }
 
     /**
-     * Export the matcher, this method can be override if
-     * RouteMatcherInterfaqce implementation changes.
+     * Compiles a regexp tree of subpatterns that matches nested same-prefix routes.
      *
-     * @param mixed                 $compiledRoutes
-     * @param RouteMatcherInterface $matcher
-     *
-     * @return string
+     * @param array<string,string> $vars
      */
-    protected function exportMatcher($compiledRoutes, RouteMatcherInterface $matcher): string
+    private function compileExpressionCollection(ExpressionCollection $tree, int $prefixLen, array &$vars): string
     {
-        $code = '';
+        $code   = '';
+        $routes = $tree->getRoutes();
 
-        if ($matcher instanceof SimpleRouteMatcher) {
-            [$staticRoutes, $dynamicRoutes] = $compiledRoutes;
-            $code .= '[ // $staticRoutes' . "\n";
+        foreach ($routes as $route) {
+            if ($route instanceof ExpressionCollection) {
+                $prefix = \substr($route->getPrefix(), $prefixLen);
+                $rx     = "|{$prefix}(?";
 
-            foreach ($staticRoutes as $path => $route) {
-                $code .= \sprintf('    %s => ', self::export($path));
-                $code .= self::export($route);
-                $code .= ", \n";
+                $regexpCode = $this->compileExpressionCollection($route, $prefixLen + \strlen($prefix), $vars);
+
+                $code .= $this->export ? "\n        ." . self::export($rx) : $rx;
+                $code .= $this->export ? self::indent($regexpCode) : $regexpCode;
+                $code .= $this->export ? "\n        .')'" : ')';
+
+                continue;
             }
-            $code .= "],\n";
+            [$name, $regex, $variable] = $route;
 
-            $code .= '[ // $dynamicRoutes' . "\n";
+            $rx = \sprintf('|%s(*:%s)', \substr($regex, $prefixLen), $name);
+            $code .= $this->export ? "\n        ." . self::export($rx) : $rx;
 
-            foreach ($dynamicRoutes as $name => $route) {
-                $code .= \sprintf('    %s => ', self::export($name));
-                $code .= self::export($route);
-                $code .= ", \n";
-            }
-            $code .= "],\n";
-        } else {
-            $code .= self::export($compiledRoutes);
+            $vars[$name] = $variable;
         }
 
         return $code;
@@ -145,41 +167,62 @@ trait DumperTrait
      * Warm up routes to speed up routes handling.
      *
      * @internal
-     *
-     * @param string                $cacheFile
-     * @param RouteMatcherInterface $matcher
      */
-    private function generateCompiledRoutes(string $cacheFile, RouteMatcherInterface $matcher): void
+    private function generateCompiledRoutes(): string
     {
-        if (false === $compiledRoutes = $matcher->getCompiledRoutes()) {
-            return;
+        $code = '';
+
+        [$staticRoutes, $dynamicRoutes, $regexList, $collection] = $this->getCompiledRoutes();
+        $code .= '[ // $staticRoutes' . "\n";
+
+        foreach ($staticRoutes as $path => $route) {
+            $code .= \sprintf('    %s => ', self::export($path));
+            $code .= self::export($route);
+            $code .= ", \n";
+        }
+        $code .= "],\n";
+
+        $code .= '[ // $dynamicRoutes' . "\n";
+
+        foreach ($dynamicRoutes as $name => $route) {
+            $code .= \sprintf('    %s => ', self::export($name));
+            $code .= self::export($route);
+            $code .= ", \n";
+        }
+        $code .= "],\n";
+
+        [$regex, $variables] = $regexList;
+
+        $regexpCode = "    {$regex},\n    [\n";
+
+        foreach ($variables as $key => $value) {
+            $regexpCode .= \sprintf('        %s => ', self::export($key));
+            $regexpCode .= self::export($value);
+            $regexpCode .= ",\n";
         }
 
-        $generatedCode = (string) \preg_replace(
-            '/^./m',
-            \str_repeat('    ', 1) . '$0',
-            $this->exportMatcher($compiledRoutes, $matcher)
-        );
+        $code .= \sprintf("[ // \$regexpList\n%s    ],\n],\n", $regexpCode);
 
-        $dumpCode = <<<EOF
+        $code .= '[ // $routeCollection' . "\n";
+
+        foreach ($collection as $name => $route) {
+            $code .= \sprintf('    %s => ', self::export($name));
+            $code .= self::export($route);
+            $code .= ", \n";
+        }
+        $code .= "],\n";
+
+        $generatedCode = self::indent($code);
+
+        return <<<EOF
 <?php
 
 /**
  * This file has been auto-generated by the Flight Routing.
  */
-
 return [
 {$generatedCode}];
 
 EOF;
-
-        \file_put_contents($cacheFile, $dumpCode);
-
-        if (
-            \function_exists('opcache_invalidate') &&
-            \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)
-        ) {
-            @opcache_invalidate($cacheFile, true);
-        }
     }
 }

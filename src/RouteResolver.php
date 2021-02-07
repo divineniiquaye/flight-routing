@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -36,28 +37,21 @@ class RouteResolver
         $this->invoker = $invoker;
     }
 
+    /**
+     * @return mixed
+     */
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Route $route)
     {
         $route   = $request->getAttribute(Route::class, $route);
-        $handler = $this->resolveRestFul($request, $route);
+        $handler = $this->resolveResponse($request, $route);
 
-        if (null !== $this->namespace) {
-            $handler = $this->resolveNamespace($handler);
+        if ($handler instanceof ResponseInterface) {
+            return $handler;
         }
 
-        // For a class that implements RequestHandlerInterface, we will call handle()
-        // if no method has been specified explicitly
-        if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
-            $handler = [$handler, 'handle'];
-        }
+        $arguments = [\get_class($request) => $request, \get_class($response) => $response];
 
-        return $this->invoker->call(
-            $route->getController(),
-            \array_merge(
-                [\get_class($request) => $request, \get_class($response) => $response],
-                $route->getArguments()
-            )
-        );
+        return $this->invoker->call($handler, \array_merge($arguments, $route->getArguments()));
     }
 
     /**
@@ -81,11 +75,52 @@ class RouteResolver
     }
 
     /**
+     * @return mixed
+     */
+    private function resolveResponse(ServerRequestInterface $request, Route $route)
+    {
+        $handler = $route->getController();
+
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler->handle($request);
+        }
+
+        if ($handler instanceof ResponseInterface) {
+            return $handler;
+        }
+
+        if (null !== $this->namespace) {
+            $handler = $this->resolveNamespace($handler);
+        }
+
+        // For a class that implements RequestHandlerInterface, we will call handle()
+        // if no method has been specified explicitly
+        if (\is_string($handler) && \is_a($handler, RequestHandlerInterface::class, true)) {
+            return $this->invoker->call([$handler, 'handle'], [$request]);
+        }
+
+        // Disable or enable HTTP request method prefix for action.
+        if (null !== $isRestFul = $route->getDefaults()['_api'] ?? null) {
+            $method = \strtolower($request->getMethod());
+
+            if (!\is_object($handler) || (\is_string($handler) && \class_exists($handler))) {
+                throw new InvalidControllerException(
+                    'Resource handler type should be a class string or class object, and not otherwise'
+                );
+            }
+
+            return [$handler, $method . $isRestFul];
+        }
+
+        return $handler;
+    }
+
+    /**
      * @param callable|object|string|string[] $controller
      *
      * @return mixed
      */
-    protected function resolveNamespace($controller)
+    private function resolveNamespace($controller)
     {
         if (
             (\is_string($controller) && !\class_exists($controller)) &&
@@ -99,46 +134,5 @@ class RouteResolver
         }
 
         return $controller;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param Route                  $route
-     *
-     * @return mixed
-     */
-    protected function resolveRestFul(ServerRequestInterface $request, Route $route)
-    {
-        $controller = $route->getController();
-        $routeName  = (string) $route->getName();
-
-        // Disable or enable HTTP request method prefix for action.
-        if (str_ends_with($routeName, '__restful')) {
-            switch (true) {
-                case \is_array($controller):
-                    $controller[1] = $this->getResourceMethod($request, $controller[1]);
-
-                    break;
-
-                case \is_string($controller) && \class_exists($controller):
-                    $controller = [
-                        $controller,
-                        $this->getResourceMethod($request, \substr($routeName, -0, -9)),
-                    ];
-
-                    break;
-            }
-        }
-
-        return $controller;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param string                 $name
-     */
-    private function getResourceMethod(ServerRequestInterface $request, string $name): string
-    {
-        return \strtolower($request->getMethod()) . \ucfirst($name);
     }
 }

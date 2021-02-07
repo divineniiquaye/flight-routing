@@ -121,7 +121,9 @@ trait MiddlewareTrait
 
     private function resolveMiddlewares(MiddlewarePipeInterface $pipeline, Route $route): MiddlewarePipeInterface
     {
-        foreach ($route->getMiddlewares() as $middleware) {
+        $middlewares = $route->getMiddlewares();
+
+        foreach ($middlewares as $middleware) {
             if (\is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
                 $pipeline->pipe($this->resolveMiddleware($this->nameMiddlewares[$middleware]));
 

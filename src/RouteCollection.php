@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\InvalidControllerException;
-
 /**
  * A RouteCollection represents a set of Route instances.
  *
@@ -41,7 +39,7 @@ use Flight\Routing\Exceptions\InvalidControllerException;
  * __call() forwards method-calls to Route, but returns instance of RouteCollection
  * listing Route's methods below, so that IDEs know they are valid
  *
- * @method RouteCollection withAssert(string $variable, string $regexp)
+ * @method RouteCollection withAssert(string $variable, string|string[] $regexp)
  * @method RouteCollection withDefault(string $variable, mixed $default)
  * @method RouteCollection withArgument($variable, mixed $value)
  * @method RouteCollection withMethod(string ...$methods)
@@ -53,7 +51,6 @@ use Flight\Routing\Exceptions\InvalidControllerException;
  * @method RouteCollection withDefaults(array $values)
  * @method RouteCollection withAsserts(array $patterns)
  * @method RouteCollection withArguments(array $patterns)
- * @method Route getRoute() Get the default route.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Tobias Schultze <http://tobion.de>
@@ -87,18 +84,15 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function __call($method, $arguments)
     {
-        if ('getRoute' === $method) {
-            return $this->defaultRoute;
-        }
+        $routeMethod = (string) \preg_replace('/^(default|assert)(s)|with([A-Z]{1}[a-z]+)$/', '\2\3', $method, 1);
+        $excluded    = !in_array($routeMethod = \strtolower($routeMethod), ['arguments', 's'], true);
 
-        $routeMethod = \strtolower((string) \preg_replace('~^with([A-Z]{1}[a-z]+)$~', '\1', $method, 1));
-
-        if (!\method_exists($this->defaultRoute, $routeMethod)) {
+        if (!(\method_exists($this->defaultRoute, $routeMethod) || $excluded)) {
             throw new \BadMethodCallException(
                 \sprintf(
-                    'Method "%s::%s" does not exist. %2$s method should have a \'with\' prefix',
+                    'Method "%s::%s" does not exist. %2$s method should begin a \'with\' prefix',
                     Route::class,
-                    $method
+                    $routeMethod ?: $method
                 )
             );
         }
@@ -128,7 +122,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      * This method can be used to fetch routes too, but if group() method
      * is used, use getRoutes() method instead.
      *
-     * @return \ArrayIterator<Route> The unfiltered routes
+     * @return \ArrayIterator<int,Route> The unfiltered routes
      */
     public function getIterator()
     {
@@ -163,11 +157,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         foreach ($routes as $route) {
             $default = clone $this->defaultRoute;
 
-            if (null === $route->getController()) {
-                $route->run($default->getController());
-            }
+            // Append default path to routes' path
+            $route->prefix($default->getPath());
 
-            $this->routes[]  = $default::__set_state($route->getAll());
+            // Merge defaults with route
+            $mergedRoute    = array_merge($default->getAll(), $route->getAll());
+            $this->routes[] = $default::__set_state($mergedRoute);
         }
 
         return $this;
@@ -189,7 +184,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         $route      = clone $this->defaultRoute;
         $controller = null === $handler ? $route->getController() : $handler;
 
-        $route->path($pattern)->method(...$methods);
+        $route->prefix($route->getPath())->path($pattern)->method(...$methods);
 
         $this->routes[] = $route;
         $route->run($controller);
@@ -211,7 +206,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
             $controllers($collection = new static());
             $controllers = clone $collection;
         } elseif (!$controllers instanceof self) {
-            throw new \LogicException('The "mount" method takes either a "RouteCollection" instance or callable.');
+            throw new \LogicException('The "group" method takes either a "RouteCollection" instance or callable.');
         }
 
         $controllers->namePrefix = $name;
@@ -338,15 +333,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function resource(string $name, string $pattern, $resource): Route
     {
-        if (!\is_object($resource) || (\is_string($resource) && \class_exists($resource))) {
-            throw new InvalidControllerException(
-                'Resource handler type should be a class string or class object, but not a callable or array'
-            );
-        }
-
-        $route = $this->any($pattern, [$resource, $name]);
-
-        return $route->bind($route->generateRouteName($name) . '__restful');
+        return $this->any(sprintf('api://%s/%s', $name, $pattern), $resource);
     }
 
     /**
@@ -358,8 +345,9 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function find(string $name): ?Route
     {
+        /** @var Route|RouteCollection $route */
         foreach ($this->routes as $route) {
-            if ($name === $route->getName()) {
+            if ($route instanceof Route && $name === $route->getName()) {
                 return $route;
             }
         }
@@ -392,7 +380,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
                 $route->doMerge($prefix . $route->namePrefix, $routes);
             }
         }
-        $this->routes = [];
 
         return $routes->routes;
     }

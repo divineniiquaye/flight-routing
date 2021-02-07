@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Matchers;
 
-use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
@@ -38,23 +38,23 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         '//'  => '/',
     ];
 
+    /** @var Route[] */
+    protected $routes = [];
+
     /** @var SimpleRouteCompiler */
     private $compiler;
 
-    /** @var Route[] */
-    private $dynamicRoutes = [];
-
-    /** @var array<string,Route> */
-    private $staticRoutes = [];
-
     /**
-     * @param RouteCollection|string $collection
+     * @param Route[]|RouteCollection $collection
      */
     public function __construct($collection)
     {
-        $this->compiler = new SimpleRouteCompiler();
+        if ($collection instanceof RouteCollection) {
+            $collection = $collection->getRoutes();
+        }
 
-        $this->warmCompiler($collection);
+        $this->routes   = $collection;
+        $this->compiler = new SimpleRouteCompiler();
     }
 
     /**
@@ -66,26 +66,29 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         $requestMethod = $request->getMethod();
         $resolvedPath  = \rawurldecode($this->resolvePath($request));
 
-        // Checks if $route is a static type
-        if (isset($this->staticRoutes[$resolvedPath])) {
-            return $this->matchRoute($this->staticRoutes[$resolvedPath], $requestUri, $requestMethod);
-        }
+        foreach ($this->routes as $route) {
+            $compiledRoute = clone $this->compiler->compile($route);
 
-        foreach ($this->dynamicRoutes as $route) {
-            $uriParameters = [];
+            $staticUrl = \rtrim($route->getPath(), '/') ?: '/';
+            $pathVars  = $compiledRoute->getPathVariables();
+            $pathRegex = $compiledRoute->getRegex();
 
-            /** @var SimpleRouteCompiler $compiledRoute */
-            $compiledRoute = $route->getDefaults()['_compiler'];
+            $uriVars = $matchDomain = [];
+
+            if (!empty($compiledRoute->getHostVariables())) {
+                $matchDomain = [$compiledRoute->getHostsRegex(), $compiledRoute->getHostVariables()];
+            }
+
+            // Checks if $route is a static type
+            if ($staticUrl === $resolvedPath && empty($pathVars)) {
+                return $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
+            }
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if ($this->compareUri($compiledRoute->getRegex(), $resolvedPath, $uriParameters)) {
-                $foundRoute    = $this->matchRoute($route, $requestUri, $requestMethod);
-                $uriParameters = \array_replace(
-                    $compiledRoute->getPathVariables(),
-                    $uriParameters
-                );
+            if ($this->compareUri($pathRegex, $resolvedPath, $uriVars)) {
+                $foundRoute = $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
 
-                return $this->mergeRouteArguments($foundRoute, $uriParameters);
+                return $this->mergeRouteArguments($foundRoute, \array_replace($pathVars, $uriVars));
             }
         }
 
@@ -94,31 +97,36 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @return string of fully qualified URL for named route
      */
-    public function buildPath(Route $route, array $substitutions): string
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): string
     {
-        $compiledRoute = $this->compiler->compile($route);
+        static $uriRoute;
 
-        $parameters = \array_merge(
-            $compiledRoute->getVariables(),
-            $route->getDefaults(),
-            $this->fetchOptions($substitutions, \array_keys($compiledRoute->getVariables()))
-        );
+        if (isset($this->routes[$routeName])) {
+            $uriRoute = $this->routes[$routeName];
+        } else {
+            foreach ($this->routes as $route) {
+                if ($routeName === $route->getName()) {
+                    $uriRoute = $route;
 
-        $path = '';
-
-        //Uri without empty blocks (pretty stupid implementation)
-        if (count($hostRegex = $compiledRoute->getHostTemplate()) === 1) {
-            $schemes = array_keys($route->getSchemes());
-
-            // If we have s secured scheme, it should be served
-            $hostScheme   = isset($schemes['https']) ? 'https' : \end($schemes);
-            $hostTemplate = $this->interpolate((string) \current($hostRegex), $parameters);
-
-            $path = \sprintf('%s://%s', $hostScheme, \trim($hostTemplate, '.'));
+                    break;
+                }
+            }
         }
 
-        return $path .= $this->interpolate($compiledRoute->getPathTemplate(), $parameters);
+        if ($uriRoute instanceof Route) {
+            return $this->resolveUri($uriRoute, $parameters, $queryParams);
+        }
+
+        throw new UrlGenerationException(
+            \sprintf(
+                'Unable to generate a URL for the named route "%s" as such route does not exist.',
+                $routeName
+            ),
+            404
+        );
     }
 
     /**
@@ -130,89 +138,118 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function getCompiledRoutes()
-    {
-        $compiledRoutes = [$this->staticRoutes, $this->dynamicRoutes];
-
-        return count($compiledRoutes, COUNT_RECURSIVE) > 2 ? $compiledRoutes : false;
-    }
-
-    /**
-     * @param RouteCollection|string $routes
-     */
-    private function warmCompiler($routes): void
-    {
-        if (\is_string($routes)) {
-            list($this->staticRoutes, $this->dynamicRoutes) = require $routes;
-
-            return;
-        }
-
-        foreach ($routes->getRoutes() as $route) {
-            $compiledRoute = clone $this->compiler->compile($route);
-
-            if (empty($compiledRoute->getPathVariables())) {
-                $host = empty($compiledRoute->getHostVariables());
-                $url  = \rtrim($route->getPath(), '/') ?: '/';
-
-                // Find static host
-                if ($host && !empty($compiledRoute->getHostsRegex())) {
-                    $route->default('_domain', $route->getDomain());
-                }
-
-                $this->staticRoutes[$url] = $host ? $route : $route->default('_compiler', $compiledRoute);
-            } else {
-                $this->dynamicRoutes[] = $route->default('_compiler', $compiledRoute);
-            }
-        }
-    }
-
-    /**
-     * @param Route        $route
-     * @param UriInterface $requestUri
-     * @param string       $method
+     * @param Route                         $route
+     * @param array<int|string,null|string> $arguments
      *
      * @return Route
      */
-    private function matchRoute(Route $route, UriInterface $requestUri, string $method): Route
+    protected function mergeRouteArguments(Route $route, array $arguments): Route
     {
+        foreach ($arguments as $key => $value) {
+            $route->argument($key, $value);
+        }
+
+        return $route;
+    }
+
+    /**
+     * This method is used to build uri, this can be overwritten.
+     *
+     * @param array<int|string,int|string> $parameters
+     */
+    protected function buildPath(Route $route, array $parameters): string
+    {
+        $compiledRoute = clone $this->compiler->compile($route);
+        $pathRegex     = $compiledRoute->getPathTemplate();
+        $hostRegex     = $path = '';
+
+        $parameters = \array_merge(
+            $compiledRoute->getVariables(),
+            $route->getDefaults(),
+            $this->fetchOptions($parameters, \array_keys($compiledRoute->getVariables()))
+        );
+
+        if (\count($compiledRoute->getHostTemplate()) === 1) {
+            $hostRegex = \current($compiledRoute->getHostTemplate());
+        }
+
+        //Uri without empty blocks (pretty stupid implementation)
+        if (!empty($hostRegex)) {
+            $schemes     = $route->getSchemes();
+            $schemesKeys = \array_keys($schemes);
+
+            // If we have s secured scheme, it should be served
+            $hostScheme   = isset($schemes['https']) ? 'https' : \end($schemesKeys);
+            $hostTemplate = $this->interpolate($hostRegex, $parameters);
+
+            $path = \sprintf('%s://%s', $hostScheme, \trim($hostTemplate, '.'));
+        }
+
+        return $path .= $this->interpolate($pathRegex, $parameters);
+    }
+
+    /**
+     * @param mixed[] $matchedDomain
+     */
+    protected function matchRoute(
+        Route $route,
+        UriInterface $requestUri,
+        string $method,
+        array $matchedDomain = []
+    ): Route {
         $this->assertRoute($route, $requestUri, $method);
 
-        $hostParameters = [];
+        if (empty($matchedDomain)) {
+            return $route;
+        }
+
         $hostAndPort    = $requestUri->getHost();
+        $hostParameters = [];
+
+        [$hostRegexs, $hostVars] = $matchedDomain;
 
         // Added port to host for matching ...
         if (null !== $requestUri->getPort()) {
             $hostAndPort .= ':' . $requestUri->getPort();
         }
 
-        if (null !== $staticDomain = $route->getDefaults()['_domain'] ?? null) {
-            if (!isset($staticDomain[$hostAndPort])) {
-                throw $this->assertDomain($hostAndPort, $requestUri->getPath());
-            }
-
-            return $route;
-        } elseif (null !== $compiledRoute = $route->getDefaults()['_compiler'] ?? null) {
-            /** @var SimpleRouteCompiler $compiledRoute */
-            if (!$this->compareDomain($compiledRoute->getHostsRegex(), $hostAndPort, $hostParameters)) {
-                throw $this->assertDomain($hostAndPort, $requestUri->getPath());
-            }
-
-            $hostParameters = \array_replace($compiledRoute->getHostVariables(), $hostParameters);
+        if (!$this->compareDomain($hostRegexs, $hostAndPort, $hostParameters)) {
+            throw $this->assertHost($hostAndPort, $requestUri->getPath());
         }
 
-        return $this->mergeRouteArguments($route, $hostParameters);
+        return $this->mergeRouteArguments($route, \array_replace($hostVars, $hostParameters));
+    }
+
+    /**
+     * @param array<int|string,int|string> $parameters
+     * @param array<int|string,int|string> $queryParams
+     */
+    private function resolveUri(Route $route, array $parameters, array $queryParams): string
+    {
+        $prefix     = '.'; // Append missing "." at the beginning of the $uri.
+        $createdUri = $this->buildPath($route, $parameters);
+
+        // Making routing on sub-folders easier
+        if (\strpos($createdUri, '/') !== 0) {
+            $prefix .= '/';
+        }
+
+        // Incase query is added to uri.
+        if (!empty($queryParams)) {
+            $createdUri .= '?' . \http_build_query($queryParams);
+        }
+
+        if (\strpos($createdUri, '://') === false) {
+            $createdUri = $prefix . $createdUri;
+        }
+
+        return \rtrim($createdUri, '/');
     }
 
     /**
      * Interpolate string with given values.
      *
-     * @param string                  $string
      * @param array<int|string,mixed> $values
-     *
-     * @return string
      */
     private function interpolate(string $string, array $values): string
     {
@@ -248,59 +285,5 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         }
 
         return $result;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     *
-     * @return string
-     */
-    private function resolvePath(ServerRequestInterface $request): string
-    {
-        $requestPath = $request->getUri()->getPath();
-        $basePath    = $request->getServerParams()['SCRIPT_NAME'] ?? '';
-
-        if (
-            $basePath !== $requestPath &&
-            \strlen($basePath = \dirname($basePath)) > 1 &&
-            $basePath !== '/index.php'
-        ) {
-            $requestPath = \substr($requestPath, strcmp($basePath, $requestPath)) ?: '';
-        }
-
-        return \strlen($requestPath) > 1 ? rtrim($requestPath, '/') : $requestPath;
-    }
-
-    /**
-     * @param Route                         $route
-     * @param array<int|string,null|string> $arguments
-     *
-     * @return Route
-     */
-    private function mergeRouteArguments(Route $route, array $arguments): Route
-    {
-        foreach ($arguments as $key => $value) {
-            $route->argument($key, $value);
-        }
-
-        return $route;
-    }
-
-    /**
-     * @param string $hostAndPort
-     * @param string $requestPath
-     *
-     * @return UriHandlerException
-     */
-    private function assertDomain(string $hostAndPort, string $requestPath): UriHandlerException
-    {
-        return new UriHandlerException(
-            \sprintf(
-                'Unfortunately current domain "%s" is not allowed on requested uri [%s]',
-                $hostAndPort,
-                $requestPath
-            ),
-            400
-        );
     }
 }

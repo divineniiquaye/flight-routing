@@ -20,6 +20,7 @@ namespace Flight\Routing\Traits;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Route;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
 
 trait ValidationTrait
@@ -28,10 +29,7 @@ trait ValidationTrait
      * Check if given request domain matches given route domain.
      *
      * @param string[]                 $routeDomains
-     * @param string                   $requestDomain
      * @param array<int|string,string> $parameters
-     *
-     * @return bool
      */
     protected function compareDomain(array $routeDomains, string $requestDomain, array &$parameters): bool
     {
@@ -47,11 +45,7 @@ trait ValidationTrait
     /**
      * Check if given request uri matches given uri method.
      *
-     * @param string                   $routeUri
-     * @param string                   $requestUri
      * @param array<int|string,string> $parameters
-     *
-     * @return bool
      */
     protected function compareUri(string $routeUri, string $requestUri, array &$parameters): bool
     {
@@ -60,18 +54,17 @@ trait ValidationTrait
 
     /**
      * Asserts the Route's method and domain scheme.
-     *
-     * @param Route        $route
-     * @param UriInterface $requestUri
-     * @param string       $method
      */
     protected function assertRoute(Route $route, UriInterface $requestUri, string $method): void
     {
-        if (!$this->compareMethod($route->getMethods(), $method)) {
-            throw new MethodNotAllowedException(\array_keys($route->getMethods()), $requestUri->getPath(), $method);
+        $methods = $route->getMethods();
+        $schemes = $route->getSchemes();
+
+        if (!$this->compareMethod($methods, $method)) {
+            throw new MethodNotAllowedException(\array_keys($methods), $requestUri->getPath(), $method);
         }
 
-        if (!$this->compareScheme($route->getSchemes(), $requestUri->getScheme())) {
+        if (!$this->compareScheme($schemes, $requestUri->getScheme())) {
             throw new UriHandlerException(
                 \sprintf(
                     'Unfortunately current scheme "%s" is not allowed on requested uri [%s]',
@@ -84,12 +77,7 @@ trait ValidationTrait
     }
 
     /**
-     * Asserts the Route'd host and port
-     *
-     * @param string $hostAndPort
-     * @param string $requestPath
-     *
-     * @return UriHandlerException
+     * Asserts the Route's host and port
      */
     protected function assertHost(string $hostAndPort, string $requestPath): UriHandlerException
     {
@@ -104,12 +92,28 @@ trait ValidationTrait
     }
 
     /**
+     * Resolve request path to match sub-directory, server, and domain paths.
+     */
+    protected function resolvePath(ServerRequestInterface $request): string
+    {
+        $requestPath = $request->getUri()->getPath();
+        $basePath    = $request->getServerParams()['SCRIPT_NAME'] ?? '';
+
+        if (
+            $basePath !== $requestPath &&
+            \strlen($basePath = \dirname($basePath)) > 1 &&
+            $basePath !== '/index.php'
+        ) {
+            $requestPath = \substr($requestPath, \strcmp($basePath, $requestPath)) ?: '';
+        }
+
+        return \strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath;
+    }
+
+    /**
      * Check if given request method matches given route method.
      *
      * @param string[] $routeMethods
-     * @param string   $requestMethod
-     *
-     * @return bool
      */
     private function compareMethod(array $routeMethods, string $requestMethod): bool
     {
@@ -120,9 +124,6 @@ trait ValidationTrait
      * Check if given request uri scheme matches given route scheme.
      *
      * @param string[] $routeSchemes
-     * @param string   $requestScheme
-     *
-     * @return bool
      */
     private function compareScheme(array $routeSchemes, string $requestScheme): bool
     {
