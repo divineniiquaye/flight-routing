@@ -40,10 +40,6 @@ namespace Flight\Routing;
  * @method array getArguments() Gets the arguments passed to route handler as parameters.
  * @method array getAll() Gets all the routes properties.
  *
- * @method Route asserts(array $patterns) Add an array of route named patterns.
- * @method Route defaults(array $values) Add an array of default values.
- * @method Route arguments(array $properties) Add an array of handler's arguments.
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class Route
@@ -125,27 +121,18 @@ class Route
      */
     public function __call($method, $arguments)
     {
-        $routeMethod = (string) \preg_replace('/^(default|assert)(s)|get([A-Z]{1}[a-z]+)$/', '\1\3', $method, 1);
+        $routeMethod = (string) \preg_replace('/^get([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
+        $routeMethod = \strtolower($routeMethod);
 
-        if (\in_array($routeMethod = \strtolower($routeMethod), ['all', 'arguments'], true)) {
-            return $this->get($routeMethod);
-        }
-
-        if (!\property_exists($this, $routeMethod)) {
-            if (method_exists($this, $routeMethod) || 'arguments' === $method) {
-                $arguments = (array) \current($arguments) ?: [];
-
-                foreach ($arguments as $variable => $value) {
-                    $this->{$routeMethod}($variable, $value);
-                }
-
-                return $this;
+        if (!\property_exists(__CLASS__, $routeMethod)) {
+            if (\in_array($routeMethod, ['all', 'arguments'], true)) {
+                return $this->get($routeMethod);
             }
 
             throw new \BadMethodCallException(
                 \sprintf(
                     'Method "%s->%s" does not exist. should be one of [%s], all, or arguments. ' .
-                    '%2$s method should start with a \'get\' prefix.',
+                    '\'%2$s\' method starting with a \'get\' prefix.',
                     Route::class,
                     $routeMethod ?: $method,
                     \join(', ', \array_keys($this->get('all')))
@@ -228,6 +215,22 @@ class Route
     }
 
     /**
+     * Sets the requirements for a route variable.
+     *
+     * @param array<string,string|string[]> $regexps The regexps to apply
+     *
+     * @return Route $this The current route instance
+     */
+    public function asserts(array $regexps): self
+    {
+        foreach ($regexps as $variable => $regexp) {
+            $this->assert($variable, $regexp);
+        }
+
+        return $this;
+    }
+
+    /**
      * Sets the default value for a route variable.
      *
      * @param string $variable The variable name
@@ -238,6 +241,22 @@ class Route
     public function default(string $variable, $default): self
     {
         $this->defaults[$variable] = $default;
+
+        return $this;
+    }
+
+    /**
+     * Sets the default values for a route variables.
+     *
+     * @param array<string,mixed> $values
+     *
+     * @return Route $this The current Route instance
+     */
+    public function defaults(array $values): self
+    {
+        foreach ($values as $variable => $default) {
+            $this->default($variable, $default);
+        }
 
         return $this;
     }
@@ -260,6 +279,22 @@ class Route
             }
 
             $this->defaults['_arguments'][$variable] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the parameter values for a route handler.
+     *
+     * @param array<int|string $variables The route handler parameters
+     *
+     * @return Route $this The current Route instance
+     */
+    public function arguments(array $variables): self
+    {
+        foreach ($variables as $variable => $value) {
+            $this->argument($variable, $value);
         }
 
         return $this;
@@ -293,7 +328,7 @@ class Route
         foreach ($hosts as $host) {
             \preg_match(Route::URL_PATTERN, $host, $matches);
 
-            $scheme = $matches['scheme'] ?? null;
+            $scheme = $matches['scheme'] ?? '';
 
             if ('api' === $scheme && isset($matches['host'])) {
                 $this->defaults['_api'] = \ucfirst($matches['host']);
@@ -362,7 +397,7 @@ class Route
      */
     public function get(string $name)
     {
-        if (\property_exists($this, $name)) {
+        if (\property_exists(__CLASS__, $name)) {
             return $this->{$name};
         }
 
