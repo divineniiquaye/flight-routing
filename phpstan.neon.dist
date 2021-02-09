@@ -15,7 +15,6 @@ parameters:
         - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.|Result of && is always false.$#"
         - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
         - "#^Call to function is_callable\\(\\)|is_string\\(\\)|is_object\\(\\) with (string|object) will always evaluate to false.$#"
-        - "#^Parameter \\#1 \\$name of class Flight\\\\Routing\\\\DebugRoute constructor expects string, string\\|null given.$#"
         -
             message: "#^Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(mixed|Flight\\\\Routing\\\\Route, string\\) given.|Array \\(array<Flight\\\\Routing\\\\Route>\\) does not accept Flight\\\\Routing\\\\RouteCollection.$#"
             path: src/RouteCollection.php
