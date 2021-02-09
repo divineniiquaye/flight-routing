@@ -73,8 +73,6 @@ class SimpleRouteMatcher implements RouteMatcherInterface
      */
     public function match(ServerRequestInterface $request): ?Route
     {
-        $requestUri    = $request->getUri();
-        $requestMethod = $request->getMethod();
         $resolvedPath  = \rawurldecode($this->resolvePath($request));
 
         // Checks if $route is a static type
@@ -82,7 +80,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             /** @var array<string,mixed> $matchedDomain */
             [$id, $matchedDomain] = $this->staticRoutes[$resolvedPath];
 
-            return $this->matchRoute($this->routes[$id], $requestUri, $requestMethod, $matchedDomain);
+            return $this->matchRoute($this->routes[$id], $request->getUri(), $request->getMethod(), $matchedDomain);
         }
 
         /**
@@ -100,7 +98,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             $route = $this->routes[$id];
             $route->arguments(array_replace($pathVars, $uriVars));
 
-            return $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
+            return $this->matchRoute($route, $request->getUri(), $request->getMethod(), $matchDomain);
         }
 
         return null;
@@ -154,7 +152,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     protected function warmCompiler($routes): void
     {
         foreach ($routes as $index => $route) {
-            $compiledRoute = clone $this->getCompiler()->compile($route);
+            $compiledRoute = clone $this->compiler->compile($route);
             $matchDomain   = [[], []];
 
             if (!empty($compiledRoute->getHostVariables())) {
@@ -276,13 +274,13 @@ class SimpleRouteMatcher implements RouteMatcherInterface
      */
     private function interpolate(string $string, array $values): string
     {
-        $replaces = [];
+        $replaces = self::URI_FIXERS;
 
         foreach ($values as $key => $value) {
             $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
         }
 
-        return \strtr($string, $replaces + self::URI_FIXERS);
+        return \strtr($string, $replaces);
     }
 
     /**
