@@ -187,17 +187,15 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
         if (null !== $this->defaultRoute) {
-            $route      = clone $this->defaultRoute;
-            $handler = null === $handler ? $route->get('controller') : $handler;
-
+            $route = clone $this->defaultRoute;
             $route->prefix($route->get('path'))->path($pattern)->method(...$methods);
         } else {
-            $route = new Route($pattern, '', $handler);
+            $route = new Route($pattern, '');
             $route->method(...$methods);
         }
 
         $this->routes[] = $route;
-        $route->run($handler);
+        $route->run($handler ?? $route->get('controller'));
 
         return $route;
     }
