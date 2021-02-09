@@ -289,20 +289,19 @@ class Router implements RouterInterface, RequestHandlerInterface
 
         if ($this->options['debug'] || null === $cacheFile) {
             /** @var RouteMatcherInterface $matcher */
-            $matcher = new $this->options['matcher_class']($routes);
+            $matcher = new $this->options['matcher_class']($this->routes);
 
             return $this->matcher = $matcher;
         } elseif ($this->isFrozen()) {
             return $this->matcher = $this->getDumper($cacheFile);
         }
-
-        $dumper = $this->getDumper($routes);
+        $dumper = $this->getDumper($this->routes);
 
         if ($dumper instanceof MatcherDumperInterface) {
             $cacheDir = $this->options['cache_dir'];
 
             if (!\file_exists($cacheDir)) {
-                @\mkdir($cacheDir);
+                @\mkdir($cacheDir, 0777, true);
             }
             \file_put_contents($cacheFile, $dumper->dump());
 
