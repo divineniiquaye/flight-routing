@@ -32,12 +32,6 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
 {
     use DumperTrait;
 
-    /** @var string[] */
-    private $dynamicRoutes = [];
-
-    /** @var array<string,string|null> */
-    private $staticRoutes = [];
-
     /** @var mixed[] */
     private $regexpList = [];
 
@@ -46,13 +40,11 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
      */
     public function __construct($collection)
     {
-        parent::__construct($collection);
-
         if (!$collection instanceof RouteCollection) {
             $this->export = false;
         }
 
-        $this->warmCompiler($this->routes);
+        parent::__construct($collection);
     }
 
     /**
@@ -175,7 +167,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
     /**
      * @param Route[]|string $routes
      */
-    private function warmCompiler($routes): void
+    protected function warmCompiler($routes): void
     {
         if (\is_string($routes)) {
             [$this->staticRoutes, $this->dynamicRoutes, $this->regexpList, $this->routes] = require $routes;
@@ -188,12 +180,12 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
         foreach ($routes as $route) {
             $compiledRoute = clone $this->getCompiler()->compile($route);
 
-            $routeName     = $route->get('name');
-            $pathVariables = $compiledRoute->getPathVariables();
-
             if (!empty($compiledRoute->getHostVariables())) {
                 $route->default('_domain', [$compiledRoute->getHostsRegex(), $compiledRoute->getHostVariables()]);
             }
+
+            $routeName     = $route->get('name');
+            $pathVariables = $compiledRoute->getPathVariables();
 
             if (empty($pathVariables)) {
                 $url  = \rtrim($route->get('path'), '/') ?: '/';
@@ -208,6 +200,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
 
             $newRoutes[$routeName] = $route;
         }
+
         $this->routes     = $newRoutes; // Set the new routes.
         $this->regexpList = $this->generateExpressions($regexpList, \array_keys($this->dynamicRoutes));
     }
