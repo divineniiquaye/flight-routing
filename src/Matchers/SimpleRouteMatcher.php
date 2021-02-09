@@ -202,7 +202,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             $schemesKeys = \array_keys($schemes);
 
             // If we have s secured scheme, it should be served
-            $hostScheme   = isset($schemes['https']) ? 'https' : \end($schemesKeys);
+            $hostScheme   = isset($schemes['https']) ? 'https' : (\end($schemesKeys) ?: 'http');
             $hostTemplate = $this->interpolate($hostRegex, $parameters);
 
             $path = \sprintf('%s://%s', $hostScheme, \trim($hostTemplate, '.'));
