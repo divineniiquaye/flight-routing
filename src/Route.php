@@ -287,7 +287,7 @@ class Route
     /**
      * Sets the parameter values for a route handler.
      *
-     * @param array<int|string $variables The route handler parameters
+     * @param array<int|string> $variables The route handler parameters
      *
      * @return Route $this The current Route instance
      */
