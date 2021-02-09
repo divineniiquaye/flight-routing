@@ -56,7 +56,7 @@ trait CastingTrait
      */
     private function castRoute(string $route): string
     {
-        $urlRegex = \strtr(Route::URL_PATTERN, ['/^' => '/^(?:', '$/u' => ')']);
+        $urlRegex = \str_replace(['/^', '$/u'], ['/^(?:', ')'], Route::URL_PATTERN);
         $urlRegex .= \str_replace('/^', '?', Route::RCA_PATTERN);
 
         // Match url + rca from pattern...
@@ -70,8 +70,9 @@ trait CastingTrait
             $handler          = $matches['c'] ?: $this->controller;
             $this->controller = !$handler ? $matches['a'] : [$handler, $matches['a']];
         }
+        $route = $matches['route'] ?? '';
 
-        if (isset($matches['host'])) {
+        if (isset($matches['host']) && !empty($matches['host'])) {
             $route = $this->castDomain($matches);
         }
 
@@ -86,26 +87,26 @@ trait CastingTrait
     private function castDomain(array $matches): string
     {
         $domain = $matches['host'] ?? '';
-        $scheme = $matches['scheme'] ?? '';
         $route  = $matches['route'] ?? '';
 
-        if (
-            (empty($route) || '/' === $route || 0 === preg_match('/.\w+$/', $domain)) &&
-            (!empty($domain) && empty($matches[2]))
-        ) {
-            $route  = $domain . $route;
-            $domain = '';
-        }
-
-        if ('api' === $scheme && !empty($domain)) {
+        if ('api' === $scheme = $matches['scheme'] ?? '') {
             $this->defaults['_api'] = \ucfirst($domain);
 
             return $route;
-        } elseif (!empty($scheme) && 'api' !== $scheme) {
-            $this->schemes[$scheme] = true;
         }
 
-        if (!empty($domain) && 'api' !== $scheme) {
+        if (
+            (empty($route) || '/' === $route || 0 === preg_match('/.\w+$/', $domain)) &&
+            empty($matches[2])
+        ) {
+            return $domain . $route;
+        }
+
+        if (!empty($domain)) {
+            if (!empty($scheme)) {
+                $this->schemes[$scheme] = true;
+            }
+
             $this->domain[$domain] = true;
         }
 

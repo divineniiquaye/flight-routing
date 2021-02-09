@@ -57,8 +57,8 @@ trait ValidationTrait
      */
     protected function assertRoute(Route $route, UriInterface $requestUri, string $method): void
     {
-        $methods = $route->getMethods();
-        $schemes = $route->getSchemes();
+        $methods = $route->get('methods');
+        $schemes = $route->get('schemes');
 
         if (!$this->compareMethod($methods, $method)) {
             throw new MethodNotAllowedException(\array_keys($methods), $requestUri->getPath(), $method);

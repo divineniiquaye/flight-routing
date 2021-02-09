@@ -97,7 +97,7 @@ trait DumperTrait
      */
     protected static function exportRoute(Route $route): string
     {
-        $properties = $route->getAll();
+        $properties = $route->get('all');
         $controller = $properties['controller'];
         $exported   = '';
 

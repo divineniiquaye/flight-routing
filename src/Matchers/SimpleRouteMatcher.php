@@ -68,21 +68,22 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
         foreach ($this->routes as $route) {
             $compiledRoute = clone $this->compiler->compile($route);
-
-            $staticUrl = \rtrim($route->getPath(), '/') ?: '/';
-            $pathVars  = $compiledRoute->getPathVariables();
-            $pathRegex = $compiledRoute->getRegex();
-
-            $uriVars = $matchDomain = [];
+            $matchDomain   = [];
 
             if (!empty($compiledRoute->getHostVariables())) {
                 $matchDomain = [$compiledRoute->getHostsRegex(), $compiledRoute->getHostVariables()];
             }
 
+            $staticUrl = \rtrim($route->get('path'), '/') ?: '/';
+            $pathVars  = $compiledRoute->getPathVariables();
+
             // Checks if $route is a static type
             if ($staticUrl === $resolvedPath && empty($pathVars)) {
                 return $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
             }
+
+            $uriVars   = [];
+            $pathRegex = $compiledRoute->getRegex();
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
             if ($this->compareUri($pathRegex, $resolvedPath, $uriVars)) {
@@ -108,7 +109,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             $uriRoute = $this->routes[$routeName];
         } else {
             foreach ($this->routes as $route) {
-                if ($routeName === $route->getName()) {
+                if ($routeName === $route->get('name')) {
                     $uriRoute = $route;
 
                     break;
@@ -165,7 +166,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
         $parameters = \array_merge(
             $compiledRoute->getVariables(),
-            $route->getDefaults(),
+            $route->get('defaults'),
             $this->fetchOptions($parameters, \array_keys($compiledRoute->getVariables()))
         );
 
@@ -175,7 +176,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
         //Uri without empty blocks (pretty stupid implementation)
         if (!empty($hostRegex)) {
-            $schemes     = $route->getSchemes();
+            $schemes     = $route->get('schemes');
             $schemesKeys = \array_keys($schemes);
 
             // If we have s secured scheme, it should be served

@@ -168,7 +168,7 @@ class Listener implements ListenerInterface
      */
     protected function mergeGroup(Route $group, BaseRoute $route): BaseRoute
     {
-        $route = $route->bind($group->getName() . $route->getName())
+        $route = $route->bind($group->getName() . $route->get('name'))
             ->scheme(...$group->getSchemes())
             ->prefix($group->getPath() ?? '')
             ->method(...$group->getMethods())
