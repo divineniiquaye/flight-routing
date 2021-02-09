@@ -62,10 +62,8 @@ trait RouterTrait
     public function getProfile(): ?DebugRoute
     {
         if ($this->options['debug']) {
-            $routes = $this->getCollection()->getRoutes();
-
-            foreach ($routes as $route) {
-                $this->debug->addProfile(new DebugRoute($route->getName(), $route));
+            foreach ($this->routes as $route) {
+                $this->debug->addProfile(new DebugRoute($route->get('name'), $route));
             }
 
             return $this->debug;
@@ -81,11 +79,6 @@ trait RouterTrait
      */
     public function loadAnnotation(LoaderInterface $loader): void
     {
-        // Guess you off debug mode and would not need to add new routes.
-        if ($this->isFrozen()) {
-            return;
-        }
-
         $annotations = $loader->load();
 
         foreach ($annotations as $annotation) {
@@ -102,8 +95,8 @@ trait RouterTrait
      */
     private function mergeDefaults(Route $route): void
     {
-        $defaults = $route->getDefaults();
-        $param    = $route->getArguments();
+        $defaults = $route->get('defaults');
+        $param    = $route->get('arguments');
         $excludes = ['_arguments' => true, '_domain' => true];
 
         foreach ($defaults as $key => $value) {

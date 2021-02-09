@@ -134,10 +134,10 @@ class SimpleRouteCompiler implements \Serializable
     public function compile(Route $route): self
     {
         $hostVariables = $hostRegex = $hostTemplate = [];
-        $requirements  = $this->getRequirements($route->getPatterns());
+        $requirements  = $this->getRequirements($route->get('patterns'));
 
-        if ([] !== $hosts = $route->getDomain()) {
-            foreach (\array_keys($hosts) as $host) {
+        if ([] !== $hosts = $route->get('domain')) {
+            foreach ($hosts as $host => $has) {
                 $result = $this->compilePattern($requirements, $host, true);
 
                 $hostVariables += $result['variables'];
@@ -147,7 +147,7 @@ class SimpleRouteCompiler implements \Serializable
             }
         }
 
-        $result        = $this->compilePattern($requirements, $route->getPath());
+        $result        = $this->compilePattern($requirements, $route->get('path'));
         $pathVariables = $result['variables'];
 
         $this->compiled      = $result['regex'] . 'u';

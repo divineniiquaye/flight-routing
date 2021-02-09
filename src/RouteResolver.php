@@ -51,7 +51,7 @@ class RouteResolver
 
         $arguments = [\get_class($request) => $request, \get_class($response) => $response];
 
-        return $this->invoker->call($handler, \array_merge($arguments, $route->getArguments()));
+        return $this->invoker->call($handler, \array_merge($arguments, $route->get('arguments')));
     }
 
     /**
@@ -79,7 +79,7 @@ class RouteResolver
      */
     private function resolveResponse(ServerRequestInterface $request, Route $route)
     {
-        $handler = $route->getController();
+        $handler = $route->get('controller');
 
         if ($handler instanceof RequestHandlerInterface) {
             return $handler->handle($request);
@@ -100,7 +100,7 @@ class RouteResolver
         }
 
         // Disable or enable HTTP request method prefix for action.
-        if (null !== $isRestFul = $route->getDefaults()['_api'] ?? null) {
+        if (null !== $isRestFul = $route->get('defaults')['_api'] ?? null) {
             $method = \strtolower($request->getMethod());
 
             if (!\is_object($handler) || (\is_string($handler) && \class_exists($handler))) {

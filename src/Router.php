@@ -67,7 +67,7 @@ class Router implements RouterInterface, RequestHandlerInterface
         $this->resolver        = new RouteResolver($resolver ?? new Invoker());
 
         $this->setOptions($options);
-        $this->routes   = new RouteCollection();
+        $this->routes   = new RouteCollection(false);
         $this->pipeline = new MiddlewarePipe();
     }
 
@@ -144,13 +144,8 @@ class Router implements RouterInterface, RequestHandlerInterface
      */
     public function addRoute(Route ...$routes): void
     {
-        // Guess you off debug mode and would not need to add new routes.
-        if ($this->isFrozen()) {
-            return;
-        }
-
         foreach ($routes as $route) {
-            if (null === $name = $route->getName()) {
+            if (null === $name = $route->get('name')) {
                 $route->bind($name = $route->generateRouteName(''));
             }
 
@@ -222,7 +217,7 @@ class Router implements RouterInterface, RequestHandlerInterface
         $this->mergeDefaults($route);
 
         if ($this->options['debug']) {
-            $this->debug->setMatched(new DebugRoute($route->getName(), $route));
+            $this->debug->setMatched(new DebugRoute($route->get('name'), $route));
         }
 
         return $this->route = clone $route;
@@ -256,16 +251,9 @@ class Router implements RouterInterface, RequestHandlerInterface
         }
 
         try {
-            $middleware = $this->resolveMiddlewares(new MiddlewarePipe(), $route);
+            $this->addMiddleware(...$this->resolveMiddlewares($route));
 
-            return $this->pipeline->process(
-                $request->withAttribute(Route::class, $route),
-                new Handlers\CallbackHandler(
-                    static function (ServerRequestInterface $request) use ($middleware, $handler): ResponseInterface {
-                        return $middleware->process($request, $handler);
-                    }
-                )
-            );
+            return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
         } finally {
             if ($this->options['debug']) {
                 foreach ($this->debug->getProfiles() as $profiler) {
@@ -283,8 +271,6 @@ class Router implements RouterInterface, RequestHandlerInterface
         if (null !== $this->matcher) {
             return $this->matcher;
         }
-
-        $routes    = $this->getCollection();
         $cacheFile = $this->options['cache_file'] ?? null;
 
         if ($this->options['debug'] || null === $cacheFile) {

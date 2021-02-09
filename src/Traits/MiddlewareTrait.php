@@ -21,7 +21,6 @@ use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Flight\Routing\Route;
 use Laminas\Stratigility\Middleware\CallableMiddlewareDecorator;
 use Laminas\Stratigility\Middleware\RequestHandlerMiddleware;
-use Laminas\Stratigility\MiddlewarePipeInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -119,20 +118,23 @@ trait MiddlewareTrait
         return $middleware;
     }
 
-    private function resolveMiddlewares(MiddlewarePipeInterface $pipeline, Route $route): MiddlewarePipeInterface
+    /**
+     * @return MiddlewareInterface[]
+     */
+    private function resolveMiddlewares(Route $route): array
     {
-        $middlewares = $route->getMiddlewares();
+        $middlewares = [];
 
-        foreach ($middlewares as $middleware) {
+        foreach ($route->get('middlewares') as $middleware) {
             if (\is_string($middleware) && isset($this->nameMiddlewares[$middleware])) {
-                $pipeline->pipe($this->resolveMiddleware($this->nameMiddlewares[$middleware]));
+                $middlewares[] = $this->resolveMiddleware($this->nameMiddlewares[$middleware]);
 
                 continue;
             }
 
-            $pipeline->pipe($this->resolveMiddleware($middleware));
+            $middlewares[] = $this->resolveMiddleware($middleware);
         }
 
-        return $pipeline;
+        return $middlewares;
     }
 }

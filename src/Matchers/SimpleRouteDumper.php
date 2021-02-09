@@ -82,7 +82,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
         $matchedRoute = $this->getCompiledRoute($resolvedPath);
 
         if ($matchedRoute instanceof Route) {
-            $matchDomain = $matchedRoute->getDefaults()['_domain'] ?? [[], []];
+            $matchDomain = $matchedRoute->get('defaults')['_domain'] ?? [[], []];
 
             return $this->matchRoute($matchedRoute, $requestUri, $requestMethod, $matchDomain);
         }
@@ -120,7 +120,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
                 $matchedRoute = $this->routes[$this->dynamicRoutes[$routeId]];
                 $parameters   = $parameters[$routeId];
 
-                foreach ($matchedRoute->getArguments() as $key => $value) {
+                foreach ($matchedRoute->get('arguments') as $key => $value) {
                     if (
                         \in_array($key, $parameters, true) &&
                         (null === $value && isset($urlVariables[$countVars]))
@@ -188,7 +188,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
         foreach ($routes as $route) {
             $compiledRoute = clone $this->getCompiler()->compile($route);
 
-            $routeName     = $route->getName();
+            $routeName     = $route->get('name');
             $pathVariables = $compiledRoute->getPathVariables();
 
             if (!empty($compiledRoute->getHostVariables())) {
@@ -196,7 +196,7 @@ class SimpleRouteDumper extends SimpleRouteMatcher implements MatcherDumperInter
             }
 
             if (empty($pathVariables)) {
-                $url  = \rtrim($route->getPath(), '/') ?: '/';
+                $url  = \rtrim($route->get('path'), '/') ?: '/';
 
                 $this->staticRoutes[$url] = $routeName;
             } else {
