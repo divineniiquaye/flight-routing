@@ -47,7 +47,6 @@ namespace Flight\Routing;
  * @method RouteCollection withMiddleware(mixed ...$middlewares)
  * @method RouteCollection withDomain(string ...$hosts)
  * @method RouteCollection withPrefix(string $path)
- *
  * @method RouteCollection withDefaults(array $values)
  * @method RouteCollection withAsserts(array $patterns)
  * @method RouteCollection withArguments(array $patterns)
@@ -61,19 +60,21 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     /** @var null|string */
     private $namePrefix;
 
-    /** @var Route */
-    private $defaultRoute;
+    /** @var null|Route */
+    private $defaultRoute = null;
 
     /** @var Route[] */
     private $routes = [];
 
     /**
-     * @param null|Route $defaultRoute
-     * @param mixed      $defaultHandler
+     * @param null|false|Route $defaultRoute
+     * @param mixed            $defaultHandler
      */
-    public function __construct(?Route $defaultRoute = null, $defaultHandler = null)
+    public function __construct($defaultRoute = null, $defaultHandler = null)
     {
-        $this->defaultRoute = $defaultRoute ?? new Route('/', '', $defaultHandler);
+        if (false !== $defaultRoute) {
+            $this->defaultRoute = $defaultRoute ?? new Route('/', '', $defaultHandler);
+        }
     }
 
     /**
@@ -84,10 +85,9 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function __call($method, $arguments)
     {
-        $routeMethod = (string) \preg_replace('/^(default|assert)(s)|with([A-Z]{1}[a-z]+)$/', '\2\3', $method, 1);
-        $excluded    = !in_array($routeMethod = \strtolower($routeMethod), ['arguments', 's'], true);
+        $routeMethod = (string) \preg_replace('/^with([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
 
-        if (!(\method_exists($this->defaultRoute, $routeMethod) || $excluded)) {
+        if (!\method_exists(Route::class, $routeMethod)) {
             throw new \BadMethodCallException(
                 \sprintf(
                     'Method "%s::%s" does not exist. %2$s method should begin a \'with\' prefix',
@@ -97,7 +97,9 @@ final class RouteCollection implements \IteratorAggregate, \Countable
             );
         }
 
-        \call_user_func_array([$this->defaultRoute, $routeMethod], $arguments);
+        if (null !== $this->defaultRoute) {
+            \call_user_func_array([$this->defaultRoute, $routeMethod], $arguments);
+        }
 
         foreach ($this->routes as $route) {
             \call_user_func_array([$route, $routeMethod], $arguments);
@@ -119,14 +121,13 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     /**
      * Gets the current RouteCollection as an iterable of routes.
      *
-     * This method can be used to fetch routes too, but if group() method
-     * is used, use getRoutes() method instead.
+     * @see getRoutes() method
      *
-     * @return \ArrayIterator<int,Route> The unfiltered routes
+     * @return \ArrayIterator<int,Route> The filtered routes
      */
     public function getIterator()
     {
-        return new \ArrayIterator($this->routes);
+        return new \ArrayIterator($this->getRoutes());
     }
 
     /**
@@ -138,7 +139,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function getRoutes(): array
     {
-        return $this->doMerge('', new static());
+        return $this->doMerge('', new static(false));
     }
 
     /**
@@ -155,14 +156,18 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function add(Route ...$routes): self
     {
         foreach ($routes as $route) {
-            $default = clone $this->defaultRoute;
+            if (null !== $this->defaultRoute) {
+                $default = clone $this->defaultRoute;
 
-            // Append default path to routes' path
-            $route->prefix($default->getPath());
+                // Append default path to routes' path
+                $route->prefix($default->get('path'));
 
-            // Merge defaults with route
-            $mergedRoute    = array_merge($default->getAll(), $route->getAll());
-            $this->routes[] = $default::__set_state($mergedRoute);
+                // Merge defaults with route
+                $mergedRoute = \array_replace($default->get('all'), $route->get('all'));
+                $route       = $default::__set_state($mergedRoute);
+            }
+
+            $this->routes[] = $route;
         }
 
         return $this;
@@ -181,13 +186,18 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
-        $route      = clone $this->defaultRoute;
-        $controller = null === $handler ? $route->getController() : $handler;
+        if (null !== $this->defaultRoute) {
+            $route      = clone $this->defaultRoute;
+            $handler = null === $handler ? $route->get('controller') : $handler;
 
-        $route->prefix($route->getPath())->path($pattern)->method(...$methods);
+            $route->prefix($route->get('path'))->path($pattern)->method(...$methods);
+        } else {
+            $route = new Route($pattern, '', $handler);
+            $route->method(...$methods);
+        }
 
         $this->routes[] = $route;
-        $route->run($controller);
+        $route->run($handler);
 
         return $route;
     }
@@ -333,7 +343,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function resource(string $name, string $pattern, $resource): Route
     {
-        return $this->any(sprintf('api://%s/%s', $name, $pattern), $resource);
+        return $this->any(\sprintf('api://%s/%s', $name, $pattern), $resource);
     }
 
     /**
@@ -347,7 +357,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     {
         /** @var Route|RouteCollection $route */
         foreach ($this->routes as $route) {
-            if ($route instanceof Route && $name === $route->getName()) {
+            if ($route instanceof Route && $name === $route->get('name')) {
                 return $route;
             }
         }
@@ -365,20 +375,22 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     {
         /** @var Route|RouteCollection $route */
         foreach ($this->routes as $route) {
-            if ($route instanceof Route) {
-                if (null === $name = $route->getName()) {
-                    $name = $base = $route->generateRouteName('');
-                    $i    = 0;
-
-                    while ($routes->find($name)) {
-                        $name = $base . '_' . ++$i;
-                    }
-                }
-
-                $routes->add($route->bind($prefix . $name));
-            } else {
+            if ($route instanceof self) {
                 $route->doMerge($prefix . $route->namePrefix, $routes);
+
+                continue;
             }
+
+            if (null === $name = $route->get('name')) {
+                $name = $base = $route->generateRouteName('');
+                $i    = 0;
+
+                while ($routes->find($name)) {
+                    $name = $base . '_' . ++$i;
+                }
+            }
+
+            $routes->routes[] = $route->bind($prefix . $name);
         }
 
         return $routes->routes;
