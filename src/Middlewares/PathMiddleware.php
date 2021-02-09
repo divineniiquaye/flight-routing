@@ -43,13 +43,15 @@ class PathMiddleware implements MiddlewareInterface
     {
         $route    = $request->getAttribute(Route::class);
         $response = $handler->handle($request);
-        $path     = $this->comparePath($route->getPath(), $request->getUri()->getPath());
 
-        // Allow Redirection if exists and avoid static request.
-        if ($route instanceof Route && null !== $path) {
-            $response = $response
-                ->withAddedHeader('Location', $path)
-                ->withStatus($this->determineResponseCode($request));
+        if ($route instanceof Route) {
+            $path = $this->comparePath($route->get('path'), $request->getUri()->getPath());
+
+            // Allow Redirection if exists and avoid static request.
+            if (null !== $path) {
+                return $response->withAddedHeader('Location', $path)
+                    ->withStatus($this->determineResponseCode($request));
+            }
         }
 
         return $response;
