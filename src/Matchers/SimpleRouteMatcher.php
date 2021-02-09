@@ -41,6 +41,12 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /** @var Route[] */
     protected $routes = [];
 
+    /** @var string[] */
+    protected $dynamicRoutes = [];
+
+    /** @var array<string,string|null> */
+    protected $staticRoutes = [];
+
     /** @var SimpleRouteCompiler */
     private $compiler;
 
@@ -49,12 +55,17 @@ class SimpleRouteMatcher implements RouteMatcherInterface
      */
     public function __construct($collection)
     {
+        $this->compiler = new SimpleRouteCompiler();
+
         if ($collection instanceof RouteCollection) {
             $collection = $collection->getRoutes();
         }
 
-        $this->routes   = $collection;
-        $this->compiler = new SimpleRouteCompiler();
+        if ($this instanceof SimpleRouteMatcher) {
+            $this->routes = $collection;
+        }
+
+        $this->warmCompiler($collection);
     }
 
     /**
@@ -66,31 +77,30 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         $requestMethod = $request->getMethod();
         $resolvedPath  = \rawurldecode($this->resolvePath($request));
 
-        foreach ($this->routes as $route) {
-            $compiledRoute = clone $this->compiler->compile($route);
-            $matchDomain   = [];
+        // Checks if $route is a static type
+        if (isset($this->staticRoutes[$resolvedPath])) {
+            /** @var array<string,mixed> $matchedDomain */
+            [$id, $matchedDomain] = $this->staticRoutes[$resolvedPath];
 
-            if (!empty($compiledRoute->getHostVariables())) {
-                $matchDomain = [$compiledRoute->getHostsRegex(), $compiledRoute->getHostVariables()];
-            }
+            return $this->matchRoute($this->routes[$id], $requestUri, $requestMethod, $matchedDomain);
+        }
 
-            $staticUrl = \rtrim($route->get('path'), '/') ?: '/';
-            $pathVars  = $compiledRoute->getPathVariables();
-
-            // Checks if $route is a static type
-            if ($staticUrl === $resolvedPath && empty($pathVars)) {
-                return $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
-            }
-
-            $uriVars   = [];
-            $pathRegex = $compiledRoute->getRegex();
+        /**
+         * @var array<string,mixed> $pathVars
+         * @var array<string,mixed> $matchDomain
+         */
+        foreach ($this->dynamicRoutes as $id => [$pathRegex, $pathVars, $matchDomain]) {
+            $uriVars = [];
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if ($this->compareUri($pathRegex, $resolvedPath, $uriVars)) {
-                $foundRoute = $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
-
-                return $this->mergeRouteArguments($foundRoute, \array_replace($pathVars, $uriVars));
+            if (!$this->compareUri($pathRegex, $resolvedPath, $uriVars)) {
+                continue;
             }
+
+            $route = $this->routes[$id];
+            $route->arguments(array_replace($pathVars, $uriVars));
+
+            return $this->matchRoute($route, $requestUri, $requestMethod, $matchDomain);
         }
 
         return null;
@@ -139,18 +149,30 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * @param Route                         $route
-     * @param array<int|string,null|string> $arguments
-     *
-     * @return Route
+     * @param Route[]|string $routes
      */
-    protected function mergeRouteArguments(Route $route, array $arguments): Route
+    protected function warmCompiler($routes): void
     {
-        foreach ($arguments as $key => $value) {
-            $route->argument($key, $value);
-        }
+        foreach ($routes as $index => $route) {
+            $compiledRoute = clone $this->getCompiler()->compile($route);
+            $matchDomain   = [[], []];
 
-        return $route;
+            if (!empty($compiledRoute->getHostVariables())) {
+                $matchDomain = [$compiledRoute->getHostsRegex(), $compiledRoute->getHostVariables()];
+            }
+
+            if (empty($pathVariables = $compiledRoute->getPathVariables())) {
+                $url  = \rtrim($route->get('path'), '/') ?: '/';
+
+                $this->staticRoutes[$url] = [$index, $matchDomain];
+
+                continue;
+            }
+
+            $route->arguments($pathVariables);
+
+            $this->dynamicRoutes[$index] = [$compiledRoute->getRegex(), $compiledRoute->getPathVariables(), $matchDomain];
+        }
     }
 
     /**
@@ -218,7 +240,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             throw $this->assertHost($hostAndPort, $requestUri->getPath());
         }
 
-        return $this->mergeRouteArguments($route, \array_replace($hostVars, $hostParameters));
+        return $route->arguments(\array_replace($hostVars, $hostParameters));
     }
 
     /**

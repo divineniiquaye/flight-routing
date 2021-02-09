@@ -82,7 +82,7 @@ final class RouteHandler implements RequestHandlerInterface
      *
      * @return ResponseInterface
      */
-    private function wrapResponse(ResponseInterface $response, $result = null, string $output): ResponseInterface
+    private function wrapResponse(ResponseInterface $response, $result, string $output): ResponseInterface
     {
         // Always return the response...
         if ($result instanceof ResponseInterface) {
