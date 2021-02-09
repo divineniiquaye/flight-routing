@@ -60,14 +60,17 @@ trait ValidationTrait
         /** @var string[] $methods */
         $methods = $route->get('methods');
 
-        /** @var string[] $schemes */
-        $schemes = $route->get('schemes');
-
-        if (!$this->compareMethod($methods, $method)) {
+        // Check if given request method matches given route method.
+        if (!isset($methods[$method])) {
             throw new MethodNotAllowedException(\array_keys($methods), $requestUri->getPath(), $method);
         }
 
-        if (!$this->compareScheme($schemes, $requestUri->getScheme())) {
+        /** @var string[] $schemes */
+        $schemes = $route->get('schemes');
+        $scheme  = $requestUri->getScheme();
+
+        // Check if given request uri scheme matches given route scheme.
+        if (!(empty($schemes) || isset($schemes[$scheme]))) {
             throw new UriHandlerException(
                 \sprintf(
                     'Unfortunately current scheme "%s" is not allowed on requested uri [%s]',
@@ -111,25 +114,5 @@ trait ValidationTrait
         }
 
         return \strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath;
-    }
-
-    /**
-     * Check if given request method matches given route method.
-     *
-     * @param string[] $routeMethods
-     */
-    private function compareMethod(array $routeMethods, string $requestMethod): bool
-    {
-        return isset($routeMethods[$requestMethod]);
-    }
-
-    /**
-     * Check if given request uri scheme matches given route scheme.
-     *
-     * @param string[] $routeSchemes
-     */
-    private function compareScheme(array $routeSchemes, string $requestScheme): bool
-    {
-        return empty($routeSchemes) || isset($routeSchemes[$requestScheme]);
     }
 }

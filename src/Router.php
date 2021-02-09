@@ -270,36 +270,38 @@ class Router implements RouterInterface, RequestHandlerInterface
     {
         if (null !== $this->matcher) {
             return $this->matcher;
-        }
-        $cacheFile = $this->options['cache_file'] ?? null;
-
-        if ($this->options['debug'] || null === $cacheFile) {
-            /** @var RouteMatcherInterface $matcher */
-            $matcher = new $this->options['matcher_class']($this->routes);
-
-            return $this->matcher = $matcher;
         } elseif ($this->isFrozen()) {
-            return $this->matcher = $this->getDumper($cacheFile);
-        }
-        $dumper = $this->getDumper($this->routes);
-
-        if ($dumper instanceof MatcherDumperInterface) {
-            $cacheDir = $this->options['cache_dir'];
-
-            if (!\file_exists($cacheDir)) {
-                @\mkdir($cacheDir, 0777, true);
-            }
-            \file_put_contents($cacheFile, $dumper->dump());
-
-            if (
-                \function_exists('opcache_invalidate') &&
-                \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)
-            ) {
-                @opcache_invalidate($cacheFile, true);
-            }
+            return $this->matcher = $this->getDumper($this->options['cache_file']);
         }
 
-        return $this->matcher = $dumper;
+        if (!$this->options['debug'] && isset($this->options['cache_file'])) {
+            $dumper = $this->getDumper($this->routes);
+
+            if ($dumper instanceof MatcherDumperInterface) {
+                $cacheDir = $this->options['cache_dir'];
+                $cacheFile = $this->options['cache_file'];
+
+                if (!\file_exists($cacheDir)) {
+                    @\mkdir($cacheDir, 0777, true);
+                }
+
+                \file_put_contents($cacheFile, $dumper->dump());
+
+                if (
+                    \function_exists('opcache_invalidate') &&
+                    \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)
+                ) {
+                    @opcache_invalidate($cacheFile, true);
+                }
+            }
+
+            return $this->matcher = $dumper;
+        }
+
+        /** @var RouteMatcherInterface $matcher */
+        $matcher = new $this->options['matcher_class']($this->routes);
+
+        return $this->matcher = $matcher;
     }
 
     /**

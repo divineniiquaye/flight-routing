@@ -329,7 +329,8 @@ class SimpleRouteCompiler implements \Serializable
      */
     private function computePattern(array $matches, string $pattern, array $requirements): array
     {
-        $variables = $replaces = [];
+        $variables = [];
+        $replaces  = self::PATTERN_REPLACES;
         [, $names, $rules, $defaults] = $matches;
 
         $count = \count($names);
@@ -367,7 +368,7 @@ class SimpleRouteCompiler implements \Serializable
             $count--;
         }
 
-        return [$variables, $replaces + self::PATTERN_REPLACES];
+        return [$variables, $replaces];
     }
 
     /**
