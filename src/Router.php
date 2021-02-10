@@ -230,7 +230,7 @@ class Router implements RouterInterface, RequestHandlerInterface
     {
         // This is to aid request made from javascript using cors, eg: using axios.
         // Midddlware support is added, so it make it easier to add "cors" settings to the response and request
-        if ($this->options['options_skip']) {
+        if ($this->options['options_skip'] && \strtolower($request->getMethod()) === 'options') {
             return $this->handleOptionsResponse($request);
         }
 
