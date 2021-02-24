@@ -87,16 +87,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     {
         $routeMethod = (string) \preg_replace('/^with([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
 
-        if (!\method_exists(Route::class, $routeMethod)) {
-            throw new \BadMethodCallException(
-                \sprintf(
-                    'Method "%s::%s" does not exist. %2$s method should begin a \'with\' prefix',
-                    Route::class,
-                    $routeMethod ?: $method
-                )
-            );
-        }
-
         if (null !== $this->defaultRoute) {
             \call_user_func_array([$this->defaultRoute, $routeMethod], $arguments);
         }
