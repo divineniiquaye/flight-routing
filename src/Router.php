@@ -235,7 +235,7 @@ class Router implements RouterInterface, RequestHandlerInterface
         }
 
         $route   = $this->match($request);
-        $handler = $this->route->getController();
+        $handler = $this->route->get('controller');
 
         if (!$handler instanceof RequestHandlerInterface) {
             $handler = new RouteHandler(
@@ -244,15 +244,16 @@ class Router implements RouterInterface, RequestHandlerInterface
                         $this->resolver->setNamespace($this->options['namespace']);
                     }
 
-                    return ($this->resolver)($request, $response, $route);
+                    return \call_user_func_array($this->resolver, [$request, $response, $route]);
                 },
                 $this->responseFactory
             );
         }
 
-        try {
-            $this->addMiddleware(...$this->resolveMiddlewares($route));
+        // Add routes middleware to MiddlewarePipe
+        $this->addMiddleware(...$this->resolveMiddlewares($route));
 
+        try {
             return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
         } finally {
             if ($this->options['debug']) {

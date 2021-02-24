@@ -48,7 +48,6 @@ class RouteResolver
         if ($handler instanceof ResponseInterface) {
             return $handler;
         }
-
         $arguments = [\get_class($request) => $request, \get_class($response) => $response];
 
         return $this->invoker->call($handler, \array_merge($arguments, $route->get('arguments')));
