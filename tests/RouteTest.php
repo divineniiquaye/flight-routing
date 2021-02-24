@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use BadMethodCallException;
-use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Route;
 use PHPUnit\Framework\TestCase;
 
@@ -211,16 +210,6 @@ class RouteTest extends TestCase
         $this->assertEquals('phpinfo', $route->getController());
     }
 
-    public function testExceptionOnPath(): void
-    {
-        $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
-
-        $this->expectErrorMessage('Unable to locate route candidate on `//localhost.com`');
-        $this->expectException(InvalidControllerException::class);
-
-        new Route('//localhost.com', \join('|', $routeMethods));
-    }
-
     public function testArgument(): void
     {
         $route              = new Fixtures\TestRoute();
@@ -314,11 +303,9 @@ class RouteTest extends TestCase
     {
         $route = new Fixtures\TestRoute();
 
-        $this->expectExceptionMessage(\sprintf(
-            'Property "Flight\Routing\Route->exception" does not exist. should be one of [%s],' .
-            ' or arguments, prefixed with a \'get\' name; eg: getName().',
-            join(', ', \array_keys($route->getAll()))
-        ));
+        $this->expectExceptionMessage(
+            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
+        );
         $this->expectException(BadMethodCallException::class);
 
         $route->exception();

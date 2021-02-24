@@ -17,22 +17,28 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Interfaces\RouteListenerInterface;
 use Flight\Routing\Route;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * PhpInfoListener
  */
-class PhpInfoListener implements RouteListenerInterface
+class PhpInfoListener implements MiddlewareInterface
 {
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
-    public function onRoute(ServerRequestInterface $request, Route &$route): void
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (is_string($callable = $route->getController()) && 'phpinfo' === $callable) {
-            $route->argument('what', INFO_ALL);
+        $route = $request->getAttribute(Route::class);
+
+        if ($route instanceof Route && 'phpinfo' === $route->getController()) {
+            $request = $request->withAttribute(Route::class, $route->argument('what', INFO_ALL));
         }
+
+        return $handler->handle($request);
     }
 }

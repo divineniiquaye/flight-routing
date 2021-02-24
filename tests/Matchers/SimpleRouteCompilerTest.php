@@ -187,133 +187,133 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route with a variable' => [
             '/foo/{bar}',
             ['/foo/bar'],
-            '/^\/foo\/(?P<bar>(?U)[^\/]+)$/sDu',
+            '/^\/foo\/(?P<bar>[^\/]++)$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with a variable that has a default value' => [
             '/foo/{bar=<bar>}',
             ['/foo/bar'],
-            '/^\/foo\/(?P<bar>(?U)[^\/]+)$/sDu',
+            '/^\/foo\/(?P<bar>[^\/]++)$/sDu',
             ['bar' => 'bar'],
         ];
 
         yield 'Route with several variables' => [
             '/foo/{bar}/{foobar}',
             ['/foo/bar/baz'],
-            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
+            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
             ['bar' => null, 'foobar' => null],
         ];
 
         yield 'Route with several variables that have default values' => [
             '/foo/{bar=<bar>}/{foobar=<0>}',
             ['/foo/foobar/baz'],
-            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
+            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
             ['bar' => 'bar', 'foobar' => null],
         ];
 
         yield 'Route with several variables but some of them have no default values' => [
             '/foo/{bar=<bar>}/{foobar}',
             ['/foo/barfoo/baz'],
-            '/^\/foo\/(?P<bar>(?U)[^\/]+)\/(?P<foobar>(?U)[^\/]+)$/sDu',
+            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
             ['bar' => 'bar', 'foobar' => null],
         ];
 
         yield 'Route with an optional variable as the first segment' => [
             '/[{bar}]',
             ['/', 'bar', '/bar'],
-            '/^\/?(?:(?P<bar>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<bar>[^\/]+))?$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with an optional variable as the first occurrence' => [
             '[/{foo}]',
             ['/', '/foo'],
-            '/^\/?(?:(?P<foo>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<foo>[^\/]+))?$/sDu',
             ['foo' => null],
         ];
 
         yield 'Route with an optional variable with inner separator /' => [
             'foo[/{bar}]',
             ['/foo', '/foo/bar'],
-            '/^\/foo(?:\/(?P<bar>(?U)[^\/]+))?$/sDu',
+            '/^\/foo(?:\/(?P<bar>[^\/]+))?$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with a requirement of 0' => [
             '/{bar:0}',
             ['/0'],
-            '/^\/(?P<bar>(?U)0)$/sDu',
+            '/^\/(?P<bar>0)$/sDu',
             ['bar' => 0],
         ];
 
         yield 'Route with a requirement and in optional placeholder' => [
             '/[{lang:[a-z]{2}}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
-            '/^\/?(?:(?P<lang>(?U)[a-z]{2})\/)?hello$/sDu',
+            '/^\/?(?:(?P<lang>[a-z]{2})\/)?hello$/sDu',
             ['lang' => null],
         ];
 
         yield 'Route with a requirement and in optional placeholder and default' => [
             '/[{lang:lower=<english>}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
-            '/^\/?(?:(?P<lang>(?U)[a-z]+)\/)?hello$/sDu',
+            '/^\/?(?:(?P<lang>[a-z]+)\/)?hello$/sDu',
             ['lang' => 'english'],
         ];
 
         yield  'Route with a requirement, optional and required placeholder' => [
             '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
             ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
-            '/^\/?(?:(?P<lang>(?U)[a-z]{2})(?:-(?P<sublang>(?U)[^\/]+))?\/)?(?P<name>(?U)[^\/]+)(?:\/page-(?P<page>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<lang>[a-z]{2})(?:-(?P<sublang>[^\/]+))?\/)?(?P<name>[^\/]+)(?:\/page-(?P<page>[^\/]++))?$/sDu',
             ['lang' => null, 'sublang' => null, 'name' => null, 'page' => 0],
         ];
 
         yield 'Route with an optional variable as the first segment with requirements' => [
             '/[{bar:(foo|bar)}]',
             ['/', '/foo', 'bar', 'foo', 'bar'],
-            '/^\/?(?:(?P<bar>(?U)(foo|bar)))?$/sDu',
+            '/^\/?(?:(?P<bar>(foo|bar)))?$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with only optional variables with separator /' => [
             '/[{foo}]/[{bar}]',
             ['/', '/foo/', '/foo/bar', 'foo'],
-            '/^\/?(?:(?P<foo>(?U)[^\/]+))?\/?(?:(?P<bar>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<foo>[^\/]+))?\/?(?:(?P<bar>[^\/]++))?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with only optional variables with inner separator /' => [
             '/[{foo}][/{bar}]',
             ['/', '/foo/bar', 'foo', '/foo'],
-            '/^\/?(?:(?P<foo>(?U)[^\/]+))?(?:\/(?P<bar>(?U)[^\/]+))?$/sDu',
+            '/^\/?(?:(?P<foo>[^\/]+))?(?:\/(?P<bar>[^\/]++))?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with a variable in last position' => [
             '/foo-{bar}',
             ['/foo-bar'],
-            '/^\/foo-(?P<bar>(?U)[^\/]+)$/sDu',
+            '/^\/foo-(?P<bar>[^\/]++)$/sDu',
             ['bar' => null],
         ];
 
         yield 'Route with a variable and no real seperator' => [
             '/static{var}static',
             ['/staticfoostatic'],
-            '/^\/static(?P<var>(?U)[^\/]+)static$/sDu',
+            '/^\/static(?P<var>[^\/]+)static$/sDu',
             ['var' => null],
         ];
 
         yield 'Route with nested optional paramters' => [
             '/[{foo}/[{bar}]]',
             ['/foo', '/foo', '/foo/', '/foo/bar', 'foo/bar'],
-            '/^\/?(?:(?P<foo>(?U)[^\/]+)\/?(?:(?P<bar>(?U)[^\/]+))?)?$/sDu',
+            '/^\/?(?:(?P<foo>[^\/]+)\/?(?:(?P<bar>[^\/]++))?)?$/sDu',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with complex matches' => [
             '/hello/{foo:[a-z]{3}=<bar>}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
             ['/hello/foobar/', '/hello/foobar', '/hello/foobar/0A0AB5', '/hello/foobar/0A0AB5.html'],
-            '/^\/hello\/(?P<foo>(?U)[a-z]{3})(?P<baz>(?U)[^\/]+)\/?(?:(?P<id>(?U)[0-9a-fA-F]{1,8})(?:\.(?P<format>(?U)html|php))?)?$/sDu',
+            '/^\/hello\/(?P<foo>[a-z]{3})(?P<baz>[^\/]+)\/?(?:(?P<id>[0-9a-fA-F]{1,8})(?:\.(?P<format>html|php))?)?$/sDu',
             ['foo' => 'bar', 'baz' => null, 'id' => null, 'format' => null],
         ];
     }
@@ -326,35 +326,35 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route domain with variable' => [
             '//{foo}.example.com/',
             ['cool.example.com'],
-            '/^\/?(?P<foo>(?U)[^\/]+)\.example\.com$/sDi',
+            '/^(?P<foo>[^\/]+)\.example\.com$/sDi',
             ['foo' => null],
         ];
 
         yield 'Route domain with requirement' => [
             '//{lang:[a-z]{2}}.example.com/',
             ['en.example.com'],
-            '/^\/?(?P<lang>(?U)[a-z]{2})\.example\.com$/sDi',
+            '/^(?P<lang>[a-z]{2})\.example\.com$/sDi',
             ['lang' => null],
         ];
 
         yield 'Route with variable at beginning of host' => [
             '//{locale}.example.{tld}/',
             ['en.example.com'],
-            '/^\/?(?P<locale>(?U)[^\/]+)\.example\.(?P<tld>(?U)[^\/]+)$/sDi',
+            '/^(?P<locale>[^\/]+)\.example\.(?P<tld>[^\/]+)$/sDi',
             ['locale' => null, 'tld' => null],
         ];
 
         yield 'Route domain with requirement and optional variable' => [
             '//[{lang:[a-z]{2}}.]example.com/',
             ['en.example.com', 'example.com'],
-            '/^\/?(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$/sDi',
+            '/^(?:(?P<lang>[a-z]{2})\.)?example\.com$/sDi',
             ['lang' => null],
         ];
 
         yield 'Route domain with a default requirement on variable and path variable' => [
             '//{id:int}.example.com/',
             ['23.example.com'],
-            '/^\/?(?P<id>(?U)\d+)\.example\.com$/sDi',
+            '/^(?P<id>\d+)\.example\.com$/sDi',
             ['id' => 0],
         ];
     }

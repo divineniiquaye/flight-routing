@@ -18,7 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use BadMethodCallException;
-use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\Interfaces\MatcherDumperInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
@@ -57,12 +58,21 @@ class RouteCollectionTest extends BaseTestCase
     public function testCannotFindMethodInRoute(): void
     {
         $this->expectExceptionMessage(
-            'Method "Flight\Routing\Route::exception" does not exist. exception method should have a \'with\' prefix'
+            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
         );
         $this->expectException(BadMethodCallException::class);
 
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET))->exception();
+    }
+
+    public function testCannotFindMethodInCollection(): void
+    {
+        $this->expectExceptionMessage('Method call invalid, arguments passed to \'exceptions\' method not suported.');
+        $this->expectException(BadMethodCallException::class);
+
+        $collection = new RouteCollection();
+        $collection->add(new Route('/foo', Router::METHOD_GET))->withExceptions(['nothing']);
     }
 
     public function testDeepOverriddenRoute(): void
@@ -418,7 +428,7 @@ class RouteCollectionTest extends BaseTestCase
     {
         $collector = new RouteCollection();
 
-        $this->expectExceptionMessage('The "mount" method takes either a "RouteCollection" instance or callable.');
+        $this->expectExceptionMessage('The "group" method takes either a "RouteCollection" instance or callable.');
         $this->expectException(LogicException::class);
 
         $collector->group('invalid', new Fixtures\TestRoute());
@@ -448,7 +458,7 @@ class RouteCollectionTest extends BaseTestCase
                 })->withPrefix('/section')->withMiddleware(Fixtures\BlankMiddleware::class);
 
                 $group->group('', function (RouteCollection $group): void {
-                    $group->post('create', new Fixtures\BlankRequestHandler())->bind('product.create');
+                    $group->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create');
                     $group->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update');
                 })
                 ->withPrefix('product/');
@@ -589,17 +599,17 @@ class RouteCollectionTest extends BaseTestCase
 
         $collector->resource(
             $routeName,
-            $routePath,
+            \ltrim($routePath, '/'),
             $routeResource
         );
 
         $route = \current($collector->getRoutes());
 
         $this->assertTrue(str_starts_with($route->getName(), 'HEAD_GET_POST_PUT_PATCH_DELETE_PURGE_OPTIONS_TRACE_CONNECT'));
-        $this->assertTrue(str_ends_with($route->getName(), '__restful'));
+        $this->assertEquals($routeName, $route->getDefaults()['_api']);
         $this->assertSame($routePath, $route->getPath());
         $this->assertSame(Router::HTTP_METHODS_STANDARD, \array_keys($route->getMethods()));
-        $this->assertSame([$routeResource, $routeName], $route->getController());
+        $this->assertSame($routeResource, $route->getController());
     }
 
     public function testResourceWithException(): void
@@ -609,10 +619,10 @@ class RouteCollectionTest extends BaseTestCase
 
         $collector = new RouteCollection();
 
-        $this->expectException(InvalidControllerException::class);
-        $this->getExpectedExceptionMessage(
-            'Resource handler type should be a class string or class object, but not a callable or array'
-        );
+        //$this->expectException(InvalidControllerException::class);
+        //$this->getExpectedExceptionMessage(
+        //    'Resource handler type should be a class string or class object, but not a callable or array'
+        //);
 
         $collector->resource(
             $routeName,
@@ -628,88 +638,92 @@ class RouteCollectionTest extends BaseTestCase
      */
     public function testCollectionGroupingAndWithCache(bool $cached): void
     {
-        // Master collection
-        $mergedCollection = new RouteCollection();
-        $routes           = [];
+        $router = $this->getRouter();
+        $router->setOptions(['cache_dir' => __DIR__ . '/Fixtures/routes', 'debug' => $cached]);
 
-        // Collection without names
-        $demoCollection = new RouteCollection();
-        $demoCollection->add(new Route('/admin/post/', Router::METHOD_POST));
-        $demoCollection->add(new Route('/admin/post/new', Router::METHOD_POST));
-        $demoCollection->add((new Route('/admin/post/{id}', Router::METHOD_POST))->assert('id', '\d+'));
-        $demoCollection->add((new Route('/admin/post/{id}/edit', Router::METHOD_PATCH))->assert('id', '\d+'));
-        $demoCollection->add((new Route('/admin/post/{id}/delete', Router::METHOD_DELETE))->assert('id', '\d+'));
-        $demoCollection->add(new Route('/blog/', Router::METHOD_GET));
-        $demoCollection->add(new Route('/blog/rss.xml', Router::METHOD_GET));
-        $demoCollection->add((new Route('/blog/page/{page}', Router::METHOD_GET))->assert('id', '\d+'));
-        $demoCollection->add((new Route('/blog/posts/{page}', Router::METHOD_GET))->assert('id', '\d+'));
-        $demoCollection->add((new Route('/blog/comments/{id}/new', Router::METHOD_GET))->assert('id', '\d+'));
-        $demoCollection->add(new Route('/blog/search', Router::METHOD_GET));
-        $demoCollection->add(new Route('/login', Router::METHOD_POST));
-        $demoCollection->add(new Route('/logout', Router::METHOD_POST));
-        $demoCollection->withPrefix('/{_locale}');
-        $demoCollection->add($routes[] = new Route('/', Router::METHOD_GET));
-        $demoCollection->withMethod(Router::METHOD_CONNECT);
-        $mergedCollection->group('demo.', $demoCollection)->withDefault('_locale', 'en')->withAssert('_locale', 'en|fr');
+        $routes = [];
 
-        $chunkedCollection = new RouteCollection();
-        $chunkedCollection->withDomain('http://localhost');
-        $chunkedCollection->withScheme('https', 'http');
-        $chunkedCollection->withMiddleware(Fixtures\BlankMiddleware::class);
+        if (!$router->isFrozen()) {
+            // Master collection
+            $mergedCollection = new RouteCollection();
 
-        for ($i = 0; $i < 100; ++$i) {
-            $h = \substr(\md5((string) $i), 0, 6);
-            $chunkedCollection->get('/' . $h . '/{a}/{b}/{c}/' . $h)->bind('_' . $i);
-        }
-        $mergedCollection->group('chuck_', $chunkedCollection);
+            // Collection without names
+            $demoCollection = new RouteCollection();
+            $demoCollection->add(new Route('/admin/post/', Router::METHOD_POST));
+            $demoCollection->add(new Route('/admin/post/new', Router::METHOD_POST));
+            $demoCollection->add((new Route('/admin/post/{id}', Router::METHOD_POST))->assert('id', '\d+'));
+            $demoCollection->add((new Route('/admin/post/{id}/edit', Router::METHOD_PATCH))->assert('id', '\d+'));
+            $demoCollection->add((new Route('/admin/post/{id}/delete', Router::METHOD_DELETE))->assert('id', '\d+'));
+            $demoCollection->add(new Route('/blog/', Router::METHOD_GET));
+            $demoCollection->add(new Route('/blog/rss.xml', Router::METHOD_GET));
+            $demoCollection->add((new Route('/blog/page/{page}', Router::METHOD_GET))->assert('id', '\d+'));
+            $demoCollection->add((new Route('/blog/posts/{page}', Router::METHOD_GET))->assert('id', '\d+'));
+            $demoCollection->add((new Route('/blog/comments/{id}/new', Router::METHOD_GET))->assert('id', '\d+'));
+            $demoCollection->add(new Route('/blog/search', Router::METHOD_GET));
+            $demoCollection->add(new Route('/login', Router::METHOD_POST));
+            $demoCollection->add(new Route('/logout', Router::METHOD_POST));
+            $demoCollection->withPrefix('/{_locale}');
+            $demoCollection->add($routes[] = new Route('/', Router::METHOD_GET));
+            $demoCollection->withMethod(Router::METHOD_CONNECT);
+            $mergedCollection->group('demo.', $demoCollection)->withDefault('_locale', 'en')->withAssert('_locale', 'en|fr');
 
-        $groupOptimisedCollection = new RouteCollection();
-        $groupOptimisedCollection->addRoute('/a/11', [Router::METHOD_GET])->bind('a_first');
-        $groupOptimisedCollection->addRoute('/a/22', [Router::METHOD_GET])->bind('a_second');
-        $groupOptimisedCollection->addRoute('/a/333', [Router::METHOD_GET])->bind('a_third');
-        $groupOptimisedCollection->addRoute('/{param}', [Router::METHOD_GET])->bind('a_wildcard');
-        $groupOptimisedCollection->addRoute('/a/44/', [Router::METHOD_GET])->bind('a_fourth');
-        $groupOptimisedCollection->addRoute('/a/55/', [Router::METHOD_GET])->bind('a_fifth');
-        $routes[] = $groupOptimisedCollection->addRoute('/nested/{param}', [Router::METHOD_GET])->bind('nested_wildcard');
-        $groupOptimisedCollection->addRoute('/nested/group/a/', [Router::METHOD_GET])->bind('nested_a');
-        $groupOptimisedCollection->addRoute('/nested/group/b/', [Router::METHOD_GET])->bind('nested_b');
-        $groupOptimisedCollection->addRoute('/nested/group/c/', [Router::METHOD_GET])->bind('nested_c');
-        $routes[] = $groupOptimisedCollection->addRoute('a_sixth', [Router::METHOD_GET], '/a/66/', Fixtures\BlankController::class);
+            $chunkedCollection = new RouteCollection();
+            $chunkedCollection->withDomain('http://localhost');
+            $chunkedCollection->withScheme('https', 'http');
+            $chunkedCollection->withMiddleware(Fixtures\BlankMiddleware::class);
 
-        $groupOptimisedCollection->addRoute('/slashed/group/', [Router::METHOD_GET])->bind('slashed_a');
-        $groupOptimisedCollection->addRoute('/slashed/group/b/', [Router::METHOD_GET])->bind('slashed_b');
-        $routes[] = $groupOptimisedCollection->addRoute('/slashed/group/c/', [Router::METHOD_GET])->bind('slashed_c');
+            for ($i = 0; $i < 100; ++$i) {
+                $h = \substr(\md5((string) $i), 0, 6);
+                $chunkedCollection->get('/' . $h . '/{a}/{b}/{c}/' . $h)->bind('_' . $i);
+            }
+            $mergedCollection->group('chuck_', $chunkedCollection);
 
-        $mergedCollection->group('', $groupOptimisedCollection);
+            $groupOptimisedCollection = new RouteCollection();
+            $groupOptimisedCollection->addRoute('/a/11', [Router::METHOD_GET])->bind('a_first');
+            $groupOptimisedCollection->addRoute('/a/22', [Router::METHOD_GET])->bind('a_second');
+            $groupOptimisedCollection->addRoute('/a/333', [Router::METHOD_GET])->bind('a_third');
+            $groupOptimisedCollection->addRoute('/{param}', [Router::METHOD_GET])->bind('a_wildcard');
+            $groupOptimisedCollection->addRoute('/a/44/', [Router::METHOD_GET])->bind('a_fourth');
+            $groupOptimisedCollection->addRoute('/a/55/', [Router::METHOD_GET])->bind('a_fifth');
+            $routes[] = $groupOptimisedCollection->addRoute('/nested/{param}', [Router::METHOD_GET])->bind('nested_wildcard');
+            $groupOptimisedCollection->addRoute('/nested/group/a/', [Router::METHOD_GET])->bind('nested_a');
+            $groupOptimisedCollection->addRoute('/nested/group/b/', [Router::METHOD_GET])->bind('nested_b');
+            $groupOptimisedCollection->addRoute('/nested/group/c/', [Router::METHOD_GET])->bind('nested_c');
+            $routes[] = $groupOptimisedCollection->addRoute('a_sixth', [Router::METHOD_GET], '/a/66/', Fixtures\BlankController::class);
 
-        $router    = $this->getRouter();
-        $cacheFile = __DIR__ . '/Fixtures/routes/cache_router.php';
+            $groupOptimisedCollection->addRoute('/slashed/group/', [Router::METHOD_GET])->bind('slashed_a');
+            $groupOptimisedCollection->addRoute('/slashed/group/b/', [Router::METHOD_GET])->bind('slashed_b');
+            $routes[] = $groupOptimisedCollection->addRoute('/slashed/group/c/', [Router::METHOD_GET])->bind('slashed_c');
 
-        if (!$cached && \file_exists($cacheFile)) {
-            \unlink($cacheFile);
-        }
+            $mergedCollection->group('', $groupOptimisedCollection);
 
-        if ($cached) {
-            $router->addParameters([$cacheFile], Router::TYPE_CACHE);
-        }
+            $merged = $mergedCollection->getRoutes();
+            $router->addRoute(...$merged);
 
-        $merged = $mergedCollection->getRoutes();
+            $this->assertCount(128, $router->getCollection());
+            $this->assertSame($merged, $router->getCollection()->getIterator()->getArrayCopy());
 
-        $router->addRoute(...$merged);
+            foreach ($routes as $testRoute) {
+                if (str_starts_with($path = $testRoute->getPath(), '{_locale}')) {
+                    $path = \str_replace('{_locale}', 'en', $path);
+                }
 
-        $this->assertCount(3, $mergedCollection);
-        $this->assertCount(128, $router->getCollection());
-        $this->assertNotEquals($mergedCollection->getArrayCopy(), $merged);
-        $this->assertEquals($merged, $router->getCollection()->getArrayCopy());
+                $route = $router->match(new ServerRequest(\current(\array_keys($testRoute->getMethods())), $path));
 
-        foreach ($routes as $testRoute) {
-            if (str_starts_with($path = $testRoute->getPath(), '{_locale}')) {
-                $path = \str_replace('{_locale}', 'en', $path);
+                $this->assertInstanceOf(Route::class, $route);
             }
 
-            $route = $router->match(new ServerRequest(\current(\array_keys($testRoute->getMethods())), $path));
+            $this->assertInstanceOf(RouteMatcherInterface::class, $router->getMatcher());
+        }
 
-            $this->assertInstanceOf(Route::class, $route);
+        $cacheFile = __DIR__ . '/Fixtures/routes/compiled_routes.php';
+
+        if (\file_exists($cacheFile)) {
+            if (!$cached) {
+                \unlink($cacheFile);
+            }
+
+            $this->assertInstanceOf(MatcherDumperInterface::class, $router->getMatcher());
         }
     }
 

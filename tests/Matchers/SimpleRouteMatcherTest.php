@@ -56,8 +56,8 @@ class SimpleRouteMatcherTest extends TestCase
 
         $factory = $factory->getCompiler()->compile($route);
 
-        $this->assertEquals('/^\/(?P<foo>(?U)[^\/]+)$/sDu', $factory->getRegex());
-        $this->assertEquals(['/^\/?(?:(?P<lang>(?U)[a-z]{2})\.)?example\.com$/sDi'], $factory->getHostsRegex());
+        $this->assertEquals('/^\/(?P<foo>[^\/]++)$/sDu', $factory->getRegex());
+        $this->assertEquals(['/^(?:(?P<lang>[a-z]{2})\.)?example\.com$/sDi'], $factory->getHostsRegex());
         $this->assertEquals(['foo' => null, 'lang' => null], $factory->getVariables());
     }
 
@@ -68,21 +68,24 @@ class SimpleRouteMatcherTest extends TestCase
      * @param string               $match
      * @param array<string,string> $tokens
      */
-    public function testBuildPath(string $regex, string $match, array $tokens): void
+    public function testGenerateUri(string $regex, string $match, array $tokens): void
     {
-        $factory = new SimpleRouteMatcher(new RouteCollection());
-        $route   = new Route($regex, 'FOO|BAR');
+        $collection = new RouteCollection();
+        $collection->addRoute($regex, ['FOO', 'BAR'])->bind('test');
 
-        $this->assertEquals($match, $factory->buildPath($route->bind('test'), $tokens));
+        $factory = new SimpleRouteMatcher($collection);
+
+        $this->assertEquals($match, $factory->generateUri('test', $tokens));
     }
 
-    public function testBuildPathWithDefaults(): void
+    public function testGenerateUriWithDefaults(): void
     {
-        $factory = new SimpleRouteMatcher(new RouteCollection());
-        $route   = new Route('/{foo}', 'FOO|BAR');
-        $route->default('foo', 'fifty');
+        $collection = new RouteCollection();
+        $collection->addRoute('/{foo}', ['FOO', 'BAR'])->bind('test')->default('foo', 'fifty');
 
-        $this->assertEquals('/fifty', $factory->buildPath($route, []));
+        $factory = new SimpleRouteMatcher($collection);
+
+        $this->assertEquals('./fifty', $factory->generateUri('test', []));
     }
 
     /**
@@ -103,13 +106,13 @@ class SimpleRouteMatcherTest extends TestCase
     {
         yield 'Build route with variable' => [
             '/{foo}',
-            '/two',
+            './two',
             ['foo' => 'two'],
         ];
 
         yield 'Build route with variable position' => [
             '/{foo}',
-            '/twelve',
+            './twelve',
             ['twelve'],
         ];
 
@@ -121,13 +124,13 @@ class SimpleRouteMatcherTest extends TestCase
 
         yield 'Build route with variable and default' => [
             '/{foo=<cool>}',
-            '/cool',
+            './cool',
             [],
         ];
 
         yield 'Build route with variable and override default' => [
             '/{foo=<cool>}',
-            '/yeah',
+            './yeah',
             ['foo' => 'yeah'],
         ];
     }
