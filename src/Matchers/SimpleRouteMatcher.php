@@ -41,10 +41,10 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /** @var Route[] */
     protected $routes = [];
 
-    /** @var string[] */
+    /** @var mixed[] */
     protected $dynamicRoutes = [];
 
-    /** @var array<string,string|null> */
+    /** @var array<string,mixed> */
     protected $staticRoutes = [];
 
     /** @var SimpleRouteCompiler */
@@ -59,10 +59,6 @@ class SimpleRouteMatcher implements RouteMatcherInterface
 
         if ($collection instanceof RouteCollection) {
             $collection = $collection->getRoutes();
-        }
-
-        if ($this instanceof SimpleRouteMatcher) {
-            $this->routes = $collection;
         }
 
         $this->warmCompiler($collection);
@@ -147,7 +143,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * @param Route[]|string $routes
+     * @param Route[] $routes
      */
     protected function warmCompiler($routes): void
     {
@@ -167,10 +163,10 @@ class SimpleRouteMatcher implements RouteMatcherInterface
                 continue;
             }
 
-            $route->arguments($pathVariables);
-
-            $this->dynamicRoutes[$index] = [$compiledRoute->getRegex(), $compiledRoute->getPathVariables(), $matchDomain];
+            $this->dynamicRoutes[$index] = [$compiledRoute->getRegex(), $pathVariables, $matchDomain];
         }
+
+        $this->routes = $routes;
     }
 
     /**
