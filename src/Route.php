@@ -129,15 +129,20 @@ class Route
                 return $this->get($routeMethod);
             }
 
-            throw new \BadMethodCallException(
-                \sprintf(
-                    'Method "%s->%s" does not exist. should be one of [%s], all, or arguments. ' .
-                    '\'%2$s\' method starting with a \'get\' prefix.',
-                    Route::class,
-                    $routeMethod ?: $method,
-                    \join(', ', \array_keys($this->get('all')))
-                )
+            $message = \sprintf(
+                'Method call invalid, %s::get(\'%s\') should be a supported type.',
+                Route::class,
+                $routeMethod
             );
+
+            if (!empty($arguments)) {
+                $message = \sprintf(
+                    'Method call invalid, arguments passed to \'%s\' method not suported.',
+                    $routeMethod
+                );
+            }
+
+            throw new \BadMethodCallException($message);
         }
 
         return $this->get($routeMethod);
