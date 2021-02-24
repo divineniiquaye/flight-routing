@@ -22,7 +22,6 @@ use Flight\Routing\Route;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
-use Generator;
 use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Uri;
 use Psr\Http\Message\ResponseInterface;
@@ -42,7 +41,7 @@ class UriRedirectMiddlewareTest extends BaseTestCase
     public function testProcess(array $redirects, string $expected): void
     {
         $pipeline = $this->getRouter();
-        $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
+        $pipeline->pipe(new UriRedirectMiddleware($redirects));
 
         $route = new Route($expected, Router::METHOD_GET, BlankRequestHandler::class);
         $pipeline->addRoute($route);
@@ -62,7 +61,7 @@ class UriRedirectMiddlewareTest extends BaseTestCase
     public function testProcessWithRedirect(array $redirects, string $expected): void
     {
         $pipeline = $this->getRouter();
-        $pipeline->addMiddleware(new UriRedirectMiddleware($redirects));
+        $pipeline->pipe(new UriRedirectMiddleware($redirects));
 
         $routes = [
             new Route($expected, Router::METHOD_GET, BlankRequestHandler::class),
@@ -79,13 +78,13 @@ class UriRedirectMiddlewareTest extends BaseTestCase
     public function testProcessWithQuery(): void
     {
         $pipeline = $this->getRouter();
-        $middleware = new UriRedirectMiddleware(['page?hello=me' => 'account/me']);
-        $pipeline->addMiddleware($middleware->allowQueries(true));
+        $middleware = new UriRedirectMiddleware(['/page?hello=me' => '/account/me']);
+        $pipeline->pipe($middleware->allowQueries(true));
 
-        $route = new Route('page', Router::METHOD_GET, BlankRequestHandler::class);
+        $route = new Route('/page', Router::METHOD_GET, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
-        $uri      = (new Uri('page'))->withQuery('hello=me');
+        $uri      = (new Uri('/page'))->withQuery('hello=me');
         $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $uri));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
@@ -95,37 +94,37 @@ class UriRedirectMiddlewareTest extends BaseTestCase
     public function testProcessWithPermanent(): void
     {
         $pipeline = $this->getRouter();
-        $middleware = new UriRedirectMiddleware(['foo' => 'bar']);
+        $middleware = new UriRedirectMiddleware(['/foo' => '/bar']);
         $pipeline->addMiddleware($middleware->setPermanentRedirection(false));
 
-        $route = new Route('foo', Router::METHOD_POST, BlankRequestHandler::class);
+        $route = new Route('/foo', Router::METHOD_POST, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, 'foo'));
+        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, '/foo'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(307, $response->getStatusCode());
     }
 
     /**
-     * @return Generator
+     * @return \Generator
      */
-    public function redirectionData(): Generator
+    public function redirectionData(): \Generator
     {
         yield 'Redirect string with symbols' => [
-            ['@come_here' => '/ch'], 'ch',
+            ['/@come_here' => '/ch'], '/ch',
         ];
 
         yield 'Redirect string with format' => [
-            ['index.html' => '/home'], 'home',
+            ['/index.html' => '/home'], '/home',
         ];
 
         yield 'Redirect string with format reverse' => [
-            ['home' => '/index.html'], 'index.html',
+            ['/home' => '/index.html'], '/index.html',
         ];
 
         yield 'Redirect string with Uri instance' => [
-            ['sdjfdkgjdg' => new Uri('./cool')], 'cool',
+            ['/sdjfdkgjdg' => new Uri('./cool')], '/cool',
         ];
     }
 }

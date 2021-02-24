@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
+use Flight\Routing\Matchers\SimpleRouteMatcher;
 use Flight\Routing\Router;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
@@ -82,11 +83,9 @@ class BaseTestCase extends TestCase
         ?InvokerInterface $resolver = null,
         bool $profiler = false
     ): Router {
-        $router = new Router($this->getResponseFactory(), $this->getUriFactory(), $matcher, $resolver);
+        $router = new Router($this->getResponseFactory(), $this->getUriFactory(), $resolver);
 
-        if ($profiler) {
-            $router->setProfile();
-        }
+        $router->setOptions(['matcher_class' => $matcher ?? SimpleRouteMatcher::class, 'debug' => $profiler]);
 
         return $router;
     }

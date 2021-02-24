@@ -64,18 +64,18 @@ class ListenerTest extends BaseTestCase
         \sort($routes);
 
         $this->assertSame([
+            '_annotated_default',
+            '_annotated_get',
+            '_annotated_post',
+            '_annotated_put',
+            '_annotated_testing_',
             'action',
-            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
-            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
-            'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'class_group@_annotated_get',
+            'class_group@_annotated_post',
+            'class_group@_annotated_put',
             'do.action',
             'do.action_two',
             'english_locale',
-            'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
-            'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
-            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
-            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
-            'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
             'french_locale',
             'hello_with_default',
             'hello_without_default',
@@ -120,7 +120,7 @@ class ListenerTest extends BaseTestCase
         $routes = $router->getCollection()->getRoutes();
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_defaultnamecontroller_default',
+            'name'        => '_annotated_default',
             'path'        => '/default',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
@@ -133,7 +133,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'name'        => '_annotated_get',
             'path'        => '/get',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
@@ -146,7 +146,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'name'        => '_annotated_post',
             'path'        => '/post',
             'domain'      => [],
             'methods'     => [Router::METHOD_POST],
@@ -159,7 +159,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'name'        => '_annotated_put',
             'path'        => '/put',
             'domain'      => [],
             'methods'     => [Router::METHOD_PUT],
@@ -172,7 +172,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default',
+            'name'        => 'class_group@_annotated_get',
             'path'        => '/get',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_CONNECT],
@@ -185,7 +185,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_1',
+            'name'        => 'class_group@_annotated_post',
             'path'        => '/post',
             'domain'      => [],
             'methods'     => [Router::METHOD_POST, Router::METHOD_CONNECT],
@@ -198,7 +198,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'class_group@flight_routing_tests_fixtures_annotation_route_valid_multiplemethodroutecontroller_default_2',
+            'name'        => 'class_group@_annotated_put',
             'path'        => '/put',
             'domain'      => [],
             'methods'     => [Router::METHOD_PUT, Router::METHOD_CONNECT],
@@ -211,8 +211,8 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'flight_routing_tests_fixtures_annotation_route_valid_methodonroutepattern',
-            'path'        => 'testing/',
+            'name'        => '_annotated_testing_',
+            'path'        => '/testing/',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MethodOnRoutePattern::class, 'handleSomething'],
@@ -411,7 +411,7 @@ class ListenerTest extends BaseTestCase
             'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
             'middlewares' => [],
             'schemes'     => [],
-            'defaults'    => [],
+            'defaults'    => ['_api' => 'User'],
             'patterns'    => [],
             'arguments'   => [],
         ], Fixtures\Helper::routesToArray($routes));
@@ -446,7 +446,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'attribute_flight_routing_tests_fixtures_annotation_route_attribute_globaldefaultsclass_noname',
+            'name'        => 'attribute__annotated_specific_none',
             'path'        => '/defaults/{locale}/specific-none',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
