@@ -113,7 +113,7 @@ trait DumperTrait
                 $properties['controller'] = \sprintf(
                     "static function () {\n            %s %s;\n        }",
                     null !== $closureReturn ? 'return' : 'echo',
-                    self::export($closureReturn ?? $closureEcho),
+                    self::export($closureReturn ?? $closureEcho)
                 );
             }
         } elseif (\is_object($controller) || (\is_array($controller) && \is_object($controller[0]))) {

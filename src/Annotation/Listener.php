@@ -28,6 +28,9 @@ class Listener implements ListenerInterface
     /** @var RouteCollection */
     private $collector;
 
+    /** @var array<string,int> */
+    private $defaultUnnamedIndex;
+
     /**
      * @param null|RouteCollection $collector
      */
@@ -95,11 +98,12 @@ class Listener implements ListenerInterface
 
         if (null === $name = $annotation->getName()) {
             $name = $base = $route->generateRouteName('annotated_');
-            $i    = 0;
 
-            while ($this->collector->find($name)) {
+            if (0 !== $i = $this->defaultUnnamedIndex[$name] ?? 0) {
                 $name = $base . '_' . ++$i;
             }
+
+            $this->defaultUnnamedIndex[$base] = $i;
         }
 
         if (str_starts_with($path, 'api://') && empty($methods)) {
