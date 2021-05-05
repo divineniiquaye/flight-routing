@@ -212,8 +212,8 @@ class RouterTest extends BaseTestCase
             new Fixtures\TestRoute(),
         ];
 
-        $routes[2] = new Route(\uniqid(), \join('|', \array_keys($routes[2]->getMethods())), $routes[1]->getPath(), 'phpinfo');
-        $routes[3] = new Route(\uniqid(), \join('|', \array_keys($routes[3]->getMethods())), $routes[1]->getPath(), 'phpinfo');
+        $routes[2] = new Route(\uniqid(), \array_keys($routes[2]->getMethods()), $routes[1]->getPath(), 'phpinfo');
+        $routes[3] = new Route(\uniqid(), \array_keys($routes[3]->getMethods()), $routes[1]->getPath(), 'phpinfo');
 
         $router = $this->getRouter();
         $router->addRoute(...$routes);
@@ -734,8 +734,7 @@ class RouterTest extends BaseTestCase
      */
     public function testHandleResource(string $method, $controller): void
     {
-        $route = new Route('api://user/user/{id:\d+}', '', $controller);
-        $route->method(...Router::HTTP_METHODS_STANDARD);
+        $route = new Route('api://user/user/{id:\d+}', Router::HTTP_METHODS_STANDARD, $controller);
 
         $router = $this->getRouter();
         $router->addRoute($route);
