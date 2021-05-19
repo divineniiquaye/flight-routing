@@ -23,6 +23,7 @@ class DefaultNameController
 {
     /**
      * @Route("/default", methods={"GET", "POST"})
+     * @Route("/get", name="", methods={"GET", "HEAD"})
      */
     public function default()
     {
