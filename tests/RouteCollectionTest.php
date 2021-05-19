@@ -57,9 +57,7 @@ class RouteCollectionTest extends BaseTestCase
 
     public function testCannotFindMethodInRoute(): void
     {
-        $this->expectExceptionMessage(
-            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
-        );
+        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
         $this->expectException(BadMethodCallException::class);
 
         $collection = new RouteCollection();
@@ -68,7 +66,7 @@ class RouteCollectionTest extends BaseTestCase
 
     public function testCannotFindMethodInCollection(): void
     {
-        $this->expectExceptionMessage('Method call invalid, arguments passed to \'exceptions\' method not suported.');
+        $this->expectExceptionMessage('Arguments passed into "exceptions" method not supported, as method does not exist.');
         $this->expectException(BadMethodCallException::class);
 
         $collection = new RouteCollection();

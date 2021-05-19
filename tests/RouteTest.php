@@ -303,9 +303,7 @@ class RouteTest extends TestCase
     {
         $route = new Fixtures\TestRoute();
 
-        $this->expectExceptionMessage(
-            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
-        );
+        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
         $this->expectException(BadMethodCallException::class);
 
         $route->exception();

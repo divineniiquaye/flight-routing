@@ -121,6 +121,8 @@ class Route
      * @param string   $method
      * @param mixed[] $arguments
      *
+     * @throws \BadMethodCallException
+     *
      * @return mixed
      */
     public function __call($method, $arguments)
@@ -128,25 +130,8 @@ class Route
         $routeMethod = (string) \preg_replace('/^get([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
         $routeMethod = \strtolower($routeMethod);
 
-        if (!\property_exists(__CLASS__, $routeMethod)) {
-            if (\in_array($routeMethod, ['all', 'arguments'], true)) {
-                return $this->get($routeMethod);
-            }
-
-            $message = \sprintf(
-                'Method call invalid, %s::get(\'%s\') should be a supported type.',
-                Route::class,
-                $routeMethod
-            );
-
-            if (!empty($arguments)) {
-                $message = \sprintf(
-                    'Method call invalid, arguments passed to \'%s\' method not suported.',
-                    $routeMethod
-                );
-            }
-
-            throw new \BadMethodCallException($message);
+        if (!empty($arguments)) {
+            throw new \BadMethodCallException(\sprintf('Arguments passed into "%s" method not supported, as method does not exist.', $routeMethod));
         }
 
         return $this->get($routeMethod);
@@ -400,7 +385,7 @@ class Route
      * Get any of (name, path, domain, defaults, schemes, domain, controller, patterns, middlewares).
      * And also accepts "all" and "arguments".
      *
-     * @param string $name
+     * @throws \BadMethodCallException if $name does not exist as property
      *
      * @return mixed
      */
@@ -428,7 +413,8 @@ class Route
             return $this->defaults['_arguments'] ?? [];
         }
 
-        return null;
+        throw new \BadMethodCallException(\sprintf('Invalid call for "%s" as method, %s(\'%1$s\') not supported.', $name, __METHOD__));
+    }
     }
 
     public function generateRouteName(string $prefix): string
