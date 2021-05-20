@@ -64,11 +64,11 @@ class RouterTest extends BaseTestCase
 
         $collection = $router->getCollection();
 
-        $this->assertCount(3, $collection->getRoutes());
+        $this->assertCount(3, $collection);
 
-        $collection->add(new Fixtures\TestRoute());
+        $collection->add(new Fixtures\TestRoute()); // Will not be added ...
 
-        $this->assertCount(4, $collection->getRoutes());
+        $this->assertCount(3, $collection->getIterator());
     }
 
     public function testMiddlewareOnRoute(): void
@@ -792,7 +792,7 @@ class RouterTest extends BaseTestCase
         })->withPrefix('/api');
 
         $router = $this->getRouter();
-        $router->addRoute(...$collector->getRoutes());
+        $router->addRoute(...$collector);
 
         $router->addMiddleware(['hello' => $middleware = new Fixtures\BlankMiddleware()]);
 

@@ -58,7 +58,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
         $this->compiler = new SimpleRouteCompiler();
 
         if ($collection instanceof RouteCollection) {
-            $collection = $collection->getRoutes();
+            $collection = $collection->getIterator();
         }
 
         $this->warmCompiler($collection);

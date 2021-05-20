@@ -83,7 +83,7 @@ trait RouterTrait
 
         foreach ($annotations as $annotation) {
             if ($annotation instanceof RouteCollection) {
-                $this->addRoute(...$annotation->getRoutes());
+                $this->addRoute(...$annotation);
             }
         }
     }

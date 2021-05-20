@@ -292,13 +292,6 @@ class RouteTest extends TestCase
         $this->assertSame($expectedPath, $route->getPath());
     }
 
-    public function testGetOnNull(): void
-    {
-        $route = new Fixtures\TestRoute();
-
-        $this->assertNull($route->get('nothing'));
-    }
-
     public function testMethodNotFoundInMagicCall(): void
     {
         $route = new Fixtures\TestRoute();

@@ -80,6 +80,9 @@ class Route
      */
     public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
 
+    /** @var RouteCollection|null */
+    private $collection = null;
+
     /**
      * Create a new Route constructor.
      *
@@ -415,6 +418,20 @@ class Route
 
         throw new \BadMethodCallException(\sprintf('Invalid call for "%s" as method, %s(\'%1$s\') not supported.', $name, __METHOD__));
     }
+
+    /**
+     * End a group stack or return self.
+     */
+    public function end(RouteCollection $collection = null): ?RouteCollection
+    {
+        if (null !== $collection) {
+            return $this->collection = $collection;
+        }
+
+        $stack = $this->collection;
+        unset($this->collection); // Just remove it.
+
+        return $stack ?? $collection;
     }
 
     public function generateRouteName(string $prefix): string

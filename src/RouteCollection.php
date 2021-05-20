@@ -51,31 +51,24 @@ namespace Flight\Routing;
  * @method RouteCollection withAsserts(array $patterns)
  * @method RouteCollection withArguments(array $patterns)
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @author Tobias Schultze <http://tobion.de>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class RouteCollection implements \IteratorAggregate, \Countable
 {
-    /** @var null|string */
+    /** @var string|null */
     private $namePrefix;
-
-    /** @var null|Route */
-    private $defaultRoute = null;
 
     /** @var Route[] */
     private $routes = [];
 
-    /**
-     * @param null|false|Route $defaultRoute
-     * @param mixed            $defaultHandler
-     */
-    public function __construct($defaultRoute = null, $defaultHandler = null)
-    {
-        if (false !== $defaultRoute) {
-            $this->defaultRoute = $defaultRoute ?? new Route('/', '', $defaultHandler);
-        }
-    }
+    /** @var self|null */
+    private $parent = null;
+
+    /** @var array<string,mixed[]>|null */
+    private $stack = null;
+
+    /** @var \ArrayIterator|null */
+    private $iterable = null;
 
     /**
      * @param string   $method
@@ -86,13 +79,18 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function __call($method, $arguments)
     {
         $routeMethod = (string) \preg_replace('/^with([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
+        $routeMethod = \strtolower($routeMethod);
 
-        if (null !== $this->defaultRoute) {
-            \call_user_func_array([$this->defaultRoute, $routeMethod], $arguments);
-        }
+        if (null !== $this->stack) {
+            if ([] !== $stack = $this->stack[$routeMethod] ?? []) {
+                $arguments = \array_merge(\end($stack), $arguments);
+            }
 
-        foreach ($this->routes as $route) {
-            \call_user_func_array([$route, $routeMethod], $arguments);
+            $this->stack[$routeMethod][] = $arguments;
+        } else {
+            foreach ($this->routes as $route) {
+                \call_user_func_array([$route, $routeMethod], $arguments);
+            }
         }
 
         return $this;
@@ -103,61 +101,38 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @return int The number of routes
      */
-    public function count()
+    public function count(): int
     {
-        return \count($this->getRoutes());
+        return $this->getIterator()->count();
     }
 
     /**
-     * Gets the current RouteCollection as an iterable of routes.
+     * Gets the filtered RouteCollection as an ArrayIterator that includes all routes.
      *
-     * @see getRoutes() method
+     * @see doMerge() method
      *
      * @return \ArrayIterator<int,Route> The filtered routes
      */
-    public function getIterator()
+    public function getIterator(): \ArrayIterator
     {
-        return new \ArrayIterator($this->getRoutes());
-    }
-
-    /**
-     * Gets the filtered RouteCollection as an array that includes all routes.
-     *
-     * Use this method to fetch routes instead of getIterator().
-     *
-     * @return Route[] The filtered merged routes
-     */
-    public function getRoutes(): array
-    {
-        return $this->doMerge('', new static(false));
+        return $this->iterable ?? $this->iterable = new \ArrayIterator($this->doMerge('', new static()));
     }
 
     /**
      * Add route(s) to the collection.
      *
-     * This method unsets all setting from default route and use new settings
+     * This method unset all setting from default route and use new settings
      * from new the route(s). If you want the default settings to be merged
      * into routes, use `addRoute` method instead.
      *
      * @param Route ...$routes
-     *
-     * @return self
      */
     public function add(Route ...$routes): self
     {
         foreach ($routes as $route) {
-            if (null !== $this->defaultRoute) {
-                $default = clone $this->defaultRoute;
-
-                // Append default path to routes' path
-                $route->prefix($default->get('path'));
-
-                // Merge defaults with route
-                $mergedRoute = \array_replace($default->get('all'), $route->get('all'));
-                $route       = $default::__set_state($mergedRoute);
-            }
-
             $this->routes[] = $route;
+
+            $this->resolveWith($route);
         }
 
         return $this;
@@ -171,21 +146,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      * @param string   $pattern Matched route pattern
      * @param string[] $methods Matched HTTP methods
      * @param mixed    $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
-        if (null !== $this->defaultRoute) {
-            $route = clone $this->defaultRoute;
-            $route->prefix($route->get('path'))->path($pattern)->method(...$methods);
-        } else {
-            $route = new Route($pattern, '');
-            $route->method(...$methods);
-        }
+        $this->routes[] = $route = new Route($pattern, $methods, $handler);
 
-        $this->routes[] = $route;
-        $route->run($handler ?? $route->get('controller'));
+        $this->resolveWith($route);
 
         return $route;
     }
@@ -198,20 +164,42 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @throws \LogicException
      */
-    public function group(string $name, $controllers): self
+    public function group(string $name, $controllers = null): self
     {
+        if (null === $controllers) {
+            $controllers = new static();
+            $controllers->stack = $this->stack ?? [];
+        }
+
         if (\is_callable($controllers)) {
+            $deprecated = 'Since %s v1.1, usage of %s() method\'s second parameter for callable is deprecated. Will be dropped in v2.0';
+            @\trigger_error(\sprintf($deprecated, 'divineniiquaye/flight-routing', __METHOD__), \E_USER_DEPRECATED);
+
             $controllers($collection = new static());
             $controllers = clone $collection;
         } elseif (!$controllers instanceof self) {
             throw new \LogicException('The "group" method takes either a "RouteCollection" instance or callable.');
         }
 
-        $controllers->namePrefix = $name;
-
         $this->routes[] = $controllers;
 
+        $controllers->namePrefix = $name;
+        $controllers->parent = $this;
+
         return $controllers;
+    }
+
+    /**
+     * Unmounts a group collection to continue routes stalk.
+     */
+    public function end(): self
+    {
+        // Remove last element from stack.
+        foreach ($this->stack as $stack) {
+            \array_pop($stack);
+        }
+
+        return $this->parent ?? $this;
     }
 
     /**
@@ -219,8 +207,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function head(string $pattern, $handler = null): Route
     {
@@ -232,8 +218,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function get(string $pattern, $handler = null): Route
     {
@@ -245,8 +229,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function post(string $pattern, $handler = null): Route
     {
@@ -258,8 +240,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function put(string $pattern, $handler = null): Route
     {
@@ -271,8 +251,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function patch(string $pattern, $handler = null): Route
     {
@@ -284,8 +262,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function delete(string $pattern, $handler = null): Route
     {
@@ -297,8 +273,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function options(string $pattern, $handler = null): Route
     {
@@ -310,8 +284,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return Route
      */
     public function any(string $pattern, $handler = null): Route
     {
@@ -326,8 +298,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      * @param string              $name     The prefixed name attached to request method
      * @param string              $pattern  matched path where request should be sent to
      * @param class-string|object $resource Handler that returns the response
-     *
-     * @return Route
      */
     public function resource(string $name, string $pattern, $resource): Route
     {
@@ -339,12 +309,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      *
      * @param string $name The route name
      *
-     * @return null|Route A Route instance or null when not found
+     * @return Route|null A Route instance or null when not found
      */
     public function find(string $name): ?Route
     {
         /** @var Route|RouteCollection $route */
-        foreach ($this->routes as $route) {
+        foreach ($this->iterable ?? $this->routes as $route) {
             if ($route instanceof Route && $name === $route->get('name')) {
                 return $route;
             }
@@ -354,13 +324,30 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * @param string $prefix
-     * @param self   $routes
-     *
+     * Bind route with collection.
+     */
+    private function resolveWith(Route $route): void
+    {
+        foreach ($this->stack ?? [] as $routeMethod => $arguments) {
+            $stack = \end($arguments);
+
+            if (false !== $stack) {
+                \call_user_func_array([$route, $routeMethod], 'prefix' === $routeMethod ? [\implode('', $stack)] : $stack);
+            }
+        }
+
+        if (null !== $this->parent) {
+            $route->end($this);
+        }
+    }
+
+    /**
      * @return Route[]
      */
     private function doMerge(string $prefix, self $routes): array
     {
+        $defaultUnnamedIndex = 0;
+
         /** @var Route|RouteCollection $route */
         foreach ($this->routes as $route) {
             if ($route instanceof self) {
@@ -371,15 +358,15 @@ final class RouteCollection implements \IteratorAggregate, \Countable
 
             if (null === $name = $route->get('name')) {
                 $name = $base = $route->generateRouteName('');
-                $i    = 0;
 
                 while ($routes->find($name)) {
-                    $name = $base . '_' . ++$i;
+                    $name = $base . '_' . ++$defaultUnnamedIndex;
                 }
             }
 
             $routes->routes[] = $route->bind($prefix . $name);
         }
+        $this->routes = [];
 
         return $routes->routes;
     }
