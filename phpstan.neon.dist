@@ -2,7 +2,7 @@ includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
 
 parameters:
-    level: max
+    level: 4
     paths: [src]
     treatPhpDocTypesAsCertain: false
     checkMissingIterableValueType: false
@@ -29,5 +29,5 @@ parameters:
             message: "#^Variable (\\$i|\\$n|\\$j) might not be defined.$#"
             path: src/Matchers/ExpressionCollection.php
         -
-            message: "#^Parameter \\#1 \\$collection of method Flight\\\\Routing\\\\Matchers\\\\SimpleRouteMatcher\\:\\:__construct\\(\\) expects Flight\\\\Routing\\\\RouteCollection&iterable<Flight\\\\Routing\\\\Route>, Flight\\\\Routing\\\\RouteCollection\\|string given.|Array \\(array<string>\\) does not accept string\\|null.$#"
-            path: src/Matchers/SimpleRouteDumper.php
+            message: "#^Variable property access on \\$this\\(Flight\\\\Routing\\\\Annotation\\\\Route\\).$#"
+            path: src/Annotation/Route.php

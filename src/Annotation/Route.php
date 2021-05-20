@@ -69,7 +69,7 @@ final class Route
     /** @var string[] */
     public $domain = [];
 
-    /** @var string[] */
+    /** @var array<string,true> */
     public $schemes = [];
 
     /** @var string[] */

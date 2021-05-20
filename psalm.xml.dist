@@ -3,7 +3,7 @@
        xmlns="https://getpsalm.org/schema/config"
        name="Psalm for Flight Routing"
        useDocblockTypes="true"
-       errorLevel="3"
+       errorLevel="7"
        strictBinaryOperands="false"
        rememberPropertyAssignmentsAfterCall="true"
        checkForThrowsDocblock="false"
@@ -78,6 +78,7 @@
         <ArgumentTypeCoercion>
             <errorLevel type="suppress">
                 <referencedFunction name="Flight\Routing\Router::generateCompiledRoutes"/>
+                <referencedFunction name="Flight\Routing\Annotation\Listener::addRoute"/>
             </errorLevel>
         </ArgumentTypeCoercion>
 
