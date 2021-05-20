@@ -67,7 +67,7 @@ class Router implements RouterInterface, RequestHandlerInterface
         $this->resolver        = new RouteResolver($resolver ?? new Invoker());
 
         $this->setOptions($options);
-        $this->routes   = new RouteCollection(false);
+        $this->routes   = new RouteCollection();
         $this->pipeline = new MiddlewarePipe();
     }
 

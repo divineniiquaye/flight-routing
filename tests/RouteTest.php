@@ -31,7 +31,7 @@ class RouteTest extends TestCase
         $testRoute = new Fixtures\TestRoute();
         $route     = new Route(
             $testRoute->getPath(),
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
 
@@ -55,7 +55,7 @@ class RouteTest extends TestCase
         $testRoute = new Fixtures\TestRoute();
         $route     = new Route(
             $testRoute->getPath(),
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
         $route->bind($testRoute->getName())
@@ -103,7 +103,7 @@ class RouteTest extends TestCase
         $testRoute = new Fixtures\TestRoute();
         $route     = new Route(
             $testRoute->getPath(),
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
 
@@ -159,7 +159,7 @@ class RouteTest extends TestCase
         $testRoute = new Fixtures\TestRoute();
         $route     = new Route(
             '//biurad.com/' . \ltrim($testRoute->getPath(), '/'),
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
 
@@ -172,7 +172,7 @@ class RouteTest extends TestCase
         $testRoute = new Fixtures\TestRoute();
         $route     = new Route(
             'https://biurad.com/' . \ltrim($testRoute->getPath(), '/'),
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
 
@@ -187,12 +187,12 @@ class RouteTest extends TestCase
 
         $route1 = new Route(
             $testRoute->getPath() . '*<handle>',
-            \join('|', \array_keys($testRoute->getMethods())),
+            \array_keys($testRoute->getMethods()),
             $testRoute->getController()
         );
         $route2 = new Route(
             $testRoute->getPath() . '*<Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle>',
-            \join('|', \array_keys($testRoute->getMethods()))
+            \array_keys($testRoute->getMethods())
         );
 
         $this->assertIsCallable($route1->getController());
@@ -203,7 +203,7 @@ class RouteTest extends TestCase
     public function testControllerMethodFromPath(): void
     {
         $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
-        $route        = new Route('/*<phpinfo>', \join('|', $routeMethods));
+        $route        = new Route('/*<phpinfo>', $routeMethods);
 
         $this->assertIsCallable($route->getController());
         $this->assertEquals('/', $route->getPath());
@@ -256,7 +256,7 @@ class RouteTest extends TestCase
 
     public function testSetLowercasedMethods(): void
     {
-        $route           = new Route('/', 'foo|bar', Fixtures\BlankRequestHandler::class);
+        $route           = new Route('/', ['foo', 'bar'], Fixtures\BlankRequestHandler::class);
         $expectedMethods = ['FOO', 'BAR'];
 
         $this->assertSame($expectedMethods, \array_keys($route->getMethods()));
@@ -292,20 +292,11 @@ class RouteTest extends TestCase
         $this->assertSame($expectedPath, $route->getPath());
     }
 
-    public function testGetOnNull(): void
-    {
-        $route = new Fixtures\TestRoute();
-
-        $this->assertNull($route->get('nothing'));
-    }
-
     public function testMethodNotFoundInMagicCall(): void
     {
         $route = new Fixtures\TestRoute();
 
-        $this->expectExceptionMessage(
-            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
-        );
+        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
         $this->expectException(BadMethodCallException::class);
 
         $route->exception();

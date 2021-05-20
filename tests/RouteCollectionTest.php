@@ -39,8 +39,8 @@ class RouteCollectionTest extends BaseTestCase
         $collection = new RouteCollection();
         $collection->add($route);
 
-        $this->assertNotInstanceOf(Fixtures\TestRoute::class, \current($collection->getRoutes()));
-        $this->assertCount(1, $collection->getRoutes());
+        $this->assertInstanceOf(Fixtures\TestRoute::class, $collection->getIterator()->current());
+        $this->assertCount(1, $collection->getIterator());
     }
 
     public function testCannotOverriddenRoute(): void
@@ -49,7 +49,7 @@ class RouteCollectionTest extends BaseTestCase
         $collection->add(new Route('/foo', Router::METHOD_GET));
         $collection->add(new Route('/foo1', Router::METHOD_GET));
 
-        $routes = $collection->getRoutes();
+        $routes = $collection->getIterator()->getArrayCopy();
 
         $this->assertEquals('/foo', \current($routes)->getPath());
         $this->assertEquals('/foo1', \end($routes)->getPath());
@@ -57,9 +57,7 @@ class RouteCollectionTest extends BaseTestCase
 
     public function testCannotFindMethodInRoute(): void
     {
-        $this->expectExceptionMessage(
-            'Method call invalid, Flight\Routing\Route::get(\'exception\') should be a supported type.'
-        );
+        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
         $this->expectException(BadMethodCallException::class);
 
         $collection = new RouteCollection();
@@ -68,7 +66,7 @@ class RouteCollectionTest extends BaseTestCase
 
     public function testCannotFindMethodInCollection(): void
     {
-        $this->expectExceptionMessage('Method call invalid, arguments passed to \'exceptions\' method not suported.');
+        $this->expectExceptionMessage('Arguments passed into "exceptions" method not supported, as method does not exist.');
         $this->expectException(BadMethodCallException::class);
 
         $collection = new RouteCollection();
@@ -86,11 +84,11 @@ class RouteCollectionTest extends BaseTestCase
         $collection2 = new RouteCollection();
         $collection2->add(new Route('foo2', Router::METHOD_GET));
 
-        $collection1->add(...$collection2->getRoutes());
-        $collection->add(...$collection->getRoutes());
+        $collection1->add(...$collection2);
+        $collection->add(...$collection->getIterator());
 
-        $this->assertEquals('/foo1', \current($collection1->getRoutes())->getPath());
-        $this->assertEquals('/foo', \current($collection->getRoutes())->getPath());
+        $this->assertEquals('/foo1', $collection1->getIterator()->current()->getPath());
+        $this->assertEquals('/foo', \current($collection->getIterator()->getArrayCopy())->getPath());
     }
 
     public function testAddRoute(): void
@@ -157,7 +155,7 @@ class RouteCollectionTest extends BaseTestCase
         $mainRootController = new Route('/');
         $mainRootController->bind($mainRootController->generateRouteName('main_1'));
 
-        $controllers->getRoutes();
+        $controllers->getIterator();
 
         $this->assertNotEquals($mainRootController->getName(), $mountedRootController->getName());
     }
@@ -173,14 +171,14 @@ class RouteCollectionTest extends BaseTestCase
         $controllers->addRoute('/a/a', [], function (): void {
         });
 
-        $routes = $controllers->getRoutes();
+        $routes = $controllers->getIterator();
 
         $this->assertCount(3, $routes);
         $this->assertEquals(['_a_a', '_a_a_1', '_a_a_2'], \array_map(
             function (Route $route) {
                 return $route->getName();
             },
-            $routes
+            (array) $routes
         ));
     }
 
@@ -196,14 +194,14 @@ class RouteCollectionTest extends BaseTestCase
         $rootB->addRoute('/leaf_a', [], function (): void {
         });
 
-        $routes = $controllers->getRoutes();
+        $routes = $controllers->getIterator();
 
         $this->assertCount(2, $routes);
         $this->assertEquals(['_leaf_a', '_leaf_a_1'], \array_map(
             function (Route $route) {
                 return $route->getName();
             },
-            $routes
+            (array) $routes
         ));
     }
 
@@ -439,37 +437,33 @@ class RouteCollectionTest extends BaseTestCase
         $collector = new RouteCollection();
         $collector->get('/', new Fixtures\BlankRequestHandler())->bind('home');
 
-        $collector->group('api.', function (RouteCollection $group): void {
-            $group->get('/', new Fixtures\BlankRequestHandler())->bind('home');
-            $group->get('/ping', new Fixtures\BlankRequestHandler())->bind('ping');
+        $collector->group('api.')
+            ->withPrefix('/api')
+            ->get('/', new Fixtures\BlankRequestHandler())->bind('home')->end()
+            ->get('/ping', new Fixtures\BlankRequestHandler())->bind('ping')->end()
+            ->group('')
+                ->withScheme('https', 'http')
+                ->withMethod(Router::METHOD_CONNECT)
+                ->withDefault('hello', 'world')
+                ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument(0, 'hello')->end()
+            ->end()
+            ->group('')
+                ->withPrefix('/v1')->withDomain('https://youtube.com')
+                ->group('')
+                    ->withPrefix('/section')->withMiddleware(Fixtures\BlankMiddleware::class)
+                    ->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create')->end()
+                    ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update')->end()
+                ->end()
+                ->group('')
+                    ->withPrefix('/product')
+                    ->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create')->end()
+                    ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update')->end()
+                ->end()
+            ->end()
+        ->end()
+            ->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us')->end();
 
-            $group->group('', function (RouteCollection $group): void {
-                $group->head('hello', new Fixtures\BlankRequestHandler())
-                    ->bind('hello')->argument(0, 'hello');
-            })
-            ->withScheme('https', 'http')
-            ->withMethod(Router::METHOD_CONNECT)
-            ->withDefault('hello', 'world');
-
-            $group->group('', function (RouteCollection $group): void {
-                $group->group('', function (RouteCollection $group): void {
-                    $group->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create');
-                    $group->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update');
-                })->withPrefix('/section')->withMiddleware(Fixtures\BlankMiddleware::class);
-
-                $group->group('', function (RouteCollection $group): void {
-                    $group->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create');
-                    $group->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update');
-                })
-                ->withPrefix('product/');
-            })
-            ->withPrefix('/v1')->withDomain('https://youtube.com');
-        })
-        ->withPrefix('/api');
-
-        $collector->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us');
-
-        $routes = $collector->getRoutes();
+        $routes = $collector->getIterator();
 
         $this->assertContains([
             'name'        => 'home',
@@ -603,7 +597,7 @@ class RouteCollectionTest extends BaseTestCase
             $routeResource
         );
 
-        $route = \current($collector->getRoutes());
+        $route = $collector->getIterator()->current();
 
         $this->assertTrue(str_starts_with($route->getName(), 'HEAD_GET_POST_PUT_PATCH_DELETE_PURGE_OPTIONS_TRACE_CONNECT'));
         $this->assertEquals($routeName, $route->getDefaults()['_api']);
@@ -697,11 +691,11 @@ class RouteCollectionTest extends BaseTestCase
 
             $mergedCollection->group('', $groupOptimisedCollection);
 
-            $merged = $mergedCollection->getRoutes();
+            $merged = $mergedCollection->getIterator();
             $router->addRoute(...$merged);
 
             $this->assertCount(128, $router->getCollection());
-            $this->assertSame($merged, $router->getCollection()->getIterator()->getArrayCopy());
+            $this->assertSame((array) $merged, (array) $router->getCollection()->getIterator());
 
             foreach ($routes as $testRoute) {
                 if (str_starts_with($path = $testRoute->getPath(), '{_locale}')) {
@@ -720,7 +714,7 @@ class RouteCollectionTest extends BaseTestCase
 
         if (\file_exists($cacheFile)) {
             if (!$cached) {
-                \unlink($cacheFile);
+                @\unlink($cacheFile);
             }
 
             $this->assertInstanceOf(MatcherDumperInterface::class, $router->getMatcher());

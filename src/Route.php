@@ -76,20 +76,27 @@ class Route
     public const URL_PATTERN = '/^(?:(?P<scheme>api|https?)\:)?(\/\/)?(?P<host>[^\/\*]+)\/*?$/u';
 
     /**
+     * Default methods for route.
+     */
+    public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
+
+    /** @var RouteCollection|null */
+    private $collection = null;
+
+    /**
      * Create a new Route constructor.
      *
-     * @param string $pattern The route pattern
-     * @param string $methods The route HTTP methods. Multiple methods can be supplied,
-     *                        delimited by a pipe character '|', eg. 'GET|POST'
-     * @param mixed  $handler The PHP class, object or callable that returns the response when matched
+     * @param string          $pattern The route pattern
+     * @param string|string[] $methods The route HTTP methods. Multiple methods can be supplied as an array
+     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
      */
-    public function __construct(string $pattern, string $methods = 'GET|HEAD', $handler = null)
+    public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
     {
         $this->controller = $handler;
         $this->path       = $this->castRoute($pattern);
 
         if (!empty($methods)) {
-            $this->method(...\explode('|', $methods));
+            $this->methods = \array_fill_keys(\array_map('strtoupper', (array) $methods), true);
         }
     }
 
@@ -102,9 +109,9 @@ class Route
      */
     public static function __set_state(array $properties)
     {
-        $recovered = new self($properties['path'], '', $properties['controller']);
+        $recovered = new self($properties['path'], $properties['methods'], $properties['controller']);
 
-        unset($properties['path'], $properties['controller']);
+        unset($properties['path'], $properties['controller'], $properties['methods']);
 
         foreach ($properties as $name => $property) {
             $recovered->{$name} = $property;
@@ -117,6 +124,8 @@ class Route
      * @param string   $method
      * @param mixed[] $arguments
      *
+     * @throws \BadMethodCallException
+     *
      * @return mixed
      */
     public function __call($method, $arguments)
@@ -124,25 +133,8 @@ class Route
         $routeMethod = (string) \preg_replace('/^get([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
         $routeMethod = \strtolower($routeMethod);
 
-        if (!\property_exists(__CLASS__, $routeMethod)) {
-            if (\in_array($routeMethod, ['all', 'arguments'], true)) {
-                return $this->get($routeMethod);
-            }
-
-            $message = \sprintf(
-                'Method call invalid, %s::get(\'%s\') should be a supported type.',
-                Route::class,
-                $routeMethod
-            );
-
-            if (!empty($arguments)) {
-                $message = \sprintf(
-                    'Method call invalid, arguments passed to \'%s\' method not suported.',
-                    $routeMethod
-                );
-            }
-
-            throw new \BadMethodCallException($message);
+        if (!empty($arguments)) {
+            throw new \BadMethodCallException(\sprintf('Arguments passed into "%s" method not supported, as method does not exist.', $routeMethod));
         }
 
         return $this->get($routeMethod);
@@ -396,7 +388,7 @@ class Route
      * Get any of (name, path, domain, defaults, schemes, domain, controller, patterns, middlewares).
      * And also accepts "all" and "arguments".
      *
-     * @param string $name
+     * @throws \BadMethodCallException if $name does not exist as property
      *
      * @return mixed
      */
@@ -424,7 +416,22 @@ class Route
             return $this->defaults['_arguments'] ?? [];
         }
 
-        return null;
+        throw new \BadMethodCallException(\sprintf('Invalid call for "%s" as method, %s(\'%1$s\') not supported.', $name, __METHOD__));
+    }
+
+    /**
+     * End a group stack or return self.
+     */
+    public function end(RouteCollection $collection = null): ?RouteCollection
+    {
+        if (null !== $collection) {
+            return $this->collection = $collection;
+        }
+
+        $stack = $this->collection;
+        unset($this->collection); // Just remove it.
+
+        return $stack ?? $collection;
     }
 
     public function generateRouteName(string $prefix): string
