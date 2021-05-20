@@ -119,7 +119,9 @@ class ListenerTest extends BaseTestCase
         $router->loadAnnotation($loader);
 
         $routes = Fixtures\Helper::routesToArray($router->getCollection()->getIterator());
-        \usort($routes, function (array $a, array $b) { return \strcmp($a["name"], $b["name"]); });
+        \usort($routes, function (array $a, array $b) {
+            return \strcmp($a["name"], $b["name"]);
+        });
 
         $this->assertEquals([
             'name'        => 'GET_POST_annotated_default',
