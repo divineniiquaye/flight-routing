@@ -118,9 +118,10 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getCollection()->getIterator();
+        $routes = Fixtures\Helper::routesToArray($router->getCollection()->getIterator());
+        \usort($routes, function (array $a, array $b) { return \strcmp($a["name"], $b["name"]); });
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'GET_POST_annotated_default',
             'path'        => '/default',
             'domain'      => [],
@@ -131,9 +132,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[3]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'GET_HEAD_annotated_get',
             'path'        => '/get',
             'domain'      => [],
@@ -144,9 +145,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[0]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'GET_HEAD_annotated_get_1',
             'path'        => '/get',
             'domain'      => [],
@@ -157,9 +158,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[1]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'POST_annotated_post',
             'path'        => '/post',
             'domain'      => [],
@@ -170,9 +171,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[4]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'PUT_annotated_put',
             'path'        => '/put',
             'domain'      => [],
@@ -183,9 +184,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[5]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'class_group@CONNECT_GET_HEAD_annotated_get',
             'path'        => '/get',
             'domain'      => [],
@@ -196,9 +197,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[7]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'class_group@CONNECT_POST_annotated_post',
             'path'        => '/post',
             'domain'      => [],
@@ -209,9 +210,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[8]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'class_group@CONNECT_PUT_annotated_put',
             'path'        => '/put',
             'domain'      => [],
@@ -222,9 +223,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[9]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'GET_HEAD_annotated_testing_',
             'path'        => 'testing/',
             'domain'      => [],
@@ -235,9 +236,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[2]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'english_locale',
             'path'        => '/en/locale',
             'domain'      => [],
@@ -248,9 +249,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[12]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'french_locale',
             'path'        => '/fr/locale',
             'domain'      => [],
@@ -261,9 +262,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[13]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'action',
             'path'        => '/{default}/path',
             'domain'      => [],
@@ -274,9 +275,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[6]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'hello_without_default',
             'path'        => '/hello/{name:\w+}',
             'domain'      => [],
@@ -287,9 +288,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[15]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'hello_with_default',
             'path'        => '/cool/{name=<Symfony>}',
             'domain'      => [],
@@ -300,9 +301,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => ['name' => '\w+'],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[14]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'home',
             'path'        => '/',
             'domain'      => ['biurad.com'],
@@ -319,9 +320,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[16]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'lol',
             'path'        => '/here',
             'domain'      => [],
@@ -332,9 +333,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[17]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'ping',
             'path'        => '/ping',
             'domain'      => [],
@@ -351,9 +352,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[20]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'method_not_array',
             'path'        => '/method_not_array',
             'domain'      => [],
@@ -364,9 +365,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[18]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'middlewares_not_array',
             'path'        => '/middlewares_not_array',
             'domain'      => [],
@@ -377,9 +378,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[19]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'do.action',
             'path'        => '/prefix/path',
             'domain'      => ['biurad.com'],
@@ -390,9 +391,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[10]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'do.action_two',
             'path'        => '/prefix/path_two',
             'domain'      => ['biurad.com'],
@@ -403,9 +404,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[11]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'sub-dir:foo',
             'path'        => '/sub-dir/foo',
             'domain'      => [],
@@ -422,9 +423,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[22]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'sub-dir:bar',
             'path'        => '/sub-dir/bar',
             'domain'      => [],
@@ -441,9 +442,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[21]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'user__restful',
             'path'        => '/user/{id:\d+}',
             'domain'      => [],
@@ -454,7 +455,7 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[23]);
     }
 
     /**
