@@ -30,7 +30,7 @@ class SimpleRouteCompilerTest extends TestCase
 {
     public function testSerialize(): void
     {
-        $route = new Route('/prefix/{foo}', 'FOO|BAR');
+        $route = new Route('/prefix/{foo}', ['FOO', 'BAR']);
         $route->default('foo', 'default')
             ->assert('foo', '\d+');
 
@@ -56,7 +56,7 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompile(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route($path, 'FOO|BAR');
+        $route    = new Route($path, ['FOO', 'BAR']);
         $compiler = new SimpleRouteCompiler();
         $compiled = $compiler->compile($route);
 
@@ -83,7 +83,7 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompileDomainRegex(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route($path, 'FOO|BAR');
+        $route    = new Route($path, ['FOO', 'BAR']);
         $compiler = new SimpleRouteCompiler();
         $compiled = $compiler->compile($route);
 
@@ -108,7 +108,7 @@ class SimpleRouteCompilerTest extends TestCase
      */
     public function testCompileVariables(string $variable, string $exceptionMessage): void
     {
-        $route = new Route('/{' . $variable . '}', 'FOO|BAR');
+        $route = new Route('/{' . $variable . '}', ['FOO', 'BAR']);
         $compiler = new SimpleRouteCompiler();
 
         $this->expectExceptionMessage(\sprintf($exceptionMessage, $variable));
@@ -125,7 +125,7 @@ class SimpleRouteCompilerTest extends TestCase
         $this->expectErrorMessage('Routing requirement for "foo" cannot be empty.');
         $this->expectException(UriHandlerException::class);
 
-        $route = new Route('/{foo}', 'FOO|BAR');
+        $route = new Route('/{foo}', ['FOO', 'BAR']);
         $route->assert('foo', $req);
 
         $compiler = new SimpleRouteCompiler();
@@ -137,7 +137,7 @@ class SimpleRouteCompilerTest extends TestCase
         $this->expectErrorMessage('Route pattern "/{foo}{foo}" cannot reference variable name "foo" more than once.');
         $this->expectException(UriHandlerException::class);
 
-        $route = new Route('/{foo}{foo}', 'FOO|BAR');
+        $route = new Route('/{foo}{foo}', ['FOO', 'BAR']);
 
         $compiler = new SimpleRouteCompiler();
         $compiler->compile($route);

@@ -24,312 +24,159 @@ use Biurad\Annotations\InvalidAnnotationException;
  *
  * @Annotation
  *
+ * On PHP 7.2+ Attributes are supported except you want to use Doctrine annotations:
  * ```php
- * <?php
- *  /**
- *   * @Route("/blog" name="blog", methods={"GET", "HEAD"}, defaults={"_locale" = "en"})
- *   * /
- *  class Blog
- *  {
- *     /**
- *      * @Route("/{_locale}", name="index", methods={"GET", "HEAD"})
- *      * /
- *     public function index()
- *     {
- *     }
- *     /**
- *      * @Route("/{_locale}/{id}", name="post", methods={"GET", "HEAD"}, patterns={"id" = "[0-9]+"})
- *      * /
- *     public function show($id)
- *     {
- *     }
- *  }
- * ```
- *
- * On PHP 8, the annotation class can be used as an attribute as well:
- * ```php
- *     #[Route('/Blog', methods: ['GET', 'POST'])]
+ *     #[Route('/blog/{_locale}', name: 'blog', defaults: ['_locale' => 'en'])]
  *     class Blog
  *     {
- *         #[Route('/', name: 'blog_index')]
+ *         #[Route('/', name: '_index', methods: ['GET', 'HEAD'] schemes: 'https')]
  *         public function index()
  *         {
  *         }
- *         #[Route('/{id}', name: 'blog_post', patterns: ["id" => '\d+'])]
+ *         #[Route('/{id}', name: '_post', methods: 'POST' where: ["id" => '\d+'])]
  *         public function show()
  *         {
  *         }
  *     }
  * ```
  *
- * @Target({"CLASS", "METHOD"})
+ * @Target({"CLASS", "METHOD", "FUNCTION"})
  */
-
-#[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
+#[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
 final class Route
 {
-    /** @var null|string @Required */
-    private $path;
+    private const ATTRIBUTES = [
+        'path' => 'string',
+        'name' => 'string',
+        'resource' => 'string',
+        'patterns' => 'array',
+        'defaults' => 'array',
+        'methods' => 'string|string[]',
+        'domain' => 'string|string[]',
+        'schemes' => 'string|string[]',
+        'middlewares' => 'string|string[]',
+    ];
 
-    /** @var null|string @Required */
-    private $name;
+    /** @var string|null @Required */
+    public $path = null;
+
+    /** @var string|null @Required */
+    public $name = null;
 
     /** @var string[] @Required */
-    private $methods;
-
-    /** @var null|string */
-    private $domain;
+    public $methods = [];
 
     /** @var string[] */
-    private $schemes;
+    public $domain = [];
+
+    /** @var array<string,true> */
+    public $schemes = [];
 
     /** @var string[] */
-    private $middlewares;
+    public $middlewares = [];
 
     /** @var array<string,string> */
-    private $patterns;
+    public $patterns = [];
 
     /** @var array<string,mixed> */
-    private $defaults;
+    public $defaults = [];
+
+    /** @var string|null */
+    public $resource = null;
 
     /**
-     * @param array<string,mixed>|string $params      data array managed by the Doctrine Annotations library or the path
-     * @param null|string                $path
-     * @param string                     $name
-     * @param string[]                   $methods
-     * @param string[]                   $patterns
-     * @param string[]                   $defaults
-     * @param string                     $domain
-     * @param string[]                   $schemes
-     * @param string[]                   $middlewares
+     * @param array|string    $params      data array managed by the Doctrine Annotations library or the path
+     * @param string|string[] $methods
+     * @param string|string[] $schemes
+     * @param string|string[] $domain
+     * @param string[]        $where
+     * @param string|string[] $middlewares
+     * @param string[]        $defaults
      */
     public function __construct(
         $params = [],
         ?string $path = null,
         string $name = null,
-        array $methods = [],
-        array $patterns = [],
+        $methods = [],
+        $schemes = [],
+        $domain = [],
+        $middlewares = [],
+        array $where = [],
         array $defaults = [],
-        string $domain = null,
-        array $schemes = [],
-        array $middlewares = []
+        string $resource = null
     ) {
-        if (is_array($params) && isset($params['value'])) {
+        if (\is_array($params) && isset($params['value'])) {
             $params['path'] = $params['value'];
             unset($params['value']);
         } elseif (\is_string($params)) {
             $params = ['path' => $params];
         }
 
-        $params = \array_merge([
+        $parameters = [
             'middlewares' => $middlewares,
-            'patterns'    => $patterns,
-            'defaults'    => $defaults,
-            'schemes'     => $schemes,
-            'methods'     => $methods,
-            'domain'      => $domain,
-            'name'        => $name,
-            'path'        => $path,
-        ], $params);
+            'defaults' => $defaults,
+            'schemes' => $schemes,
+            'patterns' => $where,
+            'methods' => $methods,
+            'domain' => $domain,
+            'name' => $name,
+            'path' => $path,
+            'resource' => $resource,
+        ];
+        $parameters += $params; // Replace defaults with $params
 
-        $this->assertParamsContainValidName($params);
-        $this->assertParamsContainValidPath($params);
-        $this->assertParamsContainValidMethods($params);
-        $this->assertParamsContainValidSchemes($params);
-        $this->assertParamsContainValidMiddlewares($params);
-        $this->assertParamsContainValidPatterns($params);
-        $this->assertParamsContainValidDefaults($params);
+        foreach ($params as $id => $value) {
+            if (null === $validate = self::ATTRIBUTES[$id] ?? null) {
+                throw new InvalidAnnotationException(\sprintf('The @Route.%s is unsupported. Allowed param keys are ["%s"].', $id, \implode('", "', \array_keys(self::ATTRIBUTES))));
+            }
 
-        $this->name        = $params['name'];
-        $this->path        = $params['path'];
-        $this->methods     = $params['methods'];
-        $this->domain      = $params['domain'];
-        $this->middlewares = $params['middlewares'];
-        $this->schemes     = $params['schemes'];
-        $this->patterns    = $params['patterns'];
-        $this->defaults    = $params['defaults'];
-    }
+            if ('' === $value || null === $value) {
+                continue;
+            }
 
-    /**
-     * @return null|string
-     */
-    public function getPath(): ?string
-    {
-        return $this->path;
-    }
+            if ('string' === $validate) {
+                if (!\is_string($value)) {
+                    throw new InvalidAnnotationException(\sprintf('@Route.%s must contain only a type of %s.', $id, $validate));
+                }
+                $this->{$id} = $value;
 
-    /**
-     * @return null|string
-     */
-    public function getDomain(): ?string
-    {
-        return $this->domain;
-    }
+                continue;
+            }
 
-    /**
-     * @return null|string
-     */
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
+            foreach ((array) $value as $key => $param) {
+                if (!\is_string($key) && 'array' === $validate) {
+                    throw new InvalidAnnotationException(\sprintf('@Route.%s must contain a sequence %s of string keys and values. eg: [key => value]', $id, $validate));
+                }
 
-    /**
-     * @return array<string,string>
-     */
-    public function getPatterns(): array
-    {
-        return $this->patterns;
-    }
+                if ('string|string[]' === $validate) {
+                    if (!\is_string($param)) {
+                        throw new InvalidAnnotationException(\sprintf('@Route.%s must contain only an array list of strings.', $id));
+                    }
 
-    /**
-     * @return string[]
-     */
-    public function getMethods(): array
-    {
-        return $this->methods;
-    }
+                    if ('schemes' !== $id) {
+                        $this->{$id}[] = $param;
+                    } else {
+                        $this->schemes[$param] = true;
+                    }
 
-    /**
-     * @return string[]
-     */
-    public function getMiddlewares(): array
-    {
-        return $this->middlewares;
-    }
+                    continue;
+                }
 
-    /**
-     * @return string[]
-     */
-    public function getSchemes(): array
-    {
-        return $this->schemes;
-    }
-
-    /**
-     * @return array<string,mixed>
-     */
-    public function getDefaults(): array
-    {
-        return $this->defaults;
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidName(array $params): void
-    {
-        if (null === $params['name']) {
-            return;
-        }
-
-        if (empty($params['name']) || !\is_string($params['name'])) {
-            throw new InvalidAnnotationException(\sprintf(
-                '@Route.name must %s.',
-                empty($params['name']) ? 'be not an empty string' : 'contain only a string'
-            ));
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidPath(array $params): void
-    {
-        if (null === $params['path']) {
-            return;
-        }
-
-        if (empty($params['path']) || !\is_string($params['path'])) {
-            throw new InvalidAnnotationException('@Route.path must be not an empty string.');
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidMethods(array $params): void
-    {
-        if (!\is_array($params['methods'])) {
-            throw new InvalidAnnotationException('@Route.methods must contain only an array.');
-        }
-
-        foreach ($params['methods'] as $method) {
-            if (!\is_string($method)) {
-                throw new InvalidAnnotationException('@Route.methods must contain only strings.');
+                $this->{$id}[$key] = $param;
             }
         }
     }
 
     /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
+     * Merge a route annotation into this route.
      */
-    private function assertParamsContainValidMiddlewares(array $params): void
+    public function clone(self $annotation): void
     {
-        if (!\is_array($params['middlewares'])) {
-            throw new InvalidAnnotationException('@Route.middlewares must be an array.');
-        }
-
-        foreach ($params['middlewares'] as $middleware) {
-            if (!\is_string($middleware)) {
-                throw new InvalidAnnotationException('@Route.middlewares must contain only strings.');
-            }
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidPatterns(array $params): void
-    {
-        if (!\is_array($params['patterns'])) {
-            throw new InvalidAnnotationException('@Route.patterns must be an array.');
-        }
-
-        foreach ($params['patterns'] as $pattern) {
-            if (!\is_string($pattern)) {
-                throw new InvalidAnnotationException('@Route.patterns must contain only strings.');
-            }
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidSchemes(array $params): void
-    {
-        if (!\is_array($params['schemes'])) {
-            throw new InvalidAnnotationException('@Route.schemes must be an array.');
-        }
-
-        foreach ($params['schemes'] as $scheme) {
-            if (!\is_string($scheme)) {
-                throw new InvalidAnnotationException('@Route.schemes must contain only strings.');
-            }
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $params
-     *
-     * @throws InvalidAnnotationException
-     */
-    private function assertParamsContainValidDefaults(array $params): void
-    {
-        if (!\is_array($params['defaults'])) {
-            throw new InvalidAnnotationException('@Route.defaults must be an array.');
-        }
+        $this->methods = \array_merge($annotation->methods, $this->methods);
+        $this->domain = \array_merge($annotation->domain, $this->domain);
+        $this->schemes = \array_merge($annotation->schemes, $this->schemes);
+        $this->middlewares = \array_merge($annotation->middlewares, $this->middlewares);
+        $this->patterns = \array_merge($annotation->patterns, $this->patterns);
+        $this->defaults = \array_merge($annotation->defaults, $this->defaults);
     }
 }

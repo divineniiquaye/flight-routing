@@ -15,18 +15,19 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
 use Flight\Routing\Annotation\Route;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
 /**
  * @Route(
- *   name="",
- *   path="/",
- *   methods={"GET"}
+ *   name="middlewares_not_array",
+ *   path="/middlewares_not_array",
+ *   methods={"GET"},
+ *   middlewares="Flight\Routing\Tests\Fixtures\BlankMiddleware"
  * )
  */
-class NameEmpty extends BlankRequestHandler
+class MiddlewaresNotArray extends BlankRequestHandler
 {
 }

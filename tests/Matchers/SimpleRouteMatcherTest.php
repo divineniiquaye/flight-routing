@@ -46,7 +46,7 @@ class SimpleRouteMatcherTest extends TestCase
     public function testCompileRoute(string $path, array $variables): void
     {
         $collection = new RouteCollection();
-        $collection->add($route = new Route('http://[{lang:[a-z]{2}}.]example.com/{foo}', 'FOO|BAR'));
+        $collection->add($route = new Route('http://[{lang:[a-z]{2}}.]example.com/{foo}', ['FOO', 'BAR']));
 
         $factory = new SimpleRouteMatcher($collection);
         $route   = $factory->match(new ServerRequest(array_keys($route->getMethods())[0], $path));

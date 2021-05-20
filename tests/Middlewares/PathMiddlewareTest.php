@@ -56,7 +56,7 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline   = $this->getRouter();
 
         $pipeline->addMiddleware(new PathMiddleware($expectsStatus));
-        $pipeline->addRoute(new Route($uriPath, 'GET|POST', [$this, 'handlePath']));
+        $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
         $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $expectedPath));
         $this->assertInstanceOf(ResponseInterface::class, $response);

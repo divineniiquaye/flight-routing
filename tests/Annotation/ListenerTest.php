@@ -19,7 +19,6 @@ namespace Flight\Routing\Tests\Annotation;
 
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
-use Doctrine\Common\Annotations\AnnotationRegistry;
 use Flight\Routing\Annotation\Listener;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
@@ -38,10 +37,8 @@ class ListenerTest extends BaseTestCase
 
     protected function setUp(): void
     {
-        AnnotationRegistry::registerLoader('class_exists');
-
         $loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
-        $loader->attachListener(new Listener());
+        $loader->listener(new Listener());
 
         $this->loader = $loader;
     }
@@ -49,10 +46,10 @@ class ListenerTest extends BaseTestCase
     /**
      * @runInSeparateProcess
      */
-    public function testAttach(): void
+    public function testDoctrineResource(): void
     {
         $loader = clone $this->loader;
-        $loader->attach(...[
+        $loader->resource(...[
             __DIR__ . '/../Fixtures/Annotation/Route/Valid',
             'non-existing-file.php',
         ]);
@@ -60,19 +57,20 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = Fixtures\Helper::routesToNames($router->getCollection()->getRoutes());
+        $routes = Fixtures\Helper::routesToNames($router->getCollection()->getIterator());
         \sort($routes);
 
         $this->assertSame([
-            '_annotated_default',
-            '_annotated_get',
-            '_annotated_post',
-            '_annotated_put',
-            '_annotated_testing_',
+            'GET_HEAD_annotated_get',
+            'GET_HEAD_annotated_get_1',
+            'GET_HEAD_annotated_testing_',
+            'GET_POST_annotated_default',
+            'POST_annotated_post',
+            'PUT_annotated_put',
             'action',
-            'class_group@_annotated_get',
-            'class_group@_annotated_post',
-            'class_group@_annotated_put',
+            'class_group@CONNECT_GET_HEAD_annotated_get',
+            'class_group@CONNECT_POST_annotated_post',
+            'class_group@CONNECT_PUT_annotated_put',
             'do.action',
             'do.action_two',
             'english_locale',
@@ -81,6 +79,8 @@ class ListenerTest extends BaseTestCase
             'hello_without_default',
             'home',
             'lol',
+            'method_not_array',
+            'middlewares_not_array',
             'ping',
             'sub-dir:bar',
             'sub-dir:foo',
@@ -91,19 +91,20 @@ class ListenerTest extends BaseTestCase
     /**
      * @runInSeparateProcess
      */
-    public function testAttachArray(): void
+    public function testResourceCount(): void
     {
         $loader = clone $this->loader;
-        $loader->attach(...[
+        $loader->resource(...[
             __DIR__ . '/../Fixtures/Annotation/Route/Valid',
             __DIR__ . '/../Fixtures/Annotation/Route/Containerable',
             __DIR__ . '/../Fixtures/Annotation/Route/Attribute',
+            __DIR__ . '/../Fixtures/Annotation/Route/Abstracts', // Abstract should be excluded
         ]);
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $this->assertCount(24, $router->getCollection()->getRoutes());
+        $this->assertCount(27, $router->getCollection()->getIterator());
     }
 
     /**
@@ -112,15 +113,18 @@ class ListenerTest extends BaseTestCase
     public function testLoad(): void
     {
         $loader = clone $this->loader;
-        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
+        $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getCollection()->getRoutes();
+        $routes = Fixtures\Helper::routesToArray($router->getCollection()->getIterator());
+        \usort($routes, function (array $a, array $b) {
+            return \strcmp($a["name"], $b["name"]);
+        });
 
-        $this->assertContains([
-            'name'        => '_annotated_default',
+        $this->assertEquals([
+            'name'        => 'GET_POST_annotated_default',
             'path'        => '/default',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_POST],
@@ -130,10 +134,10 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[3]);
 
-        $this->assertContains([
-            'name'        => '_annotated_get',
+        $this->assertEquals([
+            'name'        => 'GET_HEAD_annotated_get',
             'path'        => '/get',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
@@ -143,10 +147,23 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[0]);
 
-        $this->assertContains([
-            'name'        => '_annotated_post',
+        $this->assertEquals([
+            'name'        => 'GET_HEAD_annotated_get_1',
+            'path'        => '/get',
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler'     => [Fixtures\Annotation\Route\Valid\DefaultNameController::class, 'default'],
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], $routes[1]);
+
+        $this->assertEquals([
+            'name'        => 'POST_annotated_post',
             'path'        => '/post',
             'domain'      => [],
             'methods'     => [Router::METHOD_POST],
@@ -156,10 +173,10 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[4]);
 
-        $this->assertContains([
-            'name'        => '_annotated_put',
+        $this->assertEquals([
+            'name'        => 'PUT_annotated_put',
             'path'        => '/put',
             'domain'      => [],
             'methods'     => [Router::METHOD_PUT],
@@ -169,50 +186,50 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[5]);
 
-        $this->assertContains([
-            'name'        => 'class_group@_annotated_get',
+        $this->assertEquals([
+            'name'        => 'class_group@CONNECT_GET_HEAD_annotated_get',
             'path'        => '/get',
             'domain'      => [],
-            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_CONNECT],
+            'methods'     => [Router::METHOD_CONNECT, Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[7]);
 
-        $this->assertContains([
-            'name'        => 'class_group@_annotated_post',
+        $this->assertEquals([
+            'name'        => 'class_group@CONNECT_POST_annotated_post',
             'path'        => '/post',
             'domain'      => [],
-            'methods'     => [Router::METHOD_POST, Router::METHOD_CONNECT],
+            'methods'     => [Router::METHOD_CONNECT, Router::METHOD_POST],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[8]);
 
-        $this->assertContains([
-            'name'        => 'class_group@_annotated_put',
+        $this->assertEquals([
+            'name'        => 'class_group@CONNECT_PUT_annotated_put',
             'path'        => '/put',
             'domain'      => [],
-            'methods'     => [Router::METHOD_PUT, Router::METHOD_CONNECT],
+            'methods'     => [Router::METHOD_CONNECT, Router::METHOD_PUT],
             'handler'     => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[9]);
 
-        $this->assertContains([
-            'name'        => '_annotated_testing_',
-            'path'        => '/testing/',
+        $this->assertEquals([
+            'name'        => 'GET_HEAD_annotated_testing_',
+            'path'        => 'testing/',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler'     => [Fixtures\Annotation\Route\Valid\MethodOnRoutePattern::class, 'handleSomething'],
@@ -221,9 +238,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[2]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'english_locale',
             'path'        => '/en/locale',
             'domain'      => [],
@@ -234,9 +251,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[12]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'french_locale',
             'path'        => '/fr/locale',
             'domain'      => [],
@@ -247,9 +264,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[13]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'action',
             'path'        => '/{default}/path',
             'domain'      => [],
@@ -260,9 +277,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[6]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'hello_without_default',
             'path'        => '/hello/{name:\w+}',
             'domain'      => [],
@@ -273,9 +290,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[15]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'hello_with_default',
             'path'        => '/cool/{name=<Symfony>}',
             'domain'      => [],
@@ -286,9 +303,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => ['name' => '\w+'],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[14]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'home',
             'path'        => '/',
             'domain'      => ['biurad.com'],
@@ -305,9 +322,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[16]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'lol',
             'path'        => '/here',
             'domain'      => [],
@@ -318,9 +335,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[17]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'ping',
             'path'        => '/ping',
             'domain'      => [],
@@ -337,9 +354,35 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[20]);
 
-        $this->assertContains([
+        $this->assertEquals([
+            'name'        => 'method_not_array',
+            'path'        => '/method_not_array',
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET],
+            'handler'     => Fixtures\Annotation\Route\Valid\MethodsNotArray::class,
+            'middlewares' => [],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], $routes[18]);
+
+        $this->assertEquals([
+            'name'        => 'middlewares_not_array',
+            'path'        => '/middlewares_not_array',
+            'domain'      => [],
+            'methods'     => [Router::METHOD_GET],
+            'handler'     => Fixtures\Annotation\Route\Valid\MiddlewaresNotArray::class,
+            'middlewares' => [Fixtures\BlankMiddleware::class],
+            'schemes'     => [],
+            'defaults'    => [],
+            'patterns'    => [],
+            'arguments'   => [],
+        ], $routes[19]);
+
+        $this->assertEquals([
             'name'        => 'do.action',
             'path'        => '/prefix/path',
             'domain'      => ['biurad.com'],
@@ -350,9 +393,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[10]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'do.action_two',
             'path'        => '/prefix/path_two',
             'domain'      => ['biurad.com'],
@@ -363,9 +406,9 @@ class ListenerTest extends BaseTestCase
             'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[11]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'sub-dir:foo',
             'path'        => '/sub-dir/foo',
             'domain'      => [],
@@ -382,9 +425,9 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[22]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'sub-dir:bar',
             'path'        => '/sub-dir/bar',
             'domain'      => [],
@@ -401,20 +444,20 @@ class ListenerTest extends BaseTestCase
             ],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[21]);
 
-        $this->assertContains([
+        $this->assertEquals([
             'name'        => 'user__restful',
             'path'        => '/user/{id:\d+}',
             'domain'      => [],
-            'methods'     => Router::HTTP_METHODS_STANDARD,
+            'methods'     => [],
             'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
             'middlewares' => [],
             'schemes'     => [],
-            'defaults'    => ['_api' => 'User'],
+            'defaults'    => [],
             'patterns'    => [],
             'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        ], $routes[23]);
     }
 
     /**
@@ -424,13 +467,13 @@ class ListenerTest extends BaseTestCase
     {
         $loader = new AnnotationLoader(new AttributeReader());
 
-        $loader->attachListener(new Listener());
-        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Attribute');
+        $loader->listener(new Listener());
+        $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Attribute');
 
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getCollection()->getRoutes();
+        $routes = $router->getCollection()->getIterator();
 
         $this->assertContains([
             'name'        => 'attribute_specific_name',
@@ -446,7 +489,7 @@ class ListenerTest extends BaseTestCase
         ], Fixtures\Helper::routesToArray($routes));
 
         $this->assertContains([
-            'name'        => 'attribute__annotated_specific_none',
+            'name'        => 'attribute_GET_HEAD_annotated_specific_none',
             'path'        => '/defaults/{locale}/specific-none',
             'domain'      => [],
             'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
@@ -460,26 +503,6 @@ class ListenerTest extends BaseTestCase
     }
 
     /**
-     * @runInSeparateProcess
-     */
-    public function testLoadWithAbstractClass(): void
-    {
-        $this->expectException('Biurad\Annotations\InvalidAnnotationException');
-        $this->expectExceptionMessage(
-            'Annotations from class "Flight\Routing\Tests\Fixtures\Annotation\Route\Abstracts\AbstractController"' .
-            ' cannot be read as it is abstract.'
-        );
-
-        $loader = clone $this->loader;
-        $loader->attach(__DIR__ . '/../Fixtures/Annotation/Route/Abstracts');
-
-        $router = $this->getRouter();
-        $router->loadAnnotation($loader);
-
-        $router->getCollection()->getRoutes();
-    }
-
-    /**
      * @dataProvider invalidAnnotatedClasses
      * @runInSeparateProcess
      *
@@ -489,7 +512,7 @@ class ListenerTest extends BaseTestCase
     public function testLoadInvalidAnnotatedClasses(string $class, string $message): void
     {
         $loader = clone $this->loader;
-        $loader->attach($class);
+        $loader->resource($class);
         $router = $this->getRouter();
 
         // the given exception message should be tested through annotation class...
@@ -497,7 +520,7 @@ class ListenerTest extends BaseTestCase
         $this->expectExceptionMessage($message);
 
         $router->loadAnnotation($loader);
-        $router->getCollection()->getRoutes();
+        $router->getCollection()->getIterator();
     }
 
     /**
@@ -506,15 +529,12 @@ class ListenerTest extends BaseTestCase
     public function invalidAnnotatedClasses(): array
     {
         return [
-            [Fixtures\Annotation\Route\Invalid\DefaultsNotArray::class, '@Route.defaults must be an array.'],
-            [Fixtures\Annotation\Route\Invalid\MethodsNotArray::class, '@Route.methods must contain only an array.'],
-            [Fixtures\Annotation\Route\Invalid\MethodsNotStringable::class, '@Route.methods must contain only strings.'],
-            [Fixtures\Annotation\Route\Invalid\MiddlewaresNotArray::class, '@Route.middlewares must be an array.'],
-            [Fixtures\Annotation\Route\Invalid\MiddlewaresNotStringable::class, '@Route.middlewares must contain only strings.'],
-            [Fixtures\Annotation\Route\Invalid\NameEmpty::class, '@Route.name must be not an empty string.'],
-            [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a string.'],
-            [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must be not an empty string.'],
-            [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must be not an empty string.'],
+            [Fixtures\Annotation\Route\Invalid\DefaultsNotArray::class, '@Route.defaults must contain a sequence array of string keys and values. eg: [key => value]'],
+            [Fixtures\Annotation\Route\Invalid\MethodsNotStringable::class, '@Route.methods must contain only an array list of strings.'],
+            [Fixtures\Annotation\Route\Invalid\MiddlewaresNotStringable::class, '@Route.middlewares must contain only an array list of strings.'],
+            [Fixtures\Annotation\Route\Invalid\NameNotString::class, '@Route.name must contain only a type of string.'],
+            [Fixtures\Annotation\Route\Invalid\PathNotString::class, '@Route.path must contain only a type of string.'],
+            [Fixtures\Annotation\Route\Invalid\PathEmpty::class, '@Route.path must not be left empty.'],
             [Fixtures\Annotation\Route\Invalid\PathMissing::class, '@Route.path must not be left empty.'],
         ];
     }
