@@ -20,7 +20,7 @@ namespace Flight\Routing\Tests\Annotation;
 use Biurad\Annotations\InvalidAnnotationException;
 use Flight\Routing\Annotation\Route;
 use PHPUnit\Framework\TestCase;
-use stdClass;
+use Flight\Routing\Tests\Fixtures;
 
 /**
  * RouteTest
@@ -37,16 +37,16 @@ class RouteTest extends TestCase
 
         $route = new Route($params);
 
-        $this->assertSame($params['name'], $route->getName());
-        $this->assertSame($params['path'], $route->getPath());
-        $this->assertSame($params['methods'], $route->getMethods());
+        $this->assertSame($params['name'], $route->name);
+        $this->assertSame($params['path'], $route->path);
+        $this->assertSame($params['methods'], $route->methods);
 
         // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], $route->getPatterns());
-        $this->assertSame([], $route->getSchemes());
-        $this->assertSame(null, $route->getDomain());
+        $this->assertSame([], $route->middlewares);
+        $this->assertSame([], $route->defaults);
+        $this->assertSame([], $route->patterns);
+        $this->assertSame([], $route->schemes);
+        $this->assertSame([], $route->domain);
     }
 
     public function testConstructorWithOptionalParams(): void
@@ -56,7 +56,7 @@ class RouteTest extends TestCase
             'value'        => '/foo',
             'methods'      => ['GET'],
             'domain'       => 'biurad.com',
-            'middlewares'  => [Fixture\BlankMiddleware::class],
+            'middlewares'  => [Fixtures\BlankMiddleware::class],
             'defaults'     => ['foo' => 'bar'],
             'patterns'     => ['foo' => '[0-9]'],
             'schemes'      => ['https', 'http'],
@@ -64,20 +64,28 @@ class RouteTest extends TestCase
 
         $route = new Route($params);
 
-        $this->assertSame($params['name'], $route->getName());
-        $this->assertSame($params['value'], $route->getPath());
-        $this->assertSame($params['methods'], $route->getMethods());
-        $this->assertSame($params['domain'], $route->getDomain());
-        $this->assertSame($params['middlewares'], $route->getMiddlewares());
-        $this->assertSame($params['defaults'], $route->getDefaults());
-        $this->assertSame($params['patterns'], $route->getPatterns());
-        $this->assertSame($params['schemes'], $route->getSchemes());
+        $this->assertSame($params['name'], $route->name);
+        $this->assertSame($params['value'], $route->path);
+        $this->assertSame($params['methods'], $route->methods);
+        $this->assertNotSame($params['domain'], $route->domain);
+        $this->assertSame($params['middlewares'], $route->middlewares);
+        $this->assertSame($params['defaults'], $route->defaults);
+        $this->assertSame($params['patterns'], $route->patterns);
+        $this->assertNotSame($params['schemes'], $route->schemes);
+    }
+
+    public function testConstructorParamsContainInvalidAttribute(): void
+    {
+        $this->expectException(InvalidAnnotationException::class);
+        $this->expectExceptionMessage('The @Route.none-existing is unsupported. Allowed param keys are ["path", "name", "resource", "patterns", "defaults", "methods", "domain", "schemes", "middlewares"].');
+
+        new Route(['none-existing' => 'something']);
     }
 
     public function testConstructorParamsContainNameInvalid(): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.name must contain only a string.');
+        $this->expectExceptionMessage('@Route.name must contain only a type of string.');
 
         new Route(['path' => '/foo', 'name' => 23, 'methods' => ['GET']]);
     }
@@ -89,53 +97,37 @@ class RouteTest extends TestCase
             'methods' => ['GET'],
         ]);
 
-        $this->assertNull($route->getPath());
+        $this->assertNull($route->path);
     }
 
     public function testConstructorParamsContainStringPath(): void
     {
         $route = new Route('/hello');
 
-        $this->assertNull($route->getName());
-        $this->assertSame('/hello', $route->getPath());
-        $this->assertEmpty($route->getMethods());
+        $this->assertNull($route->name);
+        $this->assertSame('/hello', $route->path);
+        $this->assertEmpty($route->methods);
 
         // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], $route->getPatterns());
-        $this->assertSame([], $route->getSchemes());
-        $this->assertSame(null, $route->getDomain());
+        $this->assertSame([], $route->middlewares);
+        $this->assertSame([], $route->defaults);
+        $this->assertSame([], $route->patterns);
+        $this->assertSame([], $route->schemes);
+        $this->assertSame([], $route->domain);
     }
 
     public function testConstructorParamsContainStringMethods(): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.methods must contain only an array.');
+        $this->expectExceptionMessage('@Route.methods must contain only an array list of strings.');
 
-        new Route(['name' => 'foo', 'methods' => 'GET', 'path' => '/foo']);
-    }
-
-    public function testConstructorParamsContainEmptyName(): void
-    {
-        $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.name must be not an empty string.');
-
-        new Route(['name' => '', 'path' => '/foo', 'methods' => ['GET']]);
-    }
-
-    public function testConstructorParamsContainEmptyPath(): void
-    {
-        $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.path must be not an empty string.');
-
-        new Route(['name' => 'foo', 'path' => '', 'methods' => ['GET']]);
+        new Route(['name' => 'foo', 'methods' => [['GET']], 'path' => '/foo']);
     }
 
     public function testConstructorParamsContainNullName(): void
     {
         $route = new Route(['path' => '/foo', 'methods' => ['GET']]);
-        $this->assertSame(null, $route->getName());
+        $this->assertSame(null, $route->name);
     }
 
     /**
@@ -146,9 +138,9 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidName($invalidName): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.name must');
+        $this->expectExceptionMessage('@Route.name must contain only a type of string.');
 
-        new Route(['name' => $invalidName ?? '', 'path' => '/foo', 'methods' => ['GET']]);
+        new Route(['name' => $invalidName, 'path' => '/foo', 'methods' => ['GET']]);
     }
 
     /**
@@ -159,9 +151,9 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidPath($invalidPath): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.path must be not an empty string.');
+        $this->expectExceptionMessage('@Route.path must contain only a type of string.');
 
-        new Route(['name' => 'foo', 'path' => $invalidPath ?? '', 'methods' => ['GET']]);
+        new Route(['name' => 'foo', 'path' => $invalidPath, 'methods' => ['GET']]);
     }
 
     /**
@@ -172,7 +164,7 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidMethods($invalidMethods): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.methods must contain only an array.');
+        $this->expectExceptionMessage('@Route.methods must contain only an array list of strings.');
 
         new Route(['name' => 'foo', 'path' => '/foo', 'methods' => $invalidMethods]);
     }
@@ -185,7 +177,7 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidMiddlewares($invalidMiddlewares): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.middlewares must be an array.');
+        $this->expectExceptionMessage('@Route.middlewares must contain only an array list of strings.');
 
         new Route([
             'name'        => 'foo',
@@ -203,7 +195,7 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidDefaults($invalidDefaults): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.defaults must be an array.');
+        $this->expectExceptionMessage('@Route.defaults must contain a sequence array of string keys and values. eg: [key => value]');
 
         new Route([
             'name'     => 'foo',
@@ -221,7 +213,7 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidPatterns($invalidPatterns): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.patterns must be an array.');
+        $this->expectExceptionMessage('@Route.patterns must contain a sequence array of string keys and values. eg: [key => value]');
 
         new Route([
             'name'     => 'foo',
@@ -239,7 +231,7 @@ class RouteTest extends TestCase
     public function testConstructorParamsContainInvalidSchemes($invalidSchemes): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.schemes must be an array.');
+        $this->expectExceptionMessage('@Route.schemes must contain only an array list of strings.');
 
         new Route([
             'name'       => 'foo',
@@ -257,7 +249,7 @@ class RouteTest extends TestCase
     public function testConstructorMethodsParamContainsInvalidValue($invalidMethod): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.methods must contain only strings.');
+        $this->expectExceptionMessage('@Route.methods must contain only an array list of strings.');
 
         new Route([
             'name'    => 'foo',
@@ -274,7 +266,7 @@ class RouteTest extends TestCase
     public function testConstructorPatternsParamContainsInvalidValue($invalidPatterns): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.patterns must contain only strings.');
+        $this->expectExceptionMessage('@Route.patterns must contain a sequence array of string keys and values. eg: [key => value]');
 
         new Route([
             'name'        => 'foo',
@@ -292,7 +284,7 @@ class RouteTest extends TestCase
     public function testConstructorSchemesParamContainsInvalidValue($invalidSchemes): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.schemes must contain only strings.');
+        $this->expectExceptionMessage('@Route.schemes must contain only an array list of strings.');
 
         new Route([
             'name'        => 'foo',
@@ -310,7 +302,7 @@ class RouteTest extends TestCase
     public function testConstructorMiddlewaresParamContainsInvalidValue($invalidMiddleware): void
     {
         $this->expectException(InvalidAnnotationException::class);
-        $this->expectExceptionMessage('@Route.middlewares must contain only strings.');
+        $this->expectExceptionMessage('@Route.middlewares must contain only an array list of strings.');
 
         new Route([
             'name'        => 'foo',
@@ -326,13 +318,10 @@ class RouteTest extends TestCase
     public function invalidDataProviderIfArrayExpected(): array
     {
         return [
-            [null],
             [true],
             [false],
             [0],
             [0.0],
-            [''],
-            [new stdClass()],
             [function (): void {
             }],
             [\STDOUT],
@@ -345,13 +334,11 @@ class RouteTest extends TestCase
     public function invalidDataProviderIfIntegerExpected(): array
     {
         return [
-            [null],
             [true],
             [false],
             [0.0],
-            [''],
             [[]],
-            [new stdClass()],
+            [new \stdClass()],
             [function (): void {
             }],
             [\STDOUT],
@@ -364,13 +351,12 @@ class RouteTest extends TestCase
     public function invalidDataProviderIfStringExpected(): array
     {
         return [
-            [null],
             [true],
             [false],
             [0],
             [0.0],
             [[]],
-            [new stdClass()],
+            [new \stdClass()],
             [function (): void {
             }],
             [\STDOUT],
@@ -383,12 +369,11 @@ class RouteTest extends TestCase
     public function invalidDataProviderIfArrayOrStringExpected(): array
     {
         return [
-            [null],
             [true],
             [false],
             [0],
             [0.0],
-            [new stdClass()],
+            [new \stdClass()],
             [function (): void {
             }],
             [\STDOUT],

@@ -17,14 +17,10 @@
         {
             "name": "Divine Niiquaye Ibok",
             "email": "divineibok@gmail.com"
-        },
-        {
-            "name": "Biurad Lap Community",
-            "homepage": "https://biurad.com/projects/contributors"
         }
     ],
     "support": {
-        "docs": "https://docs.biurad.com/flight-routing",
+        "docs": "https://docs.divinenii.com/flight-routing/",
         "issues": "https://github.com/divineniiquaye/flight-routing/issues",
         "rss": "https://github.com/divineniiquaye/flight-routing/releases.atom",
         "source": "https://github.com/divineniiquaye/flight-routing"
@@ -39,7 +35,7 @@
         "symfony/polyfill-php80": "^1.22"
     },
     "require-dev": {
-        "biurad/annotations": "1.x-dev",
+        "biurad/annotations": "^0.2.1",
         "composer/package-versions-deprecated": "^1.11",
         "doctrine/annotations": "^1.11",
         "nyholm/psr7": "^1.4",
@@ -48,7 +44,7 @@
         "phpstan/phpstan-strict-rules": "^0.12",
         "phpunit/phpunit": "^8.5 || ^9.5",
         "squizlabs/php_codesniffer": "^3.6",
-        "vimeo/psalm": "^3.11"
+        "vimeo/psalm": "^4.7"
     },
     "suggest": {
         "biurad/annotations": "For annotation routing on classes and methods using Annotation/Listener class",

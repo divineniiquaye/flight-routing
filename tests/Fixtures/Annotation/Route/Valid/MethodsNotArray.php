@@ -15,15 +15,15 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 
 use Flight\Routing\Annotation\Route;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
 /**
  * @Route(
- *   name="home",
- *   path="/",
+ *   name="method_not_array",
+ *   path="/method_not_array",
  *   methods="GET"
  * )
  */
