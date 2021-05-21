@@ -31,12 +31,13 @@
         "ext-json": "*",
         "psr/http-factory": "^1.0",
         "laminas/laminas-stratigility": "^3.2",
-        "divineniiquaye/php-invoker": "^0.9",
+        "symfony/polyfill-php73": "^1.22",
         "symfony/polyfill-php80": "^1.22"
     },
     "require-dev": {
         "biurad/annotations": "^0.2.1",
         "composer/package-versions-deprecated": "^1.11",
+        "divineniiquaye/php-invoker": "^0.9",
         "doctrine/annotations": "^1.11",
         "nyholm/psr7": "^1.4",
         "nyholm/psr7-server": "^1.0",
@@ -49,6 +50,8 @@
     "suggest": {
         "biurad/annotations": "For annotation routing on classes and methods using Annotation/Listener class",
         "biurad/http-galaxy": "For handling router, an alternative is nyholm/psr7, slim/psr7 or laminas/laminas-diactoros",
+        "divineniiquaye/php-invoker": "For auto-configuring route handler parameters as needed with or without PSR-11 support",
+        "divineniiquaye/rade-di": "For full support of PSR-11 and autowiring capabilities on routes (recommended for install).",
         "laminas/laminas-httphandlerrunner": "For emitting response headers and body contents to browser"
     },
     "autoload": {
