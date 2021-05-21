@@ -26,7 +26,7 @@
         "source": "https://github.com/divineniiquaye/flight-routing"
     },
     "require": {
-        "php": "^7.1 || ^8.0",
+        "php": "^7.2 || ^8.0",
         "ext-libxml": "*",
         "ext-json": "*",
         "psr/http-factory": "^1.0",
