@@ -59,7 +59,7 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     private $responseFactory;
 
     /** @var DebugRoute|null */
-    private $debug = null;
+    private $debug;
 
     /** @var null|callable(mixed:$handler,array:$arguments) */
     private $handlerResolver = null;
@@ -76,9 +76,8 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
         $this->pipeline = new MiddlewarePipe();
         $this->responseFactory = $responseFactory;
 
-        if ($debug) {
-            $this->debug = new DebugRoute();
-        }
+        // Enable routes profiling ...
+        $this->debug = $debug ? new DebugRoute() : null;
     }
 
     /**
@@ -166,7 +165,7 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     {
         // This is to aid request made from javascript using cors, eg: using axios.
         // Midddlware support is added, so it make it easier to add "cors" settings to the response and request
-        if (true === $request->getAttribute(self::OPTIONS_SKIP) && 'options' === \strtolower($request->getMethod())) {
+        if (!$request->getAttribute(self::OPTIONS_SKIP, false) && 'options' === \strtolower($request->getMethod())) {
             return $this->responseFactory->createResponse();
         }
 

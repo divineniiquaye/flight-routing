@@ -36,9 +36,6 @@ namespace Flight\Routing;
  * A general `addRoute()` method allows specifying multiple request methods and/or
  * arbitrary request methods when creating a path-based route.
  *
- * __call() forwards method-calls to Route, but returns instance of RouteCollection
- * listing Route's methods below, so that IDEs know they are valid
- *
  * @method RouteCollection withAssert(string $variable, string|string[] $regexp)
  * @method RouteCollection withDefault(string $variable, mixed $default)
  * @method RouteCollection withArgument($variable, mixed $value)

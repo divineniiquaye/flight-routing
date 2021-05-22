@@ -21,6 +21,12 @@ use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, U
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
+/**
+ * The bidirectional route matcher responsible for matching
+ * HTTP request and generating url from routes.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
 class RouteMatcher implements RouteMatcherInterface
 {
     private const URI_FIXERS = [

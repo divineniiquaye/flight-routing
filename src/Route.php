@@ -23,16 +23,8 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 /**
  * Value object representing a single route.
  *
- * Internally, only those three properties are required. However, underlying
- * router implementations may allow or require additional information, such as
- * information defining how to generate a URL from the given route, qualifiers
- * for how segments of a route match, or even default values to use.
- *
- * __call() forwards method-calls to Route, but returns mixed contents.
- * listing Route's methods below, so that IDEs know they are valid
- *
  * @method string getPath() Gets the route path.
- * @method null|string getName() Gets the route name.
+ * @method string|null getName() Gets the route name.
  * @method string[] getMethods() Gets the route methods.
  * @method string[] getSchemes() Gets the route domain schemes.
  * @method string[] getDomain() Gets the route host.
@@ -60,7 +52,7 @@ class Route
     public const RCA_PATTERN = '#^(?:(?:([a-z]+)\:)?\/\/([^\/\*]+))?(.*?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
 
     /**
-     * A Pattern to match protocol, host and port from a url
+     * A Pattern to match protocol, host and port from a url.
      *
      * Examples of urls that can be matched:
      * http://en.example.domain
@@ -71,8 +63,6 @@ class Route
      * example.com
      * localhost:8000
      * {foo}.domain.com
-     *
-     * Also supports api resource routing, eg: api://user/path
      *
      * @var string
      */
@@ -96,7 +86,7 @@ class Route
     public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
     {
         $this->controller = $handler;
-        $this->path       = $this->castRoute($pattern);
+        $this->path = $this->castRoute($pattern);
 
         if (!empty($methods)) {
             $this->methods = \array_fill_keys(\array_map('strtoupper', (array) $methods), true);
@@ -106,14 +96,11 @@ class Route
     /**
      * @internal This is handled different by router
      *
-     * @param array $properties
-     *
      * @return self
      */
     public static function __set_state(array $properties)
     {
         $recovered = new self($properties['path'], $properties['methods'], $properties['controller']);
-
         unset($properties['path'], $properties['controller'], $properties['methods']);
 
         foreach ($properties as $name => $property) {
@@ -124,7 +111,7 @@ class Route
     }
 
     /**
-     * @param string   $method
+     * @param string  $method
      * @param mixed[] $arguments
      *
      * @throws \BadMethodCallException
@@ -181,10 +168,6 @@ class Route
 
     /**
      * Sets the route path pattern.
-     *
-     * @param string $pattern
-     *
-     * @return Route $this The current Route instance
      */
     public function path(string $pattern): self
     {
@@ -195,10 +178,6 @@ class Route
 
     /**
      * Sets the route name.
-     *
-     * @param string $routeName
-     *
-     * @return Route $this The current Route instance
      */
     public function bind(string $routeName): self
     {
@@ -211,8 +190,6 @@ class Route
      * Sets the route code that should be executed when matched.
      *
      * @param mixed $to PHP class, object or callable that returns the response when matched
-     *
-     * @return Route $this The current Route instance
      */
     public function run($to): self
     {
@@ -238,8 +215,6 @@ class Route
      *
      * @param string          $variable The variable name
      * @param string|string[] $regexp   The regexp to apply
-     *
-     * @return Route $this The current route instance
      */
     public function assert(string $variable, $regexp): self
     {
@@ -252,8 +227,6 @@ class Route
      * Sets the requirements for a route variable.
      *
      * @param array<string,string|string[]> $regexps The regexps to apply
-     *
-     * @return Route $this The current route instance
      */
     public function asserts(array $regexps): self
     {
@@ -269,8 +242,6 @@ class Route
      *
      * @param string $variable The variable name
      * @param mixed  $default  The default value
-     *
-     * @return Route $this The current Route instance
      */
     public function default(string $variable, $default): self
     {
@@ -283,8 +254,6 @@ class Route
      * Sets the default values for a route variables.
      *
      * @param array<string,mixed> $values
-     *
-     * @return Route $this The current Route instance
      */
     public function defaults(array $values): self
     {
@@ -316,8 +285,6 @@ class Route
      * Sets the parameter values for a route handler.
      *
      * @param array<int|string> $variables The route handler parameters
-     *
-     * @return Route $this The current Route instance
      */
     public function arguments(array $variables): self
     {
@@ -332,8 +299,6 @@ class Route
      * Sets the requirement for the HTTP method.
      *
      * @param string $methods the HTTP method(s) name
-     *
-     * @return Route $this The current Route instance
      */
     public function method(string ...$methods): self
     {
@@ -348,8 +313,6 @@ class Route
      * Sets the requirement of host on this Route.
      *
      * @param string $hosts The host for which this route should be enabled
-     *
-     * @return Route $this The current Route instance
      */
     public function domain(string ...$hosts): self
     {
@@ -372,8 +335,6 @@ class Route
      * Sets the requirement of domain scheme on this Route.
      *
      * @param string ...$schemes
-     *
-     * @return Route $this The current Route instance
      */
     public function scheme(string ...$schemes): self
     {
@@ -414,15 +375,15 @@ class Route
 
         if ('all' === $name) {
             return [
-                'controller'  => $this->controller,
-                'methods'     => $this->methods,
-                'schemes'     => $this->schemes,
-                'domain'      => $this->domain,
-                'name'        => $this->name,
-                'path'        => $this->path,
-                'patterns'    => $this->patterns,
+                'controller' => $this->controller,
+                'methods' => $this->methods,
+                'schemes' => $this->schemes,
+                'domain' => $this->domain,
+                'name' => $this->name,
+                'path' => $this->path,
+                'patterns' => $this->patterns,
                 'middlewares' => $this->middlewares,
-                'defaults'    => $this->defaults,
+                'defaults' => $this->defaults,
             ];
         }
 
@@ -443,7 +404,7 @@ class Route
         }
 
         $stack = $this->collection;
-        unset($this->collection); // Just remove it.
+        $this->collection = null; // Just remove it.
 
         return $stack ?? $collection;
     }
@@ -457,8 +418,6 @@ class Route
         $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 
         // Collapse consecutive underscores down into a single underscore.
-        $routeName = (string) \preg_replace('/_+/', '_', $routeName);
-
-        return $routeName;
+        return (string) \preg_replace('/_+/', '_', $routeName);
     }
 }

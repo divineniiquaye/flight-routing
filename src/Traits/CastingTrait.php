@@ -25,7 +25,7 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 trait CastingTrait
 {
-    /** @var null|string */
+    /** @var string|null */
     private $name;
 
     /** @var string */

@@ -20,6 +20,10 @@ namespace Flight\Routing\Matchers;
 /**
  * Prefix tree of routes preserving routes order.
  *
+ * NB: This class is from symfony's routing component to add
+ * high performace into Flight Routing and also not to require
+ * the whole component.
+ *
  * @author Frank de Jonge <info@frankdejonge.nl>
  * @author Nicolas Grekas <p@tchwork.com>
  *
@@ -102,14 +106,14 @@ class ExpressionCollection
                 $item->addRoute($prefix, $route);
             } else {
                 // the new route and a previous one have a common prefix, let's merge them
-                $child                                           = new self($commonPrefix);
+                $child = new self($commonPrefix);
                 [$child->prefixes[0], $child->staticPrefixes[0]] = $child->getCommonPrefix($this->prefixes[$i], $this->prefixes[$i]);
                 [$child->prefixes[1], $child->staticPrefixes[1]] = $child->getCommonPrefix($prefix, $prefix);
-                $child->items                                    = [$this->items[$i], $route];
+                $child->items = [$this->items[$i], $route];
 
                 $this->staticPrefixes[$i] = $commonStaticPrefix;
-                $this->prefixes[$i]       = $commonPrefix;
-                $this->items[$i]          = $child;
+                $this->prefixes[$i] = $commonPrefix;
+                $this->items[$i] = $child;
             }
 
             return;
@@ -118,12 +122,12 @@ class ExpressionCollection
         // No optimised case was found, in this case we simple add the route for possible
         // grouping when new routes are added.
         $this->staticPrefixes[] = $staticPrefix;
-        $this->prefixes[]       = $prefix;
-        $this->items[]          = $route;
+        $this->prefixes[] = $prefix;
+        $this->items[] = $route;
     }
 
     /**
-     * @param int $type
+     * @param int    $type
      * @param string $msg
      *
      * @return bool
@@ -140,8 +144,8 @@ class ExpressionCollection
      */
     private function getCommonPrefix(string $prefix, string $anotherPrefix): array
     {
-        $baseLength   = \strlen($this->prefix);
-        $end          = \min(\strlen($prefix), \strlen($anotherPrefix));
+        $baseLength = \strlen($this->prefix);
+        $end = \min(\strlen($prefix), \strlen($anotherPrefix));
         $staticLength = null;
         \set_error_handler([__CLASS__, 'handleError']);
 
