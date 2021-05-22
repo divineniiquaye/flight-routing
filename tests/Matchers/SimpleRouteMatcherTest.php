@@ -19,7 +19,7 @@ namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
-use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Flight\Routing\RouteMatcher as SimpleRouteMatcher;
 use Flight\Routing\RouteCollection;
 use Generator;
 use Nyholm\Psr7\ServerRequest;

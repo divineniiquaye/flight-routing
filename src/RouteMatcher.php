@@ -15,20 +15,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Matchers;
+namespace Flight\Routing;
 
-use Flight\Routing\CompiledRoute;
-use Flight\Routing\Exceptions\MethodNotAllowedException;
-use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Interfaces\RouteCompilerInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Route;
-use Flight\Routing\RouteCollection;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
+use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
+use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
-class SimpleRouteMatcher implements RouteMatcherInterface
+class RouteMatcher implements RouteMatcherInterface
 {
     private const URI_FIXERS = [
         '[]' => '',
@@ -42,21 +35,21 @@ class SimpleRouteMatcher implements RouteMatcherInterface
     /** @var \ArrayIterator<int,Route> */
     protected $routes = [];
 
-    /** @var SimpleRouteDumper|array|null */
+    /** @var Matchers\SimpleRouteDumper|array|null */
     private $dumper = null;
 
-    /** @var SimpleRouteCompiler */
+    /** @var Matchers\SimpleRouteCompiler */
     private $compiler;
 
     public function __construct(RouteCollection $collection, ?RouteCompilerInterface $compiler = null, string $cacheFile = null)
     {
-        $this->compiler = $compiler ?? new SimpleRouteCompiler();
+        $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
         $this->routes = $collection->getIterator();
 
         if (!empty($cacheFile)) {
             $this->dumper = \file_exists($cacheFile)
                 ? require $cacheFile
-                : new SimpleRouteDumper($this->routes, $this->compiler, $cacheFile);
+                : new Matchers\SimpleRouteDumper($this->routes, $this->compiler, $cacheFile);
         }
     }
 
@@ -213,7 +206,7 @@ class SimpleRouteMatcher implements RouteMatcherInterface
             return $matched ?? [null, [], []];
         }
 
-        if ($dumper instanceof SimpleRouteDumper) {
+        if ($dumper instanceof Matchers\SimpleRouteDumper) {
             $dumper->dump();
         }
 
