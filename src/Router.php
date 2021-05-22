@@ -17,130 +17,84 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use DivineNii\Invoker\Interfaces\InvokerInterface;
-use DivineNii\Invoker\Invoker;
-use Flight\Routing\Exceptions\DuplicateRouteException;
-use Flight\Routing\Exceptions\MethodNotAllowedException;
+use Biurad\Annotations\LoaderInterface;
+use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Exceptions\RouteNotFoundException;
-use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Handlers\RouteHandler;
-use Flight\Routing\Interfaces\MatcherDumperInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Interfaces\RouterInterface;
-use Laminas\Stratigility\MiddlewarePipe;
-use Laminas\Stratigility\MiddlewarePipeInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriFactoryInterface;
-use Psr\Http\Message\UriInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Flight\Routing\Handlers\ResponseDecorator;
+use Flight\Routing\Interfaces\RouteCompilerInterface;
+use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
+use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
  * Aggregate routes for matching and Dispatching.
  *
- * Internally, the class performs some checks for duplicate routes when
- * attaching via one of the exposed methods, and will raise an exception when a
- * collision occurs.
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router implements RouterInterface, RequestHandlerInterface
+class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodInterface, RequestHandlerInterface
 {
-    use Traits\RouterTrait;
+    /** Whether to serve a response on HTTP request OPTIONS method */
+    public const OPTIONS_SKIP = 'SKIP_OPTIONS_METHOD';
+
+    /**
+     * Standard HTTP methods for browser requests.
+     */
+    public const HTTP_METHODS_STANDARD = [
+        self::METHOD_HEAD,
+        self::METHOD_GET,
+        self::METHOD_POST,
+        self::METHOD_PUT,
+        self::METHOD_PATCH,
+        self::METHOD_DELETE,
+        self::METHOD_PURGE,
+        self::METHOD_OPTIONS,
+        self::METHOD_TRACE,
+        self::METHOD_CONNECT,
+    ];
 
     /** @var MiddlewarePipeInterface */
     private $pipeline;
 
-    /**
-     * @param array<string,mixed> $options
-     */
+    /** @var ResponseFactoryInterface */
+    private $responseFactory;
+
+    /** @var DebugRoute|null */
+    private $debug = null;
+
+    /** @var null|callable(mixed:$handler,array:$arguments) */
+    private $handlerResolver = null;
+
     public function __construct(
         ResponseFactoryInterface $responseFactory,
-        UriFactoryInterface $uriFactory,
-        ?InvokerInterface $resolver = null,
-        array $options = []
+        ?RouteCompilerInterface $compiler = null,
+        ?string $cacheFile = null,
+        bool $debug = false
     ) {
-        $this->uriFactory      = $uriFactory;
-        $this->responseFactory = $responseFactory;
-        $this->resolver        = new RouteResolver($resolver ?? new Invoker());
+        parent::__construct(new RouteCollection(), $compiler, $cacheFile);
 
-        $this->setOptions($options);
-        $this->routes   = new RouteCollection();
+        // Add Middleware support.
         $this->pipeline = new MiddlewarePipe();
-    }
+        $this->responseFactory = $responseFactory;
 
-    /**
-     * Sets options.
-     *
-     * Available options:
-     *
-     *   * cache_dir:              The cache directory (or null to disable caching)
-     *   * debug:                  Whether to enable debugging or not (false by default)
-     *   * namespace:              Set Namespace for route handlers/controllers
-     *   * matcher_class:          The name of a RouteMatcherInterface implementation
-     *   * matcher_dumper_class:   The name of a MatcherDumperInterface implementation
-     *   * options_skip:           Whether to serve a response on HTTP request OPTIONS method (false by default)
-     *
-     * @throws \InvalidArgumentException When unsupported option is provided
-     */
-    public function setOptions(array $options): void
-    {
-        $this->options = [
-            'cache_dir'            => null,
-            'debug'                => false,
-            'options_skip'         => false,
-            'namespace'            => null,
-            'matcher_class'        => Matchers\SimpleRouteMatcher::class,
-            'matcher_dumper_class' => Matchers\SimpleRouteDumper::class,
-        ];
-
-        // check option names and live merge, if errors are encountered Exception will be thrown
-        $invalid = [];
-
-        foreach ($options as $key => $value) {
-            if (\array_key_exists($key, $this->options)) {
-                $this->options[$key] = $value;
-            } else {
-                $invalid[] = $key;
-            }
-        }
-
-        if (!empty($invalid)) {
-            throw new \InvalidArgumentException(
-                \sprintf('The Router does not support the following options: "%s".', \implode('", "', $invalid))
-            );
-        }
-
-        if ($this->options['debug']) {
+        if ($debug) {
             $this->debug = new DebugRoute();
         }
-
-        // Set the cache_file for caching compiled routes.
-        if (isset($this->options['cache_dir'])) {
-            $this->options['cache_file'] = $this->options['cache_dir'] . '/compiled_routes.php';
-        }
     }
 
     /**
-     * This is true if debug mode is false and cached routes exists.
+     * Set the route handler resolver.
+     *
+     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
      */
-    public function isFrozen(): bool
+    public function setHandlerResolver(?callable $handlerResolver): void
     {
-        if ($this->options['debug']) {
-            return false;
-        }
-
-        return \file_exists($this->options['cache_file'] ?? '');
+        $this->handlerResolver = $handlerResolver;
     }
 
     /**
-     * Adds the given route(s) to the router
+     * Adds the given route(s) to the router.
      *
      * @param Route ...$routes
-     *
-     * @throws DuplicateRouteException
      */
     public function addRoute(Route ...$routes): void
     {
@@ -149,184 +103,107 @@ class Router implements RouterInterface, RequestHandlerInterface
                 $route->bind($name = $route->generateRouteName(''));
             }
 
-            if (null !== $this->routes->find($name)) {
-                throw new DuplicateRouteException(
-                    \sprintf('A route with the name "%s" already exists.', $name)
-                );
+            if (null !== $this->debug) {
+                $this->debug->addProfile($name, $route);
             }
 
-            $this->routes->add($route);
+            $this->routes[] = $route;
         }
     }
 
     /**
      * Attach middleware to the pipeline.
-     *
-     * @param array<string,mixed>|callable|MiddlewareInterface|RequestHandlerInterface|string $middleware
      */
-    public function pipe($middleware): void
+    public function pipe(MiddlewareInterface ...$middlewares): void
     {
-        if (!$middleware instanceof MiddlewareInterface) {
-            $middleware = $this->resolveMiddleware($middleware);
+        foreach ($middlewares as $middleware) {
+            $this->pipeline->pipe($middleware);
         }
+    }
 
-        $this->pipeline->pipe($middleware);
+    /**
+     * Load routes from annotation.
+     */
+    public function loadAnnotation(LoaderInterface $loader): void
+    {
+        $annotations = $loader->load();
+
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof RouteCollection) {
+                $this->addRoute(...$annotation);
+            }
+        }
     }
 
     /**
      * {@inheritdoc}
+     *
+     * @return \ArrayIterator<int,Route>
      */
-    public function getCollection(): RouteCollection
+    public function getIterator(): \ArrayIterator
     {
         return $this->routes;
     }
 
     /**
      * {@inheritdoc}
-     *
-     * @return UriInterface of fully qualified URL for named route
      */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): UriInterface
+    public function match(ServerRequestInterface $request): ?Route
     {
-        $createUri = (string) $this->getMatcher()->generateUri($routeName, $parameters, $queryParams);
+        $route = parent::match($request);
 
-        return $this->uriFactory->createUri($createUri);
+        if ($route instanceof Route && null !== $this->debug) {
+            $this->debug->setMatched($route->get('name'));
+        }
+
+        return $route;
     }
 
     /**
-     * Looks for a route that matches the given request
-     *
-     * @throws MethodNotAllowedException
-     * @throws UriHandlerException
-     * @throws RouteNotFoundException
-     */
-    public function match(ServerRequestInterface $request): Route
-    {
-        // Get the request matching format.
-        $route = $this->getMatcher()->match($request);
-
-        if (!$route instanceof Route) {
-            throw new RouteNotFoundException(
-                \sprintf(
-                    'Unable to find the controller for path "%s". The route is wrongly configured.',
-                    $request->getUri()->getPath()
-                )
-            );
-        }
-
-        $this->mergeDefaults($route);
-
-        if ($this->options['debug']) {
-            $this->debug->setMatched(new DebugRoute($route->get('name'), $route));
-        }
-
-        return $this->route = clone $route;
-    }
-
-    /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // This is to aid request made from javascript using cors, eg: using axios.
         // Midddlware support is added, so it make it easier to add "cors" settings to the response and request
-        if ($this->options['options_skip'] && \strtolower($request->getMethod()) === 'options') {
-            return $this->handleOptionsResponse($request);
+        if (true === $request->getAttribute(self::OPTIONS_SKIP) && 'options' === \strtolower($request->getMethod())) {
+            return $this->responseFactory->createResponse();
         }
 
-        $route   = $this->match($request);
-        $handler = $this->route->get('controller');
+        $route = $this->match($request);
+
+        if (!$route instanceof Route) {
+            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()));
+        }
+
+        $handler = $route($request, $this->responseFactory, $this->handlerResolver);
 
         if (!$handler instanceof RequestHandlerInterface) {
-            $handler = new RouteHandler(
-                function (ServerRequestInterface $request, ResponseInterface $response) use ($route) {
-                    if (isset($this->options['namespace'])) {
-                        $this->resolver->setNamespace($this->options['namespace']);
-                    }
-
-                    return \call_user_func_array($this->resolver, [$request, $response, $route]);
-                },
-                $this->responseFactory
-            );
+            $handler = new ResponseDecorator($handler);
         }
 
-        // Add routes middleware to MiddlewarePipe
-        $this->addMiddleware(...$this->resolveMiddlewares($route));
+        if ([] !== $routeMiddlewares = $route->get('middlewares')) {
+            $this->pipe(...$routeMiddlewares);
+        }
 
         try {
             return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
         } finally {
-            if ($this->options['debug']) {
-                foreach ($this->debug->getProfiles() as $profiler) {
-                    $profiler->leave();
-                }
+            if (null !== $this->debug) {
+                $this->debug->leave();
             }
         }
     }
 
     /**
-     * Gets the RouteMatcherInterface instance associated with this Router.
+     * Get the profiled routes.
      */
-    public function getMatcher(): RouteMatcherInterface
+    public function getProfile(): ?DebugRoute
     {
-        if (null !== $this->matcher) {
-            return $this->matcher;
-        } elseif ($this->isFrozen()) {
-            return $this->matcher = $this->getDumper($this->options['cache_file']);
+        if (null !== $this->debug) {
+            return $this->debug;
         }
 
-        if (!$this->options['debug'] && isset($this->options['cache_file'])) {
-            $dumper = $this->getDumper($this->routes);
-
-            if ($dumper instanceof MatcherDumperInterface) {
-                $cacheDir = $this->options['cache_dir'];
-                $cacheFile = $this->options['cache_file'];
-
-                if (!\file_exists($cacheDir)) {
-                    @\mkdir($cacheDir, 0777, true);
-                }
-
-                \file_put_contents($cacheFile, $dumper->dump());
-
-                if (
-                    \function_exists('opcache_invalidate') &&
-                    \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)
-                ) {
-                    @opcache_invalidate($cacheFile, true);
-                }
-            }
-
-            return $this->matcher = $dumper;
-        }
-
-        /** @var RouteMatcherInterface $matcher */
-        $matcher = new $this->options['matcher_class']($this->routes);
-
-        return $this->matcher = $matcher;
-    }
-
-    /**
-     * @param RouteCollection|string $routes
-     */
-    private function getDumper($routes): RouteMatcherInterface
-    {
-        return new $this->options['matcher_dumper_class']($routes);
-    }
-
-    /**
-     * We have allowed middleware from router to run on response due to
-     *
-     * @return \Psr\Http\Message\ResponseInterface
-     */
-    private function handleOptionsResponse(ServerRequestInterface $request): ResponseInterface
-    {
-        return $this->pipeline->process(
-            $request,
-            new Handlers\CallbackHandler(
-                function (ServerRequestInterface $request): ResponseInterface {
-                    return $this->responseFactory->createResponse();
-                }
-            )
-        );
+        return null;
     }
 }
