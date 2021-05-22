@@ -273,22 +273,16 @@ class Route
     /**
      * Sets the parameter value for a route handler.
      *
-     * @param int|string $variable The parameter name
-     * @param mixed      $value    The parameter value
-     *
-     * @return Route $this The current Route instance
+     * @param string $variable The parameter name
+     * @param mixed  $value    The parameter value
      */
-    public function argument($variable, $value): self
+    public function argument(string $variable, $value): self
     {
-        if (!\is_int($variable)) {
-            if (\is_numeric($value)) {
-                $value = (int) $value;
-            } elseif (\is_string($value)) {
-                $value = \rawurldecode($value);
-            }
-
-            $this->defaults['_arguments'][$variable] = $value;
+        if (\is_string($value)) {
+            $value = \rawurldecode($value);
         }
+
+        $this->defaults['_arguments'][$variable] = $value;
 
         return $this;
     }
