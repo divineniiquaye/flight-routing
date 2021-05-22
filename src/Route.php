@@ -54,7 +54,7 @@ class Route
      *
      * @var string
      */
-    public const RCA_PATTERN = '/^(?P<route>.*?)?(?P<handler>\*\<(?:(?<c>[a-zA-Z0-9\\\\]+)\@)?(?<a>[a-zA-Z0-9_\-]+)\>)?$/u';
+    public const RCA_PATTERN = '#^(?:(?:([a-z]+)\:)?\/\/([^\/\*]+))?(.*?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
 
     /**
      * A Pattern to match protocol, host and port from a url

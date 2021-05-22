@@ -56,27 +56,36 @@ trait CastingTrait
      */
     private function castRoute(string $route): string
     {
-        $urlRegex = \str_replace(['/^', '$/u'], ['/^(?:', ')'], Route::URL_PATTERN);
-        $urlRegex .= \str_replace('/^', '?', Route::RCA_PATTERN);
-
-        // Match url + rca from pattern...
-        \preg_match($urlRegex, $route, $matches);
-
-        if (empty($matches)) {
-            return $route;
+        if (!(\strpbrk($route, ':*{') || '/' === @$route[1] ?? '')) {
+            return '' === $route ? '/' : $route;
         }
 
-        if (isset($matches['c'], $matches['a'])) {
-            $handler          = $matches['c'] ?: $this->controller;
-            $this->controller = !$handler ? $matches['a'] : [$handler, $matches['a']];
-        }
-        $route = $matches['route'] ?? '';
+        $pattern = \preg_replace_callback(Route::RCA_PATTERN, function (array $matches): string {
+            if (isset($matches[1])) {
+                $this->schemes[$matches[1]] = true;
+            }
 
-        if (isset($matches['host']) && !empty($matches['host'])) {
-            $route = $this->castDomain($matches);
+            if (isset($matches[2])) {
+                $this->domain[] = $matches[2];
+            }
+
+            // Match controller from route pattern.
+            $handler = $matches[4] ?? $this->controller;
+
+            if (isset($matches[5])) {
+                $this->controller = !empty($handler) ? [$handler, $matches[5]] : $matches[5];
+            }
+
+            return $matches[3];
+        }, $route, -1, $count, \PREG_UNMATCHED_AS_NULL);
+
+        return $pattern ?? $route;
+    }
+
         }
 
-        return $route ?: '/';
+        }
+
     }
 
     /**
