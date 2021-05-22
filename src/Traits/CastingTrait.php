@@ -42,7 +42,7 @@ trait CastingTrait
     /** @var array<string,string|string[]> */
     private $patterns = [];
 
-    /** @var array<int,mixed> */
+    /** @var MiddlewareInterface[] */
     private $middlewares = [];
 
     /** @var mixed */

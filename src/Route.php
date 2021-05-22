@@ -360,22 +360,13 @@ class Route
     }
 
     /**
-     * Sets the middleware(s) to handle before triggering the route handler
+     * Sets the middleware(s) to handle before triggering the route handler.
      *
-     * @param mixed ...$middlewares
-     *
-     * @return Route $this The current Route instance
+     * @param MiddlewareInterface ...$middlewares
      */
-    public function middleware(...$middlewares): self
+    public function middleware(MiddlewareInterface ...$middlewares): self
     {
-        /** @var int|string $index */
-        foreach ($middlewares as $index => $middleware) {
-            if (!\is_callable($middleware) && (\is_int($index) && \is_array($middleware))) {
-                $this->middleware(...$middleware);
-
-                continue;
-            }
-
+        foreach ($middlewares as $middleware) {
             $this->middlewares[] = $middleware;
         }
 
