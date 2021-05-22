@@ -73,7 +73,7 @@ class Route
      *
      * @var string
      */
-    public const URL_PATTERN = '/^(?:(?P<scheme>api|https?)\:)?(\/\/)?(?P<host>[^\/\*]+)\/*?$/u';
+    public const URL_PATTERN = '#^(?:([a-z]+)?:?\/\/)?([^\/\*]+)\/?$#u';
 
     /**
      * Default methods for route.
@@ -323,22 +323,14 @@ class Route
     public function domain(string ...$hosts): self
     {
         foreach ($hosts as $host) {
-            \preg_match(Route::URL_PATTERN, $host, $matches);
+            \preg_match(Route::URL_PATTERN, $host, $matches, \PREG_UNMATCHED_AS_NULL);
 
-            $scheme = $matches['scheme'] ?? '';
-
-            if ('api' === $scheme && isset($matches['host'])) {
-                $this->defaults['_api'] = \ucfirst($matches['host']);
-
-                continue;
+            if (isset($matches[1])) {
+                $this->schemes[$matches[1]] = true;
             }
 
-            if (!empty($scheme)) {
-                $this->schemes[$scheme] = true;
-            }
-
-            if (!empty($matches['host'])) {
-                $this->domain[$matches['host']] = true;
+            if (isset($matches[2])) {
+                $this->domain[] = $matches[2];
             }
         }
 

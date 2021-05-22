@@ -20,6 +20,7 @@ namespace Flight\Routing\Annotation;
 use Biurad\Annotations\InvalidAnnotationException;
 use Biurad\Annotations\ListenerInterface;
 use Biurad\Annotations\Locate\{Annotation, Class_, Function_, Method};
+use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Route as BaseRoute;
 use Flight\Routing\RouteCollection;
 
@@ -44,21 +45,25 @@ class Listener implements ListenerInterface
         foreach ($annotations as $annotation) {
             if ($annotation instanceof Class_ && [] !== $annotation->methods) {
                 foreach ($annotation->methods as $method) {
-                    if ([] !== $attributes = $annotation->getAnnotation()) {
-                        foreach ($attributes as $attribute) {
-                            $this->addRoute($attribute, $method);
-                        }
+                    $controller = [$method->getReflection()->class, (string) $method];
+
+                    if ([] === $attributes = $annotation->getAnnotation()) {
+                        $this->addRoute(null, $method, $controller);
 
                         continue;
                     }
 
-                    $this->addRoute(null, $method);
+                    foreach ($attributes as $attribute) {
+                        if (null === $attribute->resource) {
+                            $this->addRoute($attribute, $method, $controller);
+                        }
+                    }
                 }
 
                 continue;
             }
 
-            $this->addRoute(null, $annotation);
+            $this->addRoute(null, $annotation, (string) $annotation);
         }
 
         return $this->collector;
@@ -76,15 +81,10 @@ class Listener implements ListenerInterface
      * Add a route from annotation.
      *
      * @param Function_|Method|Class_ $listener
+     * @param string|string[]
      */
-    protected function addRoute(?Route $routeAnnotation, Annotation $listener): void
+    protected function addRoute(?Route $routeAnnotation, Annotation $listener, $controller): void
     {
-        $controller = $listener->getReflection()->getName();
-
-        if ($listener instanceof Method) {
-            $controller = [$listener->getReflection()->class, $controller];
-        }
-
         /** @var Route $annotation */
         foreach ($listener->getAnnotation() as $annotation) {
             if ($routeAnnotation instanceof Route) {
@@ -96,6 +96,10 @@ class Listener implements ListenerInterface
 
             if (null === $annotation->path) {
                 throw new InvalidAnnotationException('@Route.path must not be left empty.');
+            }
+
+            if (!empty($annotation->resource)) {
+                $controller = new ResourceHandler($controller, $annotation->resource);
             }
 
             $route = BaseRoute::__set_state([

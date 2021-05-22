@@ -451,7 +451,7 @@ class ListenerTest extends BaseTestCase
             'path'        => '/user/{id:\d+}',
             'domain'      => [],
             'methods'     => [],
-            'handler'     => Fixtures\Annotation\Route\Valid\RestfulController::class,
+            'handler'     => ResourceHandler::class,
             'middlewares' => [],
             'schemes'     => [],
             'defaults'    => [],

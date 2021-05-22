@@ -21,7 +21,7 @@ use Flight\Routing\Annotation\Route;
 use Flight\Routing\Tests\Fixtures\BlankRestful;
 
 /**
- * @Route("api://user/user/{id:\d+}", name="user__restful")
+ * @Route("/user/{id:\d+}", name="user__restful", resource="user")
  */
 class RestfulController extends BlankRestful
 {

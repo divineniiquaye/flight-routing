@@ -291,17 +291,18 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Maps any request to a resource handler and prefix class method by request method.
-     * If you request on "/account" path with a GET method, prefixed by the name
-     * parameter eg: 'user', class method will match `getUser`.
+     * Maps any Router::HTTP_METHODS_STANDARD request to a resource handler prefixed to $action's method name.
      *
-     * @param string              $name     The prefixed name attached to request method
+     * E.g: Having pattern as "/accounts/{userId}", all request made from supported request methods
+     * are to have the same url.
+     *
+     * @param string              $action   The prefixed name attached to request method
      * @param string              $pattern  matched path where request should be sent to
      * @param class-string|object $resource Handler that returns the response
      */
-    public function resource(string $name, string $pattern, $resource): Route
+    public function resource(string $pattern, $resource, string $action = 'action'): Route
     {
-        return $this->any(\sprintf('api://%s/%s', $name, $pattern), $resource);
+        return $this->any($pattern, new Handlers\ResourceHandler($resource, $action));
     }
 
     /**
