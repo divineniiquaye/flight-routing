@@ -17,6 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
+
 /**
  * Value object representing a single route.
  *
@@ -141,11 +144,33 @@ class Route
     }
 
     /**
+     * Invoke the response from route handler.
+     *
+     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
+     *
+     * @return RequestHandlerInterface|ResponseInterface
+     */
+    public function __invoke(ServerRequestInterface $request, ResponseFactoryInterface $responseFactory, ?callable $handlerResolver = null): ResponseInterface
+    {
+        $handler = $this->controller;
+
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler;
+        }
+
+        if ($handler instanceof Handlers\ResourceHandler) {
+            $handler = $handler(\strtolower($request->getMethod()));
+        }
+
+        if (!$handler instanceof ResponseInterface) {
+            $handler = $this->castHandler($request, $responseFactory, $handlerResolver, $handler);
+        }
+
+        return $handler;
+    }
+
+    /**
      * Sets the route path prefix.
-     *
-     * @param string $path
-     *
-     * @return Route $this The current Route instance
      */
     public function prefix(string $path): self
     {

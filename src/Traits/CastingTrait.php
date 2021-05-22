@@ -17,7 +17,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
+use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Route;
+use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 trait CastingTrait
 {
@@ -113,42 +117,132 @@ trait CastingTrait
 
         return $controller;
     }
+
+    /**
+     * Resolves route handler to return a response.
+     *
+     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
+     * @param mixed $handler
+     *
+     * @throws InvalidControllerException if invalid response stream contents
+     */
+    private function castHandler(
+        ServerRequestInterface $request,
+        ResponseFactoryInterface $responseFactory,
+        ?callable $handlerResolver,
+        $handler
+    ): ResponseInterface {
+        \ob_start(); // Start buffering response output
+
+        $response = null !== $handlerResolver
+            ? $handlerResolver($handler, [\get_class($request) => $request, \get_class($responseFactory) => $responseFactory] + $this->arguments)
+            : $this->resolveHandler($handler, $request, $responseFactory);
+
+        // If response was returned using an echo expression ...
+        $echoedResponse = \ob_get_clean();
+
+        if (!$response instanceof ResponseInterface) {
+            switch (true) {
+                case $response instanceof RequestHandlerInterface:
+                    return $response;
+
+                case (null === $response || true === $response) && false !== $echoedResponse:
+                    $response = $echoedResponse;
+
+                    break;
+
+                case \is_string($response) || \is_int($response):
+                    $response = (string) $response;
+
+                    break;
+
+                case \is_array($response) || $response instanceof \JsonSerializable || $response instanceof \Traversable:
+                    $response = \json_encode($response);
+
+                    break;
+
+                default:
+                    throw new InvalidControllerException(\sprintf('Response type for route "%s" is not allowed in PSR7 response body stream.', $this->name));
+            }
+
+            $result = $responseFactory->createResponse();
+            $result->getBody()->write($response);
         }
 
+        return $result ?? $response;
     }
 
     /**
-     * Match scheme and domain from route patterned path
+     * Auto-configure route handler parameters.
      *
-     * @param array<int|string,null|string> $matches
+     * @param mixed $handler
+     *
+     * @return mixed
      */
-    private function castDomain(array $matches): string
+    private function resolveHandler($handler, ServerRequestInterface $request, ResponseFactoryInterface $responseFactory)
     {
-        $domain = $matches['host'] ?? '';
-        $route  = $matches['route'] ?? '';
-
-        if ('api' === $scheme = $matches['scheme'] ?? '') {
-            $this->defaults['_api'] = \ucfirst($domain);
-
-            return $route;
+        if ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
+            $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs();
         }
 
-        if (
-            (empty($route) || '/' === $route || 0 === preg_match('/.\w+$/', $domain)) &&
-            empty($matches[2])
-        ) {
-            return $domain . $route;
-        }
+        if (\is_callable($handler)) {
+            $handlerRef = new \ReflectionFunction(\Closure::fromCallable($handler));
+        } elseif (\is_object($handler) || (\is_string($handler) && \class_exists($handler))) {
+            $handlerRef = new \ReflectionClass($handler);
 
-        if (!empty($domain)) {
-            if (!empty($scheme)) {
-                $this->schemes[$scheme] = true;
+            if ($handlerRef->hasMethod('__invoke')) {
+                return $this->resolveHandler([$handlerRef->newInstance(), '__invoke'], $request, $responseFactory);
             }
 
-            $this->domain[$domain] = true;
+            if (null !== $constructor = $handlerRef->getConstructor()) {
+                $constructorParameters = $constructor->getParameters();
+            }
         }
 
-        return $route;
+        if (!isset($handlerRef)) {
+            return $handler;
+        }
+
+        $parameters = [];
+        $arguments = $this->defaults['_arguments'] ?? [];
+
+        foreach ([$request, $responseFactory] as $psr7) {
+            foreach (@\class_implements($psr7) ?: [] as $psr7Interface) {
+                $arguments[$psr7Interface] = $psr7;
+            }
+        }
+
+        foreach ($constructorParameters ?? $handlerRef->getParameters() as $index => $parameter) {
+            $typeHint = $parameter->getType();
+
+            if ($typeHint instanceof \ReflectionUnionType) {
+                foreach ($typeHint->getTypes() as $unionType) {
+                    if (isset($arguments[$unionType->getName()])) {
+                        $parameters[$index] = $arguments[$unionType->getName()];
+
+                        break;
+                    }
+                }
+            } elseif ($typeHint instanceof \ReflectionNamedType && isset($arguments[$typeHint->getName()])) {
+                $parameters[$index] = $arguments[$typeHint->getName()];
+            }
+
+            if (isset($arguments[$parameter->getName()])) {
+                $parameters[$index] = $arguments[$parameter->getName()];
+            } elseif (\PHP_VERSION_ID < 80000) {
+                if ($parameter->isOptional() && $parameter->isDefaultValueAvailable()) {
+                    $parameters[$index] = $parameter->getDefaultValue();
+                } elseif ($parameter->allowsNull()) {
+                    $parameters[$index] = null;
+                }
+            }
+        }
+
+        if ($handlerRef instanceof \ReflectionFunction) {
+            return $handlerRef->invokeArgs($parameters);
+        }
+
+        return $handlerRef->newInstanceArgs($parameters);
     }
 
     /**
