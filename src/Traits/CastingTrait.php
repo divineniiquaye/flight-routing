@@ -82,8 +82,37 @@ trait CastingTrait
         return $pattern ?? $route;
     }
 
+    /**
+     * @internal skip throwing an exception and return exisitng $controller
+     *
+     * @param callable|object|string|string[] $controller
+     *
+     * @throws InvalidControllerException if $namespace is invalid
+     *
+     * @return mixed
+     */
+    private function castNamespace(string $namespace, $controller)
+    {
+        if ('\\' !== $namespace[-1]) {
+            throw new InvalidControllerException(\sprintf('Namespace "%s" provided for routes must end with a "\\".', $namespace));
         }
 
+        if ($controller instanceof ResourceHandler) {
+            return $controller->namespace($namespace);
+        }
+
+        if ((\is_string($controller) && !\class_exists($controller)) && !\str_starts_with($controller, $namespace)) {
+            return $namespace . \ltrim($controller, '\\/');
+        }
+
+        if (\is_array($controller) && (!\is_object($controller[0]) && !\class_exists($controller[0]))) {
+            $controller[0] = $namespace . \ltrim($controller[0], '\\/');
+
+            return $controller;
+        }
+
+        return $controller;
+    }
         }
 
     }
