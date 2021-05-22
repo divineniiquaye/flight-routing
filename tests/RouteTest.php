@@ -77,7 +77,7 @@ class RouteTest extends TestCase
 
         $this->assertSame($testRoute->getName(), $route->getName());
         $this->assertSame($testRoute->getPath(), $route->getPath());
-        $this->assertSame(['biurad.com'], \array_keys($route->getDomain()));
+        $this->assertSame(['biurad.com'], $route->getDomain());
         $this->assertSame($testRoute->getMethods(), $route->getMethods());
         $this->assertSame($testRoute->getController(), $route->getController());
         $this->assertSame($testRoute->getMiddlewares(), $route->getMiddlewares());
@@ -177,7 +177,7 @@ class RouteTest extends TestCase
         );
 
         $this->assertEquals($testRoute->getPath(), $route->getPath());
-        $this->assertEquals(['biurad.com'], \array_keys($route->getDomain()));
+        $this->assertEquals(['biurad.com'], $route->getDomain());
         $this->assertEquals('https', \current(\array_keys($route->getSchemes())));
     }
 

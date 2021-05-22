@@ -34,7 +34,7 @@ trait CastingTrait
     /** @var array<string,bool> */
     private $methods = [];
 
-    /** @var array<string,bool> */
+    /** @var string[] */
     private $domain = [];
 
     /** @var array<string,bool> */

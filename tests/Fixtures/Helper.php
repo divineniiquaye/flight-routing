@@ -48,7 +48,7 @@ class Helper
             $item                = [];
             $item['name']        = $route->getName();
             $item['path']        = $route->getPath();
-            $item['domain']      = \array_keys($route->getDomain());
+            $item['domain']      = $route->getDomain();
             $item['methods']     = \array_keys($route->getMethods());
             $item['handler']     = $controller;
             $item['middlewares'] = [];
