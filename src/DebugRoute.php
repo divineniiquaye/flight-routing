@@ -25,9 +25,6 @@ final class DebugRoute implements \IteratorAggregate
     /** @var Route|null */
     private $route;
 
-    /** @var string */
-    private $name;
-
     /** @var bool */
     private $matched = false;
 
@@ -40,38 +37,27 @@ final class DebugRoute implements \IteratorAggregate
     /** @var DebugRoute[] */
     private $profiles = [];
 
-    public function __construct(string $name = 'main', ?Route $route = null)
+    public function __construct(?Route $route = null)
     {
         $this->route = $route;
-        $this->name = $name;
         $this->enter();
     }
 
     /**
      * Add Matched info of route.
+     *
+     * @see addProfile() before using this method
      */
-    public function setMatched(string $name, Route $route): void
+    public function setMatched(string $name): void
     {
-        if ([] !== $this->profiles) {
-            $this->profiles[$name] = $matched = new static($name, $route);
-            $matched->matched = true;
-
-            return;
-        }
-
-        if ($name === $this->name) {
-            $this->matched = true;
+        if (isset($this->profiles[$name])) {
+            $this->profiles[$name]->matched = true;
         }
     }
 
     public function getRoute(): ?Route
     {
         return $this->route;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
     }
 
     public function isRoute(): bool
@@ -89,9 +75,7 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function addProfile(string $name, Route $route): void
     {
-        if (!isset($this->profiles[$name])) {
-            $this->profiles[$name] = new static($name, $route);
-        }
+        $this->profiles[$name] = new static($route);
     }
 
     /**
@@ -99,7 +83,7 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function getDuration(): float
     {
-        if (!empty($this->profiles)) {
+        if ([] !== $this->profiles) {
             // for the root node with children, duration is the sum of all child durations
             $duration = 0;
 
