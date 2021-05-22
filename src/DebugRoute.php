@@ -22,7 +22,7 @@ namespace Flight\Routing;
  */
 final class DebugRoute implements \IteratorAggregate
 {
-    /** @var null|Route */
+    /** @var Route|null */
     private $route;
 
     /** @var string */
@@ -43,22 +43,18 @@ final class DebugRoute implements \IteratorAggregate
     public function __construct(string $name = 'main', ?Route $route = null)
     {
         $this->route = $route;
-        $this->name  = $name;
+        $this->name = $name;
         $this->enter();
     }
 
     /**
-     * Add Matched info of route
-     *
-     * @param DebugRoute $matched
+     * Add Matched info of route.
      */
-    public function setMatched(self $matched): void
+    public function setMatched(string $name, Route $route): void
     {
-        $name = $matched->getName();
-
-        if (!empty($this->profiles)) {
-            $matched->matched      = true;
-            $this->profiles[$name] = $matched;
+        if ([] !== $this->profiles) {
+            $this->profiles[$name] = $matched = new static($name, $route);
+            $matched->matched = true;
 
             return;
         }
@@ -68,64 +64,38 @@ final class DebugRoute implements \IteratorAggregate
         }
     }
 
-    /**
-     * @return null|Route
-     */
     public function getRoute(): ?Route
     {
         return $this->route;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @return bool
-     */
     public function isRoute(): bool
     {
         return $this->route instanceof Route;
     }
 
-    /**
-     * @return bool
-     */
     public function isMatched(): bool
     {
         return $this->matched;
     }
 
     /**
-     * @return DebugRoute[]
+     * Add a new profiled route.
      */
-    public function getProfiles(): array
+    public function addProfile(string $name, Route $route): void
     {
-        return $this->profiles;
-    }
-
-    /**
-     * Add a new profiled route
-     *
-     * @param DebugRoute $profile
-     */
-    public function addProfile(self $profile): void
-    {
-        $name = $profile->getName();
-
         if (!isset($this->profiles[$name])) {
-            $this->profiles[$name] = $profile;
+            $this->profiles[$name] = new static($name, $route);
         }
     }
 
     /**
      * Returns the duration in microseconds.
-     *
-     * @return float
      */
     public function getDuration(): float
     {
@@ -169,8 +139,8 @@ final class DebugRoute implements \IteratorAggregate
     public function enter(): void
     {
         $this->starts = [
-            'wt'  => \microtime(true),
-            'mu'  => \memory_get_usage(),
+            'wt' => \microtime(true),
+            'mu' => \memory_get_usage(),
             'pmu' => \memory_get_peak_usage(),
         ];
     }
@@ -180,9 +150,15 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function leave(): void
     {
+        if ([] !== $this->profiles) {
+            foreach ($this->profiles as $profile) {
+                $profile->leave();
+            }
+        }
+
         $this->ends = [
-            'wt'  => \microtime(true),
-            'mu'  => \memory_get_usage(),
+            'wt' => \microtime(true),
+            'mu' => \memory_get_usage(),
             'pmu' => \memory_get_peak_usage(),
         ];
     }
