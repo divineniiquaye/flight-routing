@@ -20,6 +20,7 @@ namespace Flight\Routing\Tests\Annotation;
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
 use Flight\Routing\Annotation\Listener;
+use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Spiral\Attributes\AnnotationReader;
@@ -57,7 +58,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = Fixtures\Helper::routesToNames($router->getCollection()->getIterator());
+        $routes = Fixtures\Helper::routesToNames($router->getIterator());
         \sort($routes);
 
         $this->assertSame([
@@ -104,7 +105,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $this->assertCount(27, $router->getCollection()->getIterator());
+        $this->assertCount(27, $router->getIterator());
     }
 
     /**
@@ -118,7 +119,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = Fixtures\Helper::routesToArray($router->getCollection()->getIterator());
+        $routes = Fixtures\Helper::routesToArray($router->getIterator());
         \usort($routes, function (array $a, array $b) {
             return \strcmp($a["name"], $b["name"]);
         });
@@ -473,7 +474,7 @@ class ListenerTest extends BaseTestCase
         $router = $this->getRouter();
         $router->loadAnnotation($loader);
 
-        $routes = $router->getCollection()->getIterator();
+        $routes = $router->getIterator();
 
         $this->assertContains([
             'name'        => 'attribute_specific_name',
@@ -520,7 +521,6 @@ class ListenerTest extends BaseTestCase
         $this->expectExceptionMessage($message);
 
         $router->loadAnnotation($loader);
-        $router->getCollection()->getIterator();
     }
 
     /**
