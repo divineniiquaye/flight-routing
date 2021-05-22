@@ -20,14 +20,9 @@ namespace Flight\Routing\Interfaces;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Route;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
 
 /**
  * Interface defining required router compiling capabilities.
- *
- * This fluent implementation should contain a `constructor` method.
- * The implementation should be writen to receive a RouteCollection instance
- * and a route instances when matcher dumper instance is used by the router.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
@@ -35,12 +30,8 @@ interface RouteMatcherInterface
 {
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
-     *
-     * @param ServerRequestInterface $request
-     *
-     * @return null|Route
      */
-    public function match(ServerRequestInterface $request);
+    public function match(ServerRequestInterface $request): ?Route;
 
     /**
      * Generate a URI from the named route.
@@ -62,7 +53,7 @@ interface RouteMatcherInterface
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
      *
-     * @return string|UriInterface of fully qualified URL for named route
+     * @return string of fully qualified URL for named route
      */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []);
+    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): string;
 }

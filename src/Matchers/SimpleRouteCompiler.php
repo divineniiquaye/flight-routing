@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Matchers;
 
+use Flight\Routing\CompiledRoute;
 use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Flight\Routing\Route;
 
 /**
@@ -27,7 +29,7 @@ use Flight\Routing\Route;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class SimpleRouteCompiler implements \Serializable
+class SimpleRouteCompiler implements RouteCompilerInterface
 {
     private const DEFAULT_SEGMENT = '[^\/]+';
 
@@ -77,176 +79,26 @@ class SimpleRouteCompiler implements \Serializable
      */
     private const VARIABLE_MAXIMUM_LENGTH = 32;
 
-    /** @var string */
-    private $template;
-
-    /** @var string */
-    private $compiled;
-
-    /** @var string[] */
-    private $hostRegex;
-
-    /** @var string[] */
-    private $hostTemplate;
-
-    /** @var array<int|string,mixed> */
-    private $variables;
-
-    /** @var array<int|string,mixed> */
-    private $pathVariables;
-
-    /** @var array<int|string,mixed> */
-    private $hostVariables;
-
     /**
-     * @return array<string,mixed>
+     * {@inheritdoc}
      */
-    public function __serialize(): array
+    public function compile(Route $route, bool $reversed = false): CompiledRoute
     {
-        return [
-            'vars'           => $this->variables,
-            'template_regex' => $this->template,
-            'host_template'  => $this->hostTemplate,
-            'path_regex'     => $this->compiled,
-            'path_vars'      => $this->pathVariables,
-            'host_regex'     => $this->hostRegex,
-            'host_vars'      => $this->hostVariables,
-        ];
-    }
-
-    /**
-     * @param array<string,mixed> $data
-     */
-    public function __unserialize(array $data): void
-    {
-        $this->variables     = $data['vars'];
-        $this->template      = $data['template_regex'];
-        $this->compiled      = $data['path_regex'];
-        $this->pathVariables = $data['path_vars'];
-        $this->hostRegex     = $data['host_regex'];
-        $this->hostTemplate  = $data['host_template'];
-        $this->hostVariables = $data['host_vars'];
-    }
-
-    /**
-     * Match the RouteInterface instance and compiles the current route instance.
-     */
-    public function compile(Route $route): self
-    {
-        $hostVariables = $hostRegex = $hostTemplate = [];
-        $requirements  = $this->getRequirements($route->get('patterns'));
+        $hostVariables = $hostRegexs = [];
+        $requirements = $this->getRequirements($route->get('patterns'));
 
         if ([] !== $hosts = $route->get('domain')) {
-            foreach ($hosts as $host => $has) {
-                $result = $this->compilePattern($requirements, $host, true);
+            foreach ($hosts as $host) {
+                $result = $this->compilePattern($requirements, $host, $reversed, true);
 
                 $hostVariables += $result['variables'];
-
-                $hostRegex[]    = $result['regex'] . 'i';
-                $hostTemplate[] = $result['template'];
+                $hostRegexs[] = $result['regex'];
             }
         }
 
-        $result        = $this->compilePattern($requirements, $route->get('path'));
-        $pathVariables = $result['variables'];
+        $result = $this->compilePattern($requirements, \trim($route->get('path'), '/'), $reversed);
 
-        $this->compiled      = $result['regex'] . 'u';
-        $this->template      = $result['template'];
-        $this->pathVariables = $pathVariables;
-        $this->hostRegex     = $hostRegex;
-        $this->hostTemplate  = $hostTemplate;
-        $this->hostVariables = $hostVariables;
-        $this->variables     = \array_merge($hostVariables, $pathVariables);
-
-        return $this;
-    }
-
-    /**
-     * The path template regex for matching.
-     */
-    public function getPathTemplate(): string
-    {
-        return $this->template;
-    }
-
-    /**
-     * The hosts template regex for matching.
-     *
-     * @return string[] The static regexps
-     */
-    public function getHostTemplate(): array
-    {
-        return $this->hostTemplate;
-    }
-
-    /**
-     * Returns the path regex.
-     */
-    public function getRegex(): string
-    {
-        return $this->compiled;
-    }
-
-    /**
-     * Returns the hosts regex.
-     *
-     * @return string[] The hosts regex
-     */
-    public function getHostsRegex(): array
-    {
-        return $this->hostRegex;
-    }
-
-    /**
-     * Returns the variables.
-     *
-     * @return array<int|string,string> The variables
-     */
-    public function getVariables(): array
-    {
-        return $this->variables;
-    }
-
-    /**
-     * Returns the path variables.
-     *
-     * @return array<int|string,string> The variables
-     */
-    public function getPathVariables(): array
-    {
-        return $this->pathVariables;
-    }
-
-    /**
-     * Returns the host variables.
-     *
-     * @return array<int|string,string> The variables
-     */
-    public function getHostVariables(): array
-    {
-        return $this->hostVariables;
-    }
-
-    /**
-     * {@inheritdoc}
-     *
-     * @internal
-     */
-    final public function serialize(): string
-    {
-        return \serialize($this->__serialize());
-    }
-
-    /**
-     * {@inheritdoc}
-     *
-     * @param string $serialized the string representation of the object
-     *
-     * @internal
-     */
-    final public function unserialize($serialized): void
-    {
-        $this->__unserialize(\unserialize($serialized, ['allowed_classes' => false]));
+        return new CompiledRoute($result['regex'], $hostRegexs, $hostVariables += $result['variables']);
     }
 
     /**
@@ -293,10 +145,10 @@ class SimpleRouteCompiler implements \Serializable
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(array $requirements, string $uriPattern, bool $isHost = false): array
+    private function compilePattern(array $requirements, string $uriPattern, bool $reversed, bool $isHost = false): array
     {
-        if (\strlen($uriPattern) > 1) {
-            $uriPattern = \trim($uriPattern, '/');
+        if ('' === $uriPattern) {
+            return ['regex' => $reversed ? '/' : '/^\/$/sDu', 'variables' => []];
         }
 
         // correct [/ first occurrence]
@@ -313,8 +165,7 @@ class SimpleRouteCompiler implements \Serializable
         $template = (string) \preg_replace(self::COMPILER_REGEX, '<\1>', $pattern);
 
         return [
-            'template'  => \stripslashes(\str_replace('?', '', $template)),
-            'regex'     => '/^' . \strtr($template, $replaces) . '$/sD',
+            'regex' => $reversed ? \stripslashes(\str_replace('?', '', $template)) : '/^' . \strtr($template, $replaces) . '$/sD' . ($isHost ? 'i' : 'u'),
             'variables' => $variables,
         ];
     }

@@ -20,7 +20,6 @@ namespace Flight\Routing\Tests\Matchers;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Matchers\SimpleRouteCompiler;
 use Flight\Routing\Route;
-use Generator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -61,7 +60,7 @@ class SimpleRouteCompilerTest extends TestCase
         $compiled = $compiler->compile($route);
 
         $this->assertEquals($regex, $compiled->getRegex());
-        $this->assertEquals($variables, \array_replace($compiled->getPathVariables(), $route->getDefaults()));
+        $this->assertEquals($variables, \array_replace($compiled->getVariables(), $route->getDefaults()));
 
         // Match every pattern...
         foreach ($matches as $match) {
@@ -88,7 +87,7 @@ class SimpleRouteCompilerTest extends TestCase
         $compiled = $compiler->compile($route);
 
         $this->assertEquals([$regex], $compiled->getHostsRegex());
-        $this->assertEquals($variables, \array_merge($compiled->getHostVariables(), $route->getDefaults()));
+        $this->assertEquals($variables, \array_merge($compiled->getVariables(), $route->getDefaults()));
 
         // Match every pattern...
         foreach ($matches as $match) {
@@ -174,9 +173,9 @@ class SimpleRouteCompilerTest extends TestCase
     }
 
     /**
-     * @return Generator
+     * @return \Generator
      */
-    public function provideCompilePathData(): Generator
+    public function provideCompilePathData(): \Generator
     {
         yield 'Static route' => [
             '/foo',
@@ -310,6 +309,13 @@ class SimpleRouteCompilerTest extends TestCase
             ['foo' => null, 'bar' => null],
         ];
 
+        yield 'Route with nested optional paramters 1' => [
+            '/[{foo}/{bar}]',
+            ['/', '/foo/bar', 'foo/bar'],
+            '/^\/?(?:(?P<foo>[^\/]+)\/(?P<bar>[^\/]++))?$/sDu',
+            ['foo' => null, 'bar' => null],
+        ];
+
         yield 'Route with complex matches' => [
             '/hello/{foo:[a-z]{3}=<bar>}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
             ['/hello/foobar/', '/hello/foobar', '/hello/foobar/0A0AB5', '/hello/foobar/0A0AB5.html'],
@@ -319,9 +325,9 @@ class SimpleRouteCompilerTest extends TestCase
     }
 
     /**
-     * @return Generator
+     * @return \Generator
      */
-    public function provideCompileHostData(): Generator
+    public function provideCompileHostData(): \Generator
     {
         yield 'Route domain with variable' => [
             '//{foo}.example.com/',

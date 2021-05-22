@@ -17,22 +17,20 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\RouteCollection;
+use Flight\Routing\CompiledRoute;
+use Flight\Routing\Route;
 
 /**
- * MatcherDumperInterface is the interface that all matcher dumper classes must implement.
- * The implementation should be writen to receive a Route instances in a array
- * and a file by `constructor` when `dump()` method is used by the router.
+ * This is the interface that all custom compilers for routes will depend on or implement.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-interface MatcherDumperInterface
+interface RouteCompilerInterface
 {
     /**
-     * Dumps a set of routes to a string representation of executable code
-     * that can then be used to match a request against these routes.
-     *
-     * @return string Executable code
+     * Match the Route instance and compiles the current route instance.
+     * 
+     * @param bool $reversed The pattern is reversed into a normal url
      */
-    public function dump();
+    public function compile(Route $route, bool $reversed = false): CompiledRoute;
 }
