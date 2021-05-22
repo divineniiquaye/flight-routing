@@ -197,6 +197,18 @@ class Route
     }
 
     /**
+     * Sets the missing namespace on route's handler.
+     */
+    public function namespace(string $namespace): self
+    {
+        if ('' !== $namespace) {
+            $this->controller = $this->castNamespace(\rtrim($namespace, '\\/') . '\\', $this->controller);
+        }
+
+        return $this;
+    }
+
+    /**
      * Sets the requirement for a route variable.
      *
      * @param string          $variable The variable name

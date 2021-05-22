@@ -50,6 +50,7 @@ namespace Flight\Routing;
  * @method RouteCollection withDefaults(array $values)
  * @method RouteCollection withAsserts(array $patterns)
  * @method RouteCollection withArguments(array $patterns)
+ * @method RouteCollection withNamespace(string $namespace)
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
