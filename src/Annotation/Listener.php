@@ -43,11 +43,11 @@ class Listener implements ListenerInterface
     public function load(array $annotations): RouteCollection
     {
         foreach ($annotations as $annotation) {
-            if ($annotation instanceof Class_ && [] !== $annotation->methods) {
+            if ($annotation instanceof Class_ && !empty($annotation->methods)) {
                 foreach ($annotation->methods as $method) {
                     $controller = [$method->getReflection()->class, (string) $method];
 
-                    if ([] === $attributes = $annotation->getAnnotation()) {
+                    if (empty($attributes = $annotation->getAnnotation())) {
                         $this->addRoute(null, $method, $controller);
 
                         continue;

@@ -130,7 +130,7 @@ final class Route
                 throw new InvalidAnnotationException(\sprintf('The @Route.%s is unsupported. Allowed param keys are ["%s"].', $id, \implode('", "', \array_keys(self::ATTRIBUTES))));
             }
 
-            if ('' === $value || null === $value) {
+            if (empty($value)) {
                 continue;
             }
 
