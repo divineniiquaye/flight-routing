@@ -49,24 +49,16 @@ class Route
      *
      * @var string
      */
-    public const RCA_PATTERN = '#^(?:(?:([a-z]+)\:)?\/\/([^\/\*]+))?(.*?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
+    public const RCA_PATTERN = '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?(.*?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
 
     /**
      * A Pattern to match protocol, host and port from a url.
      *
-     * Examples of urls that can be matched:
-     * http://en.example.domain
-     * //example.domain
-     * //example.com
-     * https://example.com:34
-     * //example.com
-     * example.com
-     * localhost:8000
-     * {foo}.domain.com
+     * Examples of urls that can be matched: http://en.example.domain, {sub}.example.domain, https://example.com:34, example.com, etc.
      *
      * @var string
      */
-    public const URL_PATTERN = '#^(?:([a-z]+)?:?\/\/)?([^\/\*]+)\/?$#u';
+    public const URL_PATTERN = '#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u';
 
     /**
      * Default methods for route.
