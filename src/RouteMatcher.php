@@ -38,7 +38,7 @@ class RouteMatcher implements RouteMatcherInterface
         '//' => '/',
     ];
 
-    /** @var \ArrayIterator<int,Route> */
+    /** @var \Iterator<int,Route>|\Iterator<int,array> */
     protected $routes = [];
 
     /** @var Matchers\SimpleRouteDumper|array|null */
@@ -47,10 +47,10 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var Matchers\SimpleRouteCompiler */
     private $compiler;
 
-    public function __construct(RouteCollection $collection, ?RouteCompilerInterface $compiler = null, string $cacheFile = null)
+    public function __construct(\Iterator $collection, ?RouteCompilerInterface $compiler = null, string $cacheFile = null)
     {
         $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
-        $this->routes = $collection->getIterator();
+        $this->routes = $collection;
 
         if (!empty($cacheFile)) {
             $this->dumper = \file_exists($cacheFile)
