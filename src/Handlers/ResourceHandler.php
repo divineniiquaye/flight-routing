@@ -49,8 +49,8 @@ final class ResourceHandler
     {
         $resource = $this->classResource;
 
-        if (\is_string($resource) && !\class_exists($resource)) {
-            $this->classResource = $namespace . \ltrim($resource, '\\/');
+        if (\is_string($resource) && '\\' === $resource[0]) {
+            $this->classResource = $namespace . $resource;
         }
 
         return $this;

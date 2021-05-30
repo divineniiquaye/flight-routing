@@ -204,7 +204,11 @@ class Route
     public function namespace(string $namespace): self
     {
         if ('' !== $namespace) {
-            $this->controller = $this->castNamespace(\rtrim($namespace, '\\/') . '\\', $this->controller);
+            if ('\\' === $namespace[-1]) {
+                throw new InvalidControllerException(\sprintf('Namespace "%s" provided for routes must not end with a "\\".', $namespace));
+            }
+
+            $this->controller = $this->castNamespace($namespace, $this->controller);
         }
 
         return $this;
