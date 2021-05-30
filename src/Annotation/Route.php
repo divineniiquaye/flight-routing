@@ -123,7 +123,7 @@ final class Route
             'path' => $path,
             'resource' => $resource,
         ];
-        $parameters += $params; // Replace defaults with $params
+        $params += $parameters; // Replace defaults with $params
 
         foreach ($params as $id => $value) {
             if (null === $validate = self::ATTRIBUTES[$id] ?? null) {
