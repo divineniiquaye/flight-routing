@@ -51,24 +51,24 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      * - /foo[/{var}] - A path with an optional sub variable pattern
      * - /foo[/{var}[.{format}]] - A path with optional nested variables
      * - /{var:[a-z]+} - A required variable with lowercase rule
-     * - /{var=<foo>} - A required variable with default value
-     * - /{var}[.{format:(html|php)=<html>}] - A required variable with an optional variable, a rule & default
+     * - /{var=foo} - A required variable with default value
+     * - /{var}[.{format:(html|php)=html}] - A required variable with an optional variable, a rule & default
      */
-    private const COMPILER_REGEX = '#\{(\w+)?(?:\:([^{}=]*(?:\{(?-1)\}[^{}]?)*))?(?:\=\<([^>]+)\>)?\}#xi';
+    private const COMPILER_REGEX = '#\{(\w+)(?:\:((?U).*\}|.*))?(?:\=(\w+))?\}#i';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
      */
     private const SEGMENT_TYPES = [
-        'int'     => '\d+',
-        'lower'   => '[a-z]+',
-        'upper'   => '[A-Z]+',
-        'alpha'   => '[A-Za-z]+',
-        'alnum'   => '[A-Za-z0-9]+',
-        'year'    => '[12][0-9]{3}',
-        'month'   => '0[1-9]|1[012]+',
-        'day'     => '0[1-9]|[12][0-9]|3[01]+',
-        'uuid'    => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
+        'int' => '\d+',
+        'lower' => '[a-z]+',
+        'upper' => '[A-Z]+',
+        'alpha' => '[A-Za-z]+',
+        'alnum' => '[A-Za-z0-9]+',
+        'year' => '[12][0-9]{3}',
+        'month' => '0[1-9]|1[012]+',
+        'day' => '0[1-9]|[12][0-9]|3[01]+',
+        'uuid' => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
     ];
 
     /**
@@ -87,7 +87,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
         $hostVariables = $hostRegexs = [];
         $requirements = $this->getRequirements($route->get('patterns'));
 
-        if ([] !== $hosts = $route->get('domain')) {
+        if (!empty($hosts = $route->get('domain'))) {
             foreach ($hosts as $host) {
                 $result = $this->compilePattern($requirements, $host, $reversed, true);
 
@@ -121,15 +121,15 @@ class SimpleRouteCompiler implements RouteCompilerInterface
 
     private function sanitizeRequirement(string $key, string $regex): string
     {
-        if ('' !== $regex && \strpos($regex, '^') === 0) {
+        if ('^' === @$regex[0]) {
             $regex = \substr($regex, 1); // returns false for a single character
         }
 
-        if ('$' === \substr($regex, -1)) {
+        if ('$' === @$regex[-1]) {
             $regex = \substr($regex, 0, -1);
         }
 
-        if ('' === $regex) {
+        if (empty($regex)) {
             throw new UriHandlerException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
         }
 
@@ -152,22 +152,20 @@ class SimpleRouteCompiler implements RouteCompilerInterface
         }
 
         // correct [/ first occurrence]
-        if (\strpos($uriPattern, '[/') === 0) {
+        if (0 === \strpos($uriPattern, '[/')) {
             $uriPattern = '[' . \substr($uriPattern, 2);
         }
 
         // Match all variables enclosed in "{}" and iterate over them...
-        \preg_match_all(self::COMPILER_REGEX, $pattern = (!$isHost ? '/' : '') . $uriPattern, $matches);
+        \preg_match_all(self::COMPILER_REGEX, $pattern = (!$isHost ? '/' : '') . $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
 
-        [$variables, $replaces] = $this->computePattern($matches, $pattern, $requirements);
+        [$variables, $replaces] = $this->computePattern($matches, $pattern, $reversed, $requirements);
 
-        // Return only grouped named captures.
-        $template = (string) \preg_replace(self::COMPILER_REGEX, '<\1>', $pattern);
+        if (!$reversed) {
+            $template = '/^' . \strtr($pattern, self::PATTERN_REPLACES + $replaces) . '$/sD' . ($isHost ? 'i' : 'u');
+        }
 
-        return [
-            'regex' => $reversed ? \stripslashes(\str_replace('?', '', $template)) : '/^' . \strtr($template, $replaces) . '$/sD' . ($isHost ? 'i' : 'u'),
-            'variables' => $variables,
-        ];
+        return ['regex' => $template ?? \stripslashes(\strtr($pattern, $replaces + ['?' => ''])), 'variables' => $variables];
     }
 
     /**
@@ -178,11 +176,10 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      *
      * @return array<int,array<int|string,mixed>>
      */
-    private function computePattern(array $matches, string $pattern, array $requirements): array
+    private function computePattern(array $matches, string $pattern, bool $isReversed, array $requirements): array
     {
-        $variables = [];
-        $replaces  = self::PATTERN_REPLACES;
-        [, $names, $rules, $defaults] = $matches;
+        $variables = $replaces = [];
+        [$placeholders, $names, $rules, $defaults] = $matches;
 
         $count = \count($names);
 
@@ -200,23 +197,24 @@ class SimpleRouteCompiler implements RouteCompilerInterface
                 );
             }
 
-            if (isset($rules[$index])) {
-                $replace = $this->prepareSegment($varName, $rules[$index], $requirements);
+            if (!$isReversed) {
+                $replace = self::SEGMENT_TYPES[$rules[$index]] ?? $rules[$index] ?? $this->prepareSegment($varName, $requirements);
 
                 // optimize the regex with a possessive quantifier.
-                if ($count === 1 && ('/' === $pattern[0] && '+' === $replace[-1])) {
+                if (1 === $count && ('/' === $pattern[0] && '+' === @$replace[-1])) {
                     // This optimization cannot be applied when the next char is no real separator.
-                    preg_match('#\{.*\}(.+?)#', $pattern, $nextSeperator);
+                    \preg_match('#\{.*\}(.+?)#', $pattern, $nextSeperator);
 
-                    $replace .= !(isset($nextSeperator[1]) && (\count($names) === 1 || '{' === $nextSeperator[1])) ? '+' : '';
+                    $replace .= !(isset($nextSeperator[1]) && (1 === \count($names) || '{' === $nextSeperator[1])) ? '+' : '';
                 }
 
-                $replaces["<$varName>"] = \sprintf('(?P<%s>%s)', $varName, $replace);
+                $replace = \sprintf('(?P<%s>%s)', $varName, $replace);
             }
+            $replaces[$placeholders[$index]] = $replace ?? "<$varName>";
 
-            $variables[$varName] = !empty($defaults[$index]) ? $defaults[$index] : null;
+            $variables[$varName] = $defaults[$index] ?? null;
 
-            $count--;
+            --$count;
         }
 
         return [$variables, $replaces];
@@ -255,15 +253,9 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      * Prepares segment pattern with given constrains.
      *
      * @param array<string,mixed> $requirements
-     *
-     * @return string
      */
-    private function prepareSegment(string $name, string $segment, array $requirements): string
+    private function prepareSegment(string $name, array $requirements): string
     {
-        if ($segment !== '') {
-            return self::SEGMENT_TYPES[$segment] ?? $segment;
-        }
-
         if (!isset($requirements[$name])) {
             return self::DEFAULT_SEGMENT;
         }

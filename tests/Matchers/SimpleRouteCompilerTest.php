@@ -191,7 +191,7 @@ class SimpleRouteCompilerTest extends TestCase
         ];
 
         yield 'Route with a variable that has a default value' => [
-            '/foo/{bar=<bar>}',
+            '/foo/{bar=bar}',
             ['/foo/bar'],
             '/^\/foo\/(?P<bar>[^\/]++)$/sDu',
             ['bar' => 'bar'],
@@ -205,14 +205,14 @@ class SimpleRouteCompilerTest extends TestCase
         ];
 
         yield 'Route with several variables that have default values' => [
-            '/foo/{bar=<bar>}/{foobar=<0>}',
+            '/foo/{bar=bar}/{foobar=0}',
             ['/foo/foobar/baz'],
             '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
-            ['bar' => 'bar', 'foobar' => null],
+            ['bar' => 'bar', 'foobar' => 0],
         ];
 
         yield 'Route with several variables but some of them have no default values' => [
-            '/foo/{bar=<bar>}/{foobar}',
+            '/foo/{bar=bar}/{foobar}',
             ['/foo/barfoo/baz'],
             '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
             ['bar' => 'bar', 'foobar' => null],
@@ -254,14 +254,14 @@ class SimpleRouteCompilerTest extends TestCase
         ];
 
         yield 'Route with a requirement and in optional placeholder and default' => [
-            '/[{lang:lower=<english>}/]hello',
+            '/[{lang:lower=english}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
             '/^\/?(?:(?P<lang>[a-z]+)\/)?hello$/sDu',
             ['lang' => 'english'],
         ];
 
         yield  'Route with a requirement, optional and required placeholder' => [
-            '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]',
+            '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=0}]',
             ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
             '/^\/?(?:(?P<lang>[a-z]{2})(?:-(?P<sublang>[^\/]+))?\/)?(?P<name>[^\/]+)(?:\/page-(?P<page>[^\/]++))?$/sDu',
             ['lang' => null, 'sublang' => null, 'name' => null, 'page' => 0],
@@ -317,7 +317,7 @@ class SimpleRouteCompilerTest extends TestCase
         ];
 
         yield 'Route with complex matches' => [
-            '/hello/{foo:[a-z]{3}=<bar>}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
+            '/hello/{foo:[a-z]{3}=bar}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
             ['/hello/foobar/', '/hello/foobar', '/hello/foobar/0A0AB5', '/hello/foobar/0A0AB5.html'],
             '/^\/hello\/(?P<foo>[a-z]{3})(?P<baz>[^\/]+)\/?(?:(?P<id>[0-9a-fA-F]{1,8})(?:\.(?P<format>html|php))?)?$/sDu',
             ['foo' => 'bar', 'baz' => null, 'id' => null, 'format' => null],
