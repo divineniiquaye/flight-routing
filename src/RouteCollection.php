@@ -167,16 +167,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         if (null === $controllers) {
             $controllers = new static();
             $controllers->stack = $this->stack ?? [];
+        } elseif (\is_callable($controllers)) {
+            $controllers($controllers = new static());
         }
 
-        if (\is_callable($controllers)) {
-            $deprecated = 'Since %s v1.1, usage of %s() method\'s second parameter for callable is deprecated. Will be dropped in v2.0';
-            @\trigger_error(\sprintf($deprecated, 'divineniiquaye/flight-routing', __METHOD__), \E_USER_DEPRECATED);
-
-            $controllers($collection = new static());
-            $controllers = clone $collection;
-        } elseif (!$controllers instanceof self) {
-            throw new \LogicException('The "group" method takes either a "RouteCollection" instance or callable.');
+        if (!$controllers instanceof self) {
+            throw new \LogicException(\sprintf('The %s() method takes either a "%s" instance or a callable of its self.', __METHOD__, __CLASS__));
         }
 
         $this->routes[] = $controllers;
