@@ -64,11 +64,17 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(ServerRequestInterface $request): ?Route
     {
-        $resolvedPath = \rawurldecode($this->resolvePath($request));
-        [$matchedRoute, $matchedDomains, $variables] = $this->matchRoute($resolvedPath);
+        $requestUri = $request->getUri();
+
+        // Resolve request path to match sub-directory or /index.php/path
+        if (empty($resolvedPath = $request->getServerParams()['PATH_INFO'] ?? '')) {
+            $resolvedPath = $requestUri->getPath();
+        }
+
+        $resolvedPath = \substr($resolvedPath, 0, ('/' !== $resolvedPath && '/' === $resolvedPath[-1]) ? -1 : null);
+        [$matchedRoute, $matchedDomains, $variables] = $this->matchRoute($resolvedPath = \rawurldecode($resolvedPath));
 
         if ($matchedRoute instanceof Route) {
-            $requestUri = $request->getUri();
             $schemes = $matchedRoute->get('schemes');
 
             if (null === $matchedRoute->get('methods')[$request->getMethod()] ?? null) {
@@ -145,25 +151,6 @@ class RouteMatcher implements RouteMatcherInterface
     public function isCompiled(): bool
     {
         return \is_array($this->dumper);
-    }
-
-    /**
-     * Resolve request path to match sub-directory, server, and domain paths.
-     */
-    protected function resolvePath(ServerRequestInterface $request): string
-    {
-        $requestPath = $request->getUri()->getPath();
-        $basePath = $request->getServerParams()['SCRIPT_NAME'] ?? '';
-
-        if (
-            $basePath !== $requestPath &&
-            \strlen($basePath = \dirname($basePath)) > 1 &&
-            '/index.php' !== $basePath
-        ) {
-            $requestPath = \substr($requestPath, \strcmp($basePath, $requestPath)) ?: '';
-        }
-
-        return \strlen($requestPath) > 1 ? \rtrim($requestPath, '/') : $requestPath;
     }
 
     /**
