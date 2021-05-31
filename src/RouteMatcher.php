@@ -44,7 +44,7 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var Matchers\SimpleRouteDumper|array|null */
     private $dumper = null;
 
-    /** @var Matchers\SimpleRouteCompiler */
+    /** @var RouteCompilerInterface */
     private $compiler;
 
     public function __construct(\Iterator $collection, ?RouteCompilerInterface $compiler = null, string $cacheFile = null)
@@ -53,9 +53,16 @@ class RouteMatcher implements RouteMatcherInterface
         $this->routes = $collection;
 
         if (!empty($cacheFile)) {
-            $this->dumper = \file_exists($cacheFile)
-                ? require $cacheFile
-                : new Matchers\SimpleRouteDumper($this->routes, $this->compiler, $cacheFile);
+            if (\file_exists($cacheFile)) {
+                $cachedRoutes = require $cacheFile;
+
+                if (!$this->routes->valid()) {
+                    $this->routes = new \ArrayIterator($cachedRoutes[3]);
+                    unset($cachedRoutes[3]);
+                }
+            }
+
+            $this->dumper = $cachedRoutes ?? new Matchers\SimpleRouteDumper($cacheFile);
         }
     }
 
@@ -77,18 +84,16 @@ class RouteMatcher implements RouteMatcherInterface
         if ($matchedRoute instanceof Route) {
             $schemes = $matchedRoute->get('schemes');
 
-            if (null === $matchedRoute->get('methods')[$request->getMethod()] ?? null) {
+            if (!\array_key_exists($request->getMethod(), $matchedRoute->get('methods'))) {
                 throw new MethodNotAllowedException(\array_keys($matchedRoute->get('methods')), $requestUri->getPath(), $request->getMethod());
             }
 
-            if ([] !== $schemes && !isset($schemes[$requestUri->getScheme()])) {
+            if (!empty($schemes) && !\array_key_exists($requestUri->getScheme(), $schemes)) {
                 throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s]', $requestUri->getScheme(), $resolvedPath), 400);
             }
 
-            if ([] !== $matchedDomains) {
-                $hostVars = [];
-
-                if (!$this->compareDomain($matchedDomains, $requestUri, $hostVars)) {
+            if (!empty($matchedDomains)) {
+                if (null === $hostVars = $this->compareDomain($matchedDomains, $requestUri)) {
                     throw new UriHandlerException(\sprintf('Unfortunately current domain is not allowed on requested uri [%s]', $resolvedPath), 400);
                 }
 
@@ -114,27 +119,32 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): string
     {
-        static $uriRoute;
+        foreach ($this->routes as $route) {
+            if (!$route instanceof Route) {
+                $route = Route::__set_state($route);
+            }
 
-        if (\is_array($this->dumper)) {
-            [$route, $compiledRoute] = $this->dumper[2][$routeName] ?? [null, null];
-            $route = $this->dumper[3][$route] ?? null;
-
-            if (null !== $route) {
+            if ($routeName === $route->get('name')) {
+                $compiledRoute = $this->isCompiled() ? \unserialize($this->dumper[2][$routeName]) : $this->compiler->compile($route, true);
                 $uriRoute = $this->buildPath($route, $compiledRoute, $parameters);
-            }
-        } else {
-            foreach ($this->routes as $route) {
-                if ($routeName === $route->get('name')) {
-                    $uriRoute = $this->buildPath($route, $this->compiler->compile($route, true), $parameters);
 
-                    break;
+                // Incase query is added to uri.
+                if ([] !== $queryParams) {
+                    $uriRoute .= '?' . \http_build_query($queryParams);
                 }
-            }
-        }
 
-        if (null !== $uriRoute) {
-            return $this->resolveUri($uriRoute, $queryParams);
+                if (!\str_contains($uriRoute, '://')) {
+                    $prefix = '.'; // Append missing "." at the beginning of the $uri.
+
+                    if ('/' !== @$uriRoute[0]) {
+                        $prefix .= '/';
+                    }
+
+                    $uriRoute = $prefix . $uriRoute;
+                }
+
+                return $uriRoute;
+            }
         }
 
         throw new UrlGenerationException(\sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
@@ -170,15 +180,15 @@ class RouteMatcher implements RouteMatcherInterface
             $host = $hostRegexs[0];
         }
 
-        if ([] !== $schemes = $route->get('schemes')) {
+        if (!empty($schemes = $route->get('schemes'))) {
             $schemes = [isset($_SERVER['HTTPS']) ? 'https' : 'http' => true];
 
-            if ('' === $host) {
+            if (empty($host)) {
                 $host = $_SERVER['HTTP_HOST'] ?? '';
             }
         }
 
-        if ('' !== $host) {
+        if (!empty($host)) {
             // If we have s secured scheme, it should be served
             $hostScheme = isset($schemes['https']) ? 'https' : (\array_key_last($schemes) ?? 'http');
             $path = "{$hostScheme}://" . \trim($this->interpolate($host, $parameters), '.');
@@ -187,25 +197,39 @@ class RouteMatcher implements RouteMatcherInterface
         return $path .= $this->interpolate($compiledRoute->getRegex(), $parameters);
     }
 
+    /**
+     * Match Route based on HTTP request path.
+     */
     protected function matchRoute(string $resolvedPath): array
     {
         if (\is_array($dumper = $this->dumper)) {
-            $matched = $dumper[0][$resolvedPath] ?? $this->getCompiledRoute($resolvedPath, $dumper[1]);
+            [$staticRoutes, $regexpList] = $dumper;
 
-            if (null !== $matched) {
-                $matched[0] = $dumper[3][$matched[0]];
+            if (isset($staticRoutes[$resolvedPath])) {
+                $matchedRoute = $staticRoutes[$resolvedPath];
+
+                $route = $this->routes[$matchedRoute[0]];
+                $matchedRoute[0] = $route instanceof Route ? $route : Route::__set_state($route);
+            } elseif (1 === \preg_match($regexpList[0], $resolvedPath, $urlVariables)) {
+                $route = $this->routes[$routeId = $urlVariables['MARK']];
+                [$matchedDomains, $variables, $varKeys] = $regexpList[1][$routeId];
+
+                foreach ($varKeys as $index => $key) {
+                    $variables[$key] = $urlVariables[$index] ?? null;
+                }
+
+                $matchedRoute = [$route instanceof Route ? $route : Route::__set_state($route), $matchedDomains, $variables];
             }
 
-            return $matched ?? [null, [], []];
+            return $matchedRoute ?? [null, [], []];
         }
 
-        if ($dumper instanceof Matchers\SimpleRouteDumper) {
-            $dumper->dump();
+        if ($this->dumper instanceof Matchers\SimpleRouteDumper) {
+            $this->dumper->dump($this->routes, $this->compiler);
         }
 
         foreach ($this->routes as $route) {
             $compiledRoute = $this->compiler->compile($route);
-            $uriVars = [];
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
             if (1 !== \preg_match($compiledRoute->getRegex(), $resolvedPath, $uriVars)) {
@@ -216,52 +240,6 @@ class RouteMatcher implements RouteMatcherInterface
         }
 
         return [null, [], []];
-    }
-
-    protected function getCompiledRoute(string $resolvedPath, array $regexpList): ?array
-    {
-        [$regexpList, $parameters] = $regexpList;
-
-        // https://tools.ietf.org/html/rfc7231#section-6.5.5
-        if (1 === \preg_match($regexpList, $resolvedPath, $urlVariables)) {
-            $routeId = $urlVariables['MARK'];
-            unset($urlVariables['MARK']);
-            \array_shift($urlVariables); // Remove index 0 from matched $keys
-
-            [$matchedDomains, $variables, $varKeys] = $parameters[$routeId];
-
-            foreach ($varKeys as $index => $key) {
-                $variables[$key] = $urlVariables[$index] ?? null;
-            }
-
-            return [$routeId, $matchedDomains, $variables];
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<int|string,int|string> $queryParams
-     */
-    private function resolveUri(string $createdUri, array $queryParams): string
-    {
-        $prefix = '.'; // Append missing "." at the beginning of the $uri.
-
-        // Making routing on sub-folders easier
-        if (0 !== \strpos($createdUri, '/')) {
-            $prefix .= '/';
-        }
-
-        // Incase query is added to uri.
-        if (!empty($queryParams)) {
-            $createdUri .= '?' . \http_build_query($queryParams);
-        }
-
-        if (false === \strpos($createdUri, '://')) {
-            $createdUri = $prefix . $createdUri;
-        }
-
-        return \rtrim($createdUri, '/');
     }
 
     /**
@@ -308,10 +286,11 @@ class RouteMatcher implements RouteMatcherInterface
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param string[]                 $routeDomains
-     * @param array<int|string,string> $parameters
+     * @param string[] $routeDomains
+     *
+     * @return array<int|string,mixed>|null
      */
-    protected function compareDomain(array $routeDomains, UriInterface $requestUri, array &$parameters): bool
+    protected function compareDomain(array $routeDomains, UriInterface $requestUri): ?array
     {
         $hostAndPort = $requestUri->getHost();
 
@@ -322,10 +301,10 @@ class RouteMatcher implements RouteMatcherInterface
 
         foreach ($routeDomains as $routeDomain) {
             if (1 === \preg_match($routeDomain, $hostAndPort, $parameters)) {
-                return true;
+                return $parameters;
             }
         }
 
-        return false;
+        return null;
     }
 }

@@ -20,7 +20,6 @@ namespace Flight\Routing\Matchers;
 use Flight\Routing\CompiledRoute;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Flight\Routing\Route;
-use Flight\Routing\RouteCollection;
 
 /**
  * The routes dumper for any kind of route compiler.
@@ -44,23 +43,22 @@ class SimpleRouteDumper
     /** @var string */
     private $cacheFile;
 
-    /**
-     * @param \ArrayIterator<int,Route> $collection
-     */
-    public function __construct(\ArrayIterator $collection, RouteCompilerInterface $compiler, string $cacheFile)
+    public function __construct(string $cacheFile)
     {
         $this->cacheFile = $cacheFile;
-
-        // Warm up routes for export to $cacheFile.
-        $this->warmCompiler($collection, $compiler);
     }
 
     /**
      * Dumps a set of routes to a string representation of executable code
      * that can then be used to match a request against these routes.
+     *
+     * @param \Traversable<int,Route> $collection
      */
-    public function dump(): void
+    public function dump(\Traversable $collection, RouteCompilerInterface $compiler): void
     {
+        // Warm up routes for export to $cacheFile.
+        $this->warmCompiler($collection, $compiler);
+
         $generatedCode = <<<EOF
 <?php
 
@@ -103,7 +101,7 @@ EOF;
             $exported .= ",\n";
         }
 
-        return "\Flight\Routing\Route::__set_state([\n{$exported}    ])";
+        return "[\n{$exported}    ]";
     }
 
     private static function indent(string $code, int $level = 1): string
@@ -125,6 +123,8 @@ EOF;
         if (!\is_array($value)) {
             if ($value instanceof Route) {
                 return self::exportRoute($value);
+            } elseif ($value instanceof CompiledRoute) {
+                return "'" . \serialize($value) . "'";
             }
 
             return \str_replace("\n", '\'."\n".\'', \var_export($value, true));
@@ -150,10 +150,6 @@ EOF;
 
             if (\is_string($v) && 0 === \strpos($v, 'unserialize')) {
                 $v = '\\' . $v . ', ';
-            } elseif ($v instanceof Route) {
-                $v = self::exportRoute($v, $level);
-            } elseif ($v instanceof CompiledRoute) {
-                $v = \sprintf('\unserialize(\'%s\'), ', \serialize($v));
             } else {
                 $v = self::export($v) . ', ';
             }
@@ -165,9 +161,9 @@ EOF;
     }
 
     /**
-     * @param Route[]|RouteCollection $routes
+     * @param \Traversable<int,Route> $routes
      */
-    private function warmCompiler($routes, RouteCompilerInterface $compiler): void
+    private function warmCompiler(\Traversable $routes, RouteCompilerInterface $compiler): void
     {
         $regexpList = [];
 
@@ -175,7 +171,7 @@ EOF;
             $this->routeList[$index] = $route;
 
             // Reserved routes pattern to url ...
-            $this->urlsList[$route->get('name')] = [$index, $compiler->compile($route, true)];
+            $this->urlsList[$route->get('name')] = $compiler->compile($route, true);
 
             $url = \rtrim($route->get('path'), '/') ?: '/';
             $compiledRoute = $compiler->compile($route);
@@ -287,7 +283,7 @@ EOF;
         foreach ($this->staticRoutes as $path => $route) {
             $code .= \sprintf('    %s => ', self::export($path));
             $code .= self::export($route);
-            $code .= ", \n";
+            $code .= ",\n";
         }
         $code .= "],\n";
 
@@ -307,7 +303,7 @@ EOF;
         foreach ($this->urlsList as $path => $route) {
             $code .= \sprintf('    %s => ', self::export($path));
             $code .= self::export($route);
-            $code .= ", \n";
+            $code .= ",\n";
         }
         $code .= "],\n";
 
@@ -316,7 +312,7 @@ EOF;
         foreach ($this->routeList as $name => $route) {
             $code .= \sprintf('    %s => ', self::export($name));
             $code .= self::export($route);
-            $code .= ", \n";
+            $code .= ",\n";
         }
         $code .= "],\n";
 
