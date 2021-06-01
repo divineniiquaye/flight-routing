@@ -17,61 +17,35 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
+use Flight\Routing\Exceptions\UriHandlerException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * The importance of this middleware is to keep existing route paths users
+ * might be familiarized with, and slowly transition them into new route paths.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
 class UriRedirectMiddleware implements MiddlewareInterface
 {
     /** @var array<string,string|UriInterface> */
     protected $redirects;
 
     /** @var bool */
-    private $permanent;
-
-    /** @var bool */
-    private $query;
+    private $keepRequestMethod;
 
     /**
-     * @param array<string,string|UriInterface> $redirects [from => to]
-     * @param bool                 $query
-     * @param bool                 $permanent
+     * @param array<string,string|UriInterface> $redirects         [from previous => to new]
+     * @param bool                              $keepRequestMethod Whether redirect action should keep HTTP request method
      */
-    public function __construct(array $redirects = [], bool $query = true, bool $permanent = true)
+    public function __construct(array $redirects = [], bool $keepRequestMethod = false)
     {
         $this->redirects = $redirects;
-        $this->query     = $query;
-        $this->permanent = $permanent;
-    }
-
-    /**
-     * Whether return a permanent redirect.
-     *
-     * @param bool $permanent
-     *
-     * @return UriRedirectMiddleware
-     */
-    public function setPermanentRedirection(bool $permanent = true): self
-    {
-        $this->permanent = $permanent;
-
-        return $this;
-    }
-
-    /**
-     * Whether include the query to search the url.
-     *
-     * @param bool $query
-     *
-     * @return UriRedirectMiddleware
-     */
-    public function allowQueries(bool $query = true): self
-    {
-        $this->query = $query;
-
-        return $this;
+        $this->keepRequestMethod = $keepRequestMethod;
     }
 
     /**
@@ -80,37 +54,21 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        /** @var ResponseInterface $response */
+        $uri = $request->getUri();
         $response = $handler->handle($request);
 
-        $uri = $request->getUri()->getPath();
-
-        if ($this->query && ($query = $request->getUri()->getQuery()) !== '') {
-            $uri .= '?' . $query;
-        }
-
-        if (!isset($this->redirects[$uri])) {
+        if (!isset($this->redirects[$uri->getPath()])) {
             return $response;
         }
 
-        return $response
-            ->withStatus($this->determineResponseCode($request))
-            ->withAddedHeader('Location', (string) $this->redirects[$uri]);
-    }
+        $redirectedUri = $this->redirects[$uri->getPath()];
 
-    /**
-     * Determine the response code according with the method and the permanent config.
-     *
-     * @param ServerRequestInterface $request
-     *
-     * @return int
-     */
-    private function determineResponseCode(ServerRequestInterface $request): int
-    {
-        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
-            return $this->permanent ? 301 : 302;
+        if (\is_string($redirectedUri) && \str_contains($redirectedUri, '//')) {
+            throw new UriHandlerException(\sprintf('Handling "%s" to a string path "%s" containing a host is not supported, use a %s instance for such purposes.', $uri->getPath(), $redirectedUri, UriInterface::class));
         }
 
-        return $this->permanent ? 308 : 307;
+        return $response
+            ->withStatus($this->keepRequestMethod ? 308 : 301)
+            ->withHeader('Location', (string) ($redirectedUri instanceof UriInterface ? $redirectedUri : $uri->withPath($redirectedUri)));
     }
 }
