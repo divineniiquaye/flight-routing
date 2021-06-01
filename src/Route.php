@@ -61,6 +61,13 @@ class Route
     public const URL_PATTERN = '#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u';
 
     /**
+     * Slashes supported on broswer when used.
+     *
+     * @var string[]
+     */
+    public const URL_PREFIX_SLASHES = ['/' => '/', ':' => ':', '-' => '-', '_' => '_', '~' => '~', '@' => '@'];
+
+    /**
      * Default methods for route.
      */
     public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];

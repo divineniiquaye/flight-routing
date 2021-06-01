@@ -243,19 +243,22 @@ trait CastingTrait
      */
     private function castPrefix(string $uri, string $prefix): string
     {
-        // Allow homepage uri on prefix just like python django url style.
-        if (empty($uri) || '/' === $uri) {
-            return \rtrim($prefix, '/') . $uri;
+        // This is not accepted, but we're just avoiding throwing an exception ...
+        if (empty($prefix)) {
+            return $uri;
         }
 
-        if (1 === \preg_match('/^(.*)(\:|\-|\_|\~|\@)$/', $prefix, $matches)) {
-            if ($matches[2] !== $uri[0]) {
-                $uri = $matches[2] . $uri;
-            }
-
-            return \rtrim($prefix, $matches[2]) . $uri;
+        if (isset(Route::URL_PREFIX_SLASHES[$prefix[-1]], Route::URL_PREFIX_SLASHES[$uri[0]])) {
+            return $prefix . \ltrim($uri, implode('', Route::URL_PREFIX_SLASHES));
         }
 
-        return \rtrim($prefix, '/') . '/' . \ltrim($uri, '/');
+        // browser supported slashes ...
+        $slashExist = Route::URL_PREFIX_SLASHES[$prefix[-1]] ?? Route::URL_PREFIX_SLASHES[$uri[0]] ?? null;
+
+        if (null === $slashExist) {
+            $prefix .= '/';
+        }
+
+        return $prefix . $uri;
     }
 }

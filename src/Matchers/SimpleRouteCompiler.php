@@ -96,7 +96,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             }
         }
 
-        $result = $this->compilePattern($requirements, \trim($route->get('path'), '/'), $reversed);
+        $result = $this->compilePattern($requirements, \ltrim($route->get('path'), '/'), $reversed);
 
         return new CompiledRoute($result['regex'], $hostRegexs, $hostVariables += $result['variables']);
     }
@@ -156,16 +156,20 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             $uriPattern = '[' . \substr($uriPattern, 2);
         }
 
-        // Match all variables enclosed in "{}" and iterate over them...
-        \preg_match_all(self::COMPILER_REGEX, $pattern = (!$isHost ? '/' : '') . $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
-
-        [$variables, $replaces] = $this->computePattern($matches, $pattern, $reversed, $requirements);
-
-        if (!$reversed) {
-            $template = '/^' . \strtr($pattern, self::PATTERN_REPLACES + $replaces) . '$/sD' . ($isHost ? 'i' : 'u');
+        if (!$isHost) {
+            $uriPattern = '/' . \substr($uriPattern, 0, isset(Route::URL_PREFIX_SLASHES[$uriPattern[-1]]) ? -1 : null);
         }
 
-        return ['regex' => $template ?? \stripslashes(\strtr($pattern, $replaces + ['?' => ''])), 'variables' => $variables];
+        // Match all variables enclosed in "{}" and iterate over them...
+        \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
+
+        [$variables, $replaces] = $this->computePattern($matches, $uriPattern, $reversed, $requirements);
+
+        if (!$reversed) {
+            $template = '/^' . \strtr($uriPattern, self::PATTERN_REPLACES + $replaces) . '$/sD' . ($isHost ? 'i' : 'u');
+        }
+
+        return ['regex' => $template ?? \stripslashes(\strtr($uriPattern, $replaces + ['?' => ''])), 'variables' => $variables];
     }
 
     /**

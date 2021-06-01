@@ -78,7 +78,7 @@ class RouteMatcher implements RouteMatcherInterface
             $resolvedPath = $requestUri->getPath();
         }
 
-        $resolvedPath = \substr($resolvedPath, 0, ('/' !== $resolvedPath && '/' === $resolvedPath[-1]) ? -1 : null);
+        $resolvedPath = \substr($resolvedPath, 0, ('/' !== $resolvedPath && isset(Route::URL_PREFIX_SLASHES[$resolvedPath[-1]])) ? -1 : null);
         [$matchedRoute, $matchedDomains, $variables] = $this->matchRoute($resolvedPath = \rawurldecode($resolvedPath));
 
         if ($matchedRoute instanceof Route) {
