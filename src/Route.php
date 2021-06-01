@@ -132,24 +132,24 @@ class Route
     /**
      * Invoke the response from route handler.
      *
-     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
+     * @param null|callable(mixed,array) $handlerResolver
      *
-     * @return RequestHandlerInterface|ResponseInterface
+     * @return ResponseInterface|string
      */
-    public function __invoke(ServerRequestInterface $request, ResponseFactoryInterface $responseFactory, ?callable $handlerResolver = null): ResponseInterface
+    public function __invoke(ServerRequestInterface $request, ?callable $handlerResolver = null)
     {
         $handler = $this->controller;
 
         if ($handler instanceof RequestHandlerInterface) {
-            return $handler;
-        }
-
-        if ($handler instanceof Handlers\ResourceHandler) {
-            $handler = $handler(\strtolower($request->getMethod()));
+            return $handler->handle($request);
         }
 
         if (!$handler instanceof ResponseInterface) {
-            $handler = $this->castHandler($request, $responseFactory, $handlerResolver, $handler);
+            if ($handler instanceof Handlers\ResourceHandler) {
+                $handler = $handler(\strtolower($request->getMethod()));
+            }
+
+            $handler = $this->castHandler($request, $handlerResolver, $handler);
         }
 
         return $handler;

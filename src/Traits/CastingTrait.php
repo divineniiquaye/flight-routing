@@ -20,7 +20,7 @@ namespace Flight\Routing\Traits;
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Route;
-use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 trait CastingTrait
@@ -113,22 +113,18 @@ trait CastingTrait
     /**
      * Resolves route handler to return a response.
      *
-     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
-     * @param mixed $handler
+     * @param null|callable(mixed,array) $handlerResolver
+     * @param mixed                      $handler
      *
      * @throws InvalidControllerException if invalid response stream contents
+     *
+     * @return ResponseInterface|string
      */
-    private function castHandler(
-        ServerRequestInterface $request,
-        ResponseFactoryInterface $responseFactory,
-        ?callable $handlerResolver,
-        $handler
-    ): ResponseInterface {
+    private function castHandler(ServerRequestInterface $request, ?callable $handlerResolver, $handler)
+    {
         \ob_start(); // Start buffering response output
 
-        $response = null !== $handlerResolver
-            ? $handlerResolver($handler, [\get_class($request) => $request, \get_class($responseFactory) => $responseFactory] + $this->arguments)
-            : $this->resolveHandler($handler, $request, $responseFactory);
+        $response = null !== $handlerResolver ? $handlerResolver($handler, $this->arguments) : $this->resolveHandler($handler);
 
         // If response was returned using an echo expression ...
         $echoedResponse = \ob_get_clean();
@@ -136,7 +132,7 @@ trait CastingTrait
         if (!$response instanceof ResponseInterface) {
             switch (true) {
                 case $response instanceof RequestHandlerInterface:
-                    return $response;
+                    return $response->handle($request);
 
                 case (null === $response || true === $response) && false !== $echoedResponse:
                     $response = $echoedResponse;
@@ -156,9 +152,6 @@ trait CastingTrait
                 default:
                     throw new InvalidControllerException(\sprintf('Response type for route "%s" is not allowed in PSR7 response body stream.', $this->name));
             }
-
-            $result = $responseFactory->createResponse();
-            $result->getBody()->write($response);
         }
 
         return $result ?? $response;
@@ -171,7 +164,7 @@ trait CastingTrait
      *
      * @return mixed
      */
-    private function resolveHandler($handler, ServerRequestInterface $request, ResponseFactoryInterface $responseFactory)
+    private function resolveHandler($handler)
     {
         if ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
             $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs();
@@ -183,7 +176,7 @@ trait CastingTrait
             $handlerRef = new \ReflectionClass($handler);
 
             if ($handlerRef->hasMethod('__invoke')) {
-                return $this->resolveHandler([$handlerRef->newInstance(), '__invoke'], $request, $responseFactory);
+                return $this->resolveHandler([$handlerRef->newInstance(), '__invoke']);
             }
 
             if (null !== $constructor = $handlerRef->getConstructor()) {
@@ -197,12 +190,6 @@ trait CastingTrait
 
         $parameters = [];
         $arguments = $this->defaults['_arguments'] ?? [];
-
-        foreach ([$request, $responseFactory] as $psr7) {
-            foreach (@\class_implements($psr7) ?: [] as $psr7Interface) {
-                $arguments[$psr7Interface] = $psr7;
-            }
-        }
 
         foreach ($constructorParameters ?? $handlerRef->getParameters() as $index => $parameter) {
             $typeHint = $parameter->getType();

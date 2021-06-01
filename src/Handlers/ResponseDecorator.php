@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Flight\Routing\{Exceptions\RouteNotFoundException, Route};
+use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
@@ -30,12 +30,16 @@ final class ResponseDecorator implements RequestHandlerInterface
 {
     public const CONTENT_TYPE = 'Content-Type';
 
-    /** @var ResponseInterface */
-    private $response;
+    /** @var ResponseFactoryInterface */
+    private $responseFactory;
 
-    public function __construct(ResponseInterface $response)
+    /** @var null|callable(mixed,array) */
+    private $handlerResolver = null;
+
+    public function __construct(ResponseFactoryInterface $responseFactory, callable $handlerResolver = null)
     {
-        $this->response = $response;
+        $this->handlerResolver = $handlerResolver;
+        $this->responseFactory = $responseFactory;
     }
 
     /**
@@ -46,41 +50,49 @@ final class ResponseDecorator implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $contents = (string) $this->response->getBody();
+        $route = $request->getAttribute(Route::class);
 
-        if ($this->isJson($contents)) {
-            return $this->response->withHeader(self::CONTENT_TYPE, 'application/json');
+        if (!$route instanceof Route) {
+            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()));
         }
 
-        if ($this->isXml($contents)) {
-            return $this->response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
+        // Resolve route handler arguments ...
+        if (null !== $handlerResolver = $this->handlerResolver) {
+            $route->arguments([\get_class($request) => $request, \get_class($this->responseFactory) => $this->responseFactory]);
+        } else {
+            foreach ([$request, $this->responseFactory] as $psr7) {
+                foreach (@\class_implements($psr7) ?: [] as $psr7Interface) {
+                    $route->argument($psr7Interface, $psr7);
+                }
+
+                $route->argument(\get_class($psr7), $psr7);
+            }
         }
 
-        // Set content-type to plain text if string doesn't contain </html> tag.
-        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', $contents)) {
-            return $this->response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
+        $response = $route($request, $handlerResolver);
+
+        if (!$response instanceof ResponseInterface) {
+            ($result = $this->responseFactory->createResponse())->getBody()->write($response);
+            $response = $result;
         }
 
-        if (!$this->response->hasHeader(self::CONTENT_TYPE)) {
-            $response = $this->response->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
+        if ($response->hasHeader(self::CONTENT_TYPE)) {
+            return $response;
         }
 
-        return $response;
-    }
+        $contents = (string) $response->getBody();
+        $matched = \preg_match('#(?|\"\w\"\:.*?\,?\}|^\<\?(xml).*|[^>]+\>.*?\<\/(\w+)\>)$#ms', $contents, $matches);
 
-    private function isJson(string $contents): bool
-    {
-        \json_decode($contents, true);
+        if (!$matchedType = $matches[2] ?? $matches[1] ?? 0 !== $matched) {
+            return $response->withHeader(self::CONTENT_TYPE, '{' === @$contents[0] ? 'application/json' : 'text/plain; charset=utf-8');
+        }
 
-        return \JSON_ERROR_NONE === \json_last_error();
-    }
+        if ('svg' === $matchedType) {
+            $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'image/svg+xml');
+        } elseif ('xml' === $matchedType) {
+            $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
+        }
 
-    private function isXml(string $contents): bool
-    {
-        $previousValue = \libxml_use_internal_errors(true);
-        $isXml = \simplexml_load_string($contents);
-        \libxml_use_internal_errors($previousValue);
-
-        return false !== $isXml && false !== \strpos($contents, '<?xml');
+        return $xmlResponse ?? $response->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
     }
 }
