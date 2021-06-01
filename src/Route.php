@@ -17,7 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Flight\Routing\Exceptions\InvalidControllerException;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -88,7 +89,7 @@ class Route
         $this->path = $this->castRoute($pattern);
 
         if (!empty($methods)) {
-            $this->methods = \array_fill_keys(\array_map('strtoupper', (array) $methods), true);
+            $this->methods = \array_change_key_case(\array_fill_keys((array) $methods, true), \CASE_UPPER);
         }
     }
 
@@ -199,6 +200,8 @@ class Route
 
     /**
      * Sets the missing namespace on route's handler.
+     *
+     * @throws InvalidControllerException if $namespace is invalid
      */
     public function namespace(string $namespace): self
     {
@@ -420,7 +423,6 @@ class Route
         $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
         $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 
-        // Collapse consecutive underscores down into a single underscore.
-        return (string) \preg_replace('/_+/', '_', $routeName);
+        return (string) \preg_replace(['/\_+/', '/\.+/'], ['_', '.'], $routeName);
     }
 }
