@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Biurad\Annotations\LoaderInterface;
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Handlers\ResponseDecorator as RouteHandler;
+use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};

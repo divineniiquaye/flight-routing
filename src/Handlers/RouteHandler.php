@@ -22,11 +22,14 @@ use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequest
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Provides ability to detect right response content-type.
+ * Default routing request handler.
+ *
+ * if route is found in request attribute, dispatch the route handler's
+ * response to the browser and provides ability to detect right response content-type.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class ResponseDecorator implements RequestHandlerInterface
+final class RouteHandler implements RequestHandlerInterface
 {
     public const CONTENT_TYPE = 'Content-Type';
 
@@ -43,10 +46,9 @@ final class ResponseDecorator implements RequestHandlerInterface
     }
 
     /**
-     * Convert endpoint result into valid PSR 7 response.
-     * content-type fallback is "text/html; charset=utf-8".
-     *
      * {@inheritdoc}
+     *
+     * @throws RouteNotFoundException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
