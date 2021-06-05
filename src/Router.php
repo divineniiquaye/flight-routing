@@ -19,8 +19,7 @@ namespace Flight\Routing;
 
 use Biurad\Annotations\LoaderInterface;
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Exceptions\RouteNotFoundException;
-use Flight\Routing\Handlers\ResponseDecorator;
+use Flight\Routing\Handlers\ResponseDecorator as RouteHandler;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
@@ -33,9 +32,6 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
  */
 class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodInterface, RequestHandlerInterface
 {
-    /** Whether to serve a response on HTTP request OPTIONS method */
-    public const OPTIONS_SKIP = 'SKIP_OPTIONS_METHOD';
-
     /**
      * Standard HTTP methods for browser requests.
      */
@@ -61,7 +57,7 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /** @var DebugRoute|null */
     private $debug;
 
-    /** @var null|callable(mixed:$handler,array:$arguments) */
+    /** @var null|callable(mixed,array) */
     private $handlerResolver = null;
 
     public function __construct(
@@ -137,7 +133,7 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /**
      * {@inheritdoc}
      *
-     * @return \ArrayIterator<int,Route>
+     * @return \ArrayIterator<int,Route>|\ArrayIterator<int,array>
      */
     public function getIterator(): \ArrayIterator
     {
@@ -163,25 +159,10 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        // This is to aid request made from javascript using cors, eg: using axios.
-        // Midddlware support is added, so it make it easier to add "cors" settings to the response and request
-        if (!$request->getAttribute(self::OPTIONS_SKIP, false) && 'options' === \strtolower($request->getMethod())) {
-            return $this->responseFactory->createResponse();
-        }
-
         $route = $this->match($request);
+        $handler = new RouteHandler($this->responseFactory, $this->handlerResolver);
 
-        if (!$route instanceof Route) {
-            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()));
-        }
-
-        $handler = $route($request, $this->responseFactory, $this->handlerResolver);
-
-        if (!$handler instanceof RequestHandlerInterface) {
-            $handler = new ResponseDecorator($handler);
-        }
-
-        if ([] !== $routeMiddlewares = $route->get('middlewares')) {
+        if (null !== $route && !empty($routeMiddlewares = $route->get('middlewares'))) {
             $this->pipe(...$routeMiddlewares);
         }
 
@@ -199,10 +180,6 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
      */
     public function getProfile(): ?DebugRoute
     {
-        if (null !== $this->debug) {
-            return $this->debug;
-        }
-
-        return null;
+        return $this->debug;
     }
 }
