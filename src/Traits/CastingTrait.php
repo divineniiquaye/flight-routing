@@ -60,8 +60,8 @@ trait CastingTrait
      */
     private function castRoute(string $route): string
     {
-        if (!(\strpbrk($route, ':*{') || '/' === @$route[1] ?? '')) {
-            return '' === $route ? '/' : $route;
+        if (!(\strpbrk($route, ':*{') || 0 === \strpos($route, '//'))) {
+            return $route ?: '/';
         }
 
         $pattern = \preg_replace_callback(Route::RCA_PATTERN, function (array $matches): string {
