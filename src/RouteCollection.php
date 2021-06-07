@@ -41,7 +41,7 @@ namespace Flight\Routing;
  * @method RouteCollection withArgument($variable, mixed $value)
  * @method RouteCollection withMethod(string ...$methods)
  * @method RouteCollection withScheme(string ...$schemes)
- * @method RouteCollection withMiddleware(mixed ...$middlewares)
+ * @method RouteCollection withMiddleware(MiddlewareInterface ...$middlewares)
  * @method RouteCollection withDomain(string ...$hosts)
  * @method RouteCollection withPrefix(string $path)
  * @method RouteCollection withDefaults(array $values)
@@ -189,7 +189,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function end(): self
     {
         // Remove last element from stack.
-        foreach ($this->stack as $stack) {
+        if (null !== $stack = $this->stack) {
             \array_pop($stack);
         }
 

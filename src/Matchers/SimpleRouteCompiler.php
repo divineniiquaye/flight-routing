@@ -214,8 +214,8 @@ class SimpleRouteCompiler implements RouteCompilerInterface
 
                 $replace = \sprintf('(?P<%s>%s)', $varName, $replace);
             }
-            $replaces[$placeholders[$index]] = $replace ?? "<$varName>";
 
+            $replaces[$placeholders[$index]] = $replace ?? "<$varName>";
             $variables[$varName] = $defaults[$index] ?? null;
 
             --$count;
