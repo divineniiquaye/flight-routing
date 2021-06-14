@@ -29,16 +29,16 @@ use Flight\Routing\Route;
 class SimpleRouteDumper
 {
     /** @var array<string,mixed> */
-    public $staticRoutes = [];
+    private $staticRoutes = [];
 
     /** @var mixed[] */
-    public $regexpList = [];
+    private $regexpList = [];
 
     /** @var array<string,mixed> */
-    public $urlsList = [];
+    private $urlsList = [];
 
     /** @var Route[] */
-    public $routeList = [];
+    private $routeList = [];
 
     /** @var string */
     private $cacheFile;
