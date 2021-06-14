@@ -173,10 +173,10 @@ EOF;
             // Reserved routes pattern to url ...
             $this->urlsList[$route->get('name')] = $compiler->compile($route, true);
 
-            $url = \rtrim($route->get('path'), '/') ?: '/';
+            // Compile the route ...
             $compiledRoute = $compiler->compile($route);
 
-            if (!\strpbrk($url, '[{*')) {
+            if (null !== $url = $compiledRoute->getStatic()) {
                 $this->staticRoutes[$url] = [$index, $compiledRoute->getHostsRegex(), $compiledRoute->getVariables()];
 
                 continue;

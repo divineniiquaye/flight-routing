@@ -27,22 +27,26 @@ class CompiledRoute implements \Serializable
     /** @var string */
     private $pathRegex;
 
-    /** @var string[] */
+    /** @var string|string[] */
     private $hostRegexs;
 
     /** @var array */
     private $variables;
 
+    /** @var string|null */
+    private $staticRoute;
+
     /**
      * @param string   $pathRegex  The regular expression to use to match this route
-     * @param string[] $hostRegexs A list of Host regexs
+     * @param string|string[] $hostRegexs A list of Host regexs else a combined single regex of hosts
      * @param array    $variables  An array of variables (variables defined in the path and in the host patterns)
      */
-    public function __construct(string $pathRegex, array $hostRegexs, array $variables)
+    public function __construct(string $pathRegex, $hostRegexs, array $variables, string $static = null)
     {
         $this->pathRegex = $pathRegex;
         $this->hostRegexs = $hostRegexs;
         $this->variables = $variables;
+        $this->staticRoute = $static;
     }
 
     /**
@@ -76,9 +80,9 @@ class CompiledRoute implements \Serializable
     /**
      * Returns the hosts regex.
      *
-     * @return string[] The hosts regex
+     * @return string|string[] The hosts regex
      */
-    public function getHostsRegex(): array
+    public function getHostsRegex()
     {
         return $this->hostRegexs;
     }
@@ -91,5 +95,13 @@ class CompiledRoute implements \Serializable
     public function getVariables(): array
     {
         return $this->variables;
+    }
+
+    /**
+     * If the path is static, return it else null.
+     */
+    public function getStatic(): ?string
+    {
+        return $this->staticRoute;
     }
 }

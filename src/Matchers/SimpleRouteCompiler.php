@@ -84,21 +84,26 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      */
     public function compile(Route $route, bool $reversed = false): CompiledRoute
     {
-        $hostVariables = $hostRegexs = [];
         $requirements = $this->getRequirements($route->get('patterns'));
+        $routePath = $route->get('path');
 
-        if (!empty($hosts = $route->get('domain'))) {
-            foreach ($hosts as $host) {
-                $result = $this->compilePattern($requirements, $host, $reversed, true);
-
-                $hostVariables += $result['variables'];
-                $hostRegexs[] = $result['regex'];
-            }
+        if ('/' !== $routePath[0]) {
+            $routePath = '/' . $routePath;
         }
 
-        $result = $this->compilePattern($requirements, \ltrim($route->get('path'), '/'), $reversed);
+        if (!empty($hosts = $route->get('domain'))) {
+            $hostsRegex = $this->computeHosts($hosts, $reversed, $requirements);
+        }
 
-        return new CompiledRoute($result['regex'], $hostRegexs, $hostVariables += $result['variables']);
+        [$pathRegex, $pathVariable] = '/' === $routePath
+            ? [(!$reversed ? '\\' : '') . '/', []] // making homepage url much faster ...
+            : $this->compilePattern($requirements, $routePath, $reversed);
+
+        // Resolves $pathRegex and host and pattern variables.
+        $pathRegex = !$reversed ? '/^' . $pathRegex . '$/sDu' : \stripslashes($pathRegex);
+        $variables = isset($hostVariables) ? $hostVariables += $pathVariable : $pathVariable;
+
+        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables, empty($pathVariable) ? $routePath : null);
     }
 
     /**
@@ -145,31 +150,63 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(array $requirements, string $uriPattern, bool $reversed, bool $isHost = false): array
+    private function compilePattern(array $requirements, string $uriPattern, bool $reversed): array
     {
-        if ('' === $uriPattern) {
-            return ['regex' => $reversed ? '/' : '/^\/$/sDu', 'variables' => []];
-        }
-
         // correct [/ first occurrence]
         if (0 === \strpos($uriPattern, '[/')) {
-            $uriPattern = '[' . \substr($uriPattern, 2);
+            $uriPattern = '[' . \substr($uriPattern, 3);
         }
 
-        if (!$isHost) {
-            $uriPattern = '/' . \substr($uriPattern, 0, isset(Route::URL_PREFIX_SLASHES[$uriPattern[-1]]) ? -1 : null);
+        // Strip supported browser prefix of $uriPattern ...
+        if (isset(Route::URL_PREFIX_SLASHES[$uriPattern[-1]])) {
+            $uriPattern = \substr($uriPattern, 0, -1);
         }
 
         // Match all variables enclosed in "{}" and iterate over them...
         \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
 
-        [$variables, $replaces] = $this->computePattern($matches, $uriPattern, $reversed, $requirements);
-
-        if (!$reversed) {
-            $template = '/^' . \strtr($uriPattern, self::PATTERN_REPLACES + $replaces) . '$/sD' . ($isHost ? 'i' : 'u');
+        if (!empty($matches)) {
+            [$variables, $replaces] = $this->computePattern($matches, $uriPattern, $reversed, $requirements);
         }
 
-        return ['regex' => $template ?? \stripslashes(\strtr($uriPattern, $replaces + ['?' => ''])), 'variables' => $variables];
+        // Resolves route pattern place holders ...
+        $replaces = ($replaces ?? []) + (!$reversed ? self::PATTERN_REPLACES : ['?' => '']);
+
+        return [\strtr($uriPattern, $replaces), $variables ?? []];
+    }
+
+    /**
+     * Compile hosts from route and return computed hosts.
+     *
+     * @param array<string,string|string[]> $requirements
+     *
+     * @return string[]|string
+     */
+    private function computeHosts(array $hosts, bool $isReversed, array $requirements)
+    {
+        $hostVariables = $hostRegexs = [];
+        $compliledHosts = '/^(?|';
+
+        foreach ($hosts as $host) {
+            [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $isReversed);
+            $hostVariables += $hostVariable;
+
+            if (1 === \count($hosts)) {
+                $compliledHosts = !$isReversed ? '/^' . $hostRegex : \stripslashes($hostRegex);
+
+                break;
+            }
+
+            if (!$isReversed) {
+                $compliledHosts .= $hostRegex . '|';
+
+                continue;
+            }
+
+            $hostRegexs[] = \stripslashes($hostRegex);
+        }
+
+        return empty($hostRegexs) ? $compliledHosts . ('|' === $compliledHosts[-1] ? ')' : '') . '$/sDi' : $hostRegexs;
     }
 
     /**
