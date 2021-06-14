@@ -56,10 +56,8 @@ class RouteMatcher implements RouteMatcherInterface
             if (\file_exists($cacheFile)) {
                 $cachedRoutes = require $cacheFile;
 
-                if (!$this->routes->valid()) {
-                    $this->routes = new \ArrayIterator($cachedRoutes[3]);
-                    unset($cachedRoutes[3]);
-                }
+                $this->routes = new \ArrayIterator($cachedRoutes[3]);
+                unset($cachedRoutes[3]);
             }
 
             $this->dumper = $cachedRoutes ?? new Matchers\SimpleRouteDumper($cacheFile);
@@ -78,7 +76,10 @@ class RouteMatcher implements RouteMatcherInterface
             $resolvedPath = $requestUri->getPath();
         }
 
-        $resolvedPath = \substr($resolvedPath, 0, ('/' !== $resolvedPath && isset(Route::URL_PREFIX_SLASHES[$resolvedPath[-1]])) ? -1 : null);
+        if ('/' !== $resolvedPath && isset(Route::URL_PREFIX_SLASHES[$resolvedPath[-1]])) {
+            $resolvedPath = \substr($resolvedPath, 0, -1);
+        }
+
         [$matchedRoute, $matchedDomains, $variables] = $this->matchRoute($resolvedPath = \rawurldecode($resolvedPath));
 
         if ($matchedRoute instanceof Route) {
@@ -94,7 +95,7 @@ class RouteMatcher implements RouteMatcherInterface
 
             if (!empty($matchedDomains)) {
                 if (null === $hostVars = $this->compareDomain($matchedDomains, $requestUri)) {
-                    throw new UriHandlerException(\sprintf('Unfortunately current domain is not allowed on requested uri [%s]', $resolvedPath), 400);
+                    throw new UriHandlerException(\sprintf('Unfortunately current domain "%s" is not allowed on requested uri [%s]', $requestUri->getHost(), $resolvedPath), 400);
                 }
 
                 $variables = \array_replace($variables, $hostVars);
@@ -205,12 +206,14 @@ class RouteMatcher implements RouteMatcherInterface
         if (\is_array($dumper = $this->dumper)) {
             [$staticRoutes, $regexpList] = $dumper;
 
-            if (isset($staticRoutes[$resolvedPath])) {
-                $matchedRoute = $staticRoutes[$resolvedPath];
-
+            if ([null, [], []] !== $matchedRoute = $staticRoutes[$resolvedPath] ?? [null, [], []]) {
                 $route = $this->routes[$matchedRoute[0]];
                 $matchedRoute[0] = $route instanceof Route ? $route : Route::__set_state($route);
-            } elseif (1 === \preg_match($regexpList[0], $resolvedPath, $urlVariables)) {
+
+                return $matchedRoute;
+            }
+
+            if (1 === \preg_match($regexpList[0], $resolvedPath, $urlVariables)) {
                 $route = $this->routes[$routeId = $urlVariables['MARK']];
                 [$matchedDomains, $variables, $varKeys] = $regexpList[1][$routeId];
 
@@ -218,25 +221,25 @@ class RouteMatcher implements RouteMatcherInterface
                     $variables[$key] = $urlVariables[$index] ?? null;
                 }
 
-                $matchedRoute = [$route instanceof Route ? $route : Route::__set_state($route), $matchedDomains, $variables];
+                return [$route instanceof Route ? $route : Route::__set_state($route), $matchedDomains, $variables];
             }
 
-            return $matchedRoute ?? [null, [], []];
-        }
-
-        if ($this->dumper instanceof Matchers\SimpleRouteDumper) {
-            $this->dumper->dump($this->routes, $this->compiler);
+            return $matchedRoute;
         }
 
         foreach ($this->routes as $route) {
             $compiledRoute = $this->compiler->compile($route);
 
             // https://tools.ietf.org/html/rfc7231#section-6.5.5
-            if (1 !== \preg_match($compiledRoute->getRegex(), $resolvedPath, $uriVars)) {
-                continue;
+            if ($resolvedPath === $compiledRoute->getStatic() || 1 === \preg_match($compiledRoute->getRegex(), $resolvedPath, $uriVars)) {
+                try {
+                    return [$route, $compiledRoute->getHostsRegex(), ($uriVars ?? []) + $compiledRoute->getVariables()];
+                } finally {
+                    if ($dumper instanceof Matchers\SimpleRouteDumper) {
+                        $dumper->dump($this->routes, $this->compiler);
+                    }
+                }
             }
-
-            return [$route, $compiledRoute->getHostsRegex(), $uriVars + $compiledRoute->getVariables()];
         }
 
         return [null, [], []];
@@ -286,17 +289,21 @@ class RouteMatcher implements RouteMatcherInterface
     /**
      * Check if given request domain matches given route domain.
      *
-     * @param string[] $routeDomains
+     * @param string|string[] $routeDomains
      *
      * @return array<int|string,mixed>|null
      */
-    protected function compareDomain(array $routeDomains, UriInterface $requestUri): ?array
+    protected function compareDomain($routeDomains, UriInterface $requestUri): ?array
     {
         $hostAndPort = $requestUri->getHost();
 
         // Added port to host for matching ...
         if (null !== $requestUri->getPort()) {
             $hostAndPort .= ':' . $requestUri->getPort();
+        }
+
+        if (\is_string($routeDomains)) {
+            return 1 === \preg_match($routeDomains, $hostAndPort, $parameters) ? $parameters : null;
         }
 
         foreach ($routeDomains as $routeDomain) {

@@ -280,6 +280,8 @@ class Route
     {
         if (\is_string($value)) {
             $value = \rawurldecode($value);
+        } elseif (\is_numeric($value)) {
+            $value = (int) $value;
         }
 
         $this->defaults['_arguments'][$variable] = $value;
