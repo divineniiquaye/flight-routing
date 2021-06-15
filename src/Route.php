@@ -62,7 +62,7 @@ class Route
     public const URL_PATTERN = '#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u';
 
     /**
-     * Slashes supported on broswer when used.
+     * Slashes supported on browser when used.
      *
      * @var string[]
      */

@@ -184,29 +184,29 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      */
     private function computeHosts(array $hosts, bool $isReversed, array $requirements)
     {
-        $hostVariables = $hostRegexs = [];
-        $compliledHosts = '/^(?|';
+        $hostVariables = $hostRegexps = [];
+        $compliedHosts = '/^(?|';
 
         foreach ($hosts as $host) {
             [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $isReversed);
             $hostVariables += $hostVariable;
 
             if (1 === \count($hosts)) {
-                $compliledHosts = !$isReversed ? '/^' . $hostRegex : \stripslashes($hostRegex);
+                $compliedHosts = !$isReversed ? '/^' . $hostRegex : \stripslashes($hostRegex);
 
                 break;
             }
 
             if (!$isReversed) {
-                $compliledHosts .= $hostRegex . '|';
+                $compliedHosts .= $hostRegex . '|';
 
                 continue;
             }
 
-            $hostRegexs[] = \stripslashes($hostRegex);
+            $hostRegexps[] = \stripslashes($hostRegex);
         }
 
-        return empty($hostRegexs) ? $compliledHosts . ('|' === $compliledHosts[-1] ? ')' : '') . '$/sDi' : $hostRegexs;
+        return empty($hostRegexps) ? $compliedHosts . ('|' === $compliedHosts[-1] ? ')' : '') . '$/sDi' : $hostRegexps;
     }
 
     /**
@@ -244,9 +244,9 @@ class SimpleRouteCompiler implements RouteCompilerInterface
                 // optimize the regex with a possessive quantifier.
                 if (1 === $count && ('/' === $pattern[0] && '+' === @$replace[-1])) {
                     // This optimization cannot be applied when the next char is no real separator.
-                    \preg_match('#\{.*\}(.+?)#', $pattern, $nextSeperator);
+                    \preg_match('#\{.*\}(.+?)#', $pattern, $nextSeparator);
 
-                    $replace .= !(isset($nextSeperator[1]) && (1 === \count($names) || '{' === $nextSeperator[1])) ? '+' : '';
+                    $replace .= !(isset($nextSeparator[1]) && (1 === \count($names) || '{' === $nextSeparator[1])) ? '+' : '';
                 }
 
                 $replace = \sprintf('(?P<%s>%s)', $varName, $replace);

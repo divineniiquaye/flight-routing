@@ -176,9 +176,10 @@ class RouteMatcher implements RouteMatcherInterface
         // Fetch and merge all possible parameters + variables keys + route defaults ...
         $parameters = $this->fetchOptions($parameters, \array_keys($compiledRoute->getVariables()));
         $parameters = $parameters + $route->get('defaults') + $compiledRoute->getVariables();
+        $hostRegexps = $compiledRoute->getHostsRegex();
 
-        if (1 === \count($hostRegexs = $compiledRoute->getHostsRegex())) {
-            $host = $hostRegexs[0];
+        if (\is_string($hostRegexps) || (\is_array($hostRegexps) && 1 === \count($hostRegexps))) {
+            $host = $hostRegexps;
         }
 
         if (!empty($schemes = $route->get('schemes'))) {

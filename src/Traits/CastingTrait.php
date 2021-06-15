@@ -87,7 +87,7 @@ trait CastingTrait
     }
 
     /**
-     * @internal skip throwing an exception and return exisitng $controller
+     * @internal skip throwing an exception and return existing $controller
      *
      * @param callable|object|string|string[] $controller
      *
