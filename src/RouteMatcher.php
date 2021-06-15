@@ -54,9 +54,10 @@ class RouteMatcher implements RouteMatcherInterface
 
         if (!empty($cacheFile)) {
             if (\file_exists($cacheFile)) {
-                $cachedRoutes = require $cacheFile;
-
+                $cachedRoutes = include $cacheFile;
                 $this->routes = new \ArrayIterator($cachedRoutes[3]);
+
+                // Remove routes ...
                 unset($cachedRoutes[3]);
             }
 

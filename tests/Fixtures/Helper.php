@@ -20,18 +20,18 @@ namespace Flight\Routing\Tests\Fixtures;
 use Flight\Routing\Route;
 
 /**
- * Helper
+ * Helper.
  */
 class Helper
 {
     /**
      * @param iterable<int,Route> $routes
      *
-     * @return array<int,array<string,mixed>>
+     * @return array<int,array<string,mixed>>|array<string,mixed>
      */
-    public static function routesToArray(iterable $routes): array
+    public static function routesToArray(iterable $routes, bool $first = false): array
     {
-        $result = $arguments = [];
+        $result = [];
 
         foreach ($routes as $route) {
             if (\is_object($controller = $route->getController())) {
@@ -40,22 +40,17 @@ class Helper
 
             $defaults = $route->getDefaults();
 
-            if (isset($defaults['_arguments'])) {
-                $arguments = $defaults['_arguments'];
-                unset($defaults['_arguments']);
-            }
-
-            $item                = [];
-            $item['name']        = $route->getName();
-            $item['path']        = $route->getPath();
-            $item['domain']      = $route->getDomain();
-            $item['methods']     = \array_keys($route->getMethods());
-            $item['handler']     = $controller;
+            $item = [];
+            $item['name'] = $route->getName();
+            $item['path'] = $route->getPath();
+            $item['domain'] = $route->getDomain();
+            $item['methods'] = \array_keys($route->getMethods());
+            $item['handler'] = $controller;
             $item['middlewares'] = [];
-            $item['schemes']     = \array_keys($route->getSchemes());
-            $item['defaults']    = $defaults;
-            $item['patterns']    = $route->getPatterns();
-            $item['arguments']   = $arguments;
+            $item['schemes'] = \array_keys($route->getSchemes());
+            $item['defaults'] = \array_diff_key($defaults, ['_arguments' => true]);
+            $item['patterns'] = $route->getPatterns();
+            $item['arguments'] = $defaults['_arguments'] ?? [];
 
             foreach ($route->getMiddlewares() as $middleware) {
                 $classname = \is_string($middleware) ? $middleware : \get_class($middleware);
@@ -65,6 +60,10 @@ class Helper
                 }
 
                 $item['middlewares'][] = $classname;
+            }
+
+            if ($first) {
+                return $item;
             }
 
             $result[] = $item;
@@ -83,7 +82,7 @@ class Helper
         $result = [];
 
         foreach ($routes as $route) {
-            $result[] = $route->getName();
+            $result[] = $route instanceof Route ? $route->getName() : $route['name'];
         }
 
         return $result;

@@ -114,7 +114,7 @@ EOF;
      *
      * @param mixed $value
      */
-    private static function export($value, int $level = 2): string
+    private static function export($value): string
     {
         if (null === $value) {
             return 'null';

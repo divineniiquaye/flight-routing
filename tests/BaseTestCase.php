@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Matchers\SimpleRouteMatcher;
 use Flight\Routing\Router;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
@@ -58,7 +57,7 @@ class BaseTestCase extends TestCase
      * @param string                               $method  — HTTP method
      * @param string|UriInterface                  $uri     — URI
      * @param array<string,string>                 $headers — Request headers
-     * @param null|resource|StreamInterface|string $body    — Request body
+     * @param resource|StreamInterface|string|null $body    — Request body
      *
      * @return ServerRequestFactoryInterface
      */
@@ -73,19 +72,15 @@ class BaseTestCase extends TestCase
 
     /**
      * @param null|class-string       $matcher
-     * @param null|InvokerInterface   $resolver
-     * @param null|ContainerInterface $container
-     *
-     * @return Router
+     * @param ContainerInterface|null $container
      */
-    public function getRouter(
-        ?string $matcher = null,
-        ?InvokerInterface $resolver = null,
-        bool $profiler = false
-    ): Router {
-        $router = new Router($this->getResponseFactory(), $this->getUriFactory(), $resolver);
+    public function getRouter(?InvokerInterface $resolver = null, bool $profiler = false): Router
+    {
+        $router = new Router($this->getResponseFactory(), null, null, $profiler);
 
-        $router->setOptions(['matcher_class' => $matcher ?? SimpleRouteMatcher::class, 'debug' => $profiler]);
+        if (null !== $resolver) {
+            $router->setHandlerResolver([$resolver, 'call']);
+        }
 
         return $router;
     }
