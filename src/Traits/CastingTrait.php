@@ -118,7 +118,7 @@ trait CastingTrait
      *
      * @throws InvalidControllerException if invalid response stream contents
      *
-     * @return ResponseInterface|string
+     * @return ResponseInterface|string|false
      */
     private function castHandler(ServerRequestInterface $request, ?callable $handlerResolver, $handler)
     {
@@ -126,35 +126,19 @@ trait CastingTrait
 
         $response = null !== $handlerResolver ? $handlerResolver($handler, $this->arguments) : $this->resolveHandler($handler);
 
-        // If response was returned using an echo expression ...
-        $echoedResponse = \ob_get_clean();
-
-        if (!$response instanceof ResponseInterface) {
-            switch (true) {
-                case $response instanceof RequestHandlerInterface:
-                    return $response->handle($request);
-
-                case (null === $response || true === $response) && false !== $echoedResponse:
-                    $response = $echoedResponse;
-
-                    break;
-
-                case \is_string($response) || \is_int($response):
-                    $response = (string) $response;
-
-                    break;
-
-                case \is_array($response) || $response instanceof \JsonSerializable || $response instanceof \Traversable:
-                    $response = \json_encode($response);
-
-                    break;
-
-                default:
-                    throw new InvalidControllerException(\sprintf('Response type for route "%s" is not allowed in PSR7 response body stream.', $this->name));
-            }
+        if ($response instanceof ResponseInterface) {
+            $responseStream = $response;
+        } elseif ($response instanceof RequestHandlerInterface) {
+            $responseStream = $response->handle($request);
+        } elseif (\is_string($response) && (\is_int($response) || \is_float($response))) {
+            $responseStream = (string) $response;
+        } elseif (\is_array($response) || $response instanceof \JsonSerializable || $response instanceof \Traversable) {
+            $responseStream = \json_encode($response, \PHP_VERSION_ID >= 70300 ? \JSON_THROW_ON_ERROR : 0);
+        } else {
+            $responseStream = \ob_get_clean();
         }
 
-        return $result ?? $response;
+        return $responseStream ?? false;
     }
 
     /**

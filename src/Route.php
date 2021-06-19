@@ -141,16 +141,24 @@ class Route
     {
         $handler = $this->controller;
 
+        if ($handler instanceof ResponseInterface) {
+            return $handler;
+        }
+
         if ($handler instanceof RequestHandlerInterface) {
             return $handler->handle($request);
         }
 
-        if (!$handler instanceof ResponseInterface) {
-            if ($handler instanceof Handlers\ResourceHandler) {
-                $handler = $handler(\strtolower($request->getMethod()));
-            }
+        if ($handler instanceof Handlers\ResourceHandler) {
+            $handler = $handler(\strtolower($request->getMethod()));
+        }
 
-            $handler = $this->castHandler($request, $handlerResolver, $handler);
+        $handler = $this->castHandler($request, $handlerResolver, $handler);
+
+        if (!$handler) {
+            throw new InvalidControllerException(
+                \sprintf('Response type of "%s" for route "%s" is not allowed in PSR7 response body stream.', \get_debug_type($handler), $this->name)
+            );
         }
 
         return $handler;
