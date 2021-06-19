@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Route;
+use Flight\Routing\{GeneratedUri, RequestContext, Route};
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -32,6 +32,11 @@ interface RouteMatcherInterface
      * Marshals a route result based on the results of matching URL from set of routes.
      */
     public function match(RequestContext $requestContext): ?Route;
+
+    /**
+     * @see RouteMatcherInterface::match() implementation
+     */
+    public function matchRequest(ServerRequestInterface $request): ?Route;
 
     /**
      * Generate a URI from the named route.
