@@ -53,12 +53,9 @@ interface RouteMatcherInterface
      *                                                  router for purposes of generating a URI;
      *                                                  takes precedence over options
      *                                                  present in route used to generate URI
-     * @param array<int|string,int|string> $queryParams Optional query string parameters
      *
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
-     *
-     * @return string of fully qualified URL for named route
      */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = []): string;
+    public function generateUri(string $routeName, array $parameters = []): GeneratedUri;
 }
