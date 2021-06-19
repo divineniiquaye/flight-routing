@@ -31,7 +31,7 @@ interface RouteMatcherInterface
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
      */
-    public function match(ServerRequestInterface $request): ?Route;
+    public function match(RequestContext $requestContext): ?Route;
 
     /**
      * Generate a URI from the named route.
