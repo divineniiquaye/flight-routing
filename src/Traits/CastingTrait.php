@@ -65,23 +65,23 @@ trait CastingTrait
         }
 
         $pattern = \preg_replace_callback(Route::RCA_PATTERN, function (array $matches): string {
-            if (isset($matches[1])) {
-                $this->schemes[$matches[1]] = true;
-            }
+            $this->schemes = $matches[1] ?? '';
 
-            if (isset($matches[2])) {
+            if (!empty($matches[2])) {
                 $this->domain[] = $matches[2];
             }
 
-            // Match controller from route pattern.
-            $handler = $matches[4] ?? $this->controller;
+            if (!empty($matches[5])) {
+                // Match controller from route pattern.
+                if (!empty($handler = $this->controller ?? $matches[4])) {
+                    $handler = [$handler, $matches[5]];
+                }
 
-            if (isset($matches[5])) {
-                $this->controller = !empty($handler) ? [$handler, $matches[5]] : $matches[5];
+                $this->controller = $handler ?? $matches[5];
             }
 
             return $matches[3];
-        }, $route, -1, $count, \PREG_UNMATCHED_AS_NULL);
+        }, $route);
 
         return $pattern ?? $route;
     }
