@@ -18,10 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
-use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -29,7 +28,7 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodInterface, RequestHandlerInterface
+class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodInterface, MiddlewareInterface
 {
     /**
      * Standard HTTP methods for browser requests.
@@ -50,58 +49,18 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /** @var MiddlewarePipeInterface */
     private $pipeline;
 
-    /** @var ResponseFactoryInterface */
-    private $responseFactory;
-
     /** @var DebugRoute|null */
     private $debug;
 
-    /** @var null|callable(mixed,array) */
-    private $handlerResolver = null;
-
-    public function __construct(
-        ResponseFactoryInterface $responseFactory,
-        ?RouteCompilerInterface $compiler = null,
-        bool $debug = false
-    ) {
+    public function __construct(RouteCollection $collection, ?RouteCompilerInterface $compiler = null)
+    {
         parent::__construct($collection->getIterator(), $compiler);
 
         // Add Middleware support.
         $this->pipeline = new MiddlewarePipe();
-        $this->responseFactory = $responseFactory;
 
         // Enable routes profiling ...
-        $this->debug = $debug ? new DebugRoute() : null;
-    }
-
-    /**
-     * Set the route handler resolver.
-     *
-     * @param null|callable(mixed:$handler,array:$arguments) $handlerResolver
-     */
-    public function setHandlerResolver(?callable $handlerResolver): void
-    {
-        $this->handlerResolver = $handlerResolver;
-    }
-
-    /**
-     * Adds the given route(s) to the router.
-     *
-     * @param Route ...$routes
-     */
-    public function addRoute(Route ...$routes): void
-    {
-        foreach ($routes as $route) {
-            if (null === $name = $route->get('name')) {
-                $route->bind($name = $route->generateRouteName(''));
-            }
-
-            if (null !== $this->debug) {
-                $this->debug->addProfile($name, $route);
-            }
-
-            $this->routes[] = $route;
-        }
+        $this->debug = $collection->getDebugRoute();
     }
 
     /**
@@ -127,9 +86,9 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /**
      * {@inheritdoc}
      */
-    public function match(ServerRequestInterface $request): ?Route
+    public function match(RequestContext $requestContext): ?Route
     {
-        $route = parent::match($request);
+        $route = parent::match($requestContext);
 
         if ($route instanceof Route && null !== $this->debug) {
             $this->debug->setMatched($route->get('name'));
@@ -141,10 +100,9 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /**
      * {@inheritdoc}
      */
-    public function handle(ServerRequestInterface $request): ResponseInterface
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $route = $this->match($request);
-        $handler = new RouteHandler($this->responseFactory, $this->handlerResolver);
+        $route = $this->matchRequest($request);
 
         if (null !== $route && !empty($routeMiddlewares = $route->get('middlewares'))) {
             $this->pipe(...$routeMiddlewares);

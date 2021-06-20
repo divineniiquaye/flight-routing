@@ -17,28 +17,29 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\CompiledRoute;
+use Flight\Routing\Exceptions\{InvalidControllerException, MethodNotAllowedException, UriHandlerException};
 use Flight\Routing\Handlers\ResourceHandler;
-use Flight\Routing\Route;
+use Flight\Routing\{RequestContext, Route};
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 trait CastingTrait
 {
     /** @var string|null */
-    private $name;
+    private $name = null;
 
     /** @var string */
     private $path;
 
-    /** @var array<string,bool> */
-    private $methods = [];
+    /** @var string */
+    private $methods;
 
     /** @var string[] */
     private $domain = [];
 
-    /** @var array<string,bool> */
-    private $schemes = [];
+    /** @var string */
+    private $schemes = '';
 
     /** @var array<string,mixed> */
     private $defaults = [];
@@ -51,6 +52,41 @@ trait CastingTrait
 
     /** @var mixed */
     private $controller;
+
+    /**
+     * Match the.
+     */
+    public function match(RequestContext $context, CompiledRoute $compiledRoute): ?Route
+    {
+        $schemesRegex = '(?:' . (empty($this->schemes) ? 'https?' : $this->schemes . '|(?P<r_uri_scheme>[a-z]+)') . ')';
+        $routeRegex = '#^(?:' . $this->methods . '|([A-Z]+))' . $schemesRegex . (string) $compiledRoute . '$#Ju';
+
+        \preg_match($routeRegex, (string) $context, $routeVars, \PREG_UNMATCHED_AS_NULL);
+
+        if (empty($routeVars)) {
+            return null;
+        }
+
+        if (isset($routeVars[1])) {
+            throw new MethodNotAllowedException(\explode('|', $this->methods), $context->getPathInfo(), $routeVars[1]);
+        }
+
+        if (isset($routeVars['r_uri_scheme'])) {
+            throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $routeVars[2], $context->getPathInfo()), 400);
+        }
+
+        $variables = $routeVars + $compiledRoute->getVariables();
+
+        foreach ($variables as $key => $value) {
+            if (\is_int($key)) {
+                continue;
+            }
+
+            $this->argument($key, $value);
+        }
+
+        return $this;
+    }
 
     /**
      * Locates appropriate route by name. Support dynamic route allocation using following pattern:
@@ -217,7 +253,7 @@ trait CastingTrait
         }
 
         if (isset(Route::URL_PREFIX_SLASHES[$prefix[-1]], Route::URL_PREFIX_SLASHES[$uri[0]])) {
-            return $prefix . \ltrim($uri, implode('', Route::URL_PREFIX_SLASHES));
+            return $prefix . \ltrim($uri, \implode('', Route::URL_PREFIX_SLASHES));
         }
 
         // browser supported slashes ...

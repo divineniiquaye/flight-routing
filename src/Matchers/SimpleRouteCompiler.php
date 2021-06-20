@@ -85,25 +85,20 @@ class SimpleRouteCompiler implements RouteCompilerInterface
     public function compile(Route $route, bool $reversed = false): CompiledRoute
     {
         $requirements = $this->getRequirements($route->get('patterns'));
-        $routePath = $route->get('path');
-
-        if ('/' !== $routePath[0]) {
-            $routePath = '/' . $routePath;
-        }
 
         if (!empty($hosts = $route->get('domain'))) {
             $hostsRegex = $this->computeHosts($hosts, $reversed, $requirements);
         }
 
-        [$pathRegex, $pathVariable] = '/' === $routePath
-            ? [(!$reversed ? '\\' : '') . '/', []] // making homepage url much faster ...
+        [$pathRegex, $pathVariable] = '' === ($routePath = \ltrim($route->get('path'), '/'))
+            ? [$routePath, []] // making homepage url much faster ...
             : $this->compilePattern($requirements, $routePath, $reversed);
 
         // Resolves $pathRegex and host and pattern variables.
-        $pathRegex = !$reversed ? '/^' . $pathRegex . '$/sDu' : \stripslashes($pathRegex);
+        $pathRegex = !$reversed ? '\\/' . $pathRegex : \stripslashes('/' . \str_replace('?', '', $pathRegex));
         $variables = isset($hostVariables) ? $hostVariables += $pathVariable : $pathVariable;
 
-        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables, empty($pathVariable) ? $routePath : null);
+        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables, empty($pathVariable) ? '/' .$routePath : null);
     }
 
     /**
@@ -163,16 +158,15 @@ class SimpleRouteCompiler implements RouteCompilerInterface
         }
 
         // Match all variables enclosed in "{}" and iterate over them...
-        \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
+        if (false !== \strpos($uriPattern, '{')) {
+            \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
 
-        if (!empty($matches)) {
             [$variables, $replaces] = $this->computePattern($matches, $uriPattern, $reversed, $requirements);
+
+            return [\strtr($uriPattern, !$reversed ? self::PATTERN_REPLACES + $replaces : $replaces), $variables];
         }
 
-        // Resolves route pattern place holders ...
-        $replaces = ($replaces ?? []) + (!$reversed ? self::PATTERN_REPLACES : ['?' => '']);
-
-        return [\strtr($uriPattern, $replaces), $variables ?? []];
+        return [!$reversed ? $this->filterSegment($uriPattern) : $uriPattern, []];
     }
 
     /**
@@ -185,7 +179,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
     private function computeHosts(array $hosts, bool $isReversed, array $requirements)
     {
         $hostVariables = $hostRegexps = [];
-        $compliedHosts = '/^(?|';
+        $compliedHosts = '(?|';
 
         foreach ($hosts as $host) {
             [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $isReversed);
@@ -206,7 +200,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             $hostRegexps[] = \stripslashes($hostRegex);
         }
 
-        return empty($hostRegexps) ? $compliedHosts . ('|' === $compliedHosts[-1] ? ')' : '') . '$/sDi' : $hostRegexps;
+        return empty($hostRegexps) ? $compliedHosts . ('|' === $compliedHosts[-1] ? ')' : '') : $hostRegexps;
     }
 
     /**
@@ -229,13 +223,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             $this->filterVariableName($varName, $pattern);
 
             if (\array_key_exists($varName, $variables)) {
-                throw new UriHandlerException(
-                    \sprintf(
-                        'Route pattern "%s" cannot reference variable name "%s" more than once.',
-                        $pattern,
-                        $varName
-                    )
-                );
+                throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $pattern, $varName));
             }
 
             if (!$isReversed) {
@@ -270,11 +258,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
         // variable would not be usable as a Controller action argument.
         if (1 === \preg_match('/^\d/', $varName)) {
             throw new UriHandlerException(
-                \sprintf(
-                    'Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.',
-                    $varName,
-                    $pattern
-                )
+                \sprintf('Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.', $varName, $pattern)
             );
         }
 
@@ -297,17 +281,13 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      */
     private function prepareSegment(string $name, array $requirements): string
     {
-        if (!isset($requirements[$name])) {
+        if (null === $segment = $requirements[$name] ?? null) {
             return self::DEFAULT_SEGMENT;
         }
 
-        if (\is_array($requirements[$name])) {
-            $values = \array_map([$this, 'filterSegment'], $requirements[$name]);
-
-            return \implode('|', $values);
-        }
-
-        return $this->filterSegment((string) $requirements[$name]);
+        return \is_array($segment)
+            ? \implode('|', \array_map([$this, 'filterSegment'], $segment))
+            : $this->filterSegment((string) $segment);
     }
 
     private function filterSegment(string $segment): string
