@@ -62,10 +62,9 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     public function __construct(
         ResponseFactoryInterface $responseFactory,
         ?RouteCompilerInterface $compiler = null,
-        ?string $cacheFile = null,
         bool $debug = false
     ) {
-        parent::__construct(new \ArrayIterator(), $compiler, $cacheFile);
+        parent::__construct($collection->getIterator(), $compiler);
 
         // Add Middleware support.
         $this->pipeline = new MiddlewarePipe();
