@@ -73,11 +73,9 @@ trait CastingTrait
 
             if (!empty($matches[5])) {
                 // Match controller from route pattern.
-                if (!empty($handler = $this->controller ?? $matches[4])) {
-                    $handler = [$handler, $matches[5]];
-                }
+                $handler = $this->controller ?? $matches[4];
 
-                $this->controller = $handler ?? $matches[5];
+                $this->controller = !empty($handler) ? [$handler, $matches[5]] : $matches[5];
             }
 
             return $matches[3];
