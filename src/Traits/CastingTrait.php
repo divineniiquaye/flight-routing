@@ -124,7 +124,8 @@ trait CastingTrait
     {
         \ob_start(); // Start buffering response output
 
-        $response = null !== $handlerResolver ? $handlerResolver($handler, $this->arguments) : $this->resolveHandler($handler);
+        $arguments = $this->defaults['_arguments'] ?? [];
+        $response = null !== $handlerResolver ? $handlerResolver($handler, $arguments) : $this->resolveHandler($handler, $arguments);
 
         if ($response instanceof ResponseInterface) {
             $responseStream = $response;
@@ -134,21 +135,20 @@ trait CastingTrait
             $responseStream = (string) $response;
         } elseif (\is_array($response) || $response instanceof \JsonSerializable || $response instanceof \Traversable) {
             $responseStream = \json_encode($response, \PHP_VERSION_ID >= 70300 ? \JSON_THROW_ON_ERROR : 0);
-        } else {
-            $responseStream = \ob_get_clean();
         }
 
-        return $responseStream ?? false;
+        return $responseStream ?? \ob_get_clean();
     }
 
     /**
      * Auto-configure route handler parameters.
      *
      * @param mixed $handler
+     * @param array<string,mixed> $arguments
      *
      * @return mixed
      */
-    private function resolveHandler($handler)
+    private function resolveHandler($handler, array $arguments)
     {
         if ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
             $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs();
@@ -160,7 +160,7 @@ trait CastingTrait
             $handlerRef = new \ReflectionClass($handler);
 
             if ($handlerRef->hasMethod('__invoke')) {
-                return $this->resolveHandler([$handlerRef->newInstance(), '__invoke']);
+                return $this->resolveHandler([$handlerRef->newInstance(), '__invoke'], $arguments);
             }
 
             if (null !== $constructor = $handlerRef->getConstructor()) {
@@ -173,7 +173,6 @@ trait CastingTrait
         }
 
         $parameters = [];
-        $arguments = $this->defaults['_arguments'] ?? [];
 
         foreach ($constructorParameters ?? $handlerRef->getParameters() as $index => $parameter) {
             $typeHint = $parameter->getType();
