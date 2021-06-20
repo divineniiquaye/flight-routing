@@ -24,11 +24,8 @@ use Psr\Http\Message\UriInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RequestContext implements \Stringable
+class RequestContext
 {
-    /** @var string */
-    private $pathInfo;
-
     /** @var string */
     private $method;
 
@@ -36,36 +33,28 @@ class RequestContext implements \Stringable
     private $uri;
 
     /**
-     * @param string $pathInfo should be the PATH_INFO from server request
+     * @param string $pathInfo should be the PATH_INFO from server request,
+     *                         this resolves request path to match sub-directory or /index.php/path
      * @param string $method   the HTTP request method
      */
     public function __construct(string $pathInfo, string $method, UriInterface $uri)
     {
-        $this->pathInfo = $pathInfo;
-        $this->method = $method;
-        $this->uri = $uri;
-    }
+        // Resolve request path to match sub-directory or /index.php/path
+        if (empty($pathInfo)) {
+            $pathInfo = $uri->getPath();
+        }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function __toString()
-    {
-        return $this->method . $this->uri->getScheme() . '://' . $this->getHost() . $this->getPathInfo();
+        if ('/' !== $pathInfo && isset(Route::URL_PREFIX_SLASHES[$pathInfo[-1]])) {
+            $pathInfo = \substr($pathInfo, 0, -1);
+        }
+
+        $this->method = $method;
+        $this->uri = $uri->withPath($pathInfo);
     }
 
     public function getPathInfo(): string
     {
-        // Resolve request path to match sub-directory or /index.php/path
-        if (empty($resolvedPath = $this->pathInfo)) {
-            $resolvedPath = $this->uri->getPath();
-        }
-
-        if ('/' !== $resolvedPath && isset(Route::URL_PREFIX_SLASHES[$resolvedPath[-1]])) {
-            $resolvedPath = \substr($resolvedPath, 0, -1);
-        }
-
-        return $resolvedPath;
+        return $this->uri->getPath();
     }
 
     public function getMethod(): string
