@@ -55,9 +55,6 @@ use Biurad\Annotations\LoaderInterface;
  */
 final class RouteCollection implements \IteratorAggregate, \Countable
 {
-    /** @var string|null */
-    private $namePrefix;
-
     /** @var Route[] */
     private $routes = [];
 
@@ -115,7 +112,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function getIterator(): \ArrayIterator
     {
-        return $this->iterable ?? $this->iterable = new \ArrayIterator($this->doMerge('', new static()));
+        return $this->iterable ?? $this->iterable = $this->doMerge('', new \ArrayIterator());
     }
 
     /**
@@ -127,7 +124,6 @@ final class RouteCollection implements \IteratorAggregate, \Countable
 
         foreach ($annotations as $annotation) {
             if ($annotation instanceof self) {
-                $annotation->namePrefix = '';
                 $this->routes[] = $annotation;
             }
         }
@@ -192,9 +188,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
             throw new \LogicException(\sprintf('The %s() method takes either a "%s" instance or a callable of its self.', __METHOD__, __CLASS__));
         }
 
-        $this->routes[] = $controllers;
+        if (!empty($name)) {
+            $this->routes[$name] = $controllers;
+        } else {
+            $this->routes[] = $controllers;
+        }
 
-        $controllers->namePrefix = $name;
         $controllers->parent = $this;
 
         return $controllers;
@@ -354,32 +353,39 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * @return Route[]
+     * @return ArrayIterator<int,Route>
      */
-    private function doMerge(string $prefix, self $routes): array
+    private function doMerge(string $prefix, \ArrayIterator $routes): \ArrayIterator
     {
-        $defaultUnnamedIndex = 0;
+        $unnamedRoutes = [];
 
         /** @var Route|RouteCollection $route */
-        foreach ($this->routes as $route) {
+        foreach ($this->routes as $namePrefix => $route) {
             if ($route instanceof self) {
-                $route->doMerge($prefix . $route->namePrefix, $routes);
+                if (is_string($namePrefix)) {
+                    $prefix .= $namePrefix;
+                }
+                $route->doMerge($prefix, $routes);
 
                 continue;
             }
 
             if (null === $name = $route->get('name')) {
-                $name = $base = $route->generateRouteName('');
-
-                while ($routes->find($name)) {
-                    $name = $base . '_' . ++$defaultUnnamedIndex;
+                $name = $route->generateRouteName('');
+    
+                if (isset($unnamedRoutes[$name])) {
+                    $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
+                } else {
+                    $unnamedRoutes[$name] = 0;
                 }
             }
 
-            $routes->routes[] = $route->bind($prefix . $name);
+            $routes->append($route = $route->bind($prefix . $name));
         }
+
+        // removed old stack to free memory and cache as iterable.
         $this->routes = [];
 
-        return $routes->routes;
+        return $routes;
     }
 }
