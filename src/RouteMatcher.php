@@ -41,28 +41,13 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var \Iterator<int,Route>|\Iterator<int,array> */
     protected $routes = [];
 
-    /** @var Matchers\SimpleRouteDumper|array|null */
-    private $dumper = null;
-
     /** @var RouteCompilerInterface */
     private $compiler;
 
-    public function __construct(\Iterator $collection, ?RouteCompilerInterface $compiler = null, string $cacheFile = null)
+    public function __construct(\Iterator $collection, ?RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
         $this->routes = $collection;
-
-        if (!empty($cacheFile)) {
-            if (\file_exists($cacheFile)) {
-                $cachedRoutes = include $cacheFile;
-                $this->routes = new \ArrayIterator($cachedRoutes[3]);
-
-                // Remove routes ...
-                unset($cachedRoutes[3]);
-            }
-
-            $this->dumper = $cachedRoutes ?? new Matchers\SimpleRouteDumper($cacheFile);
-        }
     }
 
     /**
