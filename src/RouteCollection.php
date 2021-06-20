@@ -67,6 +67,14 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     /** @var \ArrayIterator|null */
     private $iterable = null;
 
+    /** @var DebugRoute|null */
+    private $profiler;
+
+    public function __construct(bool $debug = false)
+    {
+        $this->profiler = $debug ? new DebugRoute() : null;
+    }
+
     /**
      * @param string   $method
      * @param string[] $arguments
@@ -335,6 +343,14 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
+     * If routes was debugged, return the profiler.
+     */
+    public function getDebugRoute(): ?DebugRoute
+    {
+        return $this->profiler;
+    }
+
+    /**
      * Bind route with collection.
      */
     private function resolveWith(Route $route): void
@@ -381,6 +397,10 @@ final class RouteCollection implements \IteratorAggregate, \Countable
             }
 
             $routes->append($route = $route->bind($prefix . $name));
+
+            if (null !== $this->profiler) {
+                $this->profiler->addProfile($prefix . $name, $route);
+            }
         }
 
         // removed old stack to free memory and cache as iterable.
