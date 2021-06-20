@@ -81,6 +81,7 @@ class Route
      *
      * @param string          $pattern The route pattern
      * @param string|string[] $methods The route HTTP methods. Multiple methods can be supplied as an array
+     *                                 or string combined with `|`.
      * @param mixed           $handler The PHP class, object or callable that returns the response when matched
      */
     public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
@@ -89,8 +90,10 @@ class Route
         $this->path = $this->castRoute($pattern);
 
         if (!empty($methods)) {
-            $this->methods = \array_change_key_case(\array_fill_keys((array) $methods, true), \CASE_UPPER);
+            $method = \is_string($methods) ? \strtoupper($methods) : \implode('|', \array_map('strtoupper', $methods));
         }
+
+        $this->methods = $method ?? '';
     }
 
     /**
@@ -318,9 +321,7 @@ class Route
      */
     public function method(string ...$methods): self
     {
-        foreach ($methods as $method) {
-            $this->methods[\strtoupper($method)] = true;
-        }
+        $this->methods .= (!empty($this->methods) ? '|' : '') . \implode('|', \array_map('strtoupper', $methods));
 
         return $this;
     }
@@ -336,7 +337,7 @@ class Route
             \preg_match(Route::URL_PATTERN, $host, $matches, \PREG_UNMATCHED_AS_NULL);
 
             if (isset($matches[1])) {
-                $this->schemes[$matches[1]] = true;
+                $this->schemes .= (!empty($this->schemes) ? '|' : '') . $matches[1];
             }
 
             if (isset($matches[2])) {
@@ -354,9 +355,7 @@ class Route
      */
     public function scheme(string ...$schemes): self
     {
-        foreach ($schemes as $scheme) {
-            $this->schemes[$scheme] = true;
-        }
+        $this->schemes .= (!empty($this->schemes) ? '|' : '') . \implode('|', \array_map('strtolower', $schemes));
 
         return $this;
     }
@@ -385,6 +384,10 @@ class Route
      */
     public function get(string $name)
     {
+        if (\in_array($name, ['methods', 'schemes'], true)) {
+            return \explode('|', $this->{$name});
+        }
+
         if (\property_exists(__CLASS__, $name)) {
             return $this->{$name};
         }
@@ -392,8 +395,8 @@ class Route
         if ('all' === $name) {
             return [
                 'controller' => $this->controller,
-                'methods' => $this->methods,
-                'schemes' => $this->schemes,
+                'methods' => \explode('|', $this->methods),
+                'schemes' => \explode('|', $this->schemes),
                 'domain' => $this->domain,
                 'name' => $this->name,
                 'path' => $this->path,
@@ -427,9 +430,7 @@ class Route
 
     public function generateRouteName(string $prefix): string
     {
-        $methods = \implode('_', \array_keys($this->methods)) . '_';
-
-        $routeName = $methods . $prefix . $this->path;
+        $routeName = $this->methods . '_' . $prefix . $this->path;
         $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
         $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 
