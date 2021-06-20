@@ -102,92 +102,103 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
 </configuration>
 ```
 
-### Configuration
+### Getting Started
 
 ---
 
-Please note that the following documentation only covers how to use this router in a project without an existing framework using [DefaultMatcher] class. If you are using a framework or/and a different `Flight\Routing\Interfaces\RouteMatcherInterface` class instance in your project, the implementation varies.
+This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http-galaxy] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware.
 
-It's not required, but you can set `namespace for classes eg: 'Demo\\Controllers\\';` to prefix all routes with the namespace to your controllers. This will simplify things a bit, as you won't have to specify the namespace for your controllers on each route.
-
-This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http-galaxy] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware
-
-run this in command line if the package has not be added.
+>run this in command line if the package has not be added.
 
 ```bash
 composer require biurad/http-galaxy
 ```
 
-Flight routing allows you to call any controller action with namespace using `*<namespace\controller@action>` pattern, also you have have domain on route pattern using `//` followed by the host and path, or add a scheme to the pattern.
+Route supports adding a scheme, host, pattern and handler all in one. a scheme must end with **:**, while a domain must begin with **//** e.g. `http://biurad.com/blog/{slug}*<App\Controller\BlogController@indexAction>`. Incase a class name or class object is passed into route's handler parameter, you can specify and callable method as `*<indexAction>` or  just route to a function using same syntax as callable method.
 
-For dispatching a router, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
+For dispatching a route handler response to the browser, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
-```php
-use Flight\Routing\{Router, RouteCollection};
-use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
-use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
+>run this in command line if the package has not be added.
 
-$collector = new RouteCollection();
-
-// Add routes
-$route = $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
-
-// Incase you want to name the route use `bind` method
-$route->bind('phpinfo');
-
-// Need to have an idea about php before using this dependency, though it easy to use.
-$psr17Factory = new Psr17Factory();
-
-$router = new Router($psr17Factory, $psr17Factory);
-
-/**
- * The default namespace for route-callbacks, so we don't have to specify it each time.
- * Can be overwritten by using the namespace config option on your routes.
- */
-$router->setOptions(['namespace' => 'Demo\\Controllers\\']);
-
-// Incase you working with API and need a response served on HTTP OPTIONS request method.
-$router->setOptions(['options_skip' => true]);
-
-// All router configurations should be set before adding routes
-$router->addRoute(...$collector->getRoutes());
-
-// Start the routing
-(new SapiStreamEmitter())->emit($router->handle(Psr17Factory::fromGlobalRequest()));
+```bash
+composer require laminas/laminas-httphandlerrunner
 ```
 
-> **NOTE**: If your handler return type isn't instance of ResponseInterface, FLight Routing will choose the best content-type for http response. Returning strings can be a bit of conflict for Flight routing, so it fallback is "text/html", a plain text where isn't xml or doesn't have a <html>...</html> wrapped around contents will return a content-type of text/plain.
+```php
+use App\Controller\BlogController;
+use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
+use Flight\Routing\{RouteCollection, RouteMatch};
 
-> The Route class can accept a handler of type `Psr\Http\Server\RequestHandlerInterface`, callable,invocable class, or array of [class, method]. Simply pass a class or a binding name instead of a real object if you want it to be constructed on demand.
+$routes = new RouteCollection();
+$routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
+
+$psr17Factory = new Psr17Factory();
+$matcher = new RouteMatcher($routes->getIterator());
+
+// Routing can match routes with incoming request
+$route = $matcher->matchRequest($psr17Factory->fromGlobalRequest());
+// Should return a route class object, if request is made on a path like: /blog/lorem-ipsum
+
+// Routing can also generate URLs for a given route
+$url = $matcher->generateUri('blog_show', ['slug' => 'my-blog-post']);
+// $url = '/blog/my-blog-post' if stringified else return a GeneratedUri class object
+
+```
+
+To use the router class, Flight Routing has a default route request handler class to use with router.
+
+```php
+use App\Controller\BlogController;
+use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
+use Flight\Routing\{Handlers\RouteHandler, RouteCollection, Router};
+use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
+
+$routes = new RouteCollection();
+$routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
+
+$psr17Factory = new Psr17Factory();
+$router = new Router($routes->getIterator());
+
+$router->pipe(...); # Add PSR-15 middlewares ...
+
+$handlerResolver = ... // You can add your own route handler resolver else default is null
+
+// Default route handler, a custom request route handler can be used also.
+$handler = new RouteHandler($psr17Factory, $handlerResolver);
+
+// Match routes with incoming request and return a response
+$response = $router->process($psr17Factory->fromGlobalRequest(), $handler);
+
+// Send response to the browser ...
+(new SapiStreamEmitter())->emit($response);
+
+```
+
+> **NOTE**: Using the default request route handler class has many advantages, features like custom route handler resolver and auto-detection of PSR-7 response content type for plain, html, xml and svg contents are supported.
+
+> The Route class accepts handler types of `Psr\Http\Server\RequestHandlerInterface`, callable, invocable class object, class::method, or array of [class, method].
 
 ### Loading Annotated Routes
 
 ---
 
-This library is shipped with annotations support, check **Annotation** directory to find out more about collecting anotations using `Flight\Routing\Router::loadAnnotation` method.
+This library is shipped with annotations support, check **Annotation** directory to find out more about collecting annotations using `Flight\Routing\RouteCollection::loadAnnotation` method.
 
 ```php
 use Biurad\Annotations\AnnotationLoader;
-use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
+use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
 use Flight\Routing\Annotation\Listener;
-use Flight\Routing\Router;
-use Spiral\Attributes\AnnotationReader;
-use Spiral\Attributes\AttributeReader;
-use Spiral\Attributes\Composite\MergeReader;
+use Flight\Routing\RouteCollection;
+use Spiral\Attributes\{AnnotationReader, AttributeReader};
 
-$loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
-$loader->attachListener(new Listener());
+$loader = new AnnotationLoader(new AttributeReader());
+$loader->listener(new Listener());
 
-$loader->attach(
-    'src/Controller',
-    'src/Bundle/BundleName/Controller',
-];
+$loader->resource('src/Controller', 'src/Bundle/BundleName/Controller']);
+$loader->build(); // Load and cache attributes found reusability
 
-// Need to have an idea about php before using this dependency, though it easy to use.
-$psr17Factory = new Psr17Factory();
-
-$router = new Router($psr17Factory, $psr17Factory);
-$router->loadAnnotation($loader);
+$routes = new RouteCollection();
+$routes->loadAnnotation($loader);
 
 ```
 
@@ -195,13 +206,13 @@ $router->loadAnnotation($loader);
 
 ---
 
-As stated earlier, this documentation for route pattern is based on [DefaultMatcher] class. Route pattern are path string with curly brace placeholders. Possible placeholder format are:
+This documentation for route pattern is based on [DefaultCompiler] class. Route pattern are path string with curly brace placeholders. Possible placeholder format are:
 
 - `{name}` - required placeholder.
-- `{name=<foo>}` - placeholder with default value.
+- `{name=foo}` - placeholder with default value.
 - `{name:regex}` - placeholder with regex definition.
-- `{name:regex=<foo>}` - placeholder with regex definition and default value.
-- `[{name}]` - optionnal placeholder.
+- `{name:regex=foo}` - placeholder with regex definition and default value.
+- `[{name}]` - optional placeholder.
 
 Variable placeholders may contain only word characters (latin letters, digits, and underscore) and must be unique within the pattern. For placeholders without an explicit regex, a variable placeholder matches any number of characters other than '/' (i.e [^/]+).
 
@@ -225,64 +236,27 @@ use Flight\Routing\Route;
 $route = new Route('/', 'GET|HEAD', fn () => 'Hello world'});
 
 // Create a new route using $router.
-$router->addRoute($route);
-```
-
-Incase you do not want to use the `Flight\Routing\Router` class, Flight Routing provides option to use only the [DefaultMatcher] while skipping the rest of routes handling processes.
-
-```php
-use Flight\Routing\{Route, Router, RouteCollection};
-use Flight\Routing\Matchers\{SimpleRouteMatcher, SimpleRouteDumper};
-use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
-
-$route = new Route('/blog/{slug}', 'GET', BlogController::class);
-
-$routes = new RouteCollection();
-$routes->add($route->bind('blog_show'));
-
-
-$matcher = new SimpleRouteMatcher($routes); // A simple matcher for matching routes
-// or
-// $matcher = new SimpleRouteDumper($routes); A symfony's style of dumping and matching routes.
-
-// Routing can match routes with incoming requests
-$matchedRoute = $matcher->match(new ServerRequest(Router::METHOD_GET, '/blog/lorem-ipsum'));
-
-// Will match and return a $route with new aeguments accesed from $route->getArguments() method.
-// [ 'slug' => 'lorem-ipsum']
-
-// Routing can also generate URLs for a given route
-$url = $matcher->generateUri('blog_show', [
-    'slug' => 'my-blog-post',
-]);
-// $url = '/blog/my-blog-post'
+$routes->add($route);
 ```
 
 ### Closure Handler
 
 ---
 
-It is possible to pass the `closure` as route handler, in this case our callable will receive two
-arguments: `Psr\Http\Message\ServerRequestInterface` and `Psr\Http\Message\ResponseInterface` by default, including from [PSR-11] container services. The problem with routes with closure handlers are that, it cannot be cached or serialized.
-
 ```php
 use Flight\Routing\Route;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\{ResponseFactoryInterface, ServerRequestInterface};
 
 $route = new Route(
     '/{name}',
     'GET|HEAD',
-    function (ServerRequestInterface $request, ResponseInterface $response) {
+    function (ServerRequestInterface $request, ResponseFactoryInterface $responseFactory) {
+        $response = $responseFactory->createResponse()->withHeader('Content-Type', 'text/html; charset=utf-8');
         $response->getBody()->write("hello world");
 
         return $response;
     }
 );
-
-
-$router->addRoute($route);
-));
 ```
 
 ### Route Request
@@ -324,8 +298,6 @@ $collector->post(
         return new EmptyResponse(201);
     }
 );
-
-$router->addRoute(...$collector->getRoutes()); // Add new collection list to $router
 ```
 
 ### Route Response
@@ -384,8 +356,6 @@ $collector
             return new RedirectResponse('https://biurad.com');
         }
     );
-
-$router->addRoute(...$collector->getRoutes()); // Add new collection list to $router
 ```
 
 ## Available Methods in RouteCollection
@@ -425,8 +395,6 @@ $collector
     ->delete('/', function () {
         return '<b>DELETE method</b>';
     });
-
-$router->addRoute(...$collector->getRoutes()); // Add new collection list to $router
 ```
 
 ### Multiple HTTP-Verbs
@@ -498,11 +466,11 @@ $collector->get('/user/[{name}]', function ($name = 'Simon') {
   return $name;
 });
 //or
-$collector->get('/user/[{name=<Simon>}]', function ($name) {
+$collector->get('/user/[{name=Simon}]', function ($name) {
   return $name;
 });
 //or with rule
-$collector->get('/user/[{name:\w+=<Simon>}]', function ($name) {
+$collector->get('/user/[{name:\w+=Simon}]', function ($name) {
   return $name;
 });
 ```
@@ -510,13 +478,13 @@ $collector->get('/user/[{name:\w+=<Simon>}]', function ($name) {
 Obviously, if a parameter is inside an optional sequence, it's optional too and defaults to `null`. Sequence should define it's surroundings, in this case a slash which must follow a parameter, if set. The technique may be used for example for optional language subdomains:
 
 ```php
-$collector->get('//[{lang=<en>}.]example.com/hello', ...);
+$collector->get('//[{lang=en}.]example.com/hello', ...);
 ```
 
 Sequences may be freely nested and combined:
 
 ```php
-$collector->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=<0>}]', ...);
+$collector->get('[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=0}]', ...);
 
 // Accepted URLs:
 // /cs/hello
@@ -698,9 +666,9 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 ---
 
-Flight Routing increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). If more than one addresses link to the same target, the router choices the first (makes it canonical), (**NB:** static routes priority is highest and runned first), while the other routes are later reached. Thanks to that your page won't have duplicities on search engines and their rank won't be split.
+Flight Routing is yet to support **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). For now, if more than one addresses link to the same target, the router choices the first (makes it canonical), The **MRM** feature is to serve static routes first, making other routes declared reachable.
 
-> Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes. Also static routes are addressed first before any other type of route.
+> Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes, as the MRM feature is not yet implemented.
 
 ```php
 use Flight\Routing\Route;
@@ -734,10 +702,10 @@ Route groups may also be used to handle sub-domain routing. The sub-domain may b
 use Flight\Routing\Interfaces\RouteCollection;
 
 // Domain
-$collector->get('/', 'Controller@method')->domain('domain.com');
+$collector->get('/', 'Controller::staticMethod')->domain('domain.com');
 
 // Subdomain
-$collector->get('/', 'Controller:method')->domain('server2.domain.com');
+$collector->get('/', 'function_handler')->domain('server2.domain.com');
 
 // Subdomain regex pattern
 $collector->get('/', ['Controller', 'method'])->domain('{accounts:.*}.domain.com');
@@ -753,7 +721,7 @@ $collector->group(function (RouteCollection $route) {
 
 ---
 
-All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. Add a `api://` scheme to a route path, or use `Flight\Routing\RouteCollection::resource` method to automatically prefix all the methods in `Flight\Routing\Router::HTTP_METHODS_STANDARD` with HTTP verb. you can also set `_api` to for prefixed methods, using Route's default method.
+All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. use `Flight\Routing\Handlers\ResourceHandler` class receiving the real handler, or use `Flight\Routing\RouteCollection::resource` method to automatically prefix all the methods in `Flight\Routing\Router::HTTP_METHODS_STANDARD` with HTTP verb.
 
 For example, we can use the following controller:
 
@@ -779,14 +747,15 @@ class UserController
 }
 ```
 
-Add route using `Flight\Routing\Router::addRoute`:
+Add route using `Flight\Routing\Handlers\ResourceHandler`:
 
 ```php
 use Demo\UserController;
+use Flight\Routing\Handlers\ResourceHandler;
 
-$router->addRoute(new Route('api://user/user/{id:\d+}', 'GET|POST', UserController::class));
+$route = new Route('/user/{id:\d+}', 'GET|POST', new ResourceHandler(UserController::class, 'user'));
 
-// The api:// means, the route is restful, the first "user" is to be prefixed on class object method. Eg: getUser() and the last part means its gonna be served on uri: /user/23
+// Using `ResourceHandler` as route handler means, the route is restful, the "user" passed into resource handler second parameter, is to be prefixed on class object method. Eg: getUser() which can be served on uri like /user/23
 ```
 
 Add route using `Flight\Routing\RouteCollection::resource`:
@@ -794,90 +763,43 @@ Add route using `Flight\Routing\RouteCollection::resource`:
 ```php
 use Demo\UserController;
 
-$collector->resource('user', '/user/{id:\d+}', UserController::class);
+$collector->resource('/user/{id:\d+}', UserController::class, 'user');
 ```
 
 > Invoking `/user/1` with different HTTP methods will call different controller methods. Note, you still need
 > to specify the action name.
 
-### Custom Route Matcher
+### Custom Route Compiler
 
 ---
 
-If these offered route pattern do not fit your needs, you may create your own route matcher and add it to `router`. Router is nothing more than an implementation of [RouteMatcherInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteMatcherInterface.php) with its three methods:
+If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\Interfaces\RouteInterface;
-use Flight\Routing\RouteCollection;
-use Flight\Routing\Traits\ValidationTrait;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Flight\Routing\{CompiledRoute, Route};
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 
-class MyRouteMatcher implements RouteMatcherInterface
+class MyRouteCompiler implements RouteCompilerInterface
 {
-    use ValidationTrait;
-
-    /** @var Route[] */
-    private $routes;
-
-    /**
-     * @param RouteCollection|Route[] $collection
-     */
-    public function __construct($collection)
-    {
-        if ($collection instanceof RouteCollection) {
-            // compile routes from $collection->getRoutes() for matching against request
-            $collection = $collection->getRoutes();
-        }
-
-        $this->routes = $collection;
-        // You can add your compiler instance here, if any.
-    }
-
     /**
      * {@inheritdoc}
      */
-    public function match(ServerRequestInterface $request): ?Route
+    public function compile(Route $route, bool $reversed = false): CompiledRoute
     {
-        $requestUri    = $request->getUri();
-        $requestMethod = $request->getMethod();
-        $requestPath   = \rawurldecode($this->resolvePath($request));
-
-        foreach ($this->routes as $route) {
-            // ... compile the route and match using $requestUri, $requestMethod and $requestPath.
+        if (!empty($hosts = $route->get('domain'))) {
+            $hostsRegex = ... // Compile host if supported else, return an empty array
         }
 
-        // Return null if route wasn't matched.
-        return null;
-    }
+        $pathRegex = ... // Compile path and return the regex excluding anything starting ^ and ending $.
+        $variables = ... // A merged array from $hostsRegex and $pathRegex.
 
-	/**
-     * {@inheritdoc}
-     */
-    public function generateUri(string $routeName, array $parameters = [], array $queryParams = [])
-    {
-        static $uriRoute;
+        // If route is compiled in a reversed form, $pathRegex having any required placeholders
+        // must be replaced wrapping it's name with a <> else if optional further wrapping with a [].
 
-        // If this route matcher support caching, then name can be found as key in $this->routes.
-        // else you can remove it and only work with code inside the `else` statement.
-        if (isset($this->routes[$routeName])) {
-            $uriRoute = $this->routes[$routeName];
-        } else {
-            foreach ($this->routes as $route) {
-                if ($routeName === $route->getName()) {
-                    $uriRoute = $route;
-
-                    break;
-                }
-            }
-        }
-
-        // ... generate a named route path using $parameters and $queryParams from $uriRoute
+        return new CompiledRoute($pathRegex, ...); // The results ...
     }
 }
 ```
-
-If your custom route matcher support caching you can create a new class implementing [MatchDumperInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/MatchDumperInterface.php), then extend it to your newly created route matcher.
 
 ## 📓 Documentation
 
@@ -963,6 +885,6 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
 [biurad-http-galaxy]: https://github.com/biurad/php-http-galaxy
-[DefaultMatcher]: https://github.com/divineniiquaye/flight-routing/blob/master/src/Matchers/SimpleRouteMatcher.php
+[DefaultCompiler]: https://github.com/divineniiquaye/flight-routing/blob/master/src/RouteCompiler.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
 [Sunrise Http Router]: https://github.com/sunrise-php/http-router
