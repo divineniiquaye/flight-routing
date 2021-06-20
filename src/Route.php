@@ -93,6 +93,21 @@ class Route
         }
     }
 
+    /**
+     * @internal This is handled different by router
+     *
+     * @return self
+     */
+    public static function __set_state(array $properties)
+    {
+        $recovered = new self($properties['path'], $properties['methods'], $properties['controller']);
+        unset($properties['path'], $properties['controller'], $properties['methods']);
+
+        foreach ($properties as $name => $property) {
+            $recovered->{$name} = $property;
+        }
+
+        return $recovered;
     }
 
     /**
