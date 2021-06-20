@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Biurad\Annotations\LoaderInterface;
 use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
@@ -113,20 +112,6 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     {
         foreach ($middlewares as $middleware) {
             $this->pipeline->pipe($middleware);
-        }
-    }
-
-    /**
-     * Load routes from annotation.
-     */
-    public function loadAnnotation(LoaderInterface $loader): void
-    {
-        $annotations = $loader->load();
-
-        foreach ($annotations as $annotation) {
-            if ($annotation instanceof RouteCollection) {
-                $this->addRoute(...$annotation);
-            }
         }
     }
 

@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
+use Biurad\Annotations\LoaderInterface;
+
 /**
  * A RouteCollection represents a set of Route instances.
  *
@@ -114,6 +116,21 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function getIterator(): \ArrayIterator
     {
         return $this->iterable ?? $this->iterable = new \ArrayIterator($this->doMerge('', new static()));
+    }
+
+    /**
+     * Load routes from annotation.
+     */
+    public function loadAnnotation(LoaderInterface $loader): void
+    {
+        $annotations = $loader->load();
+
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof self) {
+                $annotation->namePrefix = '';
+                $this->routes[] = $annotation;
+            }
+        }
     }
 
     /**
