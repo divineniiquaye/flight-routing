@@ -18,8 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\{GeneratedUri, RequestContext, Route};
+use Flight\Routing\{GeneratedUri, Route};
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * Interface defining required router compiling capabilities.
@@ -31,7 +32,7 @@ interface RouteMatcherInterface
     /**
      * Marshals a route result based on the results of matching URL from set of routes.
      */
-    public function match(RequestContext $requestContext): ?Route;
+    public function match(string $method, UriInterface $uri): ?Route;
 
     /**
      * @see RouteMatcherInterface::match() implementation

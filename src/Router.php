@@ -20,7 +20,7 @@ namespace Flight\Routing;
 use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -89,9 +89,9 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /**
      * {@inheritdoc}
      */
-    public function match(RequestContext $requestContext): ?Route
+    public function match(string $method, UriInterface $uri): ?Route
     {
-        $route = parent::match($requestContext);
+        $route = parent::match($method, $uri);
 
         if ($route instanceof Route && null !== $this->debug) {
             $this->debug->setMatched($route->get('name'));

@@ -58,7 +58,7 @@ class CompiledRoute implements \Serializable, \Stringable
             $hostsRegex = '\/{2}' . (!\is_array($this->hostRegexps) ? $this->hostRegexps : \implode('|', $this->hostRegexps));
         }
 
-        return ($hostsRegex ?? '') . $this->pathRegex;
+        return '#^' . ($hostsRegex ?? '') . $this->pathRegex . '$#Ju';
     }
 
     /**

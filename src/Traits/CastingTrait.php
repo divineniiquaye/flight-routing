@@ -17,11 +17,10 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
-use Flight\Routing\CompiledRoute;
 use Flight\Routing\Exceptions\{InvalidControllerException, MethodNotAllowedException, UriHandlerException};
 use Flight\Routing\Handlers\ResourceHandler;
-use Flight\Routing\{RequestContext, Route};
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Flight\Routing\Route;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 trait CastingTrait
@@ -53,45 +52,29 @@ trait CastingTrait
     /** @var mixed */
     private $controller;
 
-    public function match(RequestContext $context, CompiledRoute $compiledRoute): ?Route
+    /**
+     * @param array<int|string,string|null> $routeVars
+     */
+    public function match(string $method, UriInterface $context, array $routeVars = []): Route
     {
-        $routeRegex = '#^(?|' . $this->methods . '|([A-Z]+))';
-        $requestPath = $context->getMethod();
-
-        if ($hasScheme = !empty($this->schemes)) {
-            $routeRegex .= '(?|' . $this->schemes . '|([a-z]+))\:';
-            $requestPath .= $context->getScheme() . ':';
+        if (!($method === $this->methods || \str_contains($this->methods, $method))) {
+            throw new MethodNotAllowedException(\explode('|', $this->methods), $context->getPath(), $method);
         }
 
-        if (!empty($this->domain)) {
-            $requestPath .= '//' . $context->getHost();
-        }
+        if (!empty($this->schemes)) {
+            $scheme = $context->getScheme();
 
-        $routeRegex .= (string) $compiledRoute . '$#Ju';
-        $requestPath .= $context->getPathInfo();
-
-        \preg_match($routeRegex, $requestPath, $routeVars, \PREG_UNMATCHED_AS_NULL);
-
-        if (empty($routeVars)) {
-            return null;
-        }
-
-        if (isset($routeVars[1])) {
-            throw new MethodNotAllowedException(\explode('|', $this->methods), $context->getPathInfo(), $routeVars[1]);
-        }
-
-        if ($hasScheme && isset($routeVars[2])) {
-            throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $routeVars[2], $context->getPathInfo()), 400);
-        }
-
-        if (\count($variables = $routeVars + $compiledRoute->getVariables()) > 1) {
-            foreach ($variables as $key => $value) {
-                if (\is_int($key)) {
-                    continue;
-                }
-    
-                $this->argument($key, $value);
+            if (!($scheme === $this->schemes || \str_contains($this->schemes, $scheme))) {
+                throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $scheme, $context->getPath()), 400);
             }
+        }
+
+        foreach ($routeVars as $key => $value) {
+            if (\is_int($key)) {
+                continue;
+            }
+
+            $this->defaults['_arguments'][$key] = $value;
         }
 
         return $this;
@@ -186,7 +169,7 @@ trait CastingTrait
     /**
      * Auto-configure route handler parameters.
      *
-     * @param mixed $handler
+     * @param mixed               $handler
      * @param array<string,mixed> $arguments
      *
      * @return mixed

@@ -20,6 +20,7 @@ namespace Flight\Routing;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * The bidirectional route matcher responsible for matching
@@ -57,27 +58,41 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function matchRequest(ServerRequestInterface $request): ?Route
     {
-        $requestContext = new RequestContext($request->getServerParams()['PATH_INFO'] ?? '', $request->getMethod(), $request->getUri());
+        $requestUri = $request->getUri();
 
-        return $this->match($requestContext);
+        // Resolve request path to match sub-directory or /index.php/path
+        if (empty($pathInfo = $request->getServerParams()['PATH_INFO'] ?? '')) {
+            $pathInfo = $requestUri->getPath();
+        }
+
+        if ('/' !== $pathInfo && isset(Route::URL_PREFIX_SLASHES[$pathInfo[-1]])) {
+            $pathInfo = \substr($pathInfo, 0, -1);
+        }
+
+        return $this->match($request->getMethod(), $requestUri->withPath($pathInfo));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function match(RequestContext $requestContext): ?Route
+    public function match(string $method, UriInterface $uri): ?Route
     {
+        $requestPath = $uri->getPath();
+
         foreach ($this->routes as $route) {
             $compiledRoute = $this->compiler->compile($route);
 
-            if (null === $matchedRoute = $route->match($requestContext, $compiledRoute)) {
-                continue;
+            if (!empty($compiledRoute->getHostsRegex())) {
+                $requestPath = \strpbrk((string) $uri, '/');
             }
 
-            return $matchedRoute;
+            // Match static or dynamic route ...
+            if (1 === \preg_match((string) $compiledRoute, $requestPath, $uriVars)) {
+                return $route->match($method, $uri, $uriVars + $compiledRoute->getVariables());
+            }
         }
 
-        return $matchedRoute ?? null;
+        return null;
     }
 
     /**
