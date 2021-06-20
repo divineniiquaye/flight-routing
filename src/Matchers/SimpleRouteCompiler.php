@@ -186,7 +186,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             $hostVariables += $hostVariable;
 
             if (1 === \count($hosts)) {
-                $compliedHosts = !$isReversed ? '/^' . $hostRegex : \stripslashes($hostRegex);
+                $compliedHosts = !$isReversed ? $hostRegex : \stripslashes($hostRegex);
 
                 break;
             }
