@@ -41,13 +41,13 @@ class RouteMatcher implements RouteMatcherInterface
         '/.' => '/%2E',
     ];
 
-    /** @var \Iterator<int,Route> */
+    /** @var iterable<int,Route> */
     protected $routes = [];
 
     /** @var RouteCompilerInterface */
     private $compiler;
 
-    public function __construct(\Iterator $collection, ?RouteCompilerInterface $compiler = null)
+    public function __construct(iterable $collection, ?RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
         $this->routes = $collection;
@@ -61,15 +61,11 @@ class RouteMatcher implements RouteMatcherInterface
         $requestUri = $request->getUri();
 
         // Resolve request path to match sub-directory or /index.php/path
-        if (empty($pathInfo = $request->getServerParams()['PATH_INFO'] ?? '')) {
-            $pathInfo = $requestUri->getPath();
+        if (!empty($pathInfo = $request->getServerParams()['PATH_INFO'] ?? '')) {
+            $requestUri = $requestUri->withPath($pathInfo);
         }
 
-        if ('/' !== $pathInfo && isset(Route::URL_PREFIX_SLASHES[$pathInfo[-1]])) {
-            $pathInfo = \substr($pathInfo, 0, -1);
-        }
-
-        return $this->match($request->getMethod(), $requestUri->withPath($pathInfo));
+        return $this->match($request->getMethod(), $requestUri);
     }
 
     /**
@@ -79,20 +75,27 @@ class RouteMatcher implements RouteMatcherInterface
     {
         $requestPath = $uri->getPath();
 
-        foreach ($this->routes as $route) {
-            $compiledRoute = $this->compiler->compile($route);
+        if ('/' !== $requestPath && isset(Route::URL_PREFIX_SLASHES[$requestPath[-1]])) {
+            $requestPath = \substr($requestPath, 0, -1);
+        }
 
-            if (!empty($compiledRoute->getHostsRegex())) {
-                $requestPath = \strpbrk((string) $uri, '/');
+        return array_reduce((array) $this->routes, function (?Route $carry, Route $item) use ($method, $requestPath, $uri) {
+            if ($carry instanceof Route) {
+                return $carry;
+            }
+
+            $compiledRoute = $this->compiler->compile($item);
+
+            if (2 === strpos($routeRegex = (string) $compiledRoute, '\/')) {
+                $port = $uri->getPort();
+                $requestPathWithHost = '//' . $uri->getHost() . (null !== $port ? ':' . $port : '') . $requestPath;
             }
 
             // Match static or dynamic route ...
-            if (1 === \preg_match((string) $compiledRoute, $requestPath, $uriVars)) {
-                return $route->match($method, $uri, $uriVars + $compiledRoute->getVariables());
+            if (1 === \preg_match($routeRegex, $requestPathWithHost ?? $requestPath, $uriVars)) {
+                return $carry = $item->match($method, $uri, $uriVars + $compiledRoute->getVariables());
             }
-        }
-
-        return null;
+        });
     }
 
     /**
