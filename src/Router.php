@@ -52,12 +52,15 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /** @var DebugRoute|null */
     private $debug;
 
-    public function __construct(RouteCollection $collection, ?RouteCompilerInterface $compiler = null)
-    {
+    public function __construct(
+        RouteCollection $collection,
+        ?RouteCompilerInterface $compiler = null,
+        ?MiddlewarePipeInterface $dispatcher = null
+    ) {
         parent::__construct($collection->getIterator(), $compiler);
 
         // Add Middleware support.
-        $this->pipeline = new MiddlewarePipe();
+        $this->pipeline = $dispatcher ?? new MiddlewarePipe();
 
         // Enable routes profiling ...
         $this->debug = $collection->getDebugRoute();
