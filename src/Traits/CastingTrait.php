@@ -53,15 +53,24 @@ trait CastingTrait
     /** @var mixed */
     private $controller;
 
-    /**
-     * Match the.
-     */
     public function match(RequestContext $context, CompiledRoute $compiledRoute): ?Route
     {
-        $schemesRegex = '(?:' . (empty($this->schemes) ? 'https?' : $this->schemes . '|(?P<r_uri_scheme>[a-z]+)') . ')';
-        $routeRegex = '#^(?:' . $this->methods . '|([A-Z]+))' . $schemesRegex . (string) $compiledRoute . '$#Ju';
+        $routeRegex = '#^(?|' . $this->methods . '|([A-Z]+))';
+        $requestPath = $context->getMethod();
 
-        \preg_match($routeRegex, (string) $context, $routeVars, \PREG_UNMATCHED_AS_NULL);
+        if ($hasScheme = !empty($this->schemes)) {
+            $routeRegex .= '(?|' . $this->schemes . '|([a-z]+))\:';
+            $requestPath .= $context->getScheme() . ':';
+        }
+
+        if (!empty($this->domain)) {
+            $requestPath .= '//' . $context->getHost();
+        }
+
+        $routeRegex .= (string) $compiledRoute . '$#Ju';
+        $requestPath .= $context->getPathInfo();
+
+        \preg_match($routeRegex, $requestPath, $routeVars, \PREG_UNMATCHED_AS_NULL);
 
         if (empty($routeVars)) {
             return null;
@@ -71,18 +80,18 @@ trait CastingTrait
             throw new MethodNotAllowedException(\explode('|', $this->methods), $context->getPathInfo(), $routeVars[1]);
         }
 
-        if (isset($routeVars['r_uri_scheme'])) {
+        if ($hasScheme && isset($routeVars[2])) {
             throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $routeVars[2], $context->getPathInfo()), 400);
         }
 
-        $variables = $routeVars + $compiledRoute->getVariables();
-
-        foreach ($variables as $key => $value) {
-            if (\is_int($key)) {
-                continue;
+        if (\count($variables = $routeVars + $compiledRoute->getVariables()) > 1) {
+            foreach ($variables as $key => $value) {
+                if (\is_int($key)) {
+                    continue;
+                }
+    
+                $this->argument($key, $value);
             }
-
-            $this->argument($key, $value);
         }
 
         return $this;

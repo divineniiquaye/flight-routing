@@ -69,11 +69,12 @@ class RouteMatcher implements RouteMatcherInterface
     {
         foreach ($this->routes as $route) {
             $compiledRoute = $this->compiler->compile($route);
-            $matchedRoute = $route->match($requestContext, $compiledRoute);
 
-            if ($matchedRoute instanceof Route) {
-                return $matchedRoute;
+            if (null === $matchedRoute = $route->match($requestContext, $compiledRoute)) {
+                continue;
             }
+
+            return $matchedRoute;
         }
 
         return $matchedRoute ?? null;

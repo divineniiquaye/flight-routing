@@ -55,10 +55,10 @@ class CompiledRoute implements \Serializable, \Stringable
     public function __toString()
     {
         if (!empty($this->hostRegexps)) {
-            $hostsRegex = \is_array($this->hostRegexps) ? \implode('|', $this->hostRegexps) : $this->hostRegexps;
+            $hostsRegex = '\/{2}' . (!\is_array($this->hostRegexps) ? $this->hostRegexps : \implode('|', $this->hostRegexps));
         }
 
-        return '(?:\:\/{2}' . ($hostsRegex ?? '[^\/]+') . ')(?:' . $this->pathRegex . ')';
+        return ($hostsRegex ?? '') . $this->pathRegex;
     }
 
     /**
@@ -105,9 +105,7 @@ class CompiledRoute implements \Serializable, \Stringable
      */
     public function getHostsRegex()
     {
-        $hostsRegex = $this->hostRegexps;
-
-        return \is_string($hostsRegex) ? '/^' . $hostsRegex . '$/i' : $hostsRegex;
+        return $this->hostRegexps;
     }
 
     /**
