@@ -59,7 +59,7 @@ final class RouteCollection implements \IteratorAggregate
 
     public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
     {
-        $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
+        $this->compiler = $compiler ?? new RouteCompiler();
         $this->profiler = $debug ? new DebugRoute() : null;
     }
 

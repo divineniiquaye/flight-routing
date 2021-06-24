@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Matchers;
+namespace Flight\Routing;
 
 use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
@@ -28,7 +28,7 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class SimpleRouteCompiler implements RouteCompilerInterface
+class RouteCompiler implements RouteCompilerInterface
 {
     private const DEFAULT_SEGMENT = '[^\/]+';
 
