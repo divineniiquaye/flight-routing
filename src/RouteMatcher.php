@@ -56,7 +56,7 @@ class RouteMatcher implements RouteMatcherInterface
         [$this->staticRouteMap, $dynamicRouteMap, $this->variableRouteData] = $collection->getRouteMaps();
 
         if (!empty($dynamicRouteMap)) {
-            $this->regexToRoutesMap = '~^(?|' . \implode('|', $dynamicRouteMap) . ')$~u';
+            $this->regexToRoutesMap = '~^(?|' . \implode('|', $dynamicRouteMap) . ')$~Ju';
         }
 
         // Enable routes profiling ...
