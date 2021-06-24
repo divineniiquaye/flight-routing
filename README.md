@@ -133,7 +133,7 @@ $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
 
 $psr17Factory = new Psr17Factory();
-$matcher = new RouteMatcher($routes->getIterator());
+$matcher = new RouteMatcher($routes);
 
 // Routing can match routes with incoming request
 $route = $matcher->matchRequest($psr17Factory->fromGlobalRequest());
@@ -157,7 +157,7 @@ $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
 
 $psr17Factory = new Psr17Factory();
-$router = new Router($routes->getIterator());
+$router = new Router($routes);
 
 $router->pipe(...); # Add PSR-15 middlewares ...
 
@@ -666,7 +666,7 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 ---
 
-Flight Routing is yet to support **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect). For now, if more than one addresses link to the same target, the router choices the first (makes it canonical), The **MRM** feature is to serve static routes first, making other routes declared reachable.
+Flight Routing is supports **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect), the **MRM** feature is to serve static routes first, making other routes declared reachable.
 
 > Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes, as the MRM feature is not yet implemented.
 
@@ -776,7 +776,7 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\{CompiledRoute, Route};
+use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 class MyRouteCompiler implements RouteCompilerInterface
@@ -784,7 +784,7 @@ class MyRouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function compile(Route $route, bool $reversed = false): CompiledRoute
+    public function compile(Route $route): CompiledRoute
     {
         if (!empty($hosts = $route->get('domain'))) {
             $hostsRegex = ... // Compile host if supported else, return an empty array
@@ -797,6 +797,17 @@ class MyRouteCompiler implements RouteCompilerInterface
         // must be replaced wrapping it's name with a <> else if optional further wrapping with a [].
 
         return new CompiledRoute($pathRegex, ...); // The results ...
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri
+    {
+        // Same as compile method implementation or may differ, result should reverse the route and/or domain
+        // patterns into URI.
+
+        return new GeneratedUri(...); // The results ...
     }
 }
 ```
@@ -841,7 +852,7 @@ Please see [CONTRIBUTING] for additional details.
 $ composer test
 ```
 
-This will tests biurad/php-cache will run against PHP 7.2 version or higher.
+This will tests divineniiquaye/flight-routing will run against PHP 7.2 version or higher.
 
 ## 👥 Credits & Acknowledgements
 
@@ -849,7 +860,7 @@ This will tests biurad/php-cache will run against PHP 7.2 version or higher.
 - [Anatoly Fenric][]
 - [All Contributors][]
 
-This code is partly a reference implementation of [Sunrise Http Router][] which is written, maintained and copyrighted by [Anatoly Fenric][]. This project new features  starting from version `1.0` was referenced from [Sunrise Http Router][]
+This code was partly a reference implementation of [Sunrise Http Router][] which is written, maintained and copyrighted by [Anatoly Fenric][]. This project new features starting from version `1.1` is no longer referenced from [Sunrise Http Router][]
 
 ## 🙌 Sponsors
 
