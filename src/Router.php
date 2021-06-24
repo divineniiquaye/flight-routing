@@ -18,9 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -49,21 +48,12 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /** @var MiddlewarePipeInterface */
     private $pipeline;
 
-    /** @var DebugRoute|null */
-    private $debug;
-
-    public function __construct(
-        RouteCollection $collection,
-        ?RouteCompilerInterface $compiler = null,
-        ?MiddlewarePipeInterface $dispatcher = null
-    ) {
-        parent::__construct($collection->getIterator(), $compiler);
+    public function __construct(RouteCollection $collection, ?MiddlewarePipeInterface $dispatcher = null)
+    {
+        parent::__construct($collection);
 
         // Add Middleware support.
         $this->pipeline = $dispatcher ?? new MiddlewarePipe();
-
-        // Enable routes profiling ...
-        $this->debug = $collection->getDebugRoute();
     }
 
     /**
@@ -89,20 +79,6 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /**
      * {@inheritdoc}
      */
-    public function match(string $method, UriInterface $uri): ?Route
-    {
-        $route = parent::match($method, $uri);
-
-        if ($route instanceof Route && null !== $this->debug) {
-            $this->debug->setMatched($route->get('name'));
-        }
-
-        return $route;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $route = $this->matchRequest($request);
@@ -118,13 +94,5 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
                 $this->debug->leave();
             }
         }
-    }
-
-    /**
-     * Get the profiled routes.
-     */
-    public function getProfile(): ?DebugRoute
-    {
-        return $this->debug;
     }
 }

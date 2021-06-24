@@ -50,7 +50,7 @@ class Route
      *
      * @var string
      */
-    public const RCA_PATTERN = '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?(.*?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
+    public const RCA_PATTERN = '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?([^*]+?)(?:\*\<(?:([\w\\\\]+)\@)?(\w+)\>)?$#u';
 
     /**
      * A Pattern to match protocol, host and port from a url.
@@ -90,10 +90,8 @@ class Route
         $this->path = $this->castRoute($pattern);
 
         if (!empty($methods)) {
-            $method = \is_string($methods) ? \strtoupper($methods) : \implode('|', \array_map('strtoupper', $methods));
+            $this->methods = \array_map('strtoupper', (array) $methods);
         }
-
-        $this->methods = $method ?? '';
     }
 
     /**
@@ -321,7 +319,9 @@ class Route
      */
     public function method(string ...$methods): self
     {
-        $this->methods .= (!empty($this->methods) ? '|' : '') . \implode('|', \array_map('strtoupper', $methods));
+        foreach ($methods as $method) {
+            $this->methods[] = \strtoupper($method);
+        }
 
         return $this;
     }
@@ -337,7 +337,7 @@ class Route
             \preg_match(Route::URL_PATTERN, $host, $matches, \PREG_UNMATCHED_AS_NULL);
 
             if (isset($matches[1])) {
-                $this->schemes .= (!empty($this->schemes) ? '|' : '') . $matches[1];
+                $this->schemes[$matches[1]] = true;
             }
 
             if (isset($matches[2])) {
@@ -355,7 +355,9 @@ class Route
      */
     public function scheme(string ...$schemes): self
     {
-        $this->schemes .= (!empty($this->schemes) ? '|' : '') . \implode('|', \array_map('strtolower', $schemes));
+        foreach ($schemes as $scheme) {
+            $this->schemes[\strtolower($scheme)] = true;
+        }
 
         return $this;
     }
@@ -384,10 +386,6 @@ class Route
      */
     public function get(string $name)
     {
-        if (\in_array($name, ['methods', 'schemes'], true)) {
-            return \explode('|', $this->{$name});
-        }
-
         if (\property_exists(__CLASS__, $name)) {
             return $this->{$name};
         }
@@ -395,8 +393,8 @@ class Route
         if ('all' === $name) {
             return [
                 'controller' => $this->controller,
-                'methods' => \explode('|', $this->methods),
-                'schemes' => \explode('|', $this->schemes),
+                'methods' => $this->methods,
+                'schemes' => $this->schemes,
                 'domain' => $this->domain,
                 'name' => $this->name,
                 'path' => $this->path,
@@ -430,7 +428,7 @@ class Route
 
     public function generateRouteName(string $prefix): string
     {
-        $routeName = $this->methods . '_' . $prefix . $this->path;
+        $routeName = \implode('_', $this->methods) . '_' . $prefix . $this->path;
         $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
         $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Biurad\Annotations\LoaderInterface;
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 /**
  * A RouteCollection represents a set of Route instances.
@@ -53,25 +53,13 @@ use Biurad\Annotations\LoaderInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection implements \IteratorAggregate, \Countable
+final class RouteCollection implements \IteratorAggregate
 {
-    /** @var Route[] */
-    private $routes = [];
+    use Traits\GroupingTrait;
 
-    /** @var self|null */
-    private $parent = null;
-
-    /** @var array<string,mixed[]>|null */
-    private $stack = null;
-
-    /** @var \ArrayIterator|null */
-    private $iterable = null;
-
-    /** @var DebugRoute|null */
-    private $profiler;
-
-    public function __construct(bool $debug = false)
+    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
     {
+        $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
         $this->profiler = $debug ? new DebugRoute() : null;
     }
 
@@ -86,12 +74,8 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         $routeMethod = (string) \preg_replace('/^with([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
         $routeMethod = \strtolower($routeMethod);
 
-        if (null !== $this->stack) {
-            if ([] !== $stack = $this->stack[$routeMethod] ?? []) {
-                $arguments = \array_merge(\end($stack), $arguments);
-            }
-
-            $this->stack[$routeMethod][] = $arguments;
+        if (null !== $stack = $this->stack) {
+            $this->stack[$routeMethod] = \array_merge($stack[$routeMethod] ?? [], $arguments);
         } else {
             foreach ($this->routes as $route) {
                 \call_user_func_array([$route, $routeMethod], $arguments);
@@ -101,14 +85,9 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         return $this;
     }
 
-    /**
-     * Gets the number of Routes in this collection.
-     *
-     * @return int The number of routes
-     */
-    public function count(): int
+    public function getCompiler(): RouteCompilerInterface
     {
-        return $this->getIterator()->count();
+        return $this->compiler;
     }
 
     /**
@@ -120,21 +99,11 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function getIterator(): \ArrayIterator
     {
-        return $this->iterable ?? $this->iterable = $this->doMerge('', new \ArrayIterator());
-    }
-
-    /**
-     * Load routes from annotation.
-     */
-    public function loadAnnotation(LoaderInterface $loader): void
-    {
-        $annotations = $loader->load();
-
-        foreach ($annotations as $annotation) {
-            if ($annotation instanceof self) {
-                $this->routes[] = $annotation;
-            }
+        if ($this->routes instanceof \ArrayIterator && !$this->hasGroups) {
+            return $this->routes;
         }
+
+        return $this->routes = $this->doMerge('', 0, new \ArrayIterator());
     }
 
     /**
@@ -149,9 +118,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function add(Route ...$routes): self
     {
         foreach ($routes as $route) {
-            $this->routes[] = $route;
-
-            $this->resolveWith($route);
+            $this->routes[] = $this->resolveWith($route);
         }
 
         return $this;
@@ -168,11 +135,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
-        $this->routes[] = $route = new Route($pattern, $methods, $handler);
-
-        $this->resolveWith($route);
-
-        return $route;
+        return $this->routes[] = $this->resolveWith(new Route($pattern, $methods, $handler));
     }
 
     /**
@@ -203,6 +166,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         }
 
         $controllers->parent = $this;
+        $this->hasGroups = true;
 
         return $controllers;
     }
@@ -214,7 +178,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     {
         // Remove last element from stack.
         if (null !== $stack = $this->stack) {
-            \array_pop($stack);
+            unset($stack[\count($stack) - 1]);
         }
 
         return $this->parent ?? $this;
@@ -332,80 +296,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function find(string $name): ?Route
     {
-        /** @var Route|RouteCollection $route */
-        foreach ($this->iterable ?? $this->routes as $route) {
+        foreach ($this->routes as $route) {
             if ($route instanceof Route && $name === $route->get('name')) {
                 return $route;
             }
         }
 
         return null;
-    }
-
-    /**
-     * If routes was debugged, return the profiler.
-     */
-    public function getDebugRoute(): ?DebugRoute
-    {
-        return $this->profiler;
-    }
-
-    /**
-     * Bind route with collection.
-     */
-    private function resolveWith(Route $route): void
-    {
-        foreach ($this->stack ?? [] as $routeMethod => $arguments) {
-            $stack = \end($arguments);
-
-            if (false !== $stack) {
-                \call_user_func_array([$route, $routeMethod], 'prefix' === $routeMethod ? [\implode('', $stack)] : $stack);
-            }
-        }
-
-        if (null !== $this->parent) {
-            $route->end($this);
-        }
-    }
-
-    /**
-     * @return ArrayIterator<int,Route>
-     */
-    private function doMerge(string $prefix, \ArrayIterator $routes): \ArrayIterator
-    {
-        $unnamedRoutes = [];
-
-        /** @var Route|RouteCollection $route */
-        foreach ($this->routes as $namePrefix => $route) {
-            if ($route instanceof self) {
-                if (is_string($namePrefix)) {
-                    $prefix .= $namePrefix;
-                }
-                $route->doMerge($prefix, $routes);
-
-                continue;
-            }
-
-            if (null === $name = $route->get('name')) {
-                $name = $route->generateRouteName('');
-    
-                if (isset($unnamedRoutes[$name])) {
-                    $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
-                } else {
-                    $unnamedRoutes[$name] = 0;
-                }
-            }
-
-            $routes->append($route = $route->bind($prefix . $name));
-
-            if (null !== $this->profiler) {
-                $this->profiler->addProfile($prefix . $name, $route);
-            }
-        }
-
-        // removed old stack to free memory and cache as iterable.
-        $this->routes = [];
-
-        return $routes;
     }
 }

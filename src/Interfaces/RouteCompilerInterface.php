@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\CompiledRoute;
-use Flight\Routing\Route;
+use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
+use Flight\Routing\Exceptions\UrlGenerationException;
 
 /**
  * This is the interface that all custom compilers for routes will depend on or implement.
@@ -29,8 +29,18 @@ interface RouteCompilerInterface
 {
     /**
      * Match the Route instance and compiles the current route instance.
-     * 
-     * @param bool $reversed The pattern is reversed into a normal url
      */
-    public function compile(Route $route, bool $reversed = false): CompiledRoute;
+    public function compile(Route $route): CompiledRoute;
+
+    /**
+     * Generate a URI from a named route.
+     *
+     * @see Flight\Routing\RouteMatcher::generateUri() implementation
+     *
+     * @param array<int|string,int|string> $parameters
+     * @param array<int|string,int|string> $defaults
+     *
+     * @throws UrlGenerationException
+     */
+    public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri;
 }

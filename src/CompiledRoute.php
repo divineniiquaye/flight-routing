@@ -22,43 +22,27 @@ namespace Flight\Routing;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class CompiledRoute implements \Serializable, \Stringable
+class CompiledRoute implements \Serializable
 {
     /** @var string */
     private $pathRegex;
 
-    /** @var string|string[] */
+    /** @var string|string[]|null */
     private $hostRegexps;
 
     /** @var array */
     private $variables;
-
-    /** @var string|null */
-    private $staticRoute;
 
     /**
      * @param string          $pathRegex   The regular expression to use to match this route
      * @param string|string[] $hostRegexps A list of Host regexps else a combined single regex of hosts
      * @param array           $variables   An array of variables (variables defined in the path and in the host patterns)
      */
-    public function __construct(string $pathRegex, $hostRegexps, array $variables, string $static = null)
+    public function __construct(string $pathRegex, $hostRegexps, array $variables)
     {
         $this->pathRegex = $pathRegex;
         $this->hostRegexps = $hostRegexps;
         $this->variables = $variables;
-        $this->staticRoute = $static;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function __toString()
-    {
-        if (!empty($this->hostRegexps)) {
-            $hostsRegex = '\/{2}' . (!\is_array($this->hostRegexps) ? $this->hostRegexps : \implode('|', $this->hostRegexps));
-        }
-
-        return '#^' . ($hostsRegex ?? '') . $this->pathRegex . '$#Ju';
     }
 
     /**
@@ -68,7 +52,6 @@ class CompiledRoute implements \Serializable, \Stringable
     {
         return \serialize([
             'vars' => $this->variables,
-            'static' => $this->staticRoute,
             'path_regex' => $this->pathRegex,
             'host_regexps' => $this->hostRegexps,
         ]);
@@ -84,11 +67,11 @@ class CompiledRoute implements \Serializable, \Stringable
         $this->variables = $data['vars'];
         $this->hostRegexps = $data['host_regexps'];
         $this->pathRegex = $data['path_regex'];
-        $this->staticRoute = $data['static'];
     }
 
     /**
-     * Returns the path regex.
+     * Returns the path regex with modifies.
+     * Static path should begin wih a "/" while dynamic route begins with "\\/".
      */
     public function getPathRegex(): string
     {
@@ -96,14 +79,11 @@ class CompiledRoute implements \Serializable, \Stringable
     }
 
     /**
-     * This method should return a combined array of hosts as
-     * single string wrapped inside `(?|...)` and separated by `|`.
+     * Returns the hosts regex with modifies.
      *
-     * If route was compiled reversely, return a array string of hosts.
-     *
-     * @return string|string[] The hosts regex
+     * @return string[] The hosts regex
      */
-    public function getHostsRegex()
+    public function getHostsRegex(): array
     {
         return $this->hostRegexps;
     }
@@ -116,13 +96,5 @@ class CompiledRoute implements \Serializable, \Stringable
     public function getVariables(): array
     {
         return $this->variables;
-    }
-
-    /**
-     * If the path is static, return it else null.
-     */
-    public function getPath(): ?string
-    {
-        return $this->staticRoute;
     }
 }

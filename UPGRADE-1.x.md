@@ -101,20 +101,20 @@
     _After_
 
     ```php
-    use Flight\Routing\{RouteCollection, Route, Router};
+    use Flight\Routing\{Handlers\RouteHandler, RouteCollection, Router};
     use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
     use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
     $collector = new RouteCollection();
     $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
-    $factory = new Psr17Factory();
-    $router = new Router($factory, $factory);
+    $router = new Router($collection);
 
-    $router->addRoute(...$collector->getRoutes());
+    $psr17Factory = new Psr17Factory();
+    $response = $router->process($psr17Factory->fromGlobalRequest(), new RouteHandler($psr17Factory));
 
     // Start the routing
-    (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
+    (new SapiStreamEmitter())->emit($response);
     ```
 
 -   Changed how route grouping is handled
@@ -150,5 +150,11 @@
 
     $collection->group('group_name', $group1);
     $collection->group('group_name', $group2);
+
+    //or dsl
+    $collection->group('group_name')
+        ->addRoute('/phpinfo', 'GET|HEAD', 'phpinfo')->end()
+        // ... More can be added including nested grouping
+    ->end();
     ```
 

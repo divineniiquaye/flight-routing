@@ -17,10 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Matchers;
 
-use Flight\Routing\CompiledRoute;
-use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
+use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
-use Flight\Routing\Route;
 
 /**
  * RouteCompiler compiles Route instances to regex.
@@ -54,7 +53,7 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      * - /{var=foo} - A required variable with default value
      * - /{var}[.{format:(html|php)=html}] - A required variable with an optional variable, a rule & default
      */
-    private const COMPILER_REGEX = '#\{(\w+)(?:\:((?U).*\}|.*))?(?:\=(\w+))?\}#i';
+    private const COMPILER_REGEX = '~\{(\w+)(?:\:([^{}]+(?:\{[\w,^{}]+)?))?(?:\=((?2)))?\}~i';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
@@ -72,6 +71,20 @@ class SimpleRouteCompiler implements RouteCompilerInterface
     ];
 
     /**
+     * A helper in reversing route pattern to URI.
+     */
+    private const URI_FIXERS = [
+        '[]' => '',
+        '[/]' => '',
+        '[' => '',
+        ']' => '',
+        '://' => '://',
+        '//' => '/',
+        '/..' => '/%2E%2E',
+        '/.' => '/%2E',
+    ];
+
+    /**
      * The maximum supported length of a PCRE subpattern name
      * http://pcre.org/current/doc/html/pcre2pattern.html#SEC16.
      *
@@ -84,21 +97,94 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      */
     public function compile(Route $route, bool $reversed = false): CompiledRoute
     {
-        $requirements = $this->getRequirements($route->get('patterns'));
+        $requirements = !$reversed ? $this->getRequirements($route->get('patterns')) : [];
+        $routePath = \ltrim($route->get('path'), '/');
 
-        if (!empty($hosts = $route->get('domain'))) {
-            $hostsRegex = $this->computeHosts($hosts, $reversed, $requirements);
+        // Strip supported browser prefix of $routePath ...
+        if (!empty($routePath) && isset(Route::URL_PREFIX_SLASHES[$routePath[-1]])) {
+            $routePath = \substr($routePath, 0, -1);
         }
 
-        [$pathRegex, $pathVariable] = '' === ($routePath = \ltrim($route->get('path'), '/'))
-            ? [$routePath, []] // making homepage url much faster ...
-            : $this->compilePattern($requirements, $routePath, $reversed);
+        if (!empty($hosts = $route->get('domain'))) {
+            $hostVariables = $hostsRegex = [];
+
+            foreach ($hosts as $host) {
+                [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $reversed);
+
+                $hostVariables += $hostVariable;
+                $hostsRegex[] = $hostRegex;
+            }
+        }
+
+        if (!\str_contains($routePath, '{')) {
+            return new CompiledRoute('/' . $routePath, $hostsRegex ?? [], $hostVariables ?? []);
+        }
+
+        [$pathRegex, $pathVariable] = $this->compilePattern($requirements, $routePath, $reversed);
 
         // Resolves $pathRegex and host and pattern variables.
         $pathRegex = !$reversed ? '\\/' . $pathRegex : \stripslashes('/' . \str_replace('?', '', $pathRegex));
         $variables = isset($hostVariables) ? $hostVariables += $pathVariable : $pathVariable;
 
-        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables, empty($pathVariable) ? '/' .$routePath : null);
+        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri
+    {
+        $compiledRoute = $this->compile($route, true);
+        $pathRegex = $compiledRoute->getPathRegex();
+        $variables = $compiledRoute->getVariables();
+
+        if (!empty($hostRegex = $compiledRoute->getHostsRegex())) {
+            $hostRegex = \end($hostRegex);
+        }
+
+        $createUri = new GeneratedUri($this->interpolate($pathRegex, $this->fetchOptions($pathRegex, $parameters, $defaults, $variables)));
+
+        if (!empty($schemes = $route->get('schemes'))) {
+            $createUri->withScheme(isset($schemes['https']) ? 'https' : \key($schemes) ?? 'http');
+
+            if (empty($hostRegex)) {
+                $createUri->withHost($_SERVER['HTTP_HOST'] ?? '');
+            }
+        }
+
+        if (!empty($hostRegex)) {
+            $createUri->withHost($this->interpolate($hostRegex, $this->fetchOptions($hostRegex, $parameters, $defaults, $variables)));
+        }
+
+        return $createUri;
+    }
+
+    /**
+     * Fetch uri segments and query parameters.
+     *
+     * @param array<int|string,mixed> $parameters
+     *
+     * @return array<int|string,mixed>
+     */
+    private function fetchOptions(string $uriRoute, array $parameters, array $defaults, array $allowed): array
+    {
+        \preg_match_all('#\[\<(\w+).*?\>\]#', $uriRoute, $optionalVars, \PREG_UNMATCHED_AS_NULL);
+
+        if (isset($optionalVars[1])) {
+            foreach ($optionalVars[1] as $optional) {
+                $defaults[$optional] = null;
+            }
+        }
+
+        // Fetch and merge all possible parameters + route defaults ...
+        $parameters += $defaults;
+
+        // all params must be given
+        if ($diff = \array_diff_key($allowed, $parameters)) {
+            throw new UrlGenerationException(\sprintf('Some mandatory parameters are missing ("%s") to generate a URL for route path "%s".', \implode('", "', \array_keys($diff)), $uriRoute));
+        }
+
+        return $parameters;
     }
 
     /**
@@ -121,16 +207,22 @@ class SimpleRouteCompiler implements RouteCompilerInterface
 
     private function sanitizeRequirement(string $key, string $regex): string
     {
-        if ('^' === @$regex[0]) {
-            $regex = \substr($regex, 1); // returns false for a single character
+        if ('' !== $regex) {
+            if ('^' === $regex[0]) {
+                $regex = \substr($regex, 1);
+            } elseif (0 === \strpos($regex, '\\A')) {
+                $regex = \substr($regex, 2);
+            }
+
+            if ('$' === $regex[-1]) {
+                $regex = \substr($regex, 0, -1);
+            } elseif (\strlen($regex) - 2 === \strpos($regex, '\\z')) {
+                $regex = \substr($regex, 0, -2);
+            }
         }
 
-        if ('$' === @$regex[-1]) {
-            $regex = \substr($regex, 0, -1);
-        }
-
-        if (empty($regex)) {
-            throw new UriHandlerException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
+        if ('' === $regex) {
+            throw new \InvalidArgumentException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
         }
 
         return $regex;
@@ -147,106 +239,29 @@ class SimpleRouteCompiler implements RouteCompilerInterface
      */
     private function compilePattern(array $requirements, string $uriPattern, bool $reversed): array
     {
+        $variables = $replaces = [];
+
         // correct [/ first occurrence]
         if (0 === \strpos($uriPattern, '[/')) {
             $uriPattern = '[' . \substr($uriPattern, 3);
         }
 
-        // Strip supported browser prefix of $uriPattern ...
-        if (isset(Route::URL_PREFIX_SLASHES[$uriPattern[-1]])) {
-            $uriPattern = \substr($uriPattern, 0, -1);
-        }
-
         // Match all variables enclosed in "{}" and iterate over them...
-        if (false !== \strpos($uriPattern, '{')) {
-            \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_UNMATCHED_AS_NULL);
+        \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_SET_ORDER | \PREG_UNMATCHED_AS_NULL);
 
-            [$variables, $replaces] = $this->computePattern($matches, $uriPattern, $reversed, $requirements);
-
-            return [\strtr($uriPattern, !$reversed ? self::PATTERN_REPLACES + $replaces : $replaces), $variables];
-        }
-
-        return [!$reversed ? $this->filterSegment($uriPattern) : $uriPattern, []];
-    }
-
-    /**
-     * Compile hosts from route and return computed hosts.
-     *
-     * @param array<string,string|string[]> $requirements
-     *
-     * @return string[]|string
-     */
-    private function computeHosts(array $hosts, bool $isReversed, array $requirements)
-    {
-        $hostVariables = $hostRegexps = [];
-        $compliedHosts = '(?|';
-
-        foreach ($hosts as $host) {
-            [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $isReversed);
-            $hostVariables += $hostVariable;
-
-            if (1 === \count($hosts)) {
-                $compliedHosts = !$isReversed ? $hostRegex : \stripslashes($hostRegex);
-
-                break;
-            }
-
-            if (!$isReversed) {
-                $compliedHosts .= $hostRegex . '|';
-
-                continue;
-            }
-
-            $hostRegexps[] = \stripslashes($hostRegex);
-        }
-
-        return empty($hostRegexps) ? $compliedHosts . ('|' === $compliedHosts[-1] ? ')' : '') : $hostRegexps;
-    }
-
-    /**
-     * Compute prepared pattern and return it's replacements and arguments.
-     *
-     * @param array<string,string[]>        $matches
-     * @param array<string,string|string[]> $requirements
-     *
-     * @return array<int,array<int|string,mixed>>
-     */
-    private function computePattern(array $matches, string $pattern, bool $isReversed, array $requirements): array
-    {
-        $variables = $replaces = [];
-        [$placeholders, $names, $rules, $defaults] = $matches;
-
-        $count = \count($names);
-
-        foreach ($names as $index => $varName) {
+        foreach ($matches as [$placeholder, $varName, $segment, $default]) {
             // Filter variable name to meet requirement
-            $this->filterVariableName($varName, $pattern);
+            $this->filterVariableName($varName, $uriPattern);
 
             if (\array_key_exists($varName, $variables)) {
-                throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $pattern, $varName));
+                throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $uriPattern, $varName));
             }
 
-            if (!$isReversed) {
-                $replace = self::SEGMENT_TYPES[$rules[$index]] ?? $rules[$index] ?? $this->prepareSegment($varName, $requirements);
-
-                // optimize the regex with a possessive quantifier.
-                if (1 === $count && ('/' === $pattern[0] && '+' === @$replace[-1])) {
-                    // This optimization cannot be applied when the next char is no real separator.
-                    \preg_match('#\{.*\}(.+?)#', $pattern, $nextSeparator);
-
-                    $replace .= !(isset($nextSeparator[1]) && (1 === \count($names) || '{' === $nextSeparator[1])) ? '+' : '';
-                }
-
-                $replace = \sprintf('(?P<%s>%s)', $varName, $replace);
-            }
-
-            $replaces[$placeholders[$index]] = $replace ?? "<$varName>";
-            $variables[$varName] = $defaults[$index] ?? null;
-
-            --$count;
+            $variables[$varName] = $default;
+            $replaces[$placeholder] = !$reversed ? '(?P<' . $varName . '>' . (self::SEGMENT_TYPES[$segment] ?? $segment ?? $this->prepareSegment($varName, $requirements)) . ')' : "<$varName>";
         }
 
-        return [$variables, $replaces];
+        return [\strtr($uriPattern, !$reversed ? self::PATTERN_REPLACES + $replaces : $replaces), $variables];
     }
 
     /**
@@ -285,13 +300,27 @@ class SimpleRouteCompiler implements RouteCompilerInterface
             return self::DEFAULT_SEGMENT;
         }
 
-        return \is_array($segment)
-            ? \implode('|', \array_map([$this, 'filterSegment'], $segment))
-            : $this->filterSegment((string) $segment);
+        return \is_array($segment) ? \implode('|', \array_map([$this, 'filterSegment'], $segment)) : $this->filterSegment((string) $segment);
     }
 
     private function filterSegment(string $segment): string
     {
         return \strtr($segment, self::SEGMENT_REPLACES);
+    }
+
+    /**
+     * Interpolate string with given values.
+     *
+     * @param array<int|string,mixed> $values
+     */
+    private function interpolate(string $string, array $values): string
+    {
+        $replaces = self::URI_FIXERS;
+
+        foreach ($values as $key => $value) {
+            $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
+        }
+
+        return \strtr($string, $replaces);
     }
 }

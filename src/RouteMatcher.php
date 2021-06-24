@@ -17,10 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
+use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
  * The bidirectional route matcher responsible for matching
@@ -30,27 +29,38 @@ use Psr\Http\Message\UriInterface;
  */
 class RouteMatcher implements RouteMatcherInterface
 {
-    private const URI_FIXERS = [
-        '[]' => '',
-        '[/]' => '',
-        '[' => '',
-        ']' => '',
-        '://' => '://',
-        '//' => '/',
-        '/..' => '/%2E%2E',
-        '/.' => '/%2E',
-    ];
-
     /** @var iterable<int,Route> */
     protected $routes = [];
+
+    /** @var array<string,array<string,mixed>> */
+    protected $staticRouteMap = [];
+
+    /** @var array<int,array> */
+    protected $variableRouteData = [];
+
+    /** @var string|null */
+    protected $regexToRoutesMap = null;
 
     /** @var RouteCompilerInterface */
     private $compiler;
 
-    public function __construct(iterable $collection, ?RouteCompilerInterface $compiler = null)
+    /** @var DebugRoute|null */
+    private $debug;
+
+    public function __construct(RouteCollection $collection)
     {
-        $this->compiler = $compiler ?? new Matchers\SimpleRouteCompiler();
-        $this->routes = $collection;
+        $this->compiler = $collection->getCompiler();
+        $this->routes = $collection->getIterator();
+
+        // Load the route maps from $collection.
+        [$this->staticRouteMap, $dynamicRouteMap, $this->variableRouteData] = $collection->getRouteMaps();
+
+        if (!empty($dynamicRouteMap)) {
+            $this->regexToRoutesMap = '~^(?|' . \implode('|', $dynamicRouteMap) . ')$~u';
+        }
+
+        // Enable routes profiling ...
+        $this->debug = $collection->getDebugRoute();
     }
 
     /**
@@ -76,26 +86,45 @@ class RouteMatcher implements RouteMatcherInterface
         $requestPath = $uri->getPath();
 
         if ('/' !== $requestPath && isset(Route::URL_PREFIX_SLASHES[$requestPath[-1]])) {
-            $requestPath = \substr($requestPath, 0, -1);
+            $uri = $uri->withPath($requestPath = \substr($requestPath, 0, -1));
         }
 
-        return array_reduce((array) $this->routes, function (?Route $carry, Route $item) use ($method, $requestPath, $uri) {
-            if ($carry instanceof Route) {
-                return $carry;
+        if (isset($this->staticRouteMap[$requestPath])) {
+            $staticRoute = $this->staticRouteMap[$requestPath];
+
+            if (!isset($staticRoute[$method])) {
+                throw new MethodNotAllowedException(\array_keys($staticRoute), $uri->getPath(), $method);
             }
 
-            $compiledRoute = $this->compiler->compile($item);
+            if (!empty($hostsRegex = $staticRoute[$method][0])) {
+                $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
 
-            if (2 === strpos($routeRegex = (string) $compiledRoute, '\/')) {
-                $port = $uri->getPort();
-                $requestPathWithHost = '//' . $uri->getHost() . (null !== $port ? ':' . $port : '') . $requestPath;
+                if (!\preg_match($hostsRegex, $hostAndPost, $hostsVar)) {
+                    if (isset($this->regexToRoutesMap)) {
+                        goto retry_routing;
+                    }
+
+                    throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested static path [%s].', $uri->getHost(), $uri->getPath()), 400);
+                }
             }
 
-            // Match static or dynamic route ...
-            if (1 === \preg_match($routeRegex, $requestPathWithHost ?? $requestPath, $uriVars)) {
-                return $carry = $item->match($method, $uri, $uriVars + $compiledRoute->getVariables());
+            $route = $this->routes[$routeId = $staticRoute[$method][1]];
+
+            return $this->matchRoute($route, $uri, \array_merge($this->variableRouteData[$routeId], $hostsVar ?? []));
+        } 
+
+        retry_routing:
+        if (isset($this->regexToRoutesMap) && \preg_match($this->regexToRoutesMap, $method . \strpbrk((string) $uri, '/'), $matches)) {
+            $route = $this->routes[$matches['MARK']];
+
+            if (!empty($matches[1])) {
+                throw new MethodNotAllowedException($route->get('methods'), $uri->getPath(), $method);
             }
-        });
+
+            return $this->matchRoute($route, $uri, \array_merge($this->variableRouteData[$matches['MARK']], $matches));
+        }
+
+        return null;
     }
 
     /**
@@ -105,9 +134,10 @@ class RouteMatcher implements RouteMatcherInterface
     {
         foreach ($this->routes as $route) {
             if ($routeName === $route->get('name')) {
-                $compiledRoute = $this->compiler->compile($route, true);
+                $defaults = $route->get('defaults');
+                unset($defaults['_arguments']);
 
-                return $this->buildPath($route, $compiledRoute, $parameters);
+                return $this->compiler->generateUri($route, $parameters, $defaults);
             }
         }
 
@@ -120,80 +150,33 @@ class RouteMatcher implements RouteMatcherInterface
     }
 
     /**
-     * This method is used to build uri, this can be overwritten.
-     *
-     * @param array<int|string,int|string> $parameters
+     * Get the profiled routes.
      */
-    protected function buildPath(Route $route, CompiledRoute $compiledRoute, array $parameters): GeneratedUri
+    public function getProfile(): ?DebugRoute
     {
-        $defaults = $route->get('defaults');
-        unset($defaults['_arguments']);
-
-        $pathRegex = $compiledRoute->getPath() ?? $compiledRoute->getPathRegex();
-        $pathVariables = $this->fetchOptions($pathRegex, $parameters, $defaults, $variables = $compiledRoute->getVariables());
-
-        if (!empty($hostRegex = $compiledRoute->getHostsRegex())) {
-            $hostRegex = \is_string($hostRegex) ? $hostRegex : \end($hostRegex);
-        }
-
-        $createUri = new GeneratedUri($this->interpolate($pathRegex, $pathVariables));
-
-        if (!empty($schemes = $route->get('schemes'))) {
-            $createUri->withScheme(\in_array('https', $schemes, true) ? 'https' : \end($schemes));
-
-            if (empty($hostRegex)) {
-                $createUri->withHost($_SERVER['HTTP_HOST'] ?? '');
-            }
-        }
-
-        if (!empty($hostRegex)) {
-            $createUri->withHost($this->interpolate($hostRegex, $this->fetchOptions($hostRegex, $parameters, $defaults, $variables)));
-        }
-
-        return $createUri;
+        return $this->debug;
     }
 
-    /**
-     * Interpolate string with given values.
-     *
-     * @param array<int|string,mixed> $values
-     */
-    private function interpolate(string $string, array $values): string
+    protected function matchRoute(Route $route, UriInterface $uri, array $variables): Route
     {
-        $replaces = self::URI_FIXERS;
+        $schemes = $route->get('schemes');
 
-        foreach ($values as $key => $value) {
-            $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
+        if (!empty($schemes) && !\array_key_exists($uri->getScheme(), $schemes)) {
+            throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $uri->getScheme(), $uri->getPath()), 400);
         }
 
-        return \strtr($string, $replaces);
-    }
-
-    /**
-     * Fetch uri segments and query parameters.
-     *
-     * @param array<int|string,mixed> $parameters
-     *
-     * @return array<int|string,mixed>
-     */
-    private function fetchOptions(string $uriRoute, array $parameters, array $defaults, array $allowed): array
-    {
-        \preg_match_all('#\[\<(\w+).*?\>\]#', $uriRoute, $optionalVars, \PREG_UNMATCHED_AS_NULL);
-
-        if (isset($optionalVars[1])) {
-            foreach ($optionalVars[1] as $optional) {
-                $defaults[$optional] = null;
+        foreach ($variables as $key => $value) {
+            if (\is_int($key) || 'MARK' === $key) {
+                continue;
             }
+
+            $route->argument($key, $value);
         }
 
-        // Fetch and merge all possible parameters + route defaults ...
-        $parameters += $defaults;
-
-        // all params must be given
-        if ($diff = \array_diff_key($allowed, $parameters)) {
-            throw new UrlGenerationException(\sprintf('Some mandatory parameters are missing ("%s") to generate a URL for route path "%s".', \implode('", "', \array_keys($diff)), $uriRoute));
+        if (null !== $this->debug) {
+            $this->debug->setMatched($route->get('name'));
         }
 
-        return $parameters;
+        return $route;
     }
 }

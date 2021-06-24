@@ -19,8 +19,7 @@ namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\{GeneratedUri, Route};
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
+use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
  * Interface defining required router compiling capabilities.
