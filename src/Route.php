@@ -287,10 +287,10 @@ class Route
      */
     public function argument(string $variable, $value): self
     {
-        if (\is_string($value)) {
-            $value = \rawurldecode($value);
-        } elseif (\is_numeric($value)) {
+        if (\is_numeric($value)) {
             $value = (int) $value;
+        } elseif (\is_string($value)) {
+            $value = \rawurldecode($value);
         }
 
         $this->defaults['_arguments'][$variable] = $value;

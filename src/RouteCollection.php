@@ -53,7 +53,7 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection implements \IteratorAggregate
+final class RouteCollection implements \IteratorAggregate, \Countable
 {
     use Traits\GroupingTrait;
 
@@ -91,19 +91,27 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * Gets the filtered RouteCollection as an ArrayIterator that includes all routes.
+     * Gets the filtered RouteCollection as a SplFixedArray that includes all routes.
      *
      * @see doMerge() method
      *
-     * @return \ArrayIterator<int,Route> The filtered routes
+     * @return \SplFixedArray<int,Route> The filtered routes
      */
-    public function getIterator(): \ArrayIterator
+    public function getIterator(): \SplFixedArray
     {
-        if ($this->routes instanceof \ArrayIterator && !$this->hasGroups) {
+        if ($this->routes instanceof \SplFixedArray && !$this->hasGroups) {
             return $this->routes;
         }
 
-        return $this->routes = $this->doMerge('', 0, new \ArrayIterator());
+        return $this->routes = $this->doMerge('', new static($this->compiler, null !== $this->profiler));
+    }
+
+    /**
+     * Count all routes in the collection.
+     */
+    public function count(): int
+    {
+        return $this->countRoutes;
     }
 
     /**

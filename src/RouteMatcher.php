@@ -41,11 +41,11 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var string|null */
     protected $regexToRoutesMap = null;
 
+    /** @var DebugRoute|null */
+    protected $debug;
+
     /** @var RouteCompilerInterface */
     private $compiler;
-
-    /** @var DebugRoute|null */
-    private $debug;
 
     public function __construct(RouteCollection $collection)
     {
@@ -115,13 +115,15 @@ class RouteMatcher implements RouteMatcherInterface
 
         retry_routing:
         if (isset($this->regexToRoutesMap) && \preg_match($this->regexToRoutesMap, $method . \strpbrk((string) $uri, '/'), $matches)) {
-            $route = $this->routes[$matches['MARK']];
+            $route = $this->routes[$routeId = $matches['MARK']];
 
             if (!empty($matches[1])) {
                 throw new MethodNotAllowedException($route->get('methods'), $uri->getPath(), $method);
             }
 
-            return $this->matchRoute($route, $uri, \array_merge($this->variableRouteData[$matches['MARK']], $matches));
+            unset($matches[0], $matches[1], $matches['MARK']);
+
+            return $this->matchRoute($route, $uri, $this->variableRouteData[$routeId], $matches);
         }
 
         return null;
@@ -157,7 +159,7 @@ class RouteMatcher implements RouteMatcherInterface
         return $this->debug;
     }
 
-    protected function matchRoute(Route $route, UriInterface $uri, array $variables): Route
+    protected function matchRoute(Route $route, UriInterface $uri, array $variables, array $allowed = []): Route
     {
         $schemes = $route->get('schemes');
 
@@ -165,12 +167,12 @@ class RouteMatcher implements RouteMatcherInterface
             throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $uri->getScheme(), $uri->getPath()), 400);
         }
 
-        foreach ($variables as $key => $value) {
-            if (\is_int($key) || 'MARK' === $key) {
-                continue;
-            }
+        $matchVar = 2;
 
-            $route->argument($key, $value);
+        foreach ($variables as $key => $value) {
+            $route->argument($key, $allowed[$matchVar] ?? $value);
+
+            ++$matchVar;
         }
 
         if (null !== $this->debug) {

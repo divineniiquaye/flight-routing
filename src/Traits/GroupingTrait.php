@@ -32,7 +32,7 @@ trait GroupingTrait
     /** @var string[] */
     protected $dynamicRoutesMap = [];
 
-    /** @var Route[]|\ArrayIterator<int,Route> */
+    /** @var Route[]|\SplFixedArray<int,Route> */
     private $routes = [];
 
     /** @var bool */
@@ -43,6 +43,9 @@ trait GroupingTrait
 
     /** @var array<string,mixed[]>|null */
     private $stack = null;
+
+    /** @var int */
+    private $countRoutes = 0;
 
     /** @var DebugRoute|null */
     private $profiler;
@@ -97,57 +100,60 @@ trait GroupingTrait
             $route->end($this);
         }
 
+        ++$this->countRoutes;
+
         return $route;
     }
 
     /**
-     * @return \ArrayIterator<int,Route>
+     * @return \SplFixedArray<int,Route>
      */
-    private function doMerge(string $prefix, int $routeId, \ArrayIterator $routes): \ArrayIterator
+    private function doMerge(string $prefix, self $routes): \SplFixedArray
     {
         $unnamedRoutes = [];
 
         /** @var Route|RouteCollection $route */
         foreach ($this->routes as $namePrefix => $route) {
             if ($route instanceof self) {
-                $route->doMerge($prefix . (\is_string($namePrefix) ? $namePrefix : ''), $routeId, $routes);
+                $route->doMerge($prefix . (\is_string($namePrefix) ? $namePrefix : ''), $routes);
 
                 continue;
             }
 
-            $routes->append($route->bind($name = $prefix . $this->generateRouteName($route, $unnamedRoutes)));
+            $routes->routes[] = $route->bind($name = $prefix . $this->generateRouteName($route, $unnamedRoutes));
 
             if (null !== $this->profiler) {
-                $this->profiler->addProfile($name, $route);
+                $routes->profiler->addProfile($name, $route);
             }
 
-            $this->processRouteMaps($route, $this->compiler->compile($route), $routeId);
-
-            ++$routeId;
+            $this->processRouteMaps($route, $routes->compiler->compile($route), $routes);
         }
 
-        $this->hasGroups = false;
+        [$this->hasGroups, $this->staticRouteMap, $this->dynamicRoutesMap, $this->variableRouteData, $this->profiler] = [$routes->hasGroups, $routes->staticRouteMap, $routes->dynamicRoutesMap, $routes->variableRouteData, $routes->profiler];
 
-        return $routes;
+        return \SplFixedArray::fromArray($routes->routes);
     }
 
-    private function processRouteMaps(Route $route, CompiledRoute $compiledRoute, int $routeId): void
+    private function processRouteMaps(Route $route, CompiledRoute $compiledRoute, self $routes): void
     {
+        $routeId = $routes->countRoutes;
         $methods = \array_unique($route->get('methods'));
 
         $hostsRegex = $compiledRoute->getHostsRegex();
-        $this->variableRouteData[$routeId] = $compiledRoute->getVariables();
-        
+        $routes->variableRouteData[$routeId] = $compiledRoute->getVariables();
+
         $pathRegex = $compiledRoute->getPathRegex();
 
         if (0 === \strpos($pathRegex, '\\/')) {
             $hostsRegex = empty($hostsRegex) ? '?(?:\/{2}[^\/]+)?' : '\/{2}(?i:' . \implode('|', $hostsRegex) . ')';
-            $this->dynamicRoutesMap[] = '(?|' . \implode('|', $methods) . '|([A-Z]+))' . $hostsRegex . $pathRegex . '(*MARK:' . $routeId . ')';
+            $routes->dynamicRoutesMap->addRoute($regex, [$regex, $routeId, $compiledRoute->getVariables()]);
         } else {
             foreach ($methods as $method) {
-                $this->staticRouteMap[$pathRegex][$method] = [!empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $routeId];
+                $routes->staticRouteMap[$pathRegex][$method] = [!empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $routeId];
             }
         }
+
+        ++$routes->countRoutes;
     }
 
     private function generateRouteName(Route $route, array $unnamedRoutes): string

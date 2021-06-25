@@ -27,7 +27,7 @@ class CompiledRoute implements \Serializable
     /** @var string */
     private $pathRegex;
 
-    /** @var string|string[]|null */
+    /** @var string[] */
     private $hostRegexps;
 
     /** @var array */
@@ -35,10 +35,10 @@ class CompiledRoute implements \Serializable
 
     /**
      * @param string          $pathRegex   The regular expression to use to match this route
-     * @param string|string[] $hostRegexps A list of Host regexps else a combined single regex of hosts
+     * @param string[] $hostRegexps A list of Host regexps else a combined single regex of hosts
      * @param array           $variables   An array of variables (variables defined in the path and in the host patterns)
      */
-    public function __construct(string $pathRegex, $hostRegexps, array $variables)
+    public function __construct(string $pathRegex, array $hostRegexps, array $variables)
     {
         $this->pathRegex = $pathRegex;
         $this->hostRegexps = $hostRegexps;
