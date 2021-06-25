@@ -149,7 +149,7 @@ trait GroupingTrait
             $hostsRegex = empty($hostsRegex) ? '?(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:' . \implode('|', $hostsRegex) . ')';
             $regex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $methodsRegex . $hostsRegex . $pathRegex);
 
-            $routes->dynamicRoutesMap[] = $regex;
+            $routes->dynamicRoutesMap[] = $regex . '(*:' . $routeId . ')';
         } else {
             foreach ($methods as $method) {
                 $routes->staticRouteMap[$pathRegex][$method] = [!empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $routeId];
