@@ -145,8 +145,11 @@ trait GroupingTrait
         $pathRegex = $compiledRoute->getPathRegex();
 
         if (0 === \strpos($pathRegex, '\\/')) {
-            $hostsRegex = empty($hostsRegex) ? '?(?:\/{2}[^\/]+)?' : '\/{2}(?i:' . \implode('|', $hostsRegex) . ')';
-            $routes->dynamicRoutesMap->addRoute($regex, [$regex, $routeId, $compiledRoute->getVariables()]);
+            $methodsRegex = '(?|' . \implode('|', $methods) .'|([A-Z]+))';
+            $hostsRegex = empty($hostsRegex) ? '?(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:' . \implode('|', $hostsRegex) . ')';
+            $regex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $methodsRegex . $hostsRegex . $pathRegex);
+
+            $routes->dynamicRoutesMap[] = $regex;
         } else {
             foreach ($methods as $method) {
                 $routes->staticRouteMap[$pathRegex][$method] = [!empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $routeId];
