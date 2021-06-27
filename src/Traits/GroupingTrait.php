@@ -145,15 +145,12 @@ trait GroupingTrait
         $pathRegex = $compiledRoute->getPathRegex();
 
         if (0 === \strpos($pathRegex, '\\/')) {
-            $methodsRegex = '(?|' . \implode('|', $methods) .'|([A-Z]+))';
             $hostsRegex = empty($hostsRegex) ? '?(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:' . \implode('|', $hostsRegex) . ')';
-            $regex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $methodsRegex . $hostsRegex . $pathRegex);
+            $regex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $hostsRegex . $pathRegex);
 
-            $routes->dynamicRoutesMap[] = $regex . '(*:' . $routeId . ')';
+            $routes->dynamicRoutesMap[] = '(?|' . \implode('|', $methods) . '|([A-Z]+))' . $regex . '(*:' . $routeId . ')';
         } else {
-            foreach ($methods as $method) {
-                $routes->staticRouteMap[$pathRegex][$method] = [!empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $routeId];
-            }
+            $routes->staticRouteMap[$pathRegex] = [$routeId, $methods, !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null];
         }
 
         ++$routes->countRoutes;
