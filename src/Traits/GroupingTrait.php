@@ -30,6 +30,9 @@ trait GroupingTrait
     /** @var Route[]|\SplFixedArray<int,Route> */
     private $routes = [];
 
+    /** @var CacheItemPoolInterface|string|bool */
+    private $cacheData = '';
+
     /** @var bool */
     private $hasGroups = false;
 
@@ -43,7 +46,7 @@ trait GroupingTrait
     private $countRoutes = 0;
 
     /** @var DebugRoute|null */
-    private $profiler;
+    private $profiler = null;
 
     /** @var RouteCompilerInterface */
     private $compiler;
@@ -54,6 +57,14 @@ trait GroupingTrait
     public function getDebugRoute(): ?DebugRoute
     {
         return $this->profiler;
+    }
+
+    /**
+     * If routes has been cached or not.
+     */
+    public function isCached(): bool
+    {
+        return true === $this->cacheData;
     }
 
     /**
@@ -175,5 +186,17 @@ trait GroupingTrait
         }
 
         return $name;
+    }
+
+    /**
+     * @param CacheItemPoolInterface|string $cache
+     */
+    private function getCachedData($cache): ?array
+    {
+        if ($cache instanceof CacheItemPoolInterface) {
+            return $cache->getItem(__FILE__)->get();
+        }
+
+        return (\file_exists($cache) && 1 !== $cachedData = include $cache) ? $cachedData : null;
     }
 }

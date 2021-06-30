@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Flight\Routing\Interfaces\RouteCompilerInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * A RouteCollection represents a set of Route instances.
@@ -57,10 +58,24 @@ final class RouteCollection implements \IteratorAggregate, \Countable
 {
     use Traits\GroupingTrait;
 
-    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
+    /**
+     * @param CacheItemPoolInterface|string|null $cacheFile use file path or PSR-6 cache
+     */
+    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false, $cache = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
-        $this->profiler = $debug ? new DebugRoute() : null;
+
+        if ($debug && null === $cache) {
+            $this->profiler = new DebugRoute(); // Avoid debugging while caching is enabled.
+        }
+
+        // @experimental caching support
+        if (null !== $cache && null !== $cachedData = $this->getCachedData($cache)) {
+            [$this->routes, $this->routesMap, $this->countRoutes] = $cachedData;
+            $cache = true; // Cache exists.
+        }
+
+        $this->cacheData = $cache;
     }
 
     /**
@@ -111,7 +126,23 @@ final class RouteCollection implements \IteratorAggregate, \Countable
             return $this->routes;
         }
 
-        return $this->routes = $this->doMerge('', new \ArrayIterator(['map' => []]));
+        try {
+            return $this->routes = $this->doMerge('', new \ArrayIterator(['map' => []]));
+        } finally {
+            $cache = $this->cacheData;
+
+            if ($cache instanceof CacheItemPoolInterface) {
+                $cache->getItem(__FILE__)->set([$this->routes, $this->routesMap, $this->countRoutes]);
+            } elseif (!empty($cache = $this->cacheData)) {
+                $cachedData = \str_replace('SplFixedArray::__set_state', 'SplFixedArray::fromArray', \var_export([$this->routes, $this->routesMap, $this->countRoutes], true));
+
+                if (!\is_dir($directory = \dirname($cache))) {
+                    @\mkdir($directory, 0775, true);
+                }
+
+                \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn " . $cachedData . ";\n");
+            }
+        }
     }
 
     /**
