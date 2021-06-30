@@ -22,11 +22,11 @@ namespace Flight\Routing;
  */
 final class DebugRoute implements \IteratorAggregate
 {
-    /** @var Route|null */
-    private $route;
-
     /** @var bool */
-    private $matched = false;
+    private $matched;
+
+    /** @var Route|null */
+    private $route = null;
 
     /** @var array<string,float|int> */
     private $starts = [];
@@ -37,10 +37,25 @@ final class DebugRoute implements \IteratorAggregate
     /** @var DebugRoute[] */
     private $profiles = [];
 
-    public function __construct(?Route $route = null)
+    /**
+     * @param array<string,float|int>|null $previous of debugged starting point
+     */
+    public function __construct(?Route $route = null, bool $matched = false, ?array $previous = null)
     {
-        $this->route = $route;
-        $this->enter();
+        if (null !== $route) {
+            $this->route = $route;
+        }
+
+        $this->matched = $matched;
+        $this->enter($previous);
+    }
+
+    /**
+     * @param DebugRoute[] $profiles
+     */
+    public function populateProfiler(array $profiles): void
+    {
+        $this->profiles = $profiles;
     }
 
     /**
@@ -48,10 +63,12 @@ final class DebugRoute implements \IteratorAggregate
      *
      * @see addProfile() before using this method
      */
-    public function setMatched(string $name): void
+    public function setMatched(Route $route): void
     {
+        $name = $route->get('name');
+
         if (isset($this->profiles[$name])) {
-            $this->profiles[$name]->matched = true;
+            $this->profiles[$name] = new static($route, true, $this->profiles[$name]->starts);
         }
     }
 
@@ -68,14 +85,6 @@ final class DebugRoute implements \IteratorAggregate
     public function isMatched(): bool
     {
         return $this->matched;
-    }
-
-    /**
-     * Add a new profiled route.
-     */
-    public function addProfile(string $name, Route $route): void
-    {
-        $this->profiles[$name] = new static($route);
     }
 
     /**
@@ -120,9 +129,9 @@ final class DebugRoute implements \IteratorAggregate
     /**
      * Starts the profiling.
      */
-    public function enter(): void
+    public function enter(?array $previous = null): void
     {
-        $this->starts = [
+        $this->starts = $previous ?? [
             'wt' => \microtime(true),
             'mu' => \memory_get_usage(),
             'pmu' => \memory_get_peak_usage(),

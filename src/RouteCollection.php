@@ -91,19 +91,27 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Gets the filtered RouteCollection as a SplFixedArray that includes all routes.
+     * Returns a compiled data of static and dynamic routes.
+     */
+    public function getRouteMaps(): array
+    {
+        return $this->routesMap;
+    }
+
+    /**
+     * Gets the filtered RouteCollection as a traversable array that includes all routes.
      *
      * @see doMerge() method
      *
-     * @return \SplFixedArray<int,Route> The filtered routes
+     * @return \Traversable<int,Route> The filtered routes
      */
-    public function getIterator(): \SplFixedArray
+    public function getIterator(): \Traversable
     {
-        if ($this->routes instanceof \SplFixedArray && !$this->hasGroups) {
+        if ($this->routes instanceof \SplFixedArray) {
             return $this->routes;
         }
 
-        return $this->routes = $this->doMerge('', new static($this->compiler, null !== $this->profiler));
+        return $this->routes = $this->doMerge('', new \ArrayIterator(['map' => []]));
     }
 
     /**

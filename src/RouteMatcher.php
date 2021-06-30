@@ -32,14 +32,8 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var iterable<int,Route> */
     protected $routes = [];
 
-    /** @var array<string,array{0:int,1:string[],2:string}>> */
-    protected $staticRouteMap = [];
-
-    /** @var array<int,array> */
-    protected $variableRouteData = [];
-
-    /** @var string[] */
-    protected $regexToRoutesMap = [];
+    /** @var array */
+    protected $routeMap = [];
 
     /** @var DebugRoute|null */
     protected $debug;
@@ -50,17 +44,9 @@ class RouteMatcher implements RouteMatcherInterface
     public function __construct(RouteCollection $collection)
     {
         $this->compiler = $collection->getCompiler();
+
         $this->routes = $collection->getIterator();
-
-        // Load the route maps from $collection.
-        [$this->staticRouteMap, $dynamicRouteMap, $this->variableRouteData] = $collection->getRouteMaps();
-
-        if (!empty($dynamicRouteMap)) {
-            // Split to prevent a too large regex error ...
-            foreach (\array_chunk($dynamicRouteMap, 150, true) as $dynamicRoute) {
-                $this->regexToRoutesMap[] = '~^(?|' . \implode('|', $dynamicRoute) . ')$~Ju';
-            }
-        }
+        $this->routeMap = $collection->getRouteMaps();
 
         // Enable routes profiling ...
         $this->debug = $collection->getDebugRoute();
@@ -86,49 +72,40 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        $requestPath = $uri->getPath();
-
-        if ('/' !== $requestPath && isset(Route::URL_PREFIX_SLASHES[$requestPath[-1]])) {
-            $uri = $uri->withPath($requestPath = \substr($requestPath, 0, -1));
+        if ('/' !== ($requestPath = $uri->getPath()) && isset(Route::URL_PREFIX_SLASHES[$requestPath[-1]])) {
+            $requestPath = \substr($requestPath, 0, -1);
         }
 
-        if (isset($this->staticRouteMap[$requestPath])) {
-            [$routeId, $methods, $hostsRegex] = $this->staticRouteMap[$requestPath];
-            $variables = $this->variableRouteData[$routeId];
+        if (isset($this->routeMap[0][$requestPath])) {
+            [$routeId, $methods, $hostsRegex] = $this->routeMap[0][$requestPath];
+            $variables = $this->routeMap[2][$routeId];
 
-            if (!\in_array($method, $methods, true)) {
+            if (!\array_key_exists($method, $methods)) {
                 throw new MethodNotAllowedException($methods, $uri->getPath(), $method);
             }
 
             if (!empty($hostsRegex)) {
-                $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
+                $variables = $this->matchStaticRouteHost($uri, $hostsRegex, $variables);
 
-                if (!\preg_match($hostsRegex, $hostAndPost, $hostsVar)) {
-                    if (!empty($this->regexToRoutesMap)) {
+                if (null === $variables) {
+                    if (!empty($this->routeMap[1])) {
                         goto retry_routing;
                     }
 
                     throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested static path [%s].', $uri->getHost(), $uri->getPath()), 400);
-                }
-
-                foreach ($variables as $key => $var) {
-                    if (isset($hostsVar[$key])) {
-                        $variables[$key] = $hostsRegex[$key] ?? $var;
-                    }
                 }
             }
 
             return $this->matchRoute($this->routes[$routeId]->arguments($variables), $uri);
         }
 
-        if (isset($this->regexToRoutesMap)) {
-            retry_routing:
-            $requestPath = $method . \strpbrk((string) $uri, '/');
+        retry_routing:
+        if (!empty($dynamicRouteMap = $this->routeMap[1])) {
+            $requestPath = $method . \strpbrk((string) $uri->withPath($requestPath), '/');
 
-            foreach ($this->regexToRoutesMap as $regexRoute) {
+            foreach ($dynamicRouteMap as $regexRoute) {
                 if (\preg_match($regexRoute, $requestPath, $matches)) {
                     $route = $this->routes[$routeId = $matches['MARK']];
-                    $variables = $this->variableRouteData[$routeId];
 
                     if (!empty($matches[1])) {
                         throw new MethodNotAllowedException($route->get('methods'), $uri->getPath(), $method);
@@ -137,7 +114,7 @@ class RouteMatcher implements RouteMatcherInterface
                     unset($matches[0], $matches[1], $matches['MARK']);
                     $matchVar = 2; // Indexing shifted due to method and host combined in regex
 
-                    foreach ($variables as $key => $value) {
+                    foreach ($this->routeMap[2][$routeId] as $key => $value) {
                         $route->argument($key, $matches[$matchVar] ?? $value);
 
                         ++$matchVar;
@@ -190,9 +167,31 @@ class RouteMatcher implements RouteMatcherInterface
         }
 
         if (null !== $this->debug) {
-            $this->debug->setMatched($route->get('name'));
+            $this->debug->setMatched($route);
         }
 
         return $route;
+    }
+
+    /**
+     * @param array<string,string|null> $variables
+     *
+     * @return null|array<string,string|null>
+     */
+    protected function matchStaticRouteHost(UriInterface $uri, string $hostsRegex, array $variables): ?array
+    {
+        $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
+
+        if (!\preg_match($hostsRegex, $hostAndPost, $hostsVar)) {
+            return null;
+        }
+
+        foreach ($variables as $key => $var) {
+            if (isset($hostsVar[$key])) {
+                $variables[$key] = $hostsVar[$key] ?? $var;
+            }
+        }
+
+        return $variables;
     }
 }
