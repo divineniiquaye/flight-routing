@@ -53,7 +53,7 @@ class RouteCompiler implements RouteCompilerInterface
      * - /{var=foo} - A required variable with default value
      * - /{var}[.{format:(html|php)=html}] - A required variable with an optional variable, a rule & default
      */
-    private const COMPILER_REGEX = '~\{(\w+)(?:\:([^{}]+(?:\{[\w,^{}]+)?))?(?:\=((?2)))?\}~i';
+    private const COMPILER_REGEX = '~\\{(\\w+)(?:\\:([^{}=]+(?:\\{[\\w,^{}]+)?))?(?:\\=((?2)))?\\}~i';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
