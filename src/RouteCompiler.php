@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
+use Flight\Routing\{GeneratedUri, Route};
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
@@ -26,6 +26,7 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
  *
  * provides ability to match and generate uris based on given parameters.
  *
+ * @final This class is final and recommended not to be extended unless special cases
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class RouteCompiler implements RouteCompilerInterface
@@ -95,9 +96,10 @@ class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function compile(Route $route, bool $reversed = false): CompiledRoute
+    public function compile(Route $route): array
     {
-        $requirements = !$reversed ? $this->getRequirements($route->get('patterns')) : [];
+        $hostVariables = $hostsRegex = [];
+        $requirements = $this->getRequirements($route->get('patterns'));
         $routePath = \ltrim($route->get('path'), '/');
 
         // Strip supported browser prefix of $routePath ...
@@ -106,10 +108,8 @@ class RouteCompiler implements RouteCompilerInterface
         }
 
         if (!empty($hosts = $route->get('domain'))) {
-            $hostVariables = $hostsRegex = [];
-
             foreach ($hosts as $host) {
-                [$hostRegex, $hostVariable] = $this->compilePattern($requirements, $host, $reversed);
+                [$hostRegex, $hostVariable] = $this->compilePattern($host, false, $requirements);
 
                 $hostVariables += $hostVariable;
                 $hostsRegex[] = $hostRegex;
@@ -117,16 +117,12 @@ class RouteCompiler implements RouteCompilerInterface
         }
 
         if (!\str_contains($routePath, '{')) {
-            return new CompiledRoute('/' . $routePath, $hostsRegex ?? [], $hostVariables ?? []);
+            return ['/' . $routePath, $hostsRegex, $hostVariables];
         }
 
-        [$pathRegex, $pathVariable] = $this->compilePattern($requirements, $routePath, $reversed);
+        [$pathRegex, $pathVariables] = $this->compilePattern($routePath, false, $requirements);
 
-        // Resolves $pathRegex and host and pattern variables.
-        $pathRegex = !$reversed ? '\\/' . $pathRegex : \stripslashes('/' . \str_replace('?', '', $pathRegex));
-        $variables = isset($hostVariables) ? $hostVariables += $pathVariable : $pathVariable;
-
-        return new CompiledRoute($pathRegex, $hostsRegex ?? [], $variables);
+        return ['\\/' . $pathRegex, $hostsRegex, empty($hostVariables) ? $pathVariables : $hostVariables += $pathVariables];
     }
 
     /**
@@ -134,39 +130,42 @@ class RouteCompiler implements RouteCompilerInterface
      */
     public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri
     {
-        $compiledRoute = $this->compile($route, true);
-        $pathRegex = $compiledRoute->getPathRegex();
-        $variables = $compiledRoute->getVariables();
+        [$pathRegex, $pathVariables] = $this->compilePattern(\ltrim($route->get('path'), '/'), true);
 
-        if (!empty($hostRegex = $compiledRoute->getHostsRegex())) {
-            $hostRegex = \end($hostRegex);
+        $pathRegex = '/' . \stripslashes(\str_replace('?', '', $pathRegex));
+        $createUri = new GeneratedUri($this->interpolate($pathRegex, $parameters, $defaults, $pathVariables));
+
+        foreach ($route->get('domain') as $host) {
+            $compiledHost = $this->compilePattern($host, true);
+
+            if (!empty($compiledHost)) {
+                [$hostRegex, $hostVariables] = $compiledHost;
+
+                break;
+            }
         }
-
-        $createUri = new GeneratedUri($this->interpolate($pathRegex, $this->fetchOptions($pathRegex, $parameters, $defaults, $variables)));
 
         if (!empty($schemes = $route->get('schemes'))) {
             $createUri->withScheme(isset($schemes['https']) ? 'https' : \key($schemes) ?? 'http');
 
-            if (empty($hostRegex)) {
+            if (!isset($hostRegex)) {
                 $createUri->withHost($_SERVER['HTTP_HOST'] ?? '');
             }
         }
 
-        if (!empty($hostRegex)) {
-            $createUri->withHost($this->interpolate($hostRegex, $this->fetchOptions($hostRegex, $parameters, $defaults, $variables)));
+        if (isset($hostRegex)) {
+            $createUri->withHost($this->interpolate($hostRegex, $parameters, $defaults, $hostVariables));
         }
 
         return $createUri;
     }
 
     /**
-     * Fetch uri segments and query parameters.
+     * Check for mandatory parameters then interpolate $uriRoute with given $parameters.
      *
      * @param array<int|string,mixed> $parameters
-     *
-     * @return array<int|string,mixed>
      */
-    private function fetchOptions(string $uriRoute, array $parameters, array $defaults, array $allowed): array
+    private function interpolate(string $uriRoute, array $parameters, array $defaults, array $allowed): string
     {
         \preg_match_all('#\[\<(\w+).*?\>\]#', $uriRoute, $optionalVars, \PREG_UNMATCHED_AS_NULL);
 
@@ -184,7 +183,13 @@ class RouteCompiler implements RouteCompilerInterface
             throw new UrlGenerationException(\sprintf('Some mandatory parameters are missing ("%s") to generate a URL for route path "%s".', \implode('", "', \array_keys($diff)), $uriRoute));
         }
 
-        return $parameters;
+        $replaces = self::URI_FIXERS;
+
+        foreach ($parameters as $key => $value) {
+            $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
+        }
+
+        return \strtr($uriRoute, $replaces);
     }
 
     /**
@@ -194,7 +199,7 @@ class RouteCompiler implements RouteCompilerInterface
      *
      * @return array<string,string|string[]>
      */
-    protected function getRequirements(array $requirements): array
+    private function getRequirements(array $requirements): array
     {
         $newParameters = [];
 
@@ -237,7 +242,7 @@ class RouteCompiler implements RouteCompilerInterface
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(array $requirements, string $uriPattern, bool $reversed): array
+    private function compilePattern(string $uriPattern, bool $reversed = false, array $requirements = []): array
     {
         $variables = $replaces = [];
 
@@ -306,21 +311,5 @@ class RouteCompiler implements RouteCompilerInterface
     private function filterSegment(string $segment): string
     {
         return \strtr($segment, self::SEGMENT_REPLACES);
-    }
-
-    /**
-     * Interpolate string with given values.
-     *
-     * @param array<int|string,mixed> $values
-     */
-    private function interpolate(string $string, array $values): string
-    {
-        $replaces = self::URI_FIXERS;
-
-        foreach ($values as $key => $value) {
-            $replaces["<{$key}>"] = (\is_array($value) || $value instanceof \Closure) ? '' : $value;
-        }
-
-        return \strtr($string, $replaces);
     }
 }

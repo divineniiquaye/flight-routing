@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
+use Flight\Routing\{GeneratedUri, Route};
 use Flight\Routing\Exceptions\UrlGenerationException;
 
 /**
@@ -29,8 +29,19 @@ interface RouteCompilerInterface
 {
     /**
      * Match the Route instance and compiles the current route instance.
+     *
+     * This method should strictly return an indexed array of three parts.
+     *
+     * - path regex, which starting and ending modifiers stripped off.
+     *     Eg: #^\/hello\/world\/{?P<var>[^\/]+}$#sDu -----> \/hello\/world\/{?P<var>[^\/]+}.
+     *     Static path regex should begin wih a single "/" while dynamic route begins with "\\/".
+     * - hosts regex, which is a list array of stringable hosts regex and
+     *     modifies stripped of as path regex.
+     * - variables, which is an array unique of merged path and hosts regex.
+     *
+     * @return array<int,mixed>
      */
-    public function compile(Route $route): CompiledRoute;
+    public function compile(Route $route): array;
 
     /**
      * Generate a URI from a named route.
