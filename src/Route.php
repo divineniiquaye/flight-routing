@@ -124,6 +124,26 @@ class Route
     }
 
     /**
+     * @internal
+     */
+    public function __serialize(): array
+    {
+        return $this->get('all');
+    }
+
+    /**
+     * @internal
+     *
+     * @param array<string,mixed>
+     */
+    public function __unserialize(array $data): void
+    {
+        foreach ($data as $parameter => $value) {
+            $this->{$parameter} = $value;
+        }
+    }
+
+    /**
      * @param string  $method
      * @param mixed[] $arguments
      *
