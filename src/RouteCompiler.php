@@ -27,6 +27,7 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
  * provides ability to match and generate uris based on given parameters.
  *
  * @final This class is final and recommended not to be extended unless special cases
+ *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class RouteCompiler implements RouteCompilerInterface
@@ -103,8 +104,8 @@ class RouteCompiler implements RouteCompilerInterface
         $routePath = \ltrim($route->get('path'), '/');
 
         // Strip supported browser prefix of $routePath ...
-        if (!empty($routePath) && isset(Route::URL_PREFIX_SLASHES[$routePath[-1]])) {
-            $routePath = \substr($routePath, 0, -1);
+        if (!empty($routePath)) {
+            $routePath = \rtrim($routePath, Route::URL_PREFIX_SLASHES[$routePath[-1]] ?? '/');
         }
 
         if (!empty($hosts = $route->get('domain'))) {
@@ -116,13 +117,12 @@ class RouteCompiler implements RouteCompilerInterface
             }
         }
 
-        if (!\str_contains($routePath, '{')) {
-            return ['/' . $routePath, $hostsRegex, $hostVariables];
+        if (\str_contains($routePath, '{')) {
+            [$pathRegex, $pathVariables] = $this->compilePattern('/' . $routePath, false, $requirements);
+            $variables = empty($hostVariables) ? $pathVariables : $hostVariables += $pathVariables;
         }
 
-        [$pathRegex, $pathVariables] = $this->compilePattern($routePath, false, $requirements);
-
-        return ['\\/' . $pathRegex, $hostsRegex, empty($hostVariables) ? $pathVariables : $hostVariables += $pathVariables];
+        return [$pathRegex ?? '/' . $routePath, $hostsRegex, $variables ?? $hostVariables];
     }
 
     /**
@@ -146,7 +146,7 @@ class RouteCompiler implements RouteCompilerInterface
         }
 
         if (!empty($schemes = $route->get('schemes'))) {
-            $createUri->withScheme(isset($schemes['https']) ? 'https' : \key($schemes) ?? 'http');
+            $createUri->withScheme(\in_array('https', $schemes, true) ? 'https' : \end($schemes) ?? 'http');
 
             if (!isset($hostRegex)) {
                 $createUri->withHost($_SERVER['HTTP_HOST'] ?? '');
