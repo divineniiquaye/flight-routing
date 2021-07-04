@@ -356,7 +356,7 @@ class Route
     public function scheme(string ...$schemes): self
     {
         foreach ($schemes as $scheme) {
-            $this->schemes[\strtolower($scheme)] = true;
+            $this->schemes[] = \strtolower($scheme);
         }
 
         return $this;
