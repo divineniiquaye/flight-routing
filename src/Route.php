@@ -73,6 +73,18 @@ class Route
      */
     public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
 
+    protected const SUPPORTED_GETTER_METHODS = [
+        'controller' => 'controller',
+        'methods' => 'methods',
+        'schemes' => 'schemes',
+        'domain' => 'domain',
+        'name' => 'name',
+        'path' => 'path',
+        'patterns' => 'patterns',
+        'middlewares' => 'middlewares',
+        'defaults' => 'defaults',
+    ];
+
     /** @var RouteCollection|null */
     private $collection = null;
 
@@ -386,22 +398,12 @@ class Route
      */
     public function get(string $name)
     {
-        if (\property_exists(__CLASS__, $name)) {
+        if (isset(static::SUPPORTED_GETTER_METHODS[$name])) {
             return $this->{$name};
         }
 
         if ('all' === $name) {
-            return [
-                'controller' => $this->controller,
-                'methods' => $this->methods,
-                'schemes' => $this->schemes,
-                'domain' => $this->domain,
-                'name' => $this->name,
-                'path' => $this->path,
-                'patterns' => $this->patterns,
-                'middlewares' => $this->middlewares,
-                'defaults' => $this->defaults,
-            ];
+            return \array_map([$this, 'get'], static::SUPPORTED_GETTER_METHODS);
         }
 
         if ('arguments' === $name) {
