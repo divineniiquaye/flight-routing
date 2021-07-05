@@ -108,7 +108,8 @@
     $collector = new RouteCollection();
     $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
 
-    $router = new Router($collection);
+    $router = new Router();
+    $router->setCollection($collection);
 
     $psr17Factory = new Psr17Factory();
     $response = $router->process($psr17Factory->fromGlobalRequest(), new RouteHandler($psr17Factory));
@@ -146,14 +147,14 @@
 
     // or collection grouping
     $group2 = new RouteCollection();
-    $group2->addRoute('/phpinfo', 'GET|HEAD', 'phpinfo');
+    $group2->addRoute('/phpinfo', ['GET', 'HEAD'], 'phpinfo');
 
     $collection->group('group_name', $group1);
     $collection->group('group_name', $group2);
 
     //or dsl
     $collection->group('group_name')
-        ->addRoute('/phpinfo', 'GET|HEAD', 'phpinfo')->end()
+        ->addRoute('/phpinfo', ['GET', 'HEAD'], 'phpinfo')->end()
         // ... More can be added including nested grouping
     ->end();
     ```
