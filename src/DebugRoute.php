@@ -34,7 +34,7 @@ final class DebugRoute implements \IteratorAggregate
     /** @var array<string,float|int> */
     private $ends = [];
 
-    /** @var DebugRoute[] */
+    /** @var array<int,DebugRoute> */
     private $profiles = [];
 
     /**
@@ -55,7 +55,12 @@ final class DebugRoute implements \IteratorAggregate
      */
     public function populateProfiler(array $profiles): void
     {
-        $this->profiles = $profiles;
+        $this->profiles = \array_merge($this->profiles, $profiles);
+    }
+
+    public function addProfile(Route $route): void
+    {
+        $this->profiles[] = new static($route);
     }
 
     /**
@@ -63,10 +68,8 @@ final class DebugRoute implements \IteratorAggregate
      *
      * @see addProfile() before using this method
      */
-    public function setMatched(Route $route): void
+    public function setMatched(Route $route, int $name): void
     {
-        $name = $route->get('name');
-
         if (isset($this->profiles[$name])) {
             $this->profiles[$name] = new static($route, true, $this->profiles[$name]->starts);
         }
