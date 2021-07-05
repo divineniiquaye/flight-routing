@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\InvalidControllerException;
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Flight\Routing\Exceptions\{InvalidControllerException, MethodNotAllowedException, UriHandlerException};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -403,6 +403,28 @@ class Route
     {
         foreach ($middlewares as $middleware) {
             $this->middlewares[] = $middleware;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Asserts methods and host's scheme.
+     *
+     * @throws MethodNotAllowedException|UriHandlerException
+     */
+    public function match(string $method, UriInterface $uri): self
+    {
+        if (!\in_array($method, $this->methods)) {
+            throw new MethodNotAllowedException($this->methods, $uri->getPath(), $method);
+        }
+
+        if (!empty($schemes = $this->schemes)) {
+            if (\in_array($uri->getScheme(), $schemes, true)) {
+                return $this;
+            }
+
+            throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $uri->getScheme(), $uri->getPath()), 400);
         }
 
         return $this;
