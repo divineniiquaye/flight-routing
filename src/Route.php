@@ -456,18 +456,28 @@ class Route
     }
 
     /**
+     * Sets the route belonging to a particular collection.
+     *
+     * This method is kinda internal, only used in RouteCollection class,
+     * and retrieved using this class end method.
+     *
+     * @internal used by RouteCollection class
+     */
+    public function belong(RouteCollection $to): void
+    {
+        $this->collection = $to;
+    }
+
+    /**
      * End a group stack or return self.
      */
-    public function end(RouteCollection $collection = null): ?RouteCollection
+    public function end(): ?RouteCollection
     {
-        if (null !== $collection) {
-            return $this->collection = $collection;
+        if (null !== $stack = $this->collection) {
+            $this->collection = null; // Just remove it.
         }
 
-        $stack = $this->collection;
-        $this->collection = null; // Just remove it.
-
-        return $stack ?? $collection;
+        return $stack;
     }
 
     public function generateRouteName(string $prefix): string

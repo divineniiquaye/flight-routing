@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Flight\Routing\Interfaces\RouteCompilerInterface;
-use Psr\Cache\CacheItemPoolInterface;
+use Flight\Routing\Interfaces\RouteMapInterface;
 
 /**
  * A RouteCollection represents a set of Route instances.
@@ -41,7 +41,7 @@ use Psr\Cache\CacheItemPoolInterface;
  *
  * @method RouteCollection withAssert(string $variable, string|string[] $regexp)
  * @method RouteCollection withDefault(string $variable, mixed $default)
- * @method RouteCollection withArgument($variable, mixed $value)
+ * @method RouteCollection withArgument(string $variable, mixed $value)
  * @method RouteCollection withMethod(string ...$methods)
  * @method RouteCollection withScheme(string ...$schemes)
  * @method RouteCollection withMiddleware(MiddlewareInterface ...$middlewares)
@@ -49,33 +49,42 @@ use Psr\Cache\CacheItemPoolInterface;
  * @method RouteCollection withPrefix(string $path)
  * @method RouteCollection withDefaults(array $values)
  * @method RouteCollection withAsserts(array $patterns)
- * @method RouteCollection withArguments(array $patterns)
+ * @method RouteCollection withArguments(array $parameters)
  * @method RouteCollection withNamespace(string $namespace)
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection implements \IteratorAggregate, \Countable
+final class RouteCollection extends \ArrayIterator implements RouteMapInterface
 {
     use Traits\GroupingTrait;
 
     /**
-     * @param CacheItemPoolInterface|string|null $cacheFile use file path or PSR-6 cache
+     * Prototype methods for routes grouping.
      */
-    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false, $cache = null)
+    protected const SUPPORTED_GETTER_METHODS = [
+        'withNamespace' => 'namespace',
+        'withMethod' => 'method',
+        'withScheme' => 'scheme',
+        'withDomain' => 'domain',
+        'withPrefix' => 'prefix',
+        'withAssert' => 'assert',
+        'withAsserts' => 'asserts',
+        'withDefault' => 'default',
+        'withDefaults' => 'defaults',
+        'withArgument' => 'argument',
+        'withArguments' => 'arguments',
+        'withMiddleware' => 'middleware',
+    ];
+
+    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
 
-        if ($debug && null === $cache) {
+        if ($debug) {
             $this->profiler = new DebugRoute(); // Avoid debugging while caching is enabled.
         }
 
-        // @experimental caching support
-        if (null !== $cache && null !== $cachedData = $this->getCachedData($cache)) {
-            [$this->routes, $this->routesMap, $this->countRoutes] = $cachedData;
-            $cache = true; // Cache exists.
-        }
-
-        $this->cacheData = $cache;
+        parent::__construct();
     }
 
     /**
@@ -86,13 +95,14 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function __call($method, $arguments)
     {
-        $routeMethod = (string) \preg_replace('/^with([A-Z]{1}[a-z]+)$/', '\1', $method, 1);
-        $routeMethod = \strtolower($routeMethod);
+        if (null === $routeMethod = self::SUPPORTED_GETTER_METHODS[$method] ?? null) {
+            throw new \BadMethodCallException(\sprintf('Method "%s" not found in %s class.', $method, __CLASS__));
+        }
 
         if (null !== $stack = $this->stack) {
             $this->stack[$routeMethod] = \array_merge($stack[$routeMethod] ?? [], $arguments);
-        } else {
-            foreach ($this->routes as $route) {
+        } elseif ($this->offsetExists('routes')) {
+            foreach ($this->offsetGet('routes') as $route) {
                 \call_user_func_array([$route, $routeMethod], $arguments);
             }
         }
@@ -100,57 +110,38 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getCompiler(): RouteCompilerInterface
     {
         return $this->compiler;
     }
 
     /**
-     * Returns a compiled data of static and dynamic routes.
+     * {@inheritdoc}
      */
-    public function getRouteMaps(): array
+    public function getData(): array
     {
-        return $this->routesMap;
-    }
-
-    /**
-     * Gets the filtered RouteCollection as a traversable array that includes all routes.
-     *
-     * @see doMerge() method
-     *
-     * @return \Traversable<int,Route> The filtered routes
-     */
-    public function getIterator(): \Traversable
-    {
-        if ($this->routes instanceof \SplFixedArray) {
-            return $this->routes;
+        if (null !== $this->cacheData) {
+            return $this->cacheData;
         }
 
-        try {
-            return $this->routes = $this->doMerge('', new \ArrayIterator(['map' => []]));
-        } finally {
-            $cache = $this->cacheData;
+        if ($this->offsetExists('group')) {
+            $this->doMerge('', $this);
+        }
 
-            if ($cache instanceof CacheItemPoolInterface) {
-                $cache->getItem(__FILE__)->set([$this->routes, $this->routesMap, $this->countRoutes]);
-            } elseif (!empty($cache = $this->cacheData)) {
-                $cachedData = \str_replace('SplFixedArray::__set_state', 'SplFixedArray::fromArray', \var_export([$this->routes, $this->routesMap, $this->countRoutes], true));
+        if ($this->offsetExists('dynamicRoutesMap')) {
+            $routeMapToRegexps = [];
 
-                if (!\is_dir($directory = \dirname($cache))) {
-                    @\mkdir($directory, 0775, true);
-                }
-
-                \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn " . $cachedData . ";\n");
+            foreach (\array_chunk($this['dynamicRoutesMap'][0], 100, true) as $dynamicRoute) {
+                $routeMapToRegexps[] = '~^(?|' . \implode('|', $dynamicRoute) . ')$~u';
             }
-        }
-    }
 
-    /**
-     * Count all routes in the collection.
-     */
-    public function count(): int
-    {
-        return $this->countRoutes;
+            $this['dynamicRoutesMap'][0] = $routeMapToRegexps;
+        }
+
+        return $this->cacheData = [$this['routes'] ?? [], $this['staticRoutesMap'] ?? [], $this['dynamicRoutesMap'] ?? []];
     }
 
     /**
@@ -165,7 +156,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function add(Route ...$routes): self
     {
         foreach ($routes as $route) {
-            $this->routes[] = $this->resolveWith($route);
+            $this['routes'][] = $this->resolveWith($route);
         }
 
         return $this;
@@ -182,7 +173,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
      */
     public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
-        return $this->routes[] = $this->resolveWith(new Route($pattern, $methods, $handler));
+        return $this['routes'][] = $this->resolveWith(new Route($pattern, $methods, $handler));
     }
 
     /**
@@ -196,10 +187,10 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     public function group(string $name, $controllers = null): self
     {
         if (null === $controllers) {
-            $controllers = new static();
+            $controllers = new static($this->compiler);
             $controllers->stack = $this->stack ?? [];
         } elseif (\is_callable($controllers)) {
-            $controllers($controllers = new static());
+            $controllers($controllers = new static($this->compiler));
         }
 
         if (!$controllers instanceof self) {
@@ -207,13 +198,12 @@ final class RouteCollection implements \IteratorAggregate, \Countable
         }
 
         if (!empty($name)) {
-            $this->routes[$name] = $controllers;
+            $this['group'][$name] = $controllers;
         } else {
-            $this->routes[] = $controllers;
+            $this['group'][] = $controllers;
         }
 
         $controllers->parent = $this;
-        $this->hasGroups = true;
 
         return $controllers;
     }
@@ -335,7 +325,7 @@ final class RouteCollection implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Find a route by name.
+     * Find a route by named route.
      *
      * @param string $name The route name
      *

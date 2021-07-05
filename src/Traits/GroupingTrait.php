@@ -20,21 +20,11 @@ namespace Flight\Routing\Traits;
 use Biurad\Annotations\LoaderInterface;
 use Flight\Routing\{DebugRoute, Route};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
-use Psr\Cache\CacheItemPoolInterface;
 
 trait GroupingTrait
 {
     /** @var array */
-    private $routesMap = [];
-
-    /** @var Route[]|\SplFixedArray<int,Route> */
-    private $routes = [];
-
-    /** @var CacheItemPoolInterface|string|bool */
-    private $cacheData = '';
-
-    /** @var bool */
-    private $hasGroups = false;
+    private $cacheData = null;
 
     /** @var self|null */
     private $parent = null;
@@ -60,14 +50,6 @@ trait GroupingTrait
     }
 
     /**
-     * If routes has been cached or not.
-     */
-    public function isCached(): bool
-    {
-        return true === $this->cacheData;
-    }
-
-    /**
      * Load routes from annotation.
      */
     public function loadAnnotation(LoaderInterface $loader): void
@@ -76,8 +58,7 @@ trait GroupingTrait
 
         foreach ($annotations as $annotation) {
             if ($annotation instanceof self) {
-                $this->hasGroups = true;
-                $this->routes[] = $annotation;
+                $this['group'][] = $annotation;
             }
         }
     }
@@ -97,8 +78,14 @@ trait GroupingTrait
             }
         }
 
-        if (null !== $this->parent) {
-            $route->end($this);
+        if (null === $this->parent) {
+            $this->processRouteMaps($route, $this->countRoutes, $this);
+
+            if (null !== $this->profiler) {
+                $this->profiler->addProfile($route);
+            }
+        } else {
+            $route->belong($this); // Attach grouping to route.
         }
 
         ++$this->countRoutes;
@@ -107,70 +94,62 @@ trait GroupingTrait
     }
 
     /**
-     * @param \ArrayIterator<int,Route> $routes
+     * @param \ArrayIterator<string,mixed> $routes
      *
-     * @return \SplFixedArray<int,Route>
+     * @return array<int,Route>
      */
-    private function doMerge(string $prefix, \ArrayIterator $routes, bool $merge = true): \SplFixedArray
+    private function doMerge(string $prefix, self $routes, bool $merge = true): void
     {
         $unnamedRoutes = [];
 
-        /** @var Route|RouteCollection $route */
-        foreach ($this->routes as $namePrefix => $route) {
-            if ($route instanceof self) {
-                $route->doMerge($prefix . (\is_string($namePrefix) ? $namePrefix : ''), $routes, false);
+        foreach ($this->offsetGet('group') as $namePrefix => $group) {
+            $prefix .= \is_string($namePrefix) ? $namePrefix : '';
 
-                continue;
+            foreach ($group['routes'] ?? [] as $route) {
+                if (null === $name = $route->get('name')) {
+                    $name = $route->generateRouteName('');
+
+                    if (isset($unnamedRoutes[$name])) {
+                        $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
+                    } else {
+                        $unnamedRoutes[$name] = 0;
+                    }
+                }
+
+                $routes['routes'][] = $route->bind($prefix . $name);
+
+                if (null !== $routes->profiler) {
+                    $routes->profiler->addProfile($route);
+                }
+
+                $this->processRouteMaps($route, $routes->countRoutes, $routes);
+
+                ++$routes->countRoutes;
             }
 
-            $routes['map'][] = $route->bind($name = $prefix . $this->generateRouteName($route, $unnamedRoutes));
-
-            if (isset($routes['profile']) || null !== $this->profiler) {
-                $routes['profile'][$name] = new DebugRoute($route);
+            if ($group->offsetExists('group')) {
+                $group->doMerge($prefix, $routes, false);
             }
-
-            $this->processRouteMaps($route, $this->compiler, $routes);
         }
 
         if ($merge) {
-            $this->countRoutes = $routes['countRoutes'] ?? $this->countRoutes;
-            $this->routesMap = [$routes['staticRouteMap'] ?? [], 2 => $routes['variableRouteData'] ?? []];
-
-            if (isset($routes['profile'])) {
-                $this->profiler->populateProfiler($routes['profile']);
-            }
-
-            // Split to prevent a too large regex error ...
-            if (isset($routes['dynamicRoutesMap'])) {
-                foreach (\array_chunk($routes['dynamicRoutesMap'], 150, true) as $dynamicRoute) {
-                    $this->routesMap[1][] = '~^(?|' . \implode('|', $dynamicRoute) . ')$~Ju';
-                }
-            }
-
-            $this->hasGroups = false;
+            $routes->offsetUnset('group'); // Unset grouping ...
         }
-
-        return \SplFixedArray::fromArray($routes['map']);
     }
 
-    private function processRouteMaps(Route $route, RouteCompilerInterface $compiler, \ArrayIterator $routes): void
+    /**
+     * @param \ArrayIterator|array $routes
+     */
+    private function processRouteMaps(Route $route, int $routeId, \ArrayIterator $routes): void
     {
-        $methods = \array_unique($route->get('methods'));
-        $routeId = $routes['countRoutes'] ?? $routes['countRoutes'] = 0;
-
-        [$pathRegex, $hostsRegex, $variables] = $compiler->compile($route);
-        $routes['variableRouteData'][] = $variables;
+        [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
 
         if ('\\' === $pathRegex[0]) {
-            $hostsRegex = empty($hostsRegex) ? '?(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:(?|' . \implode('|', $hostsRegex) . '))';
-            $regex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $hostsRegex . $pathRegex);
-
-            $routes['dynamicRoutesMap'][] = '(?|' . \implode('|', $methods) . '|([A-Z]+))' . $regex . '(*:' . $routeId . ')';
+            $routes['dynamicRoutesMap'][0][] = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', (empty($hostsRegex) ? '(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:(?|' . \implode('|', $hostsRegex) . '))') . $pathRegex) . '(*:' . $routeId . ')';
+            $routes['dynamicRoutesMap'][1][$routeId] = $variables;
         } else {
-            $routes['staticRouteMap'][$pathRegex] = [$routeId, \array_flip($methods), !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null];
+            $routes['staticRoutesMap'][$pathRegex] = [$routeId, !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $variables];
         }
-
-        ++$routes['countRoutes'];
     }
 
     private function generateRouteName(Route $route, array $unnamedRoutes): string
@@ -186,17 +165,5 @@ trait GroupingTrait
         }
 
         return $name;
-    }
-
-    /**
-     * @param CacheItemPoolInterface|string $cache
-     */
-    private function getCachedData($cache): ?array
-    {
-        if ($cache instanceof CacheItemPoolInterface) {
-            return $cache->getItem(__FILE__)->get();
-        }
-
-        return (\file_exists($cache) && 1 !== $cachedData = include $cache) ? $cachedData : null;
     }
 }
