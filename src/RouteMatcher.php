@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
+use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMapInterface, RouteMatcherInterface};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -27,13 +27,16 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteMatcher implements RouteMatcherInterface
+class RouteMatcher implements RouteMatcherInterface, \Countable
 {
-    /** @var iterable<int,Route> */
+    /** @var array<int,Route> */
     protected $routes = [];
 
     /** @var array */
-    protected $routeMap = [];
+    protected $staticRouteMap = [];
+
+    /** @var array */
+    protected $dynamicRouteMap = [];
 
     /** @var DebugRoute|null */
     protected $debug;
@@ -41,15 +44,23 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var RouteCompilerInterface */
     private $compiler;
 
-    public function __construct(RouteCollection $collection)
+    public function __construct(RouteMapInterface $collection)
     {
         $this->compiler = $collection->getCompiler();
-
-        $this->routes = $collection->getIterator();
-        $this->routeMap = $collection->getRouteMaps();
+        [$this->routes, $this->staticRouteMap, $this->dynamicRouteMap] = $collection->getData();
 
         // Enable routes profiling ...
-        $this->debug = $collection->getDebugRoute();
+        if ($collection instanceof RouteCollection) {
+            $this->debug = $collection->getDebugRoute();
+        }
+    }
+
+    /**
+     * Get the total number of routes.
+     */
+    public function count(): int
+    {
+        return \count($this->routes);
     }
 
     /**
@@ -72,23 +83,18 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        if ('/' !== ($requestPath = $uri->getPath()) && isset(Route::URL_PREFIX_SLASHES[$requestPath[-1]])) {
-            $requestPath = \substr($requestPath, 0, -1);
-        }
+        $pathInfo = $uri->getPath();
+        $requestPath = \rtrim($pathInfo, Route::URL_PREFIX_SLASHES[$pathInfo[-1]] ?? '/') ?: '/';
 
-        if (isset($this->routeMap[0][$requestPath])) {
-            [$routeId, $methods, $hostsRegex] = $this->routeMap[0][$requestPath];
-            $variables = $this->routeMap[2][$routeId];
+        if (isset($this->staticRouteMap[$requestPath])) {
+            [$routeId, $hostsRegex, $variables] = $this->staticRouteMap[$requestPath];
+            $route = $this->routes[$routeId]->match($method, $uri);
 
-            if (!\array_key_exists($method, $methods)) {
-                throw new MethodNotAllowedException($methods, $uri->getPath(), $method);
-            }
-
-            if (!empty($hostsRegex)) {
+            if (null !== $hostsRegex) {
                 $variables = $this->matchStaticRouteHost($uri, $hostsRegex, $variables);
 
                 if (null === $variables) {
-                    if (!empty($this->routeMap[1])) {
+                    if (!empty($this->dynamicRouteMap)) {
                         goto retry_routing;
                     }
 
@@ -96,36 +102,19 @@ class RouteMatcher implements RouteMatcherInterface
                 }
             }
 
-            return $this->matchRoute($this->routes[$routeId]->arguments($variables), $uri);
+            if (null !== $this->debug) {
+                $this->debug->setMatched($route, $routeId);
+            }
+
+            return empty($variables) ? $route : $route->arguments($variables);
         }
 
         retry_routing:
-        if (!empty($dynamicRouteMap = $this->routeMap[1])) {
-            $requestPath = $method . \strpbrk((string) $uri->withPath($requestPath), '/');
-
-            foreach ($dynamicRouteMap as $regexRoute) {
-                if (\preg_match($regexRoute, $requestPath, $matches)) {
-                    $route = $this->routes[$routeId = $matches['MARK']];
-
-                    if (!empty($matches[1])) {
-                        throw new MethodNotAllowedException($route->get('methods'), $uri->getPath(), $method);
-                    }
-
-                    unset($matches[0], $matches[1], $matches['MARK']);
-                    $matchVar = 2; // Indexing shifted due to method and host combined in regex
-
-                    foreach ($this->routeMap[2][$routeId] as $key => $value) {
-                        $route->argument($key, $matches[$matchVar] ?? $value);
-
-                        ++$matchVar;
-                    }
-
-                    return $this->matchRoute($route, $uri);
-                }
-            }
+        if ($pathInfo !== $requestPath) {
+            $uri = $uri->withPath($requestPath);
         }
 
-        return null;
+        return $this->matchVariableRoute($method, $uri);
     }
 
     /**
@@ -158,25 +147,36 @@ class RouteMatcher implements RouteMatcherInterface
         return $this->debug;
     }
 
-    protected function matchRoute(Route $route, UriInterface $uri): Route
+    protected function matchVariableRoute(string $method, UriInterface $uri): ?Route
     {
-        $schemes = $route->get('schemes');
+        $requestPath = \strpbrk((string) $uri, '/');
 
-        if (!empty($schemes) && !\array_key_exists($uri->getScheme(), $schemes)) {
-            throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $uri->getScheme(), $uri->getPath()), 400);
+        foreach ($this->dynamicRouteMap[0] ?? [] as $regex) {
+            if (!\preg_match($regex, $requestPath, $matches)) {
+                continue;
+            }
+
+            $route = $this->routes[$routeId = (int) $matches['MARK']];
+            $matchVar = 0;
+
+            foreach ($this->dynamicRouteMap[1][$routeId] ?? [] as $key => $value) {
+                $route->argument($key, $matches[++$matchVar] ?? $value);
+            }
+
+            if (null !== $this->debug) {
+                $this->debug->setMatched($route, $routeId);
+            }
+
+            return $route->match($method, $uri);
         }
 
-        if (null !== $this->debug) {
-            $this->debug->setMatched($route);
-        }
-
-        return $route;
+        return null;
     }
 
     /**
      * @param array<string,string|null> $variables
      *
-     * @return null|array<string,string|null>
+     * @return array<string,string|null>|null
      */
     protected function matchStaticRouteHost(UriInterface $uri, string $hostsRegex, array $variables): ?array
     {
