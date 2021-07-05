@@ -18,8 +18,10 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
@@ -27,7 +29,7 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodInterface, MiddlewareInterface
+class Router implements RouteMatcherInterface, RequestMethodInterface, MiddlewareInterface
 {
     /**
      * Standard HTTP methods for browser requests.
@@ -48,12 +50,51 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     /** @var MiddlewarePipeInterface */
     private $pipeline;
 
-    public function __construct(RouteCollection $collection, ?MiddlewarePipeInterface $dispatcher = null)
-    {
-        parent::__construct($collection);
+    /** @var RouteCollection|null */
+    private $collection;
 
-        // Add Middleware support.
+    /** @var RouteMatcher */
+    protected $matcher;
+
+    /** @var CacheItemPoolInterface|string */
+    private $cacheData;
+
+    /** @var bool */
+    private $hasCached;
+
+    /**
+     * @param CacheItemPoolInterface|string $cacheFile use file path or PSR-6 cache
+     */
+    public function __construct(MiddlewarePipeInterface $dispatcher = null, $cache = '')
+    {
         $this->pipeline = $dispatcher ?? new MiddlewarePipe();
+
+        $this->hasCached = ($cache instanceof CacheItemPoolInterface && $cache->hasItem(__FILE__)) || \file_exists($cache);
+        $this->cacheData = $cache;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function match(string $method, UriInterface $uri): ?Route
+    {
+        return $this->getMatcher()->match($method, $uri);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function matchRequest(ServerRequestInterface $request): ?Route
+    {
+        return $this->getMatcher()->matchRequest($request);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function generateUri(string $routeName, array $parameters = []): GeneratedUri
+    {
+        return $this->getMatcher()->generateUri($routeName, $parameters);
     }
 
     /**
@@ -67,13 +108,70 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
     }
 
     /**
-     * {@inheritdoc}
-     *
-     * @return \ArrayIterator<int,Route>|\ArrayIterator<int,array>
+     * Sets the RouteCollection instance associated with this Router.
      */
-    public function getIterator(): \ArrayIterator
+    public function setCollection(RouteCollection $collection): void
     {
-        return $this->routes;
+        $this->collection = $collection;
+    }
+
+    /**
+     * Gets the RouteCollection instance associated with this Router.
+     *
+     * WARNING: This method should never be used at runtime as it is SLOW.
+     *          You might use it in a cache warmer though.
+     */
+    public function getCollection(): RouteCollection
+    {
+        if (null === $this->collection) {
+            throw new \RuntimeException('A RouteCollection instance is missing in router, did you forget to set it.');
+        }
+
+        return $this->collection;
+    }
+
+    /**
+     * If RouteCollection's data has been cached.
+     */
+    public function isCached(): bool
+    {
+        return $this->hasCached;
+    }
+
+    /**
+     * Gets the Route matcher instance associated with this Router.
+     */
+    public function getMatcher(): RouteMatcher
+    {
+        if (isset($this->matcher)) {
+            return $this->matcher;
+        }
+
+        if ($this->hasCached) {
+            return $this->matcher = new RouteMatcher(self::getCachedData($this->cacheData));
+        }
+
+        if ('' === $cache = $this->cacheData) {
+            default_matcher:
+            return $this->matcher = new RouteMatcher($this->getCollection());
+        }
+
+        $collection = $this->getCollection();
+        $collectionData = $collection->getData();
+
+        if ($cache instanceof CacheItemPoolInterface) {
+            $cache->save($cache->getItem(__FILE__)->set([$collection->getCompiler(), $collectionData]));
+        } else {
+            $cachedData = \serialize([$collection->getCompiler(), $collectionData]);
+
+            if (!\is_dir($directory = \dirname($cache))) {
+                @\mkdir($directory, 0775, true);
+            }
+
+            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn new Flight\Routing\CachedData(\unserialize('" . $cachedData . "'));\n");
+        }
+
+        goto default_matcher;
     }
 
     /**
@@ -81,7 +179,7 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $route = $this->matchRequest($request);
+        $route = $this->getMatcher()->matchRequest($request);
 
         if (null !== $route && !empty($routeMiddlewares = $route->get('middlewares'))) {
             $this->pipe(...$routeMiddlewares);
@@ -94,5 +192,33 @@ class Router extends RouteMatcher implements \IteratorAggregate, RequestMethodIn
                 $this->debug->leave();
             }
         }
+    }
+
+    /**
+     * @param CacheItemPoolInterface|string $cache
+     */
+    private static function getCachedData($cache): CachedData
+    {
+        if ($cache instanceof CacheItemPoolInterface) {
+            $cachedData = $cache->getItem(__FILE__)->get();
+
+            if (!$cachedData instanceof CachedData) {
+                $cache->deleteItem(__FILE__);
+
+                throw new \RuntimeException('Failed to fetch cached routes data from PRS-6 cache pool, try reloading.');
+            }
+
+            return $cachedData;
+        }
+
+        $cachedData = require $cache;
+
+        if (!$cachedData instanceof CachedData) {
+            @\unlink($cache);
+
+            throw new \RuntimeException(\sprintf('Failed to fetch cached routes data from "%s" file, try reloading.', $cache));
+        }
+
+        return $cachedData;
     }
 }
