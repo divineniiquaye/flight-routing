@@ -157,7 +157,9 @@ $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
 
 $psr17Factory = new Psr17Factory();
-$router = new Router($routes);
+
+$router = new Router();
+$router->setCollection($routes);
 
 $router->pipe(...); # Add PSR-15 middlewares ...
 
