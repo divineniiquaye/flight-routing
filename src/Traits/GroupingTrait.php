@@ -106,17 +106,7 @@ trait GroupingTrait
             $prefix .= \is_string($namePrefix) ? $namePrefix : '';
 
             foreach ($group['routes'] ?? [] as $route) {
-                if (null === $name = $route->get('name')) {
-                    $name = $route->generateRouteName('');
-
-                    if (isset($unnamedRoutes[$name])) {
-                        $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
-                    } else {
-                        $unnamedRoutes[$name] = 0;
-                    }
-                }
-
-                $routes['routes'][] = $route->bind($prefix . $name);
+                $routes['routes'][] = $route->bind($this->generateRouteName($route, $prefix, $unnamedRoutes));
 
                 if (null !== $routes->profiler) {
                     $routes->profiler->addProfile($route);
@@ -152,7 +142,7 @@ trait GroupingTrait
         }
     }
 
-    private function generateRouteName(Route $route, array $unnamedRoutes): string
+    private function generateRouteName(Route $route, string $prefix, array $unnamedRoutes): string
     {
         if (null === $name = $route->get('name')) {
             $name = $route->generateRouteName('');
@@ -164,6 +154,6 @@ trait GroupingTrait
             }
         }
 
-        return $name;
+        return $prefix . $name;
     }
 }
