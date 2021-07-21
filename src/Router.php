@@ -185,13 +185,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             $this->pipe(...$routeMiddlewares);
         }
 
-        try {
-            return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
-        } finally {
-            if (null !== $this->debug) {
-                $this->debug->leave();
-            }
-        }
+        return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
     }
 
     /**

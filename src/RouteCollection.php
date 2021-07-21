@@ -79,11 +79,6 @@ final class RouteCollection extends \ArrayIterator implements RouteMapInterface
     public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
-
-        if ($debug) {
-            $this->profiler = new DebugRoute(); // Avoid debugging while caching is enabled.
-        }
-
         parent::__construct();
     }
 

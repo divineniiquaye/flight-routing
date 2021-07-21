@@ -49,10 +49,6 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
         $this->compiler = $collection->getCompiler();
         [$this->routes, $this->staticRouteMap, $this->dynamicRouteMap] = $collection->getData();
 
-        // Enable routes profiling ...
-        if ($collection instanceof RouteCollection) {
-            $this->debug = $collection->getDebugRoute();
-        }
     }
 
     /**
@@ -102,10 +98,6 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
                 }
             }
 
-            if (null !== $this->debug) {
-                $this->debug->setMatched($route, $routeId);
-            }
-
             return empty($variables) ? $route : $route->arguments($variables);
         }
 
@@ -139,14 +131,6 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
         return $this->compiler;
     }
 
-    /**
-     * Get the profiled routes.
-     */
-    public function getProfile(): ?DebugRoute
-    {
-        return $this->debug;
-    }
-
     protected function matchVariableRoute(string $method, UriInterface $uri): ?Route
     {
         $requestPath = \strpbrk((string) $uri, '/');
@@ -161,10 +145,6 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
 
             foreach ($this->dynamicRouteMap[1][$routeId] ?? [] as $key => $value) {
                 $route->argument($key, $matches[++$matchVar] ?? $value);
-            }
-
-            if (null !== $this->debug) {
-                $this->debug->setMatched($route, $routeId);
             }
 
             return $route->match($method, $uri);

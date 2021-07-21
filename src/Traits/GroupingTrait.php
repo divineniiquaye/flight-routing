@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Traits;
 
 use Biurad\Annotations\LoaderInterface;
-use Flight\Routing\{DebugRoute, Route};
+use Flight\Routing\Route;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 trait GroupingTrait
@@ -35,19 +35,8 @@ trait GroupingTrait
     /** @var int */
     private $countRoutes = 0;
 
-    /** @var DebugRoute|null */
-    private $profiler = null;
-
     /** @var RouteCompilerInterface */
     private $compiler;
-
-    /**
-     * If routes was debugged, return the profiler.
-     */
-    public function getDebugRoute(): ?DebugRoute
-    {
-        return $this->profiler;
-    }
 
     /**
      * Load routes from annotation.
@@ -80,10 +69,6 @@ trait GroupingTrait
 
         if (null === $this->parent) {
             $this->processRouteMaps($route, $this->countRoutes, $this);
-
-            if (null !== $this->profiler) {
-                $this->profiler->addProfile($route);
-            }
         } else {
             $route->belong($this); // Attach grouping to route.
         }
@@ -107,11 +92,6 @@ trait GroupingTrait
 
             foreach ($group['routes'] ?? [] as $route) {
                 $routes['routes'][] = $route->bind($this->generateRouteName($route, $prefix, $unnamedRoutes));
-
-                if (null !== $routes->profiler) {
-                    $routes->profiler->addProfile($route);
-                }
-
                 $this->processRouteMaps($route, $routes->countRoutes, $routes);
 
                 ++$routes->countRoutes;
