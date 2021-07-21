@@ -133,7 +133,7 @@ $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
 
 $psr17Factory = new Psr17Factory();
-$matcher = new RouteMatcher($routes);
+$matcher = new RouteMatcher($routes->getData());
 
 // Routing can match routes with incoming request
 $route = $matcher->matchRequest($psr17Factory->fromGlobalRequest());

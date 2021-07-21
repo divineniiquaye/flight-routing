@@ -30,13 +30,13 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 class RouteMatcher implements RouteMatcherInterface, \Countable
 {
     /** @var array<int,Route> */
-    protected $routes = [];
+    protected $routes;
 
     /** @var array */
-    protected $staticRouteMap = [];
+    protected $staticRouteMap;
 
     /** @var array */
-    protected $dynamicRouteMap = [];
+    protected $dynamicRouteMap;
 
     /** @var DebugRoute|null */
     protected $debug;
@@ -47,8 +47,10 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     public function __construct(RouteMapInterface $collection)
     {
         $this->compiler = $collection->getCompiler();
-        [$this->routes, $this->staticRouteMap, $this->dynamicRouteMap] = $collection->getData();
 
+        $this->routes = $collection['routes'] ?? [];
+        $this->staticRouteMap = $collection['staticRoutesMap'] ?? [];
+        $this->dynamicRouteMap = $collection['dynamicRoutesMap'] ?? [];
     }
 
     /**

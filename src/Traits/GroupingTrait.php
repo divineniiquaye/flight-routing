@@ -23,9 +23,6 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 trait GroupingTrait
 {
-    /** @var array */
-    private $cacheData = null;
-
     /** @var self|null */
     private $parent = null;
 
@@ -117,6 +114,8 @@ trait GroupingTrait
         if ('\\' === $pathRegex[0]) {
             $routes['dynamicRoutesMap'][0][] = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', (empty($hostsRegex) ? '(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:(?|' . \implode('|', $hostsRegex) . '))') . $pathRegex) . '(*:' . $routeId . ')';
             $routes['dynamicRoutesMap'][1][$routeId] = $variables;
+
+            unset($this['dynamicRoutesMap'][2]);
         } else {
             $routes['staticRoutesMap'][$pathRegex] = [$routeId, !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $variables];
         }

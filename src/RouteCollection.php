@@ -76,7 +76,7 @@ final class RouteCollection extends \ArrayIterator implements RouteMapInterface
         'withMiddleware' => 'middleware',
     ];
 
-    public function __construct(RouteCompilerInterface $compiler = null, bool $debug = false)
+    public function __construct(RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
         parent::__construct();
@@ -116,17 +116,13 @@ final class RouteCollection extends \ArrayIterator implements RouteMapInterface
     /**
      * {@inheritdoc}
      */
-    public function getData(): array
+    public function getData(): RouteMapInterface
     {
-        if (null !== $this->cacheData) {
-            return $this->cacheData;
-        }
-
         if ($this->offsetExists('group')) {
             $this->doMerge('', $this);
         }
 
-        if ($this->offsetExists('dynamicRoutesMap')) {
+        if (!isset($this['dynamicRoutesMap'][2])) {
             $routeMapToRegexps = [];
 
             foreach (\array_chunk($this['dynamicRoutesMap'][0], 100, true) as $dynamicRoute) {
@@ -134,9 +130,10 @@ final class RouteCollection extends \ArrayIterator implements RouteMapInterface
             }
 
             $this['dynamicRoutesMap'][0] = $routeMapToRegexps;
+            $this['dynamicRoutesMap'][2] = true; // dynamic routes are merged
         }
 
-        return $this->cacheData = [$this['routes'] ?? [], $this['staticRoutesMap'] ?? [], $this['dynamicRoutesMap'] ?? []];
+        return $this;
     }
 
     /**

@@ -22,7 +22,7 @@ namespace Flight\Routing\Interfaces;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-interface RouteMapInterface
+interface RouteMapInterface extends \ArrayAccess
 {
     /**
      * Get the Compiler associated with this class.
@@ -30,7 +30,7 @@ interface RouteMapInterface
     public function getCompiler(): RouteCompilerInterface;
 
     /**
-     * Retuns an array of routes, including it static and dynamic data.
+     * Returns an array of routes, including it static and dynamic data.
      */
-    public function getData(): array;
+    public function getData(): self;
 }

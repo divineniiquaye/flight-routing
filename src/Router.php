@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
+use Flight\Routing\Interfaces\RouteMapInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
 use Psr\Cache\CacheItemPoolInterface;
@@ -143,7 +144,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function getMatcher(): RouteMatcher
     {
-        if (isset($this->matcher)) {
+        if (null !== $this->matcher) {
             return $this->matcher;
         }
 
@@ -151,27 +152,23 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             return $this->matcher = new RouteMatcher(self::getCachedData($this->cacheData));
         }
 
+        $this->matcher = new RouteMatcher($collection = $this->getCollection()->getData());
+
         if ('' === $cache = $this->cacheData) {
-            default_matcher:
-            return $this->matcher = new RouteMatcher($this->getCollection());
+            return $this->matcher;
         }
 
-        $collection = $this->getCollection();
-        $collectionData = $collection->getData();
-
         if ($cache instanceof CacheItemPoolInterface) {
-            $cache->save($cache->getItem(__FILE__)->set([$collection->getCompiler(), $collectionData]));
+            $cache->save($cache->getItem(__FILE__)->set($collection));
         } else {
-            $cachedData = \serialize([$collection->getCompiler(), $collectionData]);
-
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
             }
 
-            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn new Flight\Routing\CachedData(\unserialize('" . $cachedData . "'));\n");
+            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize('" . \serialize($collection) . "');\n");
         }
 
-        goto default_matcher;
+        return $this->matcher;
     }
 
     /**
@@ -191,12 +188,12 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * @param CacheItemPoolInterface|string $cache
      */
-    private static function getCachedData($cache): CachedData
+    private static function getCachedData($cache): RouteMapInterface
     {
         if ($cache instanceof CacheItemPoolInterface) {
             $cachedData = $cache->getItem(__FILE__)->get();
 
-            if (!$cachedData instanceof CachedData) {
+            if (!$cachedData instanceof RouteMapInterface) {
                 $cache->deleteItem(__FILE__);
 
                 throw new \RuntimeException('Failed to fetch cached routes data from PRS-6 cache pool, try reloading.');
@@ -207,7 +204,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
         $cachedData = require $cache;
 
-        if (!$cachedData instanceof CachedData) {
+        if (!$cachedData instanceof RouteMapInterface) {
             @\unlink($cache);
 
             throw new \RuntimeException(\sprintf('Failed to fetch cached routes data from "%s" file, try reloading.', $cache));
