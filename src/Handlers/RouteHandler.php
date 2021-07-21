@@ -55,11 +55,23 @@ final class RouteHandler implements RequestHandlerInterface
         $route = $request->getAttribute(Route::class);
 
         if (!$route instanceof Route) {
-            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()));
+            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()), 404);
         }
 
         // Resolve route handler arguments ...
-        if (null !== $handlerResolver = $this->handlerResolver) {
+        $response = $this->resolveRoute($route, $request, $this->handlerResolver);
+
+        if (!$response instanceof ResponseInterface) {
+            ($result = $this->responseFactory->createResponse())->getBody()->write($response);
+            $response = $result;
+        }
+
+        return $response->hasHeader(self::CONTENT_TYPE) ? $response : $this->negotiateContentType($response);
+    }
+
+    private function resolveRoute(Route $route, ServerRequestInterface $request, callable $handlerResolver = null)
+    {
+        if (null !== $handlerResolver) {
             $route->arguments([\get_class($request) => $request, \get_class($this->responseFactory) => $this->responseFactory]);
         } else {
             foreach ([$request, $this->responseFactory] as $psr7) {
@@ -71,17 +83,11 @@ final class RouteHandler implements RequestHandlerInterface
             }
         }
 
-        $response = $route($request, $handlerResolver);
+        return $route($request, $handlerResolver);
+    }
 
-        if (!$response instanceof ResponseInterface) {
-            ($result = $this->responseFactory->createResponse())->getBody()->write($response);
-            $response = $result;
-        }
-
-        if ($response->hasHeader(self::CONTENT_TYPE)) {
-            return $response;
-        }
-
+    private function negotiateContentType(ResponseInterface $response): ResponseInterface
+    {
         $contents = (string) $response->getBody();
         $matched = \preg_match('#(?|\"\w\"\:.*?\,?\}|^\<\?(xml).*|[^>]+\>.*?\<\/(\w+)\>)$#ms', $contents, $matches);
 
