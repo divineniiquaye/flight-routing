@@ -50,7 +50,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /** @var \SplQueue */
     private $pipeline;
 
-    /** @var RouteCollection|null */
+    /** @var callable|null */
     private $collection;
 
     /** @var RouteMatcher */
@@ -59,16 +59,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /** @var CacheItemPoolInterface|string */
     private $cacheData;
 
-    /** @var bool */
-    private $hasCached;
-
     /**
      * @param CacheItemPoolInterface|string $cacheFile use file path or PSR-6 cache
      */
     public function __construct($cache = '')
     {
-
-        $this->hasCached = ($cache instanceof CacheItemPoolInterface && $cache->hasItem(__FILE__)) || \file_exists($cache);
         $this->pipeline = new \SplQueue();
         $this->cacheData = $cache;
     }
@@ -109,25 +104,19 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
     /**
      * Sets the RouteCollection instance associated with this Router.
-     */
-    public function setCollection(RouteCollection $collection): void
-    {
-        $this->collection = $collection;
-    }
-
-    /**
-     * Gets the RouteCollection instance associated with this Router.
      *
-     * WARNING: This method should never be used at runtime as it is SLOW.
-     *          You might use it in a cache warmer though.
+     * @param callable(RouteMapInterface) $routeDefinitionCallback
      */
-    public function getCollection(): RouteCollection
+    public function setCollection(callable $routeDefinitionCallback, $routeCollector = RouteCollection::class): void
     {
-        if (null === $this->collection) {
-            throw new \RuntimeException('A RouteCollection instance is missing in router, did you forget to set it.');
-        }
+        $this->collection = static function () use ($routeDefinitionCallback, $routeCollector): RouteMapInterface {
+            $routeCollector = new $routeCollector();
+            \assert($routeCollector instanceof RouteMapInterface);
 
-        return $this->collection;
+            $routeDefinitionCallback($routeCollector);
+
+            return $routeCollector->getData();
+        };
     }
 
     /**
@@ -135,7 +124,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function isCached(): bool
     {
-        return $this->hasCached;
+        return ($this->cacheData instanceof CacheItemPoolInterface && $this->cacheData->hasItem(__FILE__)) || \file_exists($this->cacheData);
     }
 
     /**
@@ -147,27 +136,15 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             return $this->matcher;
         }
 
-        if ($this->hasCached) {
-            return $this->matcher = new RouteMatcher(self::getCachedData($this->cacheData));
+        if (null === $collection = $this->collection) {
+            throw new \RuntimeException('A \'Flight\Routing\Interfaces\RouteMapInterface\' instance is missing in router, did you forget to set it.');
         }
 
-        $this->matcher = new RouteMatcher($collection = $this->getCollection()->getData());
-
-        if ('' === $cache = $this->cacheData) {
-            return $this->matcher;
+        if (!empty($this->cacheData)) {
+            $cachedData = self::getCachedData($this->cacheData, $collection);
         }
 
-        if ($cache instanceof CacheItemPoolInterface) {
-            $cache->save($cache->getItem(__FILE__)->set($collection));
-        } else {
-            if (!\is_dir($directory = \dirname($cache))) {
-                @\mkdir($directory, 0775, true);
-            }
-
-            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize('" . \serialize($collection) . "');\n");
-        }
-
-        return $this->matcher;
+        return $this->matcher = new RouteMatcher($cachedData ?? $collection());
     }
 
     /**
@@ -186,27 +163,31 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
     /**
      * @param CacheItemPoolInterface|string $cache
+     * @param callable $loader
      */
-    private static function getCachedData($cache): RouteMapInterface
+    private static function getCachedData($cache, callable $loader): RouteMapInterface
     {
         if ($cache instanceof CacheItemPoolInterface) {
             $cachedData = $cache->getItem(__FILE__)->get();
 
             if (!$cachedData instanceof RouteMapInterface) {
                 $cache->deleteItem(__FILE__);
-
-                throw new \RuntimeException('Failed to fetch cached routes data from PRS-6 cache pool, try reloading.');
+                $cache->save($cache->getItem(__FILE__)->set($cachedData = $loader()));
             }
 
             return $cachedData;
         }
 
-        $cachedData = require $cache;
+        $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMapInterface) {
-            @\unlink($cache);
+            $cachedData = $loader();
 
-            throw new \RuntimeException(\sprintf('Failed to fetch cached routes data from "%s" file, try reloading.', $cache));
+            if (!\is_dir($directory = \dirname($cache))) {
+                @\mkdir($directory, 0775, true);
+            }
+
+            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize('" . \serialize($cachedData) . "');\n");
         }
 
         return $cachedData;

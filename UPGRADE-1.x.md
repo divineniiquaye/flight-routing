@@ -77,6 +77,9 @@
 
 - Renamed `Flight\Routing\RouteCollector` to `Flight\Routing\RouteCollection` class (BR Changes)
 - Removed `Flight\Routing\RouteFactory` class (BR Changes)
+- Added `Flight\Routing\RouteMatcher` class
+- Replaced **handle** to **process** in the `Flight\Routing\Router` class
+- Added a default `Flight\Routing\RouteHandler` class for dispatching matched route
 - Changed how routes are handled and dispatched
 
     _Before_
@@ -105,11 +108,10 @@
     use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
     use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-    $collector = new RouteCollection();
-    $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
-
     $router = new Router();
-    $router->setCollection($collection);
+    $router->setCollection(static function (RouteCollection $collector): void {
+        $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+    });
 
     $psr17Factory = new Psr17Factory();
     $response = $router->process($psr17Factory->fromGlobalRequest(), new RouteHandler($psr17Factory));

@@ -153,13 +153,12 @@ use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
 use Flight\Routing\{Handlers\RouteHandler, RouteCollection, Router};
 use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-$routes = new RouteCollection();
-$routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
-
 $psr17Factory = new Psr17Factory();
-
 $router = new Router();
-$router->setCollection($routes);
+
+$router->setCollection(static function (RouteCollection $routes): void {
+    $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
+});
 
 $router->pipe(...); # Add PSR-15 middlewares ...
 
