@@ -18,9 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Interfaces\RouteMapInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Laminas\Stratigility\{MiddlewarePipe, MiddlewarePipeInterface};
+use Flight\Routing\Interfaces\{RouteMapInterface, RouteMatcherInterface};
+use Laminas\Stratigility\Next;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
@@ -48,7 +47,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
-    /** @var MiddlewarePipeInterface */
+    /** @var \SplQueue */
     private $pipeline;
 
     /** @var RouteCollection|null */
@@ -66,11 +65,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * @param CacheItemPoolInterface|string $cacheFile use file path or PSR-6 cache
      */
-    public function __construct(MiddlewarePipeInterface $dispatcher = null, $cache = '')
+    public function __construct($cache = '')
     {
-        $this->pipeline = $dispatcher ?? new MiddlewarePipe();
 
         $this->hasCached = ($cache instanceof CacheItemPoolInterface && $cache->hasItem(__FILE__)) || \file_exists($cache);
+        $this->pipeline = new \SplQueue();
         $this->cacheData = $cache;
     }
 
@@ -104,7 +103,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     public function pipe(MiddlewareInterface ...$middlewares): void
     {
         foreach ($middlewares as $middleware) {
-            $this->pipeline->pipe($middleware);
+            $this->pipeline->enqueue($middleware);
         }
     }
 
@@ -182,7 +181,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             $this->pipe(...$routeMiddlewares);
         }
 
-        return $this->pipeline->process($request->withAttribute(Route::class, $route), $handler);
+        return (new Next($this->pipeline, $handler))->handle($request->withAttribute(Route::class, $route));
     }
 
     /**
