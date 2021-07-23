@@ -38,9 +38,6 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     /** @var array */
     protected $dynamicRouteMap;
 
-    /** @var DebugRoute|null */
-    protected $debug;
-
     /** @var RouteCompilerInterface */
     private $compiler;
 
@@ -91,8 +88,7 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        $pathInfo = $uri->getPath();
-        $requestPath = \rtrim($pathInfo, Route::URL_PREFIX_SLASHES[$pathInfo[-1]] ?? '/') ?: '/';
+        $requestPath = \rtrim($pathInfo = $uri->getPath(), Route::URL_PREFIX_SLASHES[$pathInfo[-1]] ?? '/') ?: '/';
 
         if (isset($this->staticRouteMap[$requestPath])) {
             [$routeId, $hostsRegex, $variables] = $this->staticRouteMap[$requestPath];
@@ -138,6 +134,9 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
         throw new UrlGenerationException(\sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
     }
 
+    /**
+     * Get the compiler associated with this class.
+     */
     public function getCompiler(): RouteCompilerInterface
     {
         return $this->compiler;
