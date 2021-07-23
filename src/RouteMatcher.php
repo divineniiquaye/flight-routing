@@ -62,6 +62,16 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     }
 
     /**
+     * Get routes associated with this matcher.
+     *
+     * @return Route[]
+     */
+    public function getRoutes(): array
+    {
+        return $this->routes;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function matchRequest(ServerRequestInterface $request): ?Route
