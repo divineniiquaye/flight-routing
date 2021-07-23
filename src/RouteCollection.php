@@ -17,8 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Interfaces\RouteCompilerInterface;
-use Flight\Routing\Interfaces\RouteMapInterface;
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMapInterface};
 
 /**
  * A RouteCollection represents a set of Route instances.
@@ -54,7 +53,7 @@ use Flight\Routing\Interfaces\RouteMapInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection extends \ArrayIterator implements RouteMapInterface
+class RouteCollection extends \ArrayIterator implements RouteMapInterface
 {
     use Traits\GroupingTrait;
 
