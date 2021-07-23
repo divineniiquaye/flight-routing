@@ -115,7 +115,9 @@ trait GroupingTrait
             $routes['dynamicRoutesMap'][0][] = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', (empty($hostsRegex) ? '(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:(?|' . \implode('|', $hostsRegex) . '))') . $pathRegex) . '(*:' . $routeId . ')';
             $routes['dynamicRoutesMap'][1][$routeId] = $variables;
 
-            unset($this['dynamicRoutesMap'][2]);
+            if (!isset($routes['dynamicRoutesMap'][2])) {
+                $routes['dynamicRoutesMap'][2] = true; // needs dynamic routes to compile.
+            }
         } else {
             $routes['staticRoutesMap'][$pathRegex] = [$routeId, !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $variables];
         }

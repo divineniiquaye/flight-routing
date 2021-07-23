@@ -121,7 +121,7 @@ class RouteCollection extends \ArrayIterator implements RouteMapInterface
             $this->doMerge('', $this);
         }
 
-        if (!isset($this['dynamicRoutesMap'][2])) {
+        if (isset($this['dynamicRoutesMap'][2])) {
             $routeMapToRegexps = [];
 
             foreach (\array_chunk($this['dynamicRoutesMap'][0], 100, true) as $dynamicRoute) {
@@ -129,7 +129,7 @@ class RouteCollection extends \ArrayIterator implements RouteMapInterface
             }
 
             $this['dynamicRoutesMap'][0] = $routeMapToRegexps;
-            $this['dynamicRoutesMap'][2] = true; // dynamic routes are merged
+            unset($this['dynamicRoutesMap'][2]);
         }
 
         return $this;
