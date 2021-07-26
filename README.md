@@ -679,7 +679,7 @@ use Psr\Http\Message\ServerRequestInterface;
 $collector->get(
     '/{param}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
-        return $request->getAttribute(Route::class)->getAttributes();
+        return $request->getAttribute(Route::class)->getArguments();
     }
 ))
 
@@ -687,7 +687,7 @@ $collector->get(
 $collector->get(
     '/hello',
     function (ServerRequestInterface $request, ResponseInterface $response) {
-        return $request->getAttribute(Route::class)->getAttributes();
+        return $request->getAttribute(Route::class)->getArguments();
     }
 ))
 ```
@@ -753,7 +753,7 @@ Add route using `Flight\Routing\Handlers\ResourceHandler`:
 use Demo\UserController;
 use Flight\Routing\Handlers\ResourceHandler;
 
-$route = new Route('/user/{id:\d+}', 'GET|POST', new ResourceHandler(UserController::class, 'user'));
+$route = new Route('/user/{id:\d+}', ['GET', 'POST'], new ResourceHandler(UserController::class, 'user'));
 
 // Using `ResourceHandler` as route handler means, the route is restful, the "user" passed into resource handler second parameter, is to be prefixed on class object method. Eg: getUser() which can be served on uri like /user/23
 ```
