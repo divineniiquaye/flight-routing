@@ -80,27 +80,23 @@ trait GroupingTrait
      *
      * @return array<int,Route>
      */
-    private function doMerge(string $prefix, self $routes, bool $merge = true): void
+    private function doMerge(string $prefix, self $routes): void
     {
         $unnamedRoutes = [];
 
-        foreach ($this->offsetGet('group') as $namePrefix => $group) {
-            $prefix .= \is_string($namePrefix) ? $namePrefix : '';
+        foreach ($this['group'] ?? [] as $namePrefix => $group) {
+            $namedGroup = \is_string($namePrefix) ? $namePrefix : '';
 
             foreach ($group['routes'] ?? [] as $route) {
-                $routes['routes'][] = $route->bind($this->generateRouteName($route, $prefix, $unnamedRoutes));
+                $routes['routes'][] = $route->bind($this->generateRouteName($route, $prefix . $namedGroup, $unnamedRoutes));
                 $this->processRouteMaps($route, $routes->countRoutes, $routes);
 
                 ++$routes->countRoutes;
             }
 
             if ($group->offsetExists('group')) {
-                $group->doMerge($prefix, $routes, false);
+                $group->doMerge($prefix . $namedGroup, $routes);
             }
-        }
-
-        if ($merge) {
-            $routes->offsetUnset('group'); // Unset grouping ...
         }
     }
 
@@ -114,10 +110,6 @@ trait GroupingTrait
         if ('\\' === $pathRegex[0]) {
             $routes['dynamicRoutesMap'][0][] = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', (empty($hostsRegex) ? '(?:\\/{2}[^\/]+)?' : '\\/{2}(?i:(?|' . \implode('|', $hostsRegex) . '))') . $pathRegex) . '(*:' . $routeId . ')';
             $routes['dynamicRoutesMap'][1][$routeId] = $variables;
-
-            if (!isset($routes['dynamicRoutesMap'][2])) {
-                $routes['dynamicRoutesMap'][2] = true; // needs dynamic routes to compile.
-            }
         } else {
             $routes['staticRoutesMap'][$pathRegex] = [$routeId, !empty($hostsRegex) ? '#^(?|' . \implode('|', $hostsRegex) . ')$#i' : null, $variables];
         }

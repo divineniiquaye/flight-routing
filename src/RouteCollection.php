@@ -117,11 +117,16 @@ class RouteCollection extends \ArrayIterator implements RouteMapInterface
      */
     public function getData(): RouteMapInterface
     {
-        if ($this->offsetExists('group')) {
-            $this->doMerge('', $this);
+        if (0 === $this->countRoutes) {
+            goto collection;
         }
 
-        if (isset($this['dynamicRoutesMap'][2])) {
+        if ($this->offsetExists('group')) {
+            $this->doMerge('', $this);
+            $this->offsetUnset('group'); // Unset grouping ...
+        }
+
+        if ($this->offsetExists('dynamicRoutesMap')) {
             $routeMapToRegexps = [];
 
             foreach (\array_chunk($this['dynamicRoutesMap'][0], 100, true) as $dynamicRoute) {
@@ -129,9 +134,12 @@ class RouteCollection extends \ArrayIterator implements RouteMapInterface
             }
 
             $this['dynamicRoutesMap'][0] = $routeMapToRegexps;
-            unset($this['dynamicRoutesMap'][2]);
         }
 
+        $this->parent = $this->stack = null;
+        $this->countRoutes = 0;
+
+        collection: // Instead of an array, return itself.
         return $this;
     }
 
@@ -182,9 +190,7 @@ class RouteCollection extends \ArrayIterator implements RouteMapInterface
             $controllers->stack = $this->stack ?? [];
         } elseif (\is_callable($controllers)) {
             $controllers($controllers = new static($this->compiler));
-        }
-
-        if (!$controllers instanceof self) {
+        } elseif (!$controllers instanceof self) {
             throw new \LogicException(\sprintf('The %s() method takes either a "%s" instance or a callable of its self.', __METHOD__, __CLASS__));
         }
 
