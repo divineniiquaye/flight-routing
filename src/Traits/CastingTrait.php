@@ -67,7 +67,7 @@ trait CastingTrait
         \preg_match(Route::RCA_PATTERN, $route, $matches, \PREG_UNMATCHED_AS_NULL);
 
         if (isset($matches[1])) {
-            $this->schemes[$matches[1]] = true;
+            $this->schemes[] = $matches[1];
         }
 
         if (isset($matches[2])) {
