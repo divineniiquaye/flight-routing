@@ -591,7 +591,7 @@ $group = $collector->group(
 
 ---
 
-Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests. To associate route specific middleware use `addMiddleware`, you can access route parameters via `arguments` attribute of the request object:
+Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests and response.:
 
 Here you can see the request lifecycle considering some middleware:
 
@@ -611,44 +611,41 @@ composer require laminas/laminas-stratigility
 
 To declare a middleware, you must implements Middleware `Psr\Http\Server\MiddlewareInterface` interface.
 
-Middleware must have a `process()` method that catches http request and a closure (which runs the next middleware or the controller) and it returns a response at the end. Middleware can break the lifecycle and return a response itself or it can run the `$handler` implementing `Psr\Http\Server\RequestHandlerInterface` to continue lifecycle.
+Middleware must have a `process()` method that catches http request and a request handler (which runs the next middleware or the controller) and it returns a response at the end. Middleware can break the lifecycle and return a response itself or it can run the `$handler` implementing `Psr\Http\Server\RequestHandlerInterface` to continue lifecycle.
 
 For example see the following snippet. In this snippet, we will demonstrate how a middleware works:
 
 ```php
-use Demo\Middleware\ParamWatcher;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Flight\Routing\Route;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 
 $collector->get(
-    'watch',
     '/{param}',
     function (ServerRequestInterface $request, ResponseInterface $response) {
         return $request->getAttribute(Route::class)->getArguments();
     }
-))
-->middleware(ParamWatcher::class);
+))->bind('watch');
 ```
 
-where `ParamWatcher` is:
+where `ParamWatcher` middleware is:
 
 ```php
 namespace Demo\Middleware;
 
 
+use Demo\Exception\UnauthorizedException;
 use Flight\Routing\Route;
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use Biurad\Http\Exceptions\ClientException\UnauthorizedException;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 class ParamWatcher implements MiddlewareInterface
 {
-    public function process(Request $request, RequestHandlerInterface $handler): Response
+    /**
+     * {@inheritdoc}
+     */
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $arguments = $request->getAttribute(Route::class)->getAttributes();
+        $arguments = $request->getAttribute(Route::class)->getArguments();
 
         if ($arguments['param'] === 'forbidden') {
            throw new UnauthorizedException();
@@ -662,6 +659,8 @@ class ParamWatcher implements MiddlewareInterface
 This route will trigger Unauthorized exception on `/forbidden`.
 
 > You can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make sense to do so!
+
+The default way of associating a middleware to a route is via the `Flight\Routing\Router::pipe` method. since route is present in server request attributes, you can create a middleware to work on only a particular named route(s).
 
 ### Multiple Routes
 

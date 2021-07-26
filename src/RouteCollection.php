@@ -43,7 +43,6 @@ use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMapInterface};
  * @method RouteCollection withArgument(string $variable, mixed $value)
  * @method RouteCollection withMethod(string ...$methods)
  * @method RouteCollection withScheme(string ...$schemes)
- * @method RouteCollection withMiddleware(MiddlewareInterface ...$middlewares)
  * @method RouteCollection withDomain(string ...$hosts)
  * @method RouteCollection withPrefix(string $path)
  * @method RouteCollection withDefaults(array $values)

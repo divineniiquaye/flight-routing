@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{InvalidControllerException, MethodNotAllowedException, UriHandlerException};
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
-use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Value object representing a single route.
@@ -30,7 +30,6 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
  * @method string[] getSchemes() Gets the route domain schemes.
  * @method string[] getDomain() Gets the route host.
  * @method mixed getController() Gets the route handler.
- * @method array getMiddlewares() Gets the route middlewares.
  * @method array getPatterns() Gets the route pattern placeholder assert.
  * @method array getDefaults() Gets the route default settings.
  * @method array getArguments() Gets the arguments passed to route handler as parameters.
@@ -81,7 +80,6 @@ class Route
         'name' => 'name',
         'path' => 'path',
         'patterns' => 'patterns',
-        'middlewares' => 'middlewares',
         'defaults' => 'defaults',
     ];
 
@@ -389,20 +387,6 @@ class Route
     {
         foreach ($schemes as $scheme) {
             $this->schemes[] = \strtolower($scheme);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Sets the middleware(s) to handle before triggering the route handler.
-     *
-     * @param MiddlewareInterface ...$middlewares
-     */
-    public function middleware(MiddlewareInterface ...$middlewares): self
-    {
-        foreach ($middlewares as $middleware) {
-            $this->middlewares[] = $middleware;
         }
 
         return $this;

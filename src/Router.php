@@ -154,10 +154,6 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     {
         $route = $this->getMatcher()->matchRequest($request);
 
-        if (null !== $route && !empty($routeMiddlewares = $route->get('middlewares'))) {
-            $this->pipe(...$routeMiddlewares);
-        }
-
         return (new Next($this->pipeline, $handler))->handle($request->withAttribute(Route::class, $route));
     }
 

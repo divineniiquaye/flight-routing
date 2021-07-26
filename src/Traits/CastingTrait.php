@@ -21,7 +21,7 @@ use Flight\Routing\Exceptions\{InvalidControllerException};
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Route;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
-use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
+use Psr\Http\Server\RequestHandlerInterface;
 
 trait CastingTrait
 {
@@ -45,9 +45,6 @@ trait CastingTrait
 
     /** @var array<string,string|string[]> */
     private $patterns = [];
-
-    /** @var MiddlewareInterface[] */
-    private $middlewares = [];
 
     /** @var mixed */
     private $controller;
