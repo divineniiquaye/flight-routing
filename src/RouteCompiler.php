@@ -100,25 +100,24 @@ class RouteCompiler implements RouteCompilerInterface
     public function compile(Route $route): array
     {
         $hostVariables = $hostsRegex = [];
-        $requirements = $this->getRequirements($route->get('patterns'));
-        $routePath = \ltrim($route->get('path'), '/');
+        $requirements = $route->get('patterns');
 
         // Strip supported browser prefix of $routePath ...
-        if (!empty($routePath)) {
-            $routePath = \rtrim($routePath, Route::URL_PREFIX_SLASHES[$routePath[-1]] ?? '/');
+        $routePath = \rtrim($routePath = $route->get('path'), Route::URL_PREFIX_SLASHES[$routePath[-1]] ?? '/');
+
+        if (!empty($routePath) && '/' === $routePath[0]) {
+            $routePath = \substr($routePath, 1);
         }
 
-        if (!empty($hosts = $route->get('domain'))) {
-            foreach ($hosts as $host) {
-                [$hostRegex, $hostVariable] = $this->compilePattern($host, false, $requirements);
+        foreach ($route->get('domain') as $host) {
+            [$hostRegex, $hostVariable] = self::compilePattern($host, false, $requirements);
 
-                $hostVariables += $hostVariable;
-                $hostsRegex[] = $hostRegex;
-            }
+            $hostVariables += $hostVariable;
+            $hostsRegex[] = $hostRegex;
         }
 
         if (\str_contains($routePath, '{')) {
-            [$pathRegex, $pathVariables] = $this->compilePattern('/' . $routePath, false, $requirements);
+            [$pathRegex, $pathVariables] = self::compilePattern('/' . $routePath, false, $requirements);
             $variables = empty($hostVariables) ? $pathVariables : $hostVariables += $pathVariables;
         }
 
@@ -130,13 +129,13 @@ class RouteCompiler implements RouteCompilerInterface
      */
     public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri
     {
-        [$pathRegex, $pathVariables] = $this->compilePattern(\ltrim($route->get('path'), '/'), true);
+        [$pathRegex, $pathVariables] = self::compilePattern(\ltrim($route->get('path'), '/'), true);
 
         $pathRegex = '/' . \stripslashes(\str_replace('?', '', $pathRegex));
-        $createUri = new GeneratedUri($this->interpolate($pathRegex, $parameters, $defaults, $pathVariables));
+        $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults, $pathVariables));
 
         foreach ($route->get('domain') as $host) {
-            $compiledHost = $this->compilePattern($host, true);
+            $compiledHost = self::compilePattern($host, true);
 
             if (!empty($compiledHost)) {
                 [$hostRegex, $hostVariables] = $compiledHost;
@@ -154,7 +153,7 @@ class RouteCompiler implements RouteCompilerInterface
         }
 
         if (isset($hostRegex)) {
-            $createUri->withHost($this->interpolate($hostRegex, $parameters, $defaults, $hostVariables));
+            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults, $hostVariables));
         }
 
         return $createUri;
@@ -165,13 +164,20 @@ class RouteCompiler implements RouteCompilerInterface
      *
      * @param array<int|string,mixed> $parameters
      */
-    private function interpolate(string $uriRoute, array $parameters, array $defaults, array $allowed): string
+    private static function interpolate(string $uriRoute, array $parameters, array $defaults, array $allowed): string
     {
-        \preg_match_all('#\[\<(\w+).*?\>\]#', $uriRoute, $optionalVars, \PREG_UNMATCHED_AS_NULL);
+        \preg_match_all('#(?:\[)?\<(\w+).*?\>(?:\])?#', $uriRoute, $paramVars, \PREG_SET_ORDER);
 
-        if (isset($optionalVars[1])) {
-            foreach ($optionalVars[1] as $optional) {
-                $defaults[$optional] = null;
+        foreach ($paramVars as $offset => [$type, $var]) {
+            if ('[' === $type[0]) {
+                $defaults[$var] = null;
+
+                continue;
+            }
+
+            if (isset($parameters[$offset])) {
+                $defaults[$var] = $parameters[$offset];
+                unset($parameters[$offset]);
             }
         }
 
@@ -192,27 +198,9 @@ class RouteCompiler implements RouteCompilerInterface
         return \strtr($uriRoute, $replaces);
     }
 
-    /**
-     * Get the route requirements.
-     *
-     * @param array<string,string|string[]> $requirements
-     *
-     * @return array<string,string|string[]>
-     */
-    private function getRequirements(array $requirements): array
+    private static function sanitizeRequirement(string $key, ?string $regex): string
     {
-        $newParameters = [];
-
-        foreach ($requirements as $key => $regex) {
-            $newParameters[$key] = \is_array($regex) ? $regex : $this->sanitizeRequirement($key, $regex);
-        }
-
-        return $newParameters;
-    }
-
-    private function sanitizeRequirement(string $key, string $regex): string
-    {
-        if ('' !== $regex) {
+        if (!empty($regex)) {
             if ('^' === $regex[0]) {
                 $regex = \substr($regex, 1);
             } elseif (0 === \strpos($regex, '\\A')) {
@@ -230,7 +218,7 @@ class RouteCompiler implements RouteCompilerInterface
             throw new \InvalidArgumentException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
         }
 
-        return $regex;
+        return null !== $regex ? \strtr($regex, self::SEGMENT_REPLACES) : self::DEFAULT_SEGMENT;
     }
 
     /**
@@ -242,7 +230,7 @@ class RouteCompiler implements RouteCompilerInterface
      *
      * @return array<string,mixed>
      */
-    private function compilePattern(string $uriPattern, bool $reversed = false, array $requirements = []): array
+    private static function compilePattern(string $uriPattern, bool $reversed = false, array $requirements = []): array
     {
         $variables = $replaces = [];
 
@@ -256,14 +244,14 @@ class RouteCompiler implements RouteCompilerInterface
 
         foreach ($matches as [$placeholder, $varName, $segment, $default]) {
             // Filter variable name to meet requirement
-            $this->filterVariableName($varName, $uriPattern);
+            self::filterVariableName($varName, $uriPattern);
 
             if (\array_key_exists($varName, $variables)) {
                 throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $uriPattern, $varName));
             }
 
             $variables[$varName] = $default;
-            $replaces[$placeholder] = !$reversed ? '(?P<' . $varName . '>' . (self::SEGMENT_TYPES[$segment] ?? $segment ?? $this->prepareSegment($varName, $requirements)) . ')' : "<$varName>";
+            $replaces[$placeholder] = !$reversed ? '(?P<' . $varName . '>' . (self::SEGMENT_TYPES[$segment] ?? $segment ?? self::prepareSegment($varName, $requirements)) . ')' : "<$varName>";
         }
 
         return [\strtr($uriPattern, !$reversed ? self::PATTERN_REPLACES + $replaces : $replaces), $variables];
@@ -272,7 +260,7 @@ class RouteCompiler implements RouteCompilerInterface
     /**
      * Prevent variables with same name used more than once.
      */
-    private function filterVariableName(string $varName, string $pattern): void
+    private static function filterVariableName(string $varName, string $pattern): void
     {
         // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
         // variable would not be usable as a Controller action argument.
@@ -299,17 +287,14 @@ class RouteCompiler implements RouteCompilerInterface
      *
      * @param array<string,mixed> $requirements
      */
-    private function prepareSegment(string $name, array $requirements): string
+    private static function prepareSegment(string $name, array $requirements): string
     {
-        if (null === $segment = $requirements[$name] ?? null) {
-            return self::DEFAULT_SEGMENT;
+        $segment = $requirements[$name] ?? null;
+
+        if (!\is_array($segment)) {
+            return self::sanitizeRequirement($name, $segment);
         }
 
-        return \is_array($segment) ? \implode('|', \array_map([$this, 'filterSegment'], $segment)) : $this->filterSegment((string) $segment);
-    }
-
-    private function filterSegment(string $segment): string
-    {
-        return \strtr($segment, self::SEGMENT_REPLACES);
+        return \implode('|', \array_map([__CLASS__, 'sanitizeRequirement'], $segment));
     }
 }
