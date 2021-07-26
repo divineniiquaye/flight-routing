@@ -84,9 +84,11 @@ trait GroupingTrait
     {
         $unnamedRoutes = [];
 
+        /** @var \ArrayIterator<string,mixed>|self $group */
         foreach ($this['group'] ?? [] as $namePrefix => $group) {
             $namedGroup = \is_string($namePrefix) ? $namePrefix : '';
 
+            /** @var Route $route */
             foreach ($group['routes'] ?? [] as $route) {
                 $routes['routes'][] = $route->bind($this->generateRouteName($route, $prefix . $namedGroup, $unnamedRoutes));
                 $this->processRouteMaps($route, $routes->countRoutes, $routes);

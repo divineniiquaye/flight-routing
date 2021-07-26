@@ -140,11 +140,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             throw new \RuntimeException('A \'Flight\Routing\Interfaces\RouteMapInterface\' instance is missing in router, did you forget to set it.');
         }
 
-        if (!empty($this->cacheData)) {
-            $cachedData = self::getCachedData($this->cacheData, $collection);
-        }
-
-        return $this->matcher = new RouteMatcher($cachedData ?? $collection());
+        return $this->matcher = new RouteMatcher(!empty($this->cacheData) ? self::getCachedData($this->cacheData, $collection) : $collection());
     }
 
     /**

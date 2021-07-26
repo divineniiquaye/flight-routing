@@ -155,7 +155,7 @@ class Route
         $routeMethod = \strtolower($routeMethod);
 
         if (!empty($arguments)) {
-            throw new \BadMethodCallException(\sprintf('Arguments passed into "%s" method not supported, as method does not exist.', $routeMethod));
+            throw new \BadMethodCallException(\sprintf('Arguments passed into "%s::%s(...)" not supported as method "%2$s" does not exist.', __CLASS__, $routeMethod));
         }
 
         return $this->get($routeMethod);

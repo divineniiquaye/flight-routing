@@ -32,10 +32,10 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     /** @var array<int,Route> */
     protected $routes;
 
-    /** @var array */
+    /** @var array<string,mixed> */
     protected $staticRouteMap;
 
-    /** @var array */
+    /** @var array<int,mixed> */
     protected $dynamicRouteMap;
 
     /** @var RouteCompilerInterface */
