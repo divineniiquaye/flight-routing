@@ -90,31 +90,26 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     {
         $requestPath = \rtrim($pathInfo = $uri->getPath(), Route::URL_PREFIX_SLASHES[$pathInfo[-1]] ?? '/') ?: '/';
 
-        if (isset($this->staticRouteMap[$requestPath])) {
-            [$routeId, $hostsRegex, $variables] = $this->staticRouteMap[$requestPath];
-            $route = $this->routes[$routeId]->match($method, $uri);
+        if (!empty($staticRoute = $this->staticRouteMap[$requestPath] ?? null)) {
+            $route = $this->routes[$staticRoute[0]]->match($method, $uri);
 
-            if (null !== $hostsRegex) {
-                $variables = $this->matchStaticRouteHost($uri, $hostsRegex, $variables);
-
-                if (null === $variables) {
-                    if (!empty($this->dynamicRouteMap)) {
-                        goto retry_routing;
-                    }
-
-                    throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested static path [%s].', $uri->getHost(), $uri->getPath()), 400);
-                }
+            if (null === $hostsRegex = $staticRoute[1]) {
+                return $route;
             }
 
-            return empty($variables) ? $route : $route->arguments($variables);
+            if (null === $variables = $this->matchStaticRouteHost($uri, $hostsRegex, $staticRoute[2])) {
+                if (!empty($this->dynamicRouteMap)) {
+                    goto retry_routing;
+                }
+
+                throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested static path [%s].', $uri->getHost(), $uri->getPath()), 400);
+            }
+
+            return $route->arguments($variables);
         }
 
         retry_routing:
-        if ($pathInfo !== $requestPath) {
-            $uri = $uri->withPath($requestPath);
-        }
-
-        return $this->matchVariableRoute($method, $uri);
+        return $this->matchVariableRoute($method, $pathInfo === $requestPath ? $uri : $uri->withPath($requestPath));
     }
 
     /**
@@ -124,10 +119,7 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     {
         foreach ($this->routes as $route) {
             if ($routeName === $route->get('name')) {
-                $defaults = $route->get('defaults');
-                unset($defaults['_arguments']);
-
-                return $this->compiler->generateUri($route, $parameters, $defaults);
+                return $this->compiler->generateUri($route, $parameters, \array_diff_key($route->get('defaults'), ['_arguments' => []]));
             }
         }
 
