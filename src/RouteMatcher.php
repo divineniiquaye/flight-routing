@@ -90,7 +90,8 @@ class RouteMatcher implements RouteMatcherInterface, \Countable
     {
         $requestPath = \rtrim($pathInfo = $uri->getPath(), Route::URL_PREFIX_SLASHES[$pathInfo[-1]] ?? '/') ?: '/';
 
-        if (!empty($staticRoute = $this->staticRouteMap[$requestPath] ?? null)) {
+        if (isset($this->staticRouteMap[$requestPath])) {
+            $staticRoute = $this->staticRouteMap[$requestPath];
             $route = $this->routes[$staticRoute[0]]->match($method, $uri);
 
             if (null === $hostsRegex = $staticRoute[1]) {
