@@ -29,7 +29,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteHandler implements RequestHandlerInterface
+class RouteHandler implements RequestHandlerInterface
 {
     public const CONTENT_TYPE = 'Content-Type';
 
@@ -69,7 +69,7 @@ final class RouteHandler implements RequestHandlerInterface
         return $response->hasHeader(self::CONTENT_TYPE) ? $response : $this->negotiateContentType($response);
     }
 
-    private function resolveRoute(Route $route, ServerRequestInterface $request, callable $handlerResolver = null)
+    protected function resolveRoute(Route $route, ServerRequestInterface $request, callable $handlerResolver = null)
     {
         if (null !== $handlerResolver) {
             $route->arguments([\get_class($request) => $request, \get_class($this->responseFactory) => $this->responseFactory]);
