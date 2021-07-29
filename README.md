@@ -658,9 +658,7 @@ class ParamWatcher implements MiddlewareInterface
 
 This route will trigger Unauthorized exception on `/forbidden`.
 
-> You can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make sense to do so!
-
-The default way of associating a middleware to a route is via the `Flight\Routing\Router::pipe` method. since route is present in server request attributes, you can create a middleware to work on only a particular named route(s).
+> The default way of associating a middleware to a route is via the `Flight\Routing\Router::pipe` method. since route is present in server request attributes, you can create a middleware to work on only a particular named route(s). Again, you can add as many middlewares as you want. Middlewares can be implemented using closures but it doesn’t make sense to do so!
 
 ### Multiple Routes
 
@@ -776,7 +774,7 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\{CompiledRoute, GeneratedUri, Route};
+use Flight\Routing\{GeneratedUri, Route};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 class MyRouteCompiler implements RouteCompilerInterface
@@ -784,19 +782,17 @@ class MyRouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function compile(Route $route): CompiledRoute
+    public function compile(Route $route): array
     {
         if (!empty($hosts = $route->get('domain'))) {
             $hostsRegex = ... // Compile host if supported else, return an empty array
         }
 
         $pathRegex = ... // Compile path and return the regex excluding anything starting ^ and ending $.
+        $hostRegexs = ... // Compile route hosts and return the regex excluding anything starting ^ and ending $.
         $variables = ... // A merged array from $hostsRegex and $pathRegex.
 
-        // If route is compiled in a reversed form, $pathRegex having any required placeholders
-        // must be replaced wrapping it's name with a <> else if optional further wrapping with a [].
-
-        return new CompiledRoute($pathRegex, ...); // The results ...
+        return [$pathRegex, $hostRegexps, $variables]; // The results ...
     }
 
     /**
