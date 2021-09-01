@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use BadMethodCallException;
+use Flight\Routing\DomainRoute;
+use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\FastRoute;
 use Flight\Routing\Route;
 use PHPUnit\Framework\TestCase;
 
@@ -28,276 +30,202 @@ class RouteTest extends TestCase
 {
     public function testConstructor(): void
     {
-        $testRoute = new Fixtures\TestRoute();
-        $route     = new Route(
-            $testRoute->getPath(),
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
+        $fRoute = new FastRoute('/hello');
+        $this->assertInstanceOf(FastRoute::class, $fRoute);
 
-        $this->assertInstanceOf(Route::class, $route);
-        $this->assertSame($testRoute->getPath(), $route->getPath());
-        $this->assertSame($testRoute->getMethods(), $route->getMethods());
-        $this->assertSame($testRoute->getController(), $route->getController());
+        $dRoute = new DomainRoute('/hello');
+        $this->assertInstanceOf(DomainRoute::class, $dRoute);
+        $this->assertInstanceOf(FastRoute::class, $dRoute);
 
-        // default property values...
-        $this->assertNull($route->getName());
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], $route->getSchemes());
-        $this->assertSame([], $route->getPatterns());
-        $this->assertSame([], $route->getArguments());
-        $this->assertNotSame([], $route->getAll());
+        $testRoute = new Route('/hello');
+        $this->assertInstanceOf(Route::class, $testRoute);
+        $this->assertInstanceOf(FastRoute::class, $testRoute);
+        $this->assertInstanceOf(DomainRoute::class, $testRoute);
     }
 
-    public function testSetterMethods(): void
+    public function testStaticToMethod(): void
     {
-        $testRoute = new Fixtures\TestRoute();
-        $route     = new Route(
-            $testRoute->getPath(),
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
-        $route->bind($testRoute->getName())
-            ->middleware(...$testRoute->getMiddlewares())
-            ->domain('https://biurad.com')
-            ->argument(0, 'hello');
+        $fRoute = FastRoute::to('/hello');
+        $this->assertInstanceOf(FastRoute::class, $fRoute);
 
-        foreach ($testRoute->getDefaults() as $variable => $default) {
-            $route->default($variable, $default);
-        }
+        $dRoute = DomainRoute::to('/hello');
+        $this->assertInstanceOf(DomainRoute::class, $dRoute);
+        $this->assertInstanceOf(FastRoute::class, $dRoute);
 
-        foreach ($testRoute->getArguments() as $variable => $value) {
-            $route->argument($variable, $value);
-        }
-
-        foreach ($testRoute->getPatterns() as $variable => $regexp) {
-            $route->assert($variable, $regexp);
-        }
-
-        $this->assertSame($testRoute->getName(), $route->getName());
-        $this->assertSame($testRoute->getPath(), $route->getPath());
-        $this->assertSame(['biurad.com'], $route->getDomain());
-        $this->assertSame($testRoute->getMethods(), $route->getMethods());
-        $this->assertSame($testRoute->getController(), $route->getController());
-        $this->assertSame($testRoute->getMiddlewares(), $route->getMiddlewares());
-        $this->assertSame(['https'], \array_keys($route->getSchemes()));
-        $this->assertSame($testRoute->getPatterns(), $route->getPatterns());
-        $this->assertSame($testRoute->getDefaults(), $route->getDefaults());
-        $this->assertSame($testRoute->getArguments(), $route->getArguments());
-        $this->assertNotSame($testRoute->getAll(), $route->getAll());
+        $testRoute = Route::to('/hello');
+        $this->assertInstanceOf(Route::class, $testRoute);
+        $this->assertInstanceOf(FastRoute::class, $testRoute);
+        $this->assertInstanceOf(DomainRoute::class, $testRoute);
     }
 
-    public function testBind(): void
+    public function testSetStateMethod(): void
     {
-        $route        = new Fixtures\TestRoute();
-        $newRouteName = Fixtures\TestRoute::getTestRouteName();
+        $properties = [
+            'name' => 'baz',
+            'path' => 'hello',
+            'methods' => FastRoute::DEFAULT_METHODS,
+            'handler' => 'phpinfo',
+            'defaults' => ['foo' => 'bar'],
+        ];
 
-        $this->assertNotSame($route->getName(), $newRouteName);
-        $this->assertSame($route, $route->bind($newRouteName));
-        $this->assertSame($newRouteName, $route->getName());
+        $this->assertEquals([
+            'name' => 'baz',
+            'path' => 'hello',
+            'methods' => FastRoute::DEFAULT_METHODS,
+            'handler' => 'phpinfo',
+            'arguments' => [],
+            'defaults' => ['foo' => 'bar'],
+            'patterns' => []
+        ], FastRoute::__set_state($properties)->getData());
+
+        $dRoute = DomainRoute::__set_state($properties);
+        $this->assertEquals([
+            'name' => 'baz',
+            'path' => 'hello',
+            'methods' => FastRoute::DEFAULT_METHODS,
+            'schemes' => [],
+            'hosts' => [],
+            'handler' => 'phpinfo',
+            'arguments' => [],
+            'defaults' => ['foo' => 'bar'],
+            'patterns' => []
+        ], $dRoute->getData());
+
+        $testRoute = Route::__set_state($properties);
+        $this->assertEquals($dRoute->getData(), $testRoute->getData());
     }
 
-    public function testSerialization(): void
+    public function testSetStateMethodWihInvalidKey(): void
     {
-        $testRoute = new Fixtures\TestRoute();
-        $route     = new Route(
-            $testRoute->getPath(),
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
+        $routeData = Route::__set_state(['path' => '/', 'foo' => 'bar'])->getData();
 
-        $route->bind($testRoute->getName())
-            ->middleware(...$testRoute->getMiddlewares())
-            ->domain('https://biurad.com')
-            ->argument(0, 'hello');
-
-        foreach ($testRoute->getDefaults() as $variable => $default) {
-            $route->default($variable, $default);
-        }
-
-        foreach ($testRoute->getArguments() as $variable => $value) {
-            $route->argument($variable, $value);
-        }
-
-        foreach ($testRoute->getPatterns() as $variable => $regexp) {
-            $route->assert($variable, $regexp);
-        }
-
-        $route = \serialize($route);
-
-        $this->assertNotInstanceOf(Route::class, $route);
-
-        $actual   = Fixtures\Helper::routesToArray([\unserialize($route)]);
-        $defaults = $testRoute->getDefaults();
-        unset($defaults['_arguments']);
-
-        $this->assertSame([
-            'name'        => $testRoute->getName(),
-            'path'        => $testRoute->getPath(),
-            'domain'      => ['biurad.com'],
-            'methods'     => \array_keys($testRoute->getMethods()),
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => \array_map('get_class', $testRoute->getMiddlewares()),
-            'schemes'     => ['https'],
-            'defaults'    => $defaults,
-            'patterns'    => $testRoute->getPatterns(),
-            'arguments'   => $testRoute->getArguments(),
-        ], \current($actual));
+        $this->assertEquals([
+            'name' => null,
+            'path' => '/',
+            'methods' => [],
+            'schemes' => [],
+            'hosts' => [],
+            'handler' => null,
+            'arguments' => [],
+            'patterns' => [],
+            'defaults' => [],
+        ], $routeData);
     }
 
-    public function testController(): void
+    public function testDomainRoute(): void
     {
-        $route                  = new Fixtures\TestRoute();
-        $newRouteRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
+        $dRoute1 = new DomainRoute('https://biurad.com/hi');
+        $this->assertEquals('/hi', $dRoute1->getPath());
+        $this->assertEquals(['https'], $dRoute1->getSchemes());
+        $this->assertEquals(['biurad.com'], $dRoute1->getHosts());
 
-        $this->assertNotSame($route->getController(), $newRouteRequestHandler);
+        $dRoute2 = new DomainRoute('//biurad.com/hi');
+        $this->assertEquals('/hi', $dRoute2->getPath());
+        $this->assertEmpty($dRoute2->getSchemes());
+        $this->assertEquals(['biurad.com'], $dRoute2->getHosts());
+
+        $dRoute3 = new DomainRoute('/hi');
+        $this->assertEquals('/hi', $dRoute3->getPath());
+        $this->assertEmpty($dRoute3->getSchemes());
+        $this->assertEmpty($dRoute3->getHosts());
+
+        $dRoute = DomainRoute::to('https://biurad.com/hi');
+        $dRoute->scheme('https')->domain('https://greet.biurad.com', 'biurad.com');
+
+        $this->assertEquals(['https'], $dRoute->getSchemes());
+        $this->assertEquals(['biurad.com', 'greet.biurad.com'], $dRoute->getHosts());
     }
 
-    public function testDomainFromPath(): void
+    public function testRouteName(): void
     {
-        $testRoute = new Fixtures\TestRoute();
-        $route     = new Route(
-            '//biurad.com/' . \ltrim($testRoute->getPath(), '/'),
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
+        $testRoute = new Route('/foo');
+        $testRoute->bind('foo');
 
-        $this->assertEquals($testRoute->getPath(), $route->getPath());
-        $this->assertEquals(['biurad.com'], \array_keys($route->getDomain()));
+        $this->assertEquals('foo', $testRoute->get('name'));
     }
 
-    public function testSchemeAndADomainFromPath(): void
+    public function testRouteMethods(): void
     {
-        $testRoute = new Fixtures\TestRoute();
-        $route     = new Route(
-            'https://biurad.com/' . \ltrim($testRoute->getPath(), '/'),
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
+        $testRoute1 = new Route('/foo');
+        $testRoute2 = new Route('foo', '');
+        $testRoute3 = new Route('foo', []);
+        $testRoute4 = Route::to('foo', [])->method('connect', 'get', 'get');
 
-        $this->assertEquals($testRoute->getPath(), $route->getPath());
-        $this->assertEquals(['biurad.com'], $route->getDomain());
-        $this->assertEquals('https', \current(\array_keys($route->getSchemes())));
+        $this->assertEquals(Route::DEFAULT_METHODS, $testRoute1->getMethods());
+        $this->assertSame($testRoute2->getMethods(), $testRoute3->getMethods());
+        $this->assertEquals(['CONNECT', 'GET'], $testRoute4->getMethods());
     }
 
-    public function testControllerOnNullAndFromPath(): void
+    public function testRoutePath(): void
     {
-        $testRoute = new Fixtures\TestRoute();
+        $staticRoute = new Route('/foo');
+        $dynamicRoute = new Route('/hi/{baz}');
+        $hostRoute = new Route('//localhost/bar');
+        $schemeHostRoute = new Route('ws://localhost:8080/service');
 
-        $route1 = new Route(
-            $testRoute->getPath() . '*<handle>',
-            \array_keys($testRoute->getMethods()),
-            $testRoute->getController()
-        );
-        $route2 = new Route(
-            $testRoute->getPath() . '*<Flight\Routing\Tests\Fixtures\BlankRequestHandler@handle>',
-            \array_keys($testRoute->getMethods())
-        );
+        $this->assertEquals('/foo', $staticRoute->getPath());
+        $this->assertEquals('/hi/{baz}', $dynamicRoute->getPath());
 
-        $this->assertIsCallable($route1->getController());
-        $this->assertIsArray($route2->getController());
-        $this->assertEquals([Fixtures\BlankRequestHandler::class, 'handle'], $route2->getController());
+        $this->assertEquals('/bar', $hostRoute->getPath());
+        $this->assertEquals(['localhost'], $hostRoute->getHosts());
+
+        $this->assertEquals('/service', $schemeHostRoute->getPath());
+        $this->assertEquals(['localhost:8080'], $schemeHostRoute->getHosts());
+        $this->assertEquals(['ws'], $schemeHostRoute->getSchemes());
     }
 
-    public function testControllerMethodFromPath(): void
+    public function testRouteHandler(): void
     {
-        $routeMethods = Fixtures\TestRoute::getTestRouteMethods();
-        $route        = new Route('/*<phpinfo>', $routeMethods);
+        $functionRoute = new Route('/foo_1', Route::DEFAULT_METHODS, 'phpinfo');
+        $closureRoute = new Route('/foo_2', Route::DEFAULT_METHODS, static function () {
+            return 'Hello';
+        });
+        $invokeRoute =  new Route('/foo_3', Route::DEFAULT_METHODS, new Fixtures\InvokeController());
+        $requestHandlerRoute = new Route('/foo_4', Route::DEFAULT_METHODS, new Fixtures\BlankRequestHandler());
+        $patternRoute1 = new Route('/foo_5*<Flight\Routing\Tests\Fixtures\BlankController@handle>');
+        $patternRoute2 = new Route('/foo_6*<handle>', Route::DEFAULT_METHODS, Fixtures\BlankController::class);
 
-        $this->assertIsCallable($route->getController());
-        $this->assertEquals('/', $route->getPath());
-        $this->assertEquals('phpinfo', $route->getController());
+        $this->assertIsCallable($functionRoute->getHandler());
+        $this->assertIsCallable($closureRoute->getHandler());
+        $this->assertIsCallable($invokeRoute->getHandler());
+        $this->assertInstanceOf(Fixtures\InvokeController::class, $invokeRoute->getHandler());
+        $this->assertInstanceOf(Fixtures\BlankRequestHandler::class, $requestHandlerRoute->getHandler());
+        $this->assertEquals([Fixtures\BlankController::class, 'handle'], $patternRoute1->getHandler());
+        $this->assertSame($patternRoute1->getHandler(), $patternRoute2->getHandler());
     }
 
-    public function testArgument(): void
+    public function testRouteNamespace(): void
     {
-        $route              = new Fixtures\TestRoute();
-        $newRouteAttributes = Fixtures\TestRoute::getTestRouteAttributes();
+        $testRoute1 = Route::to('/foo')->run('\\BlankController')->namespace('Flight\Routing\Tests\Fixtures');
+        $testRoute2 = Route::to('/foo')->run('\\Fixtures\BlankController')->namespace('Flight\Routing\Tests');
+        $testRoute3 = Route::to('/foo')->run('Fixtures\BlankController')->namespace('Flight\Routing\Tests');
 
-        $this->assertNotSame($route->getDefaults()['_arguments'] ?? [], $newRouteAttributes);
+        $this->assertSame($testRoute1->getHandler(), $testRoute2->getHandler());
+        $this->assertEquals('Fixtures\BlankController', $testRoute3->getHandler());
 
-        foreach ($newRouteAttributes as $variable => $value) {
-            $route->argument($variable, $value);
-        }
+        $this->expectExceptionMessage('Namespace "Flight\Routing\Tests\" provided for routes must not end with a "\".');
+        $this->expectException(InvalidControllerException::class);
 
-        $this->assertSame($newRouteAttributes, $route->getArguments());
+        Route::to('/foo')->run('Fixtures\BlankController')->namespace('Flight\Routing\Tests\\');
     }
 
-    public function testPrefix(): void
+    /**
+     * @dataProvider providePrefixAndExpectedNewPath
+     */
+    public function testRoutePrefix(string $path, string $prefix, string $expected): void
     {
-        $route        = new Fixtures\TestRoute();
-        $pathPrefix   = '/foo';
-        $expectedPath = $pathPrefix . $route->getPath();
+        $testRoute = new Route($path);
+        $testRoute->prefix($prefix);
 
-        $this->assertSame($route, $route->prefix($pathPrefix));
-        $this->assertSame($expectedPath, $route->getPath());
-    }
-
-    public function testAddMethod(): void
-    {
-        $route           = new Fixtures\TestRoute();
-        $extraMethods    = Fixtures\TestRoute::getTestRouteMethods();
-        $expectedMethods = \array_merge(\array_keys($route->getMethods()), $extraMethods);
-
-        $this->assertSame($route, $route->method(...$extraMethods));
-        $this->assertSame($expectedMethods, \array_keys($route->getMethods()));
-    }
-
-    public function testAddMiddleware(): void
-    {
-        $route               = new Fixtures\TestRoute();
-        $extraMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
-        $expectedMiddlewares = \array_merge($route->getMiddlewares(), $extraMiddlewares);
-
-        $this->assertSame($route, $route->middleware(...$extraMiddlewares));
-        $this->assertSame($expectedMiddlewares, $route->getMiddlewares());
-    }
-
-    public function testSetLowercasedMethods(): void
-    {
-        $route           = new Route('/', ['foo', 'bar'], Fixtures\BlankRequestHandler::class);
-        $expectedMethods = ['FOO', 'BAR'];
-
-        $this->assertSame($expectedMethods, \array_keys($route->getMethods()));
-    }
-
-    public function testAddSlashEndingPrefix(): void
-    {
-        $route        = new Fixtures\TestRoute();
-        $expectedPath = '/foo' . $route->getPath();
-
-        $route->prefix('/foo/');
-        $this->assertSame($expectedPath, $route->getPath());
-    }
-
-    public function testAddLowercasedMethod(): void
-    {
-        $route             = new Fixtures\TestRoute();
-        $expectedMethods   = \array_keys($route->getMethods());
-        $expectedMethods[] = 'GET';
-        $expectedMethods[] = 'POST';
-
-        $route->method('get', 'post');
-        $this->assertSame($expectedMethods, \array_keys($route->getMethods()));
-    }
-
-    public function testPathPrefixWithSymbol(): void
-    {
-        $route        = new Fixtures\TestRoute();
-        $pathPrefix   = 'foo@';
-        $expectedPath = $pathPrefix . $route->getPath();
-
-        $this->assertSame($route, $route->prefix($pathPrefix));
-        $this->assertSame($expectedPath, $route->getPath());
+        $this->assertSame($expected, $testRoute->getPath());
     }
 
     public function testMethodNotFoundInMagicCall(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo');
 
-        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
-        $this->expectException(BadMethodCallException::class);
+        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
+        $this->expectException(\InvalidArgumentException::class);
 
         $route->exception();
     }
@@ -323,6 +251,26 @@ class RouteTest extends TestCase
             [new Route('/colon:pipe|dashes-escaped', ''), '', '_colon_pipe_dashes_escaped'],
             [new Route('/underscores_and.periods', ''), '', '_underscores_and.periods'],
             [new Route('/post/{id}', 'GET'), 'prefix', 'GET_prefix_post_id'],
+        ];
+    }
+
+    /**
+     * @return string[]
+     */
+    public function providePrefixAndExpectedNewPath(): array
+    {
+        return [
+            ['/foo', '/bar', '/bar/foo'],
+            ['/foo', '/bar/', '/bar/foo'],
+            ['/foo', 'bar', 'bar/foo'],
+            ['foo', '/bar', '/bar/foo'],
+            ['foo', 'bar', 'bar/foo'],
+            ['@foo', 'bar', 'bar@foo'],
+            ['foo', '@bar', '@bar/foo'],
+            ['~foo', '/bar~', '/bar~foo'],
+            ['/foo', '', '/foo'],
+            ['foo', '', 'foo'],
+            ['/foo', 'bar_', 'bar_foo'],
         ];
     }
 }
