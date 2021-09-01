@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Route;
+use Flight\Routing\{FastRoute as Route, Route as BaseRoute};
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -31,7 +31,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class PathMiddleware implements MiddlewareInterface
+final class PathMiddleware implements MiddlewareInterface
 {
     /** @var bool */
     private $permanent;
@@ -54,41 +54,47 @@ class PathMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // Supported prefix for uri paths ...
-        $prefixRegex = '#(?|\\' . \implode('|\\', Route::URL_PREFIX_SLASHES) . ')+$#';
-
-        $requestUri = $request->getUri();
         $response = $handler->handle($request);
-        $requestPath = \preg_replace($prefixRegex, $requestUri->getPath()[-1], $requestUri->getPath());
+
+        // Supported prefix for uri paths ...
+        $trimmedPath = self::getTrimmedPath($requestPath = ($requestUri = $request->getUri())->getPath());
 
         // Determine the response code should keep HTTP request method ...
         $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
 
-        if ($requestUri->getPath() !== $requestPath) {
-            return $response->withHeader('Location', (string) $requestUri->withPath($requestPath))->withStatus($statusCode);
+        if ($trimmedPath !== $requestPath) {
+            return $response->withHeader('Location', (string) $requestUri->withPath($trimmedPath))->withStatus($statusCode);
         }
 
         $route = $request->getAttribute(Route::class);
 
         if ($route instanceof Route) {
-            $routeEndTail = Route::URL_PREFIX_SLASHES[$route->get('path')[-1]] ?? null;
-            $requestEndTail = Route::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
+            $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->get('path')[-1]] ?? null;
+            $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$trimmedPath[-1]] ?? null;
 
             if ($routeEndTail === $requestEndTail) {
                 return $response;
             }
 
             // Resolve request tail end to avoid conflicts and infinite redirection looping ...
-            if (null === $routeEndTail && null !== $requestEndTail || (isset($routeEndTail, $requestEndTail) && $routeEndTail !== $requestEndTail)) {
-                $requestPath = \substr($requestPath, 0, -1);
+            if (
+                null === $routeEndTail && null !== $requestEndTail ||
+                (isset($routeEndTail, $requestEndTail) && $routeEndTail !== $requestEndTail)
+            ) {
+                $trimmedPath = \substr($trimmedPath, 0, -1);
             } elseif (null !== $routeEndTail && null === $requestEndTail) {
-                $requestPath .= $routeEndTail;
+                $trimmedPath .= $routeEndTail;
             }
 
             // Allow Redirection if exists and avoid static request.
-            return $response->withAddedHeader('Location', (string) $requestUri->withPath($requestPath))->withStatus($statusCode);
+            return $response->withAddedHeader('Location', (string) $requestUri->withPath($trimmedPath))->withStatus($statusCode);
         }
 
         return $response;
+    }
+
+    private static function getTrimmedPath(string $requestPath): string
+    {
+        return \preg_replace('#(?|\\' . \implode('|\\', BaseRoute::URL_PREFIX_SLASHES) . ')+$#', $requestPath[-1], $requestPath);
     }
 }
