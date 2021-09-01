@@ -36,7 +36,7 @@ class DefaultValueController
      * )
      * @Route(
      *     "/cool/{name=<Symfony>}",
-     *     patterns={"name": "\w+"},
+     *     where={"name": "\w+"},
      *     methods={"GET", "POST"},
      *     name="hello_with_default"
      * )

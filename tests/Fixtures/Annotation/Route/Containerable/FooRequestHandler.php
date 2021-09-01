@@ -24,8 +24,7 @@ use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
  * @Route(
  *   name="foo",
  *   path="/foo",
- *   methods={"GET"},
- *   middlewares={"blank"}
+ *   methods={"GET"}
  * )
  */
 class FooRequestHandler extends BlankRequestHandler

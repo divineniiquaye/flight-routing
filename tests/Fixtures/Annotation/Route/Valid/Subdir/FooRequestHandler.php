@@ -25,10 +25,6 @@ use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
  *   name="sub-dir:foo",
  *   path="/sub-dir/foo",
  *   methods={"HEAD", "GET"},
- *   middlewares={
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware",
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware"
- *   },
  *   defaults={
  *     "foo": "bar",
  *     "bar": "baz"

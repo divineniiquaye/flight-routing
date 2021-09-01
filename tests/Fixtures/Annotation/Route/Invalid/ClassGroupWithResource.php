@@ -18,15 +18,15 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
 use Flight\Routing\Annotation\Route;
-use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
+use Flight\Routing\Tests\Fixtures\Annotation\Route\Valid\MultipleMethodRouteController;
 
 /**
  * @Route(
- *   name="home",
- *   path="/",
- *   methods={"HEAD", {"GET"}, "POST"}
+ *   path="/class-group-resource",
+ *   methods={"GET"},
+ *   resource="action"
  * )
  */
-class MethodsNotStringable extends BlankRequestHandler
+class ClassGroupWithResource extends MultipleMethodRouteController
 {
 }

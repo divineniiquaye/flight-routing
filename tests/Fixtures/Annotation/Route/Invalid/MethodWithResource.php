@@ -18,16 +18,18 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
 use Flight\Routing\Annotation\Route;
-use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 
-/**
- * @Route(
- *   name="home",
- *   path="/",
- *   methods={"GET"},
- *   defaults="foo"
- * )
- */
-class DefaultsNotArray extends BlankRequestHandler
+class MethodWithResource
 {
+    /**
+     * @Route(
+     *   name="method_with_resource",
+     *   path="/method_with_resource",
+     *   methods={"HEAD", "POST"},
+     *   resource="action"
+     * )
+     */
+    public function isInvalid(): void
+    {
+    }
 }

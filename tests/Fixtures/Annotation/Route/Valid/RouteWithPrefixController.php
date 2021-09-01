@@ -20,7 +20,7 @@ namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 use Flight\Routing\Annotation\Route;
 
 /**
- * @Route("/prefix", name="do.", domain="biurad.com")
+ * @Route("/prefix", name="do.", hosts="biurad.com")
  */
 class RouteWithPrefixController
 {

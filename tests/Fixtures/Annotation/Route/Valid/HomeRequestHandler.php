@@ -25,15 +25,11 @@ use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
  *   name="home",
  *   path="/",
  *   methods={"HEAD", "GET"},
- *   middlewares={
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware",
- *     "Flight\Routing\Tests\Fixtures\BlankMiddleware"
- *   },
  *   defaults={
  *     "foo": "bar",
  *     "bar": "baz"
  *   },
- *   domain="https://biurad.com"
+ *   hosts="https://biurad.com"
  * )
  */
 class HomeRequestHandler extends BlankRequestHandler
