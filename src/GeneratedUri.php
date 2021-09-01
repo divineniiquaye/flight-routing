@@ -44,10 +44,10 @@ class GeneratedUri implements \Stringable
     private $pathInfo;
 
     /** @var string|null */
-    private $scheme = null;
+    private $scheme;
 
     /** @var string|null */
-    private $host = null;
+    private $host;
 
     public function __construct(string $pathInfo)
     {
@@ -79,7 +79,7 @@ class GeneratedUri implements \Stringable
      */
     public function withHost(string $host): self
     {
-        $this->host = '' !== $host ? '//' . $host : null;
+        $this->host = '' !== $host ? '//' . ltrim($host, '/') : null;
 
         return $this;
     }
