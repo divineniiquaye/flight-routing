@@ -37,18 +37,6 @@ class BlankController
     private $attributes = [];
 
     /**
-     * @param ServerRequestInterface $request
-     *
-     * @return ResponseInterface
-     *
-     * @link https://www.php.net/manual/en/language.oop5.magic.php#object.invoke
-     */
-    public function __invoke(ServerRequestInterface $request): ResponseInterface
-    {
-        return $this->handle($request);
-    }
-
-    /**
      * @return bool
      */
     public function isRunned(): bool

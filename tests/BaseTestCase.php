@@ -17,13 +17,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Router;
+use Flight\Routing\Handlers\RouteHandler;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -32,11 +30,9 @@ use Psr\Http\Message\UriFactoryInterface;
 class BaseTestCase extends TestCase
 {
     /**
-     * @param ResponseInterface $response
-     *
      * @return ResponseFactoryInterface
      */
-    public function getResponseFactory(ResponseInterface $response = null)
+    protected function getResponseFactory(ResponseInterface $response = null)
     {
         $responseFactory = $this->createMock(ResponseFactoryInterface::class);
         $responseFactory->method('CreateResponse')
@@ -45,10 +41,7 @@ class BaseTestCase extends TestCase
         return $responseFactory;
     }
 
-    /**
-     * @return UriFactoryInterface
-     */
-    public function getUriFactory()
+    protected function getUriFactory(): UriFactoryInterface
     {
         return new Psr17Factory();
     }
@@ -61,27 +54,17 @@ class BaseTestCase extends TestCase
      *
      * @return ServerRequestFactoryInterface
      */
-    public function getServerRequestFactory(string $method, $uri, $headers = [], $body = null)
+    protected function getServerRequestFactory(string $method, $uri, $headers = [], $body = null)
     {
-        $serverReequestFactory = $this->createMock(ServerRequestFactoryInterface::class);
-        $serverReequestFactory->method('createServerRequest')
+        $serverRequestFactory = $this->createMock(ServerRequestFactoryInterface::class);
+        $serverRequestFactory->method('createServerRequest')
             ->willReturn(new ServerRequest($method, $uri, $headers, $body));
 
-        return $serverReequestFactory;
+        return $serverRequestFactory;
     }
 
-    /**
-     * @param null|class-string       $matcher
-     * @param ContainerInterface|null $container
-     */
-    public function getRouter(?InvokerInterface $resolver = null, bool $profiler = false): Router
+    protected function getRequestHandler(ResponseInterface $response = null): RouteHandler
     {
-        $router = new Router($this->getResponseFactory(), null, null, $profiler);
-
-        if (null !== $resolver) {
-            $router->setHandlerResolver([$resolver, 'call']);
-        }
-
-        return $router;
+        return new RouteHandler($this->getResponseFactory($response));
     }
 }

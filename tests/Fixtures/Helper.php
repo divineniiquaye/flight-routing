@@ -17,7 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Route;
+use Flight\Routing\DomainRoute;
+use Flight\Routing\FastRoute as Route;
 
 /**
  * Helper.
@@ -34,32 +35,22 @@ class Helper
         $result = [];
 
         foreach ($routes as $route) {
-            if (\is_object($controller = $route->getController())) {
+            if (\is_object($controller = $route->getHandler())) {
                 $controller = \get_class($controller);
             }
-
-            $defaults = $route->getDefaults();
 
             $item = [];
             $item['name'] = $route->getName();
             $item['path'] = $route->getPath();
-            $item['domain'] = $route->getDomain();
-            $item['methods'] = \array_keys($route->getMethods());
+            $item['methods'] = $route->getMethods();
             $item['handler'] = $controller;
-            $item['middlewares'] = [];
-            $item['schemes'] = \array_keys($route->getSchemes());
-            $item['defaults'] = \array_diff_key($defaults, ['_arguments' => true]);
+            $item['defaults'] = $route->getDefaults();
             $item['patterns'] = $route->getPatterns();
-            $item['arguments'] = $defaults['_arguments'] ?? [];
+            $item['arguments'] = $route->getArguments();
 
-            foreach ($route->getMiddlewares() as $middleware) {
-                $classname = \is_string($middleware) ? $middleware : \get_class($middleware);
-
-                if ($middleware instanceof NamedBlankMiddleware) {
-                    $classname .= ':' . $middleware->getName();
-                }
-
-                $item['middlewares'][] = $classname;
+            if ($route instanceof DomainRoute) {
+                $item['hosts'] = $route->getHosts();
+                $item['schemes'] = $route->getSchemes();
             }
 
             if ($first) {
@@ -82,7 +73,7 @@ class Helper
         $result = [];
 
         foreach ($routes as $route) {
-            $result[] = $route instanceof Route ? $route->getName() : $route['name'];
+            $result[] = $route->getName();
         }
 
         return $result;
