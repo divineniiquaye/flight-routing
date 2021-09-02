@@ -17,12 +17,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Biurad\Annotations\InvalidAnnotationException;
+use Flight\Routing\{DomainRoute, Route as BaseRoute};
+use Flight\Routing\Handlers\ResourceHandler;
 
 /**
  * Annotation class for @Route().
  *
  * @Annotation
+ * @NamedArgumentConstructor
  *
  * On PHP 7.2+ Attributes are supported except you want to use Doctrine annotations:
  * ```php
@@ -42,141 +44,86 @@ use Biurad\Annotations\InvalidAnnotationException;
  *
  * @Target({"CLASS", "METHOD", "FUNCTION"})
  */
+#[\Spiral\Attributes\NamedArgumentConstructor]
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
 final class Route
 {
-    private const ATTRIBUTES = [
-        'path' => 'string',
-        'name' => 'string',
-        'resource' => 'string',
-        'patterns' => 'array',
-        'defaults' => 'array',
-        'methods' => 'string|string[]',
-        'domain' => 'string|string[]',
-        'schemes' => 'string|string[]',
-        'middlewares' => 'string|string[]',
-    ];
+    /** @var string|null @Required */
+    public $path;
 
     /** @var string|null @Required */
-    public $path = null;
-
-    /** @var string|null @Required */
-    public $name = null;
+    public $name;
 
     /** @var string[] @Required */
-    public $methods = [];
+    public $methods;
 
     /** @var string[] */
-    public $domain = [];
-
-    /** @var array<string,true> */
-    public $schemes = [];
+    public $hosts;
 
     /** @var string[] */
-    public $middlewares = [];
+    public $schemes;
 
     /** @var array<string,string> */
-    public $patterns = [];
+    public $patterns;
 
     /** @var array<string,mixed> */
-    public $defaults = [];
+    public $defaults;
 
     /** @var string|null */
-    public $resource = null;
+    public $resource;
 
     /**
-     * @param array|string    $params      data array managed by the Doctrine Annotations library or the path
      * @param string|string[] $methods
      * @param string|string[] $schemes
-     * @param string|string[] $domain
+     * @param string|string[] $hosts
      * @param string[]        $where
-     * @param string|string[] $middlewares
      * @param string[]        $defaults
      */
     public function __construct(
-        $params = [],
-        ?string $path = null,
+        string $path = null,
         string $name = null,
         $methods = [],
         $schemes = [],
-        $domain = [],
-        $middlewares = [],
+        $hosts = [],
         array $where = [],
         array $defaults = [],
         string $resource = null
     ) {
-        if (\is_array($params) && isset($params['value'])) {
-            $params['path'] = $params['value'];
-            unset($params['value']);
-        } elseif (\is_string($params)) {
-            $params = ['path' => $params];
-        }
-
-        $parameters = [
-            'middlewares' => $middlewares,
-            'defaults' => $defaults,
-            'schemes' => $schemes,
-            'patterns' => $where,
-            'methods' => $methods,
-            'domain' => $domain,
-            'name' => $name,
-            'path' => $path,
-            'resource' => $resource,
-        ];
-        $params += $parameters; // Replace defaults with $params
-
-        foreach ($params as $id => $value) {
-            if (null === $validate = self::ATTRIBUTES[$id] ?? null) {
-                throw new InvalidAnnotationException(\sprintf('The @Route.%s is unsupported. Allowed param keys are ["%s"].', $id, \implode('", "', \array_keys(self::ATTRIBUTES))));
-            }
-
-            if (empty($value)) {
-                continue;
-            }
-
-            if ('string' === $validate) {
-                if (!\is_string($value)) {
-                    throw new InvalidAnnotationException(\sprintf('@Route.%s must contain only a type of %s.', $id, $validate));
-                }
-                $this->{$id} = $value;
-
-                continue;
-            }
-
-            foreach ((array) $value as $key => $param) {
-                if (!\is_string($key) && 'array' === $validate) {
-                    throw new InvalidAnnotationException(\sprintf('@Route.%s must contain a sequence %s of string keys and values. eg: [key => value]', $id, $validate));
-                }
-
-                if ('string|string[]' === $validate) {
-                    if (!\is_string($param)) {
-                        throw new InvalidAnnotationException(\sprintf('@Route.%s must contain only an array list of strings.', $id));
-                    }
-
-                    if ('schemes' !== $id) {
-                        $this->{$id}[] = $param;
-                    } else {
-                        $this->schemes[$param] = true;
-                    }
-
-                    continue;
-                }
-
-                $this->{$id}[$key] = $param;
-            }
-        }
+        $this->path = $path;
+        $this->name = $name;
+        $this->resource = $resource;
+        $this->methods = (array) $methods;
+        $this->schemes = (array) $schemes;
+        $this->hosts = (array) $hosts;
+        $this->patterns = $where;
+        $this->defaults = $defaults;
     }
 
     /**
-     * Merge a route annotation into this route.
+     * @param mixed $handler
      */
-    public function clone(self $annotation): void
+    public function getRoute($handler): DomainRoute
     {
-        $this->methods = \array_merge($annotation->methods, $this->methods);
-        $this->domain = \array_merge($annotation->domain, $this->domain);
-        $this->schemes = \array_merge($annotation->schemes, $this->schemes);
-        $this->middlewares = \array_merge($annotation->middlewares, $this->middlewares);
-        $this->patterns = \array_merge($annotation->patterns, $this->patterns);
-        $this->defaults = \array_merge($annotation->defaults, $this->defaults);
+        $routeData = [
+            'handler' => !empty($this->resource) ? new ResourceHandler($handler, $this->resource) : $handler,
+            'name' => $this->name,
+            'path' => $this->path,
+            'methods' => $this->methods,
+            'schemes' => $this->schemes,
+            'patterns' => $this->patterns,
+            'defaults' => $this->defaults,
+        ];
+
+        if (null !== $this->path && 1 === \preg_match('/\*\<[\w@]+\>/', $this->path)) {
+            $route = BaseRoute::__set_state($routeData);
+        } else {
+            $route = DomainRoute::__set_state($routeData);
+        }
+
+        if (!empty($this->hosts)) {
+            $route->domain(...$this->hosts);
+        }
+
+        return $route;
     }
 }
