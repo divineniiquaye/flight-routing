@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Handlers\RouteHandler;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -25,8 +25,15 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * The importance of this middleware is to keep existing route paths users
- * might be familiarized with, and slowly transition them into new route paths.
+ * The importance of this middleware is to slowly migrate users from old routes
+ * to new route paths, with or without maintaining route attributes.
+ *
+ * Eg:
+ * 1. Redirect from `/users/\d+` to `/account`
+ * 2. Redirect from `/sign-up` tp `/register`
+ * 3. Redirect from `/admin-page` to `#/admin`. The `#` before means, all existing slashes and/or queries are maintained.
+ *
+ * NB: Old route paths as treated as regex otherwise actual path redirecting to new paths.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
@@ -54,21 +61,28 @@ class UriRedirectMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $uri = $request->getUri();
-        $response = $handler->handle($request);
+        $requestPath = ($uri = $request->getUri())->getPath();
 
-        if (!isset($this->redirects[$uri->getPath()])) {
-            return $response;
+        if ('' === $redirectedUri = (string) ($this->redirects[$requestPath] ?? '')) {
+            foreach ($this->redirects as $oldPath => $newPath) {
+                if (1 === \preg_match('#^' . $oldPath . '$#u', $requestPath)) {
+                    $redirectedUri = $newPath;
+
+                    break;
+                }
+            }
+
+            if (empty($redirectedUri)) {
+                return $handler->handle($request);
+            }
         }
 
-        $redirectedUri = $this->redirects[$uri->getPath()];
-
-        if (\is_string($redirectedUri) && \str_contains($redirectedUri, '//')) {
-            throw new UriHandlerException(\sprintf('Handling "%s" to a string path "%s" containing a host is not supported, use a %s instance for such purposes.', $uri->getPath(), $redirectedUri, UriInterface::class));
+        if ('#' === $redirectedUri[0]) {
+            $redirectedUri = $uri->withPath(\substr($redirectedUri, 1));
         }
 
-        return $response
+        return $handler->handle($request->withAttribute(RouteHandler::OVERRIDE_HTTP_RESPONSE, true))
             ->withStatus($this->keepRequestMethod ? 308 : 301)
-            ->withHeader('Location', (string) ($redirectedUri instanceof UriInterface ? $redirectedUri : $uri->withPath($redirectedUri)));
+            ->withHeader('Location', (string) $redirectedUri);
     }
 }
