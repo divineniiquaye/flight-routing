@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing;
+namespace Flight\Routing\Routes;
 
 use Flight\Routing\Exceptions\UriHandlerException;
 

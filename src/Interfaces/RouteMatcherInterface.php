@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\{GeneratedUri, Route};
+use Flight\Routing\{GeneratedUri, Routes\FastRoute as Route};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -48,11 +48,11 @@ interface RouteMatcherInterface
      * the URI and prepare it for returning to the user. If the URI is supposed to
      * be absolute, we will return it as-is. Otherwise we will remove the URL's root.
      *
-     * @param string                       $routeName   route name
-     * @param array<int|string,int|string> $parameters  key => value option pairs to pass to the
-     *                                                  router for purposes of generating a URI;
-     *                                                  takes precedence over options
-     *                                                  present in route used to generate URI
+     * @param string                       $routeName  route name
+     * @param array<int|string,int|string> $parameters key => value option pairs to pass to the
+     *                                                 router for purposes of generating a URI;
+     *                                                 takes precedence over options
+     *                                                 present in route used to generate URI
      *
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex

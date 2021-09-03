@@ -15,9 +15,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing;
+namespace Flight\Routing\Routes;
 
-use Flight\Routing\Exceptions\MethodNotAllowedException;
+use Flight\Routing\Exceptions\{MethodNotAllowedException, InvalidControllerException};
+use Flight\Routing\{Router, RouteCollection};
+use Flight\Routing\Handlers\ResourceHandler;
 use Psr\Http\Message\UriInterface;
 
 /**
@@ -256,7 +258,7 @@ class FastRoute
     {
         if ('' !== $namespace) {
             if ('\\' === $namespace[-1]) {
-                throw new Exceptions\InvalidControllerException(\sprintf('Namespace "%s" provided for routes must not end with a "\\".', $namespace));
+                throw new InvalidControllerException(\sprintf('Namespace "%s" provided for routes must not end with a "\\".', $namespace));
             }
 
             if (isset($this->data['handler'])) {
@@ -398,7 +400,7 @@ class FastRoute
      */
     private static function resolveNamespace(string $namespace, $controller)
     {
-        if ($controller instanceof Handlers\ResourceHandler) {
+        if ($controller instanceof ResourceHandler) {
             return $controller->namespace($namespace);
         }
 

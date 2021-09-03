@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\UriRedirectMiddleware;
-use Flight\Routing\Route;
+use Flight\Routing\Routes\Route;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;

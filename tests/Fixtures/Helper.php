@@ -17,8 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\DomainRoute;
-use Flight\Routing\FastRoute as Route;
+use Flight\Routing\Routes\FastRoute as Route;
 
 /**
  * Helper.
@@ -35,20 +34,13 @@ class Helper
         $result = [];
 
         foreach ($routes as $route) {
-            if (\is_object($controller = $route->getHandler())) {
-                $controller = \get_class($controller);
+            $item = $route->getData();
+
+            if (\is_object($item['handler'])) {
+                $item['handler'] = \get_class($item['handler']);
             }
 
-            $item = [];
-            $item['name'] = $route->getName();
-            $item['path'] = $route->getPath();
-            $item['methods'] = $route->getMethods();
-            $item['handler'] = $controller;
-            $item['defaults'] = $route->getDefaults();
-            $item['patterns'] = $route->getPatterns();
-            $item['arguments'] = $route->getArguments();
-
-            if ($route instanceof DomainRoute) {
+            if ($route instanceof Route) {
                 $item['hosts'] = $route->getHosts();
                 $item['schemes'] = $route->getSchemes();
             }

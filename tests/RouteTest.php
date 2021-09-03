@@ -17,10 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Flight\Routing\DomainRoute;
+use Flight\Routing\Routes\{DomainRoute, FastRoute, Route};
 use Flight\Routing\Exceptions\InvalidControllerException;
-use Flight\Routing\FastRoute;
-use Flight\Routing\Route;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -224,7 +222,7 @@ class RouteTest extends TestCase
     {
         $route = new Route('/foo');
 
-        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
+        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\Routes\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
         $this->expectException(\InvalidArgumentException::class);
 
         $route->exception();

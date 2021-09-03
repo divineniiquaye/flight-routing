@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\{GeneratedUri, Route};
+use Flight\Routing\{GeneratedUri, Routes\FastRoute as Route};
 use Flight\Routing\Exceptions\UrlGenerationException;
 
 /**
@@ -34,10 +34,9 @@ interface RouteCompilerInterface
      *
      * - path regex, which starting and ending modifiers stripped off.
      *     Eg: #^\/hello\/world\/{?P<var>[^\/]+}$#sDu -----> \/hello\/world\/{?P<var>[^\/]+}.
-     *     Static path regex should begin wih a single "/" while dynamic route begins with "\\/".
-     * - hosts regex, which is a list array of stringable hosts regex and
-     *     modifies stripped of as path regex.
-     * - variables, which is an array unique of merged path and hosts regex.
+     * - hosts regex, modifies stripped of as path regex. But if more than one hosts,
+     *     hosts must be imploded with a | inside a (?|...)
+     * - variables, which is an unique array of hosts vars(if avaliabke) merged into path vars.
      *
      * @return array<int,mixed>
      */

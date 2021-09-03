@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\{FastRoute as Route, Route as BaseRoute};
+use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;

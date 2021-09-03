@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Flight\Routing\{DomainRoute, Route as BaseRoute};
+use Flight\Routing\Routes\{DomainRoute, Route as BaseRoute};
 use Flight\Routing\Handlers\ResourceHandler;
 
 /**

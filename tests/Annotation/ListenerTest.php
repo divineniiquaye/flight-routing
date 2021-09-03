@@ -20,7 +20,7 @@ namespace Flight\Routing\Tests\Annotation;
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
 use Flight\Routing\Annotation;
-use Flight\Routing\DomainRoute;
+use Flight\Routing\Routes\DomainRoute;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\RouteCollection;

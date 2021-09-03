@@ -20,7 +20,7 @@ namespace Flight\Routing\Annotation;
 use Biurad\Annotations\InvalidAnnotationException;
 use Biurad\Annotations\ListenerInterface;
 use Biurad\Annotations\Locate\Class_;
-use Flight\Routing\{DomainRoute, RouteCollection};
+use Flight\Routing\{Routes\DomainRoute, RouteCollection};
 
 class Listener implements ListenerInterface
 {
