@@ -375,7 +375,7 @@ class FastRoute
     {
         return \array_map(function (string $property) {
             if ('*' === $property[-1]) {
-                $property = \substr($property, 0, -1);;
+                $property = \substr($property, 0, -1);
             }
 
             return $this->get($property);

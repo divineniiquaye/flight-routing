@@ -194,7 +194,7 @@ class ListenerTest extends TestCase
     public function testLoadingWithAnnotationBuildWithPrefix(): void
     {
         $loader = $this->loader;
-        $loader->listener(new Annotation\Listener($collection = new RouteCollection, 'annotated'));
+        $loader->listener(new Annotation\Listener($collection = new RouteCollection(), 'annotated'));
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
         $loader->build();
