@@ -44,7 +44,7 @@ class RouteTest extends TestCase
         $this->assertSame([], $route->defaults);
         $this->assertSame([], $route->patterns);
         $this->assertSame([], $route->schemes);
-        $this->assertSame([], $route->domain);
+        $this->assertSame([], $route->hosts);
     }
 
     public function testExportToRoute(): void
