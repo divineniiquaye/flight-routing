@@ -18,8 +18,10 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
-use Flight\Routing\Matchers\SimpleRouteCompiler;
-use Flight\Routing\Route;
+use Flight\Routing\Generator\RegexGenerator;
+use Flight\Routing\RouteCollection;
+use Flight\Routing\RouteCompiler;
+use Flight\Routing\Routes\Route;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,16 +35,14 @@ class SimpleRouteCompilerTest extends TestCase
         $route->default('foo', 'default')
             ->assert('foo', '\d+');
 
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
         $serialized   = \serialize($compiled);
-        $unserialized = \unserialize($serialized);
+        $deserialized = \unserialize($serialized);
 
-        $this->assertEquals($compiled, $unserialized);
-        $this->assertNotSame($compiled, $unserialized);
-        $this->assertNotSame($serialized, $compiled->serialize());
-        $this->assertNull($compiled->unserialize($compiled->serialize()));
+        $this->assertEquals($compiled, $deserialized);
+        $this->assertSame($compiled, $deserialized);
     }
 
     /**
@@ -56,18 +56,18 @@ class SimpleRouteCompilerTest extends TestCase
     public function testCompile(string $path, array $matches, string $regex, array $variables = []): void
     {
         $route    = new Route($path, ['FOO', 'BAR']);
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
-        $this->assertEquals($regex, $compiled->getRegex());
-        $this->assertEquals($variables, \array_replace($compiled->getVariables(), $route->getDefaults()));
+        $this->assertEquals($regex, $compiled[0]);
+        $this->assertEquals($variables, $compiled[2] + $route->getDefaults());
 
         // Match every pattern...
         foreach ($matches as $match) {
             if (\PHP_VERSION_ID < 70300) {
-                $this->assertRegExp($regex, $match);
+                $this->assertRegExp('/^' . $regex . '$/sDu', $match);
             } else {
-                $this->assertMatchesRegularExpression($regex, $match);
+                $this->assertMatchesRegularExpression('#^' . $regex . '$#sDu', $match);
             }
         }
     }
@@ -83,18 +83,18 @@ class SimpleRouteCompilerTest extends TestCase
     public function testCompileDomainRegex(string $path, array $matches, string $regex, array $variables = []): void
     {
         $route    = new Route($path, ['FOO', 'BAR']);
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
-        $this->assertEquals([$regex], $compiled->getHostsRegex());
-        $this->assertEquals($variables, \array_merge($compiled->getVariables(), $route->getDefaults()));
+        $this->assertEquals($regex, $compiled[1]);
+        $this->assertEquals($variables, $compiled[2] + $route->getDefaults());
 
         // Match every pattern...
         foreach ($matches as $match) {
             if (\PHP_VERSION_ID < 70300) {
-                $this->assertRegExp($regex, $match);
+                $this->assertRegExp('/^' . $regex . '$/sDu', $match);
             } else {
-                $this->assertMatchesRegularExpression($regex, $match);
+                $this->assertMatchesRegularExpression('#^' . $regex . '$#sDu', $match);
             }
         }
     }
@@ -108,12 +108,69 @@ class SimpleRouteCompilerTest extends TestCase
     public function testCompileVariables(string $variable, string $exceptionMessage): void
     {
         $route = new Route('/{' . $variable . '}', ['FOO', 'BAR']);
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
 
         $this->expectExceptionMessage(\sprintf($exceptionMessage, $variable));
         $this->expectException(UriHandlerException::class);
 
         $compiler->compile($route);
+    }
+
+    public function testCompilerOnRouteCollection(): void
+    {
+        $compiler = new RouteCompiler();
+        $matches = [];
+        $actualCount = 0;
+        $routes = \array_map(static function (array $values) use (&$matches): Route {
+            $matches[$values[2]] = $values[1];
+
+            return new Route($values[0]);
+        }, \iterator_to_array($this->provideCompilePathData()));
+
+        $collection = new RouteCollection();
+        $collection->add(...$routes);
+
+        foreach ($collection->getRoutes() as $route) {
+            $compiledRoute = $compiler->compile($route);
+
+            if (isset($matches[$compiledRoute[0]])) {
+                foreach ($matches[$compiledRoute[0]] as $match) {
+                    if (1 === \preg_match('#' . $compiledRoute[0] . '#', $match)) {
+                        ++$actualCount;
+                    }
+                }
+            }
+        }
+
+        $this->assertEquals(62, $actualCount);
+    }
+
+    public function testCompilerOnRouteCollectionWithSerialization(): void
+    {
+        $matches = [];
+        $actualCount = 0;
+        $routes = \array_map(static function (array $values) use (&$matches): Route {
+            foreach ($values[1] as $value) {
+                $matches[] = $value;
+            }
+
+            return new Route($values[0]);
+        }, \iterator_to_array($this->provideCompilePathData()));
+
+
+        $compiler = new RouteCompiler();
+        $collection = new RouteCollection();
+        $collection->add(...$routes);
+
+        [$regexList,] = RegexGenerator::beforeCaching($compiler, $collection->getRoutes());
+
+        foreach ($matches as $match) {
+            if (1 === \preg_match($regexList, '/' . \ltrim($match, '/'))) {
+                ++$actualCount;
+            }
+        }
+
+        $this->assertEquals(62, $actualCount);
     }
 
     /**
@@ -122,12 +179,12 @@ class SimpleRouteCompilerTest extends TestCase
     public function testSetInvalidRequirement(string $req): void
     {
         $this->expectErrorMessage('Routing requirement for "foo" cannot be empty.');
-        $this->expectException(UriHandlerException::class);
+        $this->expectException(\InvalidArgumentException::class);
 
         $route = new Route('/{foo}', ['FOO', 'BAR']);
         $route->assert('foo', $req);
 
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
         $compiler->compile($route);
     }
 
@@ -138,7 +195,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         $route = new Route('/{foo}{foo}', ['FOO', 'BAR']);
 
-        $compiler = new SimpleRouteCompiler();
+        $compiler = new RouteCompiler();
         $compiler->compile($route);
     }
 
@@ -169,7 +226,10 @@ class SimpleRouteCompilerTest extends TestCase
             ['^$'],
             ['^'],
             ['$'],
-        ];
+            ['\A\z'],
+            ['\A'],
+            ['\z'],
+         ];
     }
 
     /**
@@ -180,147 +240,154 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Static route' => [
             '/foo',
             ['/foo'],
-            '/^\/foo$/sDu',
+            '\/foo',
         ];
 
         yield 'Route with a variable' => [
             '/foo/{bar}',
             ['/foo/bar'],
-            '/^\/foo\/(?P<bar>[^\/]++)$/sDu',
+            '\/foo\/(?P<bar>[^\/]+)',
             ['bar' => null],
         ];
 
         yield 'Route with a variable that has a default value' => [
             '/foo/{bar=bar}',
             ['/foo/bar'],
-            '/^\/foo\/(?P<bar>[^\/]++)$/sDu',
+            '\/foo\/(?P<bar>[^\/]+)',
             ['bar' => 'bar'],
         ];
 
         yield 'Route with several variables' => [
             '/foo/{bar}/{foobar}',
             ['/foo/bar/baz'],
-            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
+            '\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]+)',
             ['bar' => null, 'foobar' => null],
         ];
 
         yield 'Route with several variables that have default values' => [
             '/foo/{bar=bar}/{foobar=0}',
             ['/foo/foobar/baz'],
-            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
+            '\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]+)',
             ['bar' => 'bar', 'foobar' => 0],
         ];
 
         yield 'Route with several variables but some of them have no default values' => [
             '/foo/{bar=bar}/{foobar}',
             ['/foo/barfoo/baz'],
-            '/^\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]++)$/sDu',
+            '\/foo\/(?P<bar>[^\/]+)\/(?P<foobar>[^\/]+)',
             ['bar' => 'bar', 'foobar' => null],
         ];
 
         yield 'Route with an optional variable as the first segment' => [
             '/[{bar}]',
             ['/', 'bar', '/bar'],
-            '/^\/?(?:(?P<bar>[^\/]+))?$/sDu',
+            '\/?(?:(?P<bar>[^\/]+))?',
             ['bar' => null],
         ];
 
         yield 'Route with an optional variable as the first occurrence' => [
             '[/{foo}]',
             ['/', '/foo'],
-            '/^\/?(?:(?P<foo>[^\/]+))?$/sDu',
+            '\/?(?:(?P<foo>[^\/]+))?',
             ['foo' => null],
         ];
 
         yield 'Route with an optional variable with inner separator /' => [
             'foo[/{bar}]',
             ['/foo', '/foo/bar'],
-            '/^\/foo(?:\/(?P<bar>[^\/]+))?$/sDu',
+            '\/foo(?:\/(?P<bar>[^\/]+))?',
             ['bar' => null],
         ];
 
         yield 'Route with a requirement of 0' => [
             '/{bar:0}',
             ['/0'],
-            '/^\/(?P<bar>0)$/sDu',
+            '\/(?P<bar>0)',
             ['bar' => 0],
         ];
 
         yield 'Route with a requirement and in optional placeholder' => [
             '/[{lang:[a-z]{2}}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
-            '/^\/?(?:(?P<lang>[a-z]{2})\/)?hello$/sDu',
+            '\/?(?:(?P<lang>[a-z]{2})\/)?hello',
             ['lang' => null],
         ];
 
         yield 'Route with a requirement and in optional placeholder and default' => [
             '/[{lang:lower=english}/]hello',
             ['/hello', 'hello', '/en/hello', 'en/hello'],
-            '/^\/?(?:(?P<lang>[a-z]+)\/)?hello$/sDu',
+            '\/?(?:(?P<lang>[a-z]+)\/)?hello',
             ['lang' => 'english'],
         ];
 
         yield  'Route with a requirement, optional and required placeholder' => [
             '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=0}]',
             ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
-            '/^\/?(?:(?P<lang>[a-z]{2})(?:-(?P<sublang>[^\/]+))?\/)?(?P<name>[^\/]+)(?:\/page-(?P<page>[^\/]++))?$/sDu',
+            '\/?(?:(?P<lang>[a-z]{2})(?:-(?P<sublang>[^\/]+))?\/)?(?P<name>[^\/]+)(?:\/page-(?P<page>[^\/]+))?',
             ['lang' => null, 'sublang' => null, 'name' => null, 'page' => 0],
         ];
 
         yield 'Route with an optional variable as the first segment with requirements' => [
             '/[{bar:(foo|bar)}]',
             ['/', '/foo', 'bar', 'foo', 'bar'],
-            '/^\/?(?:(?P<bar>(foo|bar)))?$/sDu',
+            '\/?(?:(?P<bar>(foo|bar)))?',
             ['bar' => null],
         ];
 
         yield 'Route with only optional variables with separator /' => [
             '/[{foo}]/[{bar}]',
             ['/', '/foo/', '/foo/bar', 'foo'],
-            '/^\/?(?:(?P<foo>[^\/]+))?\/?(?:(?P<bar>[^\/]++))?$/sDu',
+            '\/?(?:(?P<foo>[^\/]+))?\/?(?:(?P<bar>[^\/]+))?',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with only optional variables with inner separator /' => [
             '/[{foo}][/{bar}]',
             ['/', '/foo/bar', 'foo', '/foo'],
-            '/^\/?(?:(?P<foo>[^\/]+))?(?:\/(?P<bar>[^\/]++))?$/sDu',
+            '\/?(?:(?P<foo>[^\/]+))?(?:\/(?P<bar>[^\/]+))?',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with a variable in last position' => [
             '/foo-{bar}',
             ['/foo-bar'],
-            '/^\/foo-(?P<bar>[^\/]++)$/sDu',
+            '\/foo-(?P<bar>[^\/]+)',
             ['bar' => null],
         ];
 
-        yield 'Route with a variable and no real seperator' => [
+        yield 'Route with a variable and no real separator' => [
             '/static{var}static',
             ['/staticfoostatic'],
-            '/^\/static(?P<var>[^\/]+)static$/sDu',
+            '\/static(?P<var>[^\/]+)static',
             ['var' => null],
         ];
 
-        yield 'Route with nested optional paramters' => [
+        yield 'Route with nested optional parameters' => [
             '/[{foo}/[{bar}]]',
             ['/foo', '/foo', '/foo/', '/foo/bar', 'foo/bar'],
-            '/^\/?(?:(?P<foo>[^\/]+)\/?(?:(?P<bar>[^\/]++))?)?$/sDu',
+            '\/?(?:(?P<foo>[^\/]+)\/?(?:(?P<bar>[^\/]+))?)?',
             ['foo' => null, 'bar' => null],
         ];
 
-        yield 'Route with nested optional paramters 1' => [
+        yield 'Route with nested optional parameters 1' => [
             '/[{foo}/{bar}]',
             ['/', '/foo/bar', 'foo/bar'],
-            '/^\/?(?:(?P<foo>[^\/]+)\/(?P<bar>[^\/]++))?$/sDu',
+            '\/?(?:(?P<foo>[^\/]+)\/(?P<bar>[^\/]+))?',
             ['foo' => null, 'bar' => null],
         ];
 
         yield 'Route with complex matches' => [
             '/hello/{foo:[a-z]{3}=bar}{baz}/[{id:[0-9a-fA-F]{1,8}}[.{format:html|php}]]',
             ['/hello/foobar/', '/hello/foobar', '/hello/foobar/0A0AB5', '/hello/foobar/0A0AB5.html'],
-            '/^\/hello\/(?P<foo>[a-z]{3})(?P<baz>[^\/]+)\/?(?:(?P<id>[0-9a-fA-F]{1,8})(?:\.(?P<format>html|php))?)?$/sDu',
+            '\/hello\/(?P<foo>[a-z]{3})(?P<baz>[^\/]+)\/?(?:(?P<id>[0-9a-fA-F]{1,8})(?:\.(?P<format>html|php))?)?',
             ['foo' => 'bar', 'baz' => null, 'id' => null, 'format' => null],
+        ];
+
+        yield 'Route with more complex matches' => [
+            '/hello/{foo:\w{3}}{bar=bar1}/world/[{name:[A-Za-z]+}[/{page:int=1}[/{baz:year}]]]/abs.{format:html|php}',
+            ['/hello/foo1/world/abs.html', '/hello/bar1/world/divine/abs.php', '/hello/foo1/world/abs.php', '/hello/bar1/world/divine/11/abs.html', '/hello/foo1/world/divine/11/2021/abs.html'],
+            '\/hello\/(?P<foo>\w{3})(?P<bar>[^\/]+)\/world\/?(?:(?P<name>[A-Za-z]+)(?:\/(?P<page>\d+)(?:\/(?P<baz>[12][0-9]{3}))?)?)?\/abs\.(?P<format>html|php)',
+            ['foo' => null, 'bar' => 'bar1', 'name' => null, 'page' => '1', 'baz' => null, 'format' => null],
         ];
     }
 
@@ -332,35 +399,35 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route domain with variable' => [
             '//{foo}.example.com/',
             ['cool.example.com'],
-            '/^(?P<foo>[^\/]+)\.example\.com$/sDi',
+            '(?P<foo>[^\/]+)\.example\.com',
             ['foo' => null],
         ];
 
         yield 'Route domain with requirement' => [
             '//{lang:[a-z]{2}}.example.com/',
             ['en.example.com'],
-            '/^(?P<lang>[a-z]{2})\.example\.com$/sDi',
+            '(?P<lang>[a-z]{2})\.example\.com',
             ['lang' => null],
         ];
 
         yield 'Route with variable at beginning of host' => [
             '//{locale}.example.{tld}/',
             ['en.example.com'],
-            '/^(?P<locale>[^\/]+)\.example\.(?P<tld>[^\/]+)$/sDi',
+            '(?P<locale>[^\/]+)\.example\.(?P<tld>[^\/]+)',
             ['locale' => null, 'tld' => null],
         ];
 
         yield 'Route domain with requirement and optional variable' => [
             '//[{lang:[a-z]{2}}.]example.com/',
             ['en.example.com', 'example.com'],
-            '/^(?:(?P<lang>[a-z]{2})\.)?example\.com$/sDi',
+            '(?:(?P<lang>[a-z]{2})\.)?example\.com',
             ['lang' => null],
         ];
 
         yield 'Route domain with a default requirement on variable and path variable' => [
             '//{id:int}.example.com/',
             ['23.example.com'],
-            '/^(?P<id>\d+)\.example\.com$/sDi',
+            '(?P<id>\d+)\.example\.com',
             ['id' => 0],
         ];
     }

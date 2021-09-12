@@ -17,8 +17,9 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\{GeneratedUri, Routes\FastRoute as Route};
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Routes\FastRoute as Route;
 
 /**
  * This is the interface that all custom compilers for routes will depend on or implement.
@@ -33,10 +34,12 @@ interface RouteCompilerInterface
      * This method should strictly return an indexed array of three parts.
      *
      * - path regex, which starting and ending modifiers stripped off.
-     *     Eg: #^\/hello\/world\/{?P<var>[^\/]+}$#sDu -----> \/hello\/world\/{?P<var>[^\/]+}.
+     *     Eg: #^\/hello\/world\/(?P<var>[^\/]+)$#sDu -----> \/hello\/world\/(?P<var>[^\/]+).
      * - hosts regex, modifies stripped of as path regex. But if more than one hosts,
      *     hosts must be imploded with a | inside a (?|...)
-     * - variables, which is an unique array of hosts vars(if avaliabke) merged into path vars.
+     * - variables, which is an unique array of hosts vars(if available) merged into path vars.
+     *
+     * @see Flight\Routing\RouteMatcher::match() implementation
      *
      * @return array<int,mixed>
      */
@@ -48,9 +51,8 @@ interface RouteCompilerInterface
      * @see Flight\Routing\RouteMatcher::generateUri() implementation
      *
      * @param array<int|string,int|string> $parameters
-     * @param array<int|string,int|string> $defaults
      *
      * @throws UrlGenerationException
      */
-    public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri;
+    public function generateUri(Route $route, array $parameters): GeneratedUri;
 }
