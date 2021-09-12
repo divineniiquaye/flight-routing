@@ -17,7 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use Flight\Routing\{Exceptions\RouteNotFoundException, Route};
+use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Exceptions\{InvalidControllerException, RouteNotFoundException};
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -31,7 +32,12 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class RouteHandler implements RequestHandlerInterface
 {
-    public const CONTENT_TYPE = 'Content-Type';
+    /**
+     * This allows a response to be served when no route is found.
+     */
+    public const OVERRIDE_HTTP_RESPONSE = ResponseInterface::class;
+
+    protected const CONTENT_TYPE = 'Content-Type';
 
     /** @var ResponseFactoryInterface */
     private $responseFactory;
@@ -55,6 +61,14 @@ class RouteHandler implements RequestHandlerInterface
         $route = $request->getAttribute(Route::class);
 
         if (!$route instanceof Route) {
+            if (true === $notFoundResponse = $request->getAttribute(static::OVERRIDE_HTTP_RESPONSE)) {
+                return $this->responseFactory->createResponse();
+            }
+
+            if ($notFoundResponse instanceof ResponseInterface) {
+                return $notFoundResponse;
+            }
+
             throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()), 404);
         }
 
