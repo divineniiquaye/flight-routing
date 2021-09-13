@@ -81,7 +81,7 @@ class GeneratedUri implements \Stringable
      */
     public function withHost(string $host): self
     {
-        $this->host = '' !== $host ? '//' . \ltrim($host, '/') : null;
+        $this->host = '' !== $host ? '//' . \ltrim($host, './') : null;
 
         return $this;
     }

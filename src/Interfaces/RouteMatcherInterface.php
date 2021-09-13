@@ -18,7 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\{GeneratedUri, Routes\FastRoute as Route};
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Routes\FastRoute as Route;
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**

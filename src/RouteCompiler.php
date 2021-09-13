@@ -140,7 +140,7 @@ final class RouteCompiler implements RouteCompilerInterface
         [$pathRegex, $pathVariables] = self::compilePattern('/' . \ltrim($route->get('path'), '/'), true);
 
         $defaults = $route->get('defaults');
-        $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $pathVariables + $defaults));
+        $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults + $pathVariables));
 
         foreach ($route->get('hosts') as $host) {
             $compiledHost = self::compilePattern($host, true);
@@ -161,7 +161,7 @@ final class RouteCompiler implements RouteCompilerInterface
         }
 
         if (isset($hostRegex)) {
-            $createUri->withHost(self::interpolate($hostRegex, $parameters, $hostVariables + $defaults));
+            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults + $hostVariables));
         }
 
         return $createUri;
