@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\RegexGenerator;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
@@ -197,6 +198,38 @@ class SimpleRouteCompilerTest extends TestCase
 
         $compiler = new RouteCompiler();
         $compiler->compile($route);
+    }
+
+    public function testGeneratedUriInstance(): void
+    {
+        $route1 = new Route('/{foo}');
+        $route2 = new Route('/[{bar}]');
+        $compiler = new RouteCompiler();
+
+        $this->assertEquals('./hello', (string) $compiler->generateUri($route1, ['foo' => 'hello']));
+        $this->assertEquals('./', (string) $compiler->generateUri($route2, []));
+    }
+
+    public function testGeneratedUriInstanceWithHostAndScheme(): void
+    {
+        $_SERVER['HTTP_HOST'] = 'localhost';
+        $route1 = new Route('/{foo}');
+        $route2 = Route::to('/[{bar}]')->scheme('https');
+        $compiler = new RouteCompiler();
+
+        $generatedUri = $compiler->generateUri($route1, ['foo' => 'hello']);
+        $this->assertEquals('biurad.com/hello', (string) $generatedUri->withHost('biurad.com'));
+
+        $this->assertEquals('https://localhost/', (string) $compiler->generateUri($route2, []));
+    }
+
+    public function testGeneratedUriWithMandatoryParameter(): void
+    {
+        $this->expectExceptionMessage('Some mandatory parameters are missing ("foo") to generate a URL for route path "/<foo>".');
+        $this->expectException(UrlGenerationException::class);
+
+        $route = new Route('/{foo}');
+        (new RouteCompiler)->generateUri($route, []);
     }
 
     /**

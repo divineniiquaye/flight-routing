@@ -170,7 +170,8 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * Check for mandatory parameters then interpolate $uriRoute with given $parameters.
      *
-     * @param array<int|string,mixed> $parameters
+     * @param array<string,mixed> $parameters
+     * @param array<string,mixed> $defaults
      */
     private static function interpolate(string $uriRoute, array $parameters, array $defaults): string
     {
