@@ -39,22 +39,24 @@ class RouteHandler implements RequestHandlerInterface
 
     protected const CONTENT_TYPE = 'Content-Type';
 
-    /** @var ResponseFactoryInterface */
-    private $responseFactory;
+    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?xml|\w+).*>.*<\/(\w+)>)$#s';
 
-    /** @var null|callable(mixed,array) */
-    private $handlerResolver = null;
+    /** @var ResponseFactoryInterface */
+    protected $responseFactory;
+
+    /** @var callable */
+    protected $handlerResolver;
 
     public function __construct(ResponseFactoryInterface $responseFactory, callable $handlerResolver = null)
     {
-        $this->handlerResolver = $handlerResolver;
         $this->responseFactory = $responseFactory;
+        $this->handlerResolver = $handlerResolver ?? new RouteInvoker();
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws RouteNotFoundException
+     * @throws RouteNotFoundException|InvalidControllerException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -73,7 +75,9 @@ class RouteHandler implements RequestHandlerInterface
         }
 
         // Resolve route handler arguments ...
-        $response = $this->resolveRoute($route, $request, $this->handlerResolver);
+        if (!$response = $this->resolveRoute($route, $request)) {
+            throw new InvalidControllerException('The route handler\'s content is not a valid PSR7 response body stream.');
+        }
 
         if (!$response instanceof ResponseInterface) {
             ($result = $this->responseFactory->createResponse())->getBody()->write($response);
@@ -83,38 +87,97 @@ class RouteHandler implements RequestHandlerInterface
         return $response->hasHeader(self::CONTENT_TYPE) ? $response : $this->negotiateContentType($response);
     }
 
-    protected function resolveRoute(Route $route, ServerRequestInterface $request, callable $handlerResolver = null)
+    /**
+     * @return ResponseInterface|string|false
+     */
+    protected function resolveRoute(Route $route, ServerRequestInterface $request)
     {
-        if (null !== $handlerResolver) {
-            $route->arguments([\get_class($request) => $request, \get_class($this->responseFactory) => $this->responseFactory]);
-        } else {
-            foreach ([$request, $this->responseFactory] as $psr7) {
-                foreach (@\class_implements($psr7) ?: [] as $psr7Interface) {
-                    $route->argument($psr7Interface, $psr7);
-                }
+        \ob_start(); // Start buffering response output
 
-                $route->argument(\get_class($psr7), $psr7);
+        try {
+            // The route handler to resolve ...
+            $response = $this->resolveHandler($request, $route);
+
+            if ($response instanceof ResponseInterface || \is_string($response)) {
+                return $response;
+            }
+
+            if (\is_array($response) || \is_iterable($response) || $response instanceof \JsonSerializable) {
+                $response = \json_encode($response, \PHP_VERSION_ID >= 70300 ? \JSON_THROW_ON_ERROR : 0);
+            }
+        } catch (\Throwable $e) {
+            \ob_get_clean();
+
+            throw $e;
+        } finally {
+            while (\ob_get_level() > 1) {
+                $response = \ob_get_clean(); // If more than one output buffers is set ...
             }
         }
 
-        return $route($request, $handlerResolver);
+        return $response ?? ob_get_clean();
     }
 
-    private function negotiateContentType(ResponseInterface $response): ResponseInterface
+    /**
+     * A HTTP response Content-Type header negotiator for html, json, svg, xml, and plain-text.
+     */
+    protected function negotiateContentType(ResponseInterface $response): ResponseInterface
     {
         $contents = (string) $response->getBody();
-        $matched = \preg_match('#(?|\"\w\"\:.*?\,?\}|^\<\?(xml).*|[^>]+\>.*?\<\/(\w+)\>)$#ms', $contents, $matches);
+        $matched = \preg_match(static::CONTENT_REGEX, $contents, $matches, \PREG_UNMATCHED_AS_NULL);
 
-        if (!$matchedType = $matches[2] ?? $matches[1] ?? 0 !== $matched) {
-            return $response->withHeader(self::CONTENT_TYPE, '{' === @$contents[0] ? 'application/json' : 'text/plain; charset=utf-8');
+        if (0 === $matched) {
+            return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
         }
 
-        if ('svg' === $matchedType) {
+        if (1 === $matched && empty($matches)) {
+            return $response->withHeader(self::CONTENT_TYPE, 'application/json');
+        }
+
+        if ('svg' === $matches[1]) {
             $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'image/svg+xml');
-        } elseif ('xml' === $matchedType) {
+        } elseif ('xml' === $matches[1]) {
             $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
         }
 
         return $xmlResponse ?? $response->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
+    }
+
+    /**
+     * @internal
+     *
+     * @return mixed
+     */
+    private function resolveHandler(ServerRequestInterface $request, Route $route)
+    {
+        $handler = $route->get('handler');
+
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler->handle($request);
+        }
+
+        if (!$handler instanceof ResponseInterface) {
+            $parameters = $route->get('arguments');
+
+            foreach ([$request, $this->responseFactory] as $psr7) {
+                $parameters[\get_class($psr7)] = $psr7;
+
+                foreach ((@\class_implements($psr7) ?: []) as $psr7Interface) {
+                    $parameters[$psr7Interface] = $psr7;
+                }
+            }
+
+            if ($handler instanceof ResourceHandler) {
+                $handler = $handler(\strtolower($request->getMethod()));
+            }
+
+            $handler = ($this->handlerResolver)($handler, $parameters);
+
+            if ($handler instanceof RequestHandlerInterface) {
+                return $handler->handle($request);
+            }
+        }
+
+        return true === $handler ? null : $handler;
     }
 }
