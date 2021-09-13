@@ -41,9 +41,9 @@ final class ResourceHandler
     }
 
     /**
-     * @internal
-     *
      * Append a missing namespace to resource class.
+     *
+     * @internal
      */
     public function namespace(string $namespace): self
     {

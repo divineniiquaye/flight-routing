@@ -229,7 +229,7 @@ class SimpleRouteCompilerTest extends TestCase
         $this->expectException(UrlGenerationException::class);
 
         $route = new Route('/{foo}');
-        (new RouteCompiler)->generateUri($route, []);
+        (new RouteCompiler())->generateUri($route, []);
     }
 
     /**
