@@ -35,18 +35,11 @@ class BlankRequestHandler implements RequestHandlerInterface
     /**
      * @var array
      */
-    private $attributes = [];
+    private $attributes;
 
-    /**
-     * @param ServerRequestInterface $request
-     *
-     * @return ResponseInterface
-     *
-     * @link https://www.php.net/manual/ru/language.oop5.magic.php#object.invoke
-     */
-    public function __invoke(ServerRequestInterface $request): ResponseInterface
+    public function __construct(array $attributes = [])
     {
-        return $this->handle($request);
+        $this->attributes = $attributes;
     }
 
     /**
