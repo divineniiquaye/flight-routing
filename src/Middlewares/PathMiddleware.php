@@ -18,21 +18,23 @@ declare(strict_types=1);
 namespace Flight\Routing\Middlewares;
 
 use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
- * Resolves request uri path, route path, and response status.
+ * Resolved route path against request uri paths and match a valid response status
+ * code, including resolving sub-directory paths.
  *
  * The response status code is 302 if the permanent parameter is false (default),
- * and 301 if the redirection is permanent on redirection.
+ * and 301 if the redirection is permanent on redirection. If keep request method
+ * parameter is true, response code 307, and if permanent is true status code is 308.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class PathMiddleware implements MiddlewareInterface
 {
+    public const SUB_FOLDER = __CLASS__ . '::subFolder';
+
     /** @var bool */
     private $permanent;
 
@@ -54,47 +56,48 @@ final class PathMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        $requestPath = ($requestUri = self::resolveUri($request))->getPath(); // Determine right request uri path.
+
         $response = $handler->handle($request);
-
-        // Supported prefix for uri paths ...
-        $trimmedPath = self::getTrimmedPath($requestPath = ($requestUri = $request->getUri())->getPath());
-
-        // Determine the response code should keep HTTP request method ...
-        $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
-
-        if ($trimmedPath !== $requestPath) {
-            return $response->withHeader('Location', (string) $requestUri->withPath($trimmedPath))->withStatus($statusCode);
-        }
-
         $route = $request->getAttribute(Route::class);
 
         if ($route instanceof Route) {
+            // Determine the response code should keep HTTP request method ...
+            $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
+
             $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->get('path')[-1]] ?? null;
-            $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$trimmedPath[-1]] ?? null;
+            $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
 
             if ($routeEndTail === $requestEndTail) {
                 return $response;
             }
 
             // Resolve request tail end to avoid conflicts and infinite redirection looping ...
-            if (
-                null === $routeEndTail && null !== $requestEndTail ||
-                (isset($routeEndTail, $requestEndTail) && $routeEndTail !== $requestEndTail)
-            ) {
-                $trimmedPath = \substr($trimmedPath, 0, -1);
-            } elseif (null !== $routeEndTail && null === $requestEndTail) {
-                $trimmedPath .= $routeEndTail;
+            if (null === $requestEndTail && null !== $routeEndTail) {
+                $requestPath .= $routeEndTail;
+            } elseif (null === $routeEndTail && null !== $requestEndTail) {
+                $requestPath = \substr($requestPath, 0, -1);
             }
 
             // Allow Redirection if exists and avoid static request.
-            return $response->withAddedHeader('Location', (string) $requestUri->withPath($trimmedPath))->withStatus($statusCode);
+            return $response->withHeader('Location', (string) $requestUri->withPath($requestPath))->withStatus($statusCode);
         }
 
         return $response;
     }
 
-    private static function getTrimmedPath(string $requestPath): string
+    public static function resolveUri(ServerRequestInterface &$request): UriInterface
     {
-        return \preg_replace('#(?|\\' . \implode('|\\', BaseRoute::URL_PREFIX_SLASHES) . ')+$#', $requestPath[-1], $requestPath);
+        $requestUri = $request->getUri();
+        $pathInfo = $request->getServerParams()['PATH_INFO'] ?? '';
+
+        // Checks if the project is in a sub-directory, expect PATH_INFO in $_SERVER.
+        if ('' !== $pathInfo && $pathInfo !== $requestUri->getPath()) {
+            $request = $request->withAttribute(self::SUB_FOLDER, \substr($requestUri->getPath(), 0, -(\strlen($pathInfo))));
+
+            return $requestUri->withPath($pathInfo);
+        }
+
+        return $requestUri;
     }
 }
