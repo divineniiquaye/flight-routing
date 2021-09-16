@@ -161,7 +161,7 @@ final class RouteCompiler implements RouteCompilerInterface
         }
 
         if (isset($hostRegex)) {
-            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults + $hostVariables));
+            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults + ($hostVariables?? [])));
         }
 
         return $createUri;
@@ -206,7 +206,7 @@ final class RouteCompiler implements RouteCompilerInterface
         return \strtr($uriRoute, $replaces);
     }
 
-    private static function sanitizeRequirement(string $key, ?string $regex): string
+    private static function sanitizeRequirement(string $key, string $regex): string
     {
         if ('' !== $regex) {
             if ('^' === $regex[0]) {
@@ -226,7 +226,7 @@ final class RouteCompiler implements RouteCompilerInterface
             throw new \InvalidArgumentException(\sprintf('Routing requirement for "%s" cannot be empty.', $key));
         }
 
-        return null !== $regex ? \strtr($regex, self::SEGMENT_REPLACES) : self::DEFAULT_SEGMENT;
+        return \strtr($regex, self::SEGMENT_REPLACES);
     }
 
     /**
@@ -270,7 +270,7 @@ final class RouteCompiler implements RouteCompilerInterface
      * @param string[]                      $hosts
      * @param array<string,string|string[]> $requirements
      */
-    private static function compileHosts(array $hosts, array $requirements, array &$variables): ?string
+    private static function compileHosts(array $hosts, array $requirements, array &$variables): string
     {
         $hostsRegex = [];
 
