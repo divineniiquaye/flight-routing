@@ -125,7 +125,7 @@ class FastRoute
      *
      * @param array<string,mixed> $properties The route data properties
      *
-     * @return self
+     * @return static
      */
     public static function __set_state(array $properties)
     {
@@ -141,6 +141,8 @@ class FastRoute
      * @param string          $pattern The route pattern
      * @param string|string[] $methods the route HTTP methods
      * @param mixed           $handler The PHP class, object or callable that returns the response when matched
+     *
+     * @return static
      */
     public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null): self
     {
@@ -151,6 +153,8 @@ class FastRoute
      * Asserts route.
      *
      * @throws MethodNotAllowedException
+     *
+     * @return $this
      */
     public function match(string $method, UriInterface $uri): self
     {
@@ -163,6 +167,8 @@ class FastRoute
 
     /**
      * Sets the route path prefix.
+     *
+     * @return $this
      */
     public function prefix(string $path): self
     {
@@ -173,6 +179,8 @@ class FastRoute
 
     /**
      * Sets the route path pattern.
+     *
+     * @return $this
      */
     public function path(string $pattern): self
     {
@@ -185,6 +193,8 @@ class FastRoute
      * Sets the requirement for the HTTP method.
      *
      * @param string $methods the HTTP method(s) name
+     *
+     * @return $this
      */
     public function method(string ...$methods): self
     {
@@ -197,6 +207,8 @@ class FastRoute
 
     /**
      * Sets the route name.
+     *
+     * @return $this
      */
     public function bind(string $routeName): self
     {
@@ -209,6 +221,8 @@ class FastRoute
      * Sets the parameter value for a route handler.
      *
      * @param mixed $value The parameter value
+     *
+     * @return $this
      */
     public function argument(string $parameter, $value): self
     {
@@ -227,6 +241,8 @@ class FastRoute
      * Sets the parameter values for a route handler.
      *
      * @param array<int|string> $parameters The route handler parameters
+     *
+     * @return $this
      */
     public function arguments(array $parameters): self
     {
@@ -241,6 +257,8 @@ class FastRoute
      * Sets the route code that should be executed when matched.
      *
      * @param mixed $to PHP class, object or callable that returns the response when matched
+     *
+     * @return $this
      */
     public function run($to): self
     {
@@ -253,6 +271,8 @@ class FastRoute
      * Sets the missing namespace on route's handler.
      *
      * @throws InvalidControllerException if $namespace is invalid
+     *
+     * @return $this
      */
     public function namespace(string $namespace): self
     {
@@ -273,6 +293,8 @@ class FastRoute
      * Sets the requirement for a route variable.
      *
      * @param string|string[] $regexp The regexp to apply
+     *
+     * @return $this
      */
     public function assert(string $variable, $regexp): self
     {
@@ -285,6 +307,8 @@ class FastRoute
      * Sets the requirements for a route variable.
      *
      * @param array<string,string|string[]> $regexps The regexps to apply
+     *
+     * @return $this
      */
     public function asserts(array $regexps): self
     {
@@ -299,6 +323,8 @@ class FastRoute
      * Sets the default value for a route variable.
      *
      * @param mixed $default The default value
+     *
+     * @return $this
      */
     public function default(string $variable, $default): self
     {
@@ -311,6 +337,8 @@ class FastRoute
      * Sets the default values for a route variables.
      *
      * @param array<string,mixed> $values
+     *
+     * @return $this
      */
     public function defaults(array $values): self
     {

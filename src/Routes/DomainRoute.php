@@ -66,14 +66,6 @@ class DomainRoute extends FastRoute
 
     /**
      * {@inheritdoc}
-     */
-    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null): self
-    {
-        return parent::to($pattern, $methods, $handler);
-    }
-
-    /**
-     * {@inheritdoc}
      *
      * @throws UriHandlerException
      */
@@ -102,6 +94,8 @@ class DomainRoute extends FastRoute
      * Sets the requirement of host on this Route.
      *
      * @param string $hosts The host for which this route should be enabled
+     *
+     * @return $this
      */
     public function domain(string ...$hosts): self
     {
@@ -124,6 +118,8 @@ class DomainRoute extends FastRoute
      * Sets the requirement of domain scheme on this Route.
      *
      * @param string ...$schemes
+     *
+     * @return $this
      */
     public function scheme(string ...$schemes): self
     {

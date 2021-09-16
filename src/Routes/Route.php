@@ -50,14 +50,6 @@ class Route extends DomainRoute
     /**
      * {@inheritdoc}
      */
-    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null): self
-    {
-        return parent::to($pattern, $methods, $handler);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function prefix(string $path): self
     {
         $this->data['path'] = self::resolvePrefix($this->data['path'], $path);
