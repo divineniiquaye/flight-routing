@@ -61,13 +61,13 @@ final class RouteCollection
     /** @var array<string,bool> */
     private $prototyped = [];
 
-    /** @var array<string,Routes\FastRoute> */
+    /** @var Routes\FastRoute[] */
     private $routes = [];
 
     /** @var self[] */
     private $groups = [];
 
-    /** @var int */
+    /** @var string */
     private $uniqueId;
 
     /** @var string */
@@ -88,7 +88,7 @@ final class RouteCollection
     /**
      * Nested collection and routes should be cloned.
      */
-    public function __clone(): void
+    public function __clone()
     {
         foreach ($this->routes as $offset => $route) {
             $this->routes[$offset] = clone $route;
@@ -109,8 +109,12 @@ final class RouteCollection
                 \call_user_func_array([$route, $routeMethod], $arguments);
             }
 
-            if (\array_key_exists($routeMethod, $this->prototypes)) {
+            if (\array_key_exists($routeMethod, $this->prototypes ?? [])) {
                 unset($this->prototypes[$routeMethod]);
+            }
+
+            foreach ($this->groups as $group) {
+                \call_user_func_array([$group, $routeMethod], $arguments);
             }
         }
 
@@ -225,7 +229,7 @@ final class RouteCollection
 
         if (\is_callable($controllers)) {
             $routes = new static($name);
-            $routes->parent = $this;
+            $routes->prototypes = $this->prototypes ?? [];
             $controllers($routes);
 
             return $this->groups[] = $routes;
@@ -255,7 +259,7 @@ final class RouteCollection
 
             // Remove last element from stack.
             if (null !== $stack = $this->prototypes) {
-                unset($stack[\count($stack) - 1]);
+                \array_pop($stack);
             }
 
             return $this;
@@ -414,6 +418,7 @@ final class RouteCollection
 
     private function injectGroup(string $prefix, self $controllers): self
     {
+        $controllers->prototypes = $this->prototypes ?? [];
         $controllers->parent = $this;
 
         if (empty($controllers->namedPrefix)) {

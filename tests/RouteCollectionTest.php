@@ -225,6 +225,36 @@ class RouteCollectionTest extends TestCase
         ));
     }
 
+    public function testLockedGroupCollection(): void
+    {
+        $collector = new RouteCollection();
+        $collector->getRoutes();
+
+        $this->expectExceptionObject(new \RuntimeException('Grouping cannot be added on runtime, do add all routes before runtime.'));
+        $collector->group('');
+    }
+
+    public function testLockedRoutesCollection(): void
+    {
+        $collector = new RouteCollection();
+        $collector->getRoutes();
+        $this->assertEmpty($collector->getRoutes());
+
+        $this->expectExceptionObject(new \RuntimeException('Routes cannot be added on runtime, do add all routes before runtime.'));
+        $collector->addRoute('/foo', [Router::METHOD_GET]);
+    }
+
+    public function testEmptyPrototype(): void
+    {
+        $collector = new RouteCollection();
+        $collector->prototype()
+            ->prefix()
+        ->end();
+        $collector->get('/foo');
+
+        $this->assertEquals('/foo', $collector->getRoutes()[0]->getPath());
+    }
+
     public function testRequestMethodAsCollectionMethod(): void
     {
         $collector = new RouteCollection();
@@ -342,6 +372,29 @@ class RouteCollectionTest extends TestCase
         $this->expectException(\TypeError::class);
 
         $collector->group('invalid', new Fixtures\BlankController());
+    }
+
+    public function testEmptyGroupPrototype(): void
+    {
+        $collector = new RouteCollection();
+        $collector->prototype()
+            ->prefix('/foo')
+        ->end()
+        ->prefix('/bar');
+
+        $collector->get('/', Fixtures\BlankRequestHandler::class)->bind('home');
+
+        $this->assertEquals([
+            'name' => 'home',
+            'path' => '/',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $collector->getRoutes()[0]->getData());
     }
 
     public function testDeepGrouping(): void
@@ -709,6 +762,7 @@ class RouteCollectionTest extends TestCase
         ], $route->getData());
 
         $this->assertEquals($cached, $router->isCached());
+        $this->assertEquals('./hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));
         $this->assertInstanceOf(RouteCompiler::class, $router->getMatcher()->getCompiler());
     }
 
@@ -717,7 +771,7 @@ class RouteCollectionTest extends TestCase
      */
     public function provideCollectionData(): array
     {
-        return [[false], [true]];
+        return [[false], [true], [true]];
     }
 
     /**
