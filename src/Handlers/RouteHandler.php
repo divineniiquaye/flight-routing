@@ -39,7 +39,7 @@ class RouteHandler implements RequestHandlerInterface
 
     protected const CONTENT_TYPE = 'Content-Type';
 
-    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?xml|\w+).*>.*<\/(\w+)>)$#s';
+    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
 
     /** @var ResponseFactoryInterface */
     protected $responseFactory;
@@ -124,23 +124,19 @@ class RouteHandler implements RequestHandlerInterface
     protected function negotiateContentType(ResponseInterface $response): ResponseInterface
     {
         $contents = (string) $response->getBody();
-        $matched = \preg_match(static::CONTENT_REGEX, $contents, $matches, \PREG_UNMATCHED_AS_NULL);
+        $contentType = 'text/html; charset=utf-8'; // Default content type.
 
-        if (0 === $matched) {
-            return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
+        if (1 === $matched = \preg_match(static::CONTENT_REGEX, $contents, $matches, \PREG_UNMATCHED_AS_NULL)) {
+            if (null === $matches[2]) {
+                $contentType = 'application/json';
+            } elseif ('xml' === $matches[1]) {
+                $contentType = 'svg' === $matches[2] ? 'image/svg+xml' : \sprintf('application/%s; charset=utf-8', 'rss' === $matches[2] ? 'rss+xml' : 'xml');
+            }
+        } elseif (0 === $matched) {
+            $contentType = 'text/plain; charset=utf-8';
         }
 
-        if (1 === $matched && empty($matches)) {
-            return $response->withHeader(self::CONTENT_TYPE, 'application/json');
-        }
-
-        if ('svg' === $matches[1]) {
-            $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'image/svg+xml');
-        } elseif ('xml' === $matches[1]) {
-            $xmlResponse = $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
-        }
-
-        return $xmlResponse ?? $response->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
+        return $response->withHeader(self::CONTENT_TYPE, $contentType);
     }
 
     /**
