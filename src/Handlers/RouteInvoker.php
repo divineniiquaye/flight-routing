@@ -64,13 +64,11 @@ class RouteInvoker
                     goto maybe_callable;
                 }
 
-                if (null !== $constructor = $handlerRef->getConstructor()) {
-                    $constructorParameters = $constructor->getParameters();
-
-                    goto resolve_handler;
+                if (null === $constructor = $handlerRef->getConstructor()) {
+                    return $handlerRef->newInstanceWithoutConstructor();
                 }
 
-                return $handlerRef->newInstanceWithoutConstructor();
+                return $handlerRef->newInstanceArgs($this->resolveParameters($constructor->getParameters(), $arguments));
             }
         }
 
@@ -79,7 +77,7 @@ class RouteInvoker
             if (null !== $this->container && $this->container->has($handler[0])) {
                 $handler[0] = $this->container->get($handler[0]);
             } elseif (\class_exists($handler[0])) {
-                $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs();
+                $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs([]);
             }
         }
 
@@ -91,14 +89,7 @@ class RouteInvoker
             throw new InvalidControllerException(\sprintf('Route has an invalid handler type of "%s".', \gettype($handler)));
         }
 
-        resolve_handler:
-        $parameters = $this->resolveParameters($constructorParameters ?? $handlerRef->getParameters(), $arguments);
-
-        if ($handlerRef instanceof \ReflectionFunction) {
-            return $handlerRef->invokeArgs($parameters);
-        }
-
-        return $handlerRef->newInstanceArgs($parameters);
+        return $handlerRef->invokeArgs($this->resolveParameters($handlerRef->getParameters(), $arguments));
     }
 
     /**
@@ -123,7 +114,7 @@ class RouteInvoker
                     }
 
                     if (null !== $this->container && $this->container->has($unionType->getName())) {
-                        $parameter[$index] = $this->container->get($unionType->getName());
+                        $parameters[$index] = $this->container->get($unionType->getName());
 
                         continue 2;
                     }
@@ -136,7 +127,7 @@ class RouteInvoker
                 }
 
                 if (null !== $this->container && $this->container->has($typeHint->getName())) {
-                    $parameter[$index] = $this->container->get($typeHint->getName());
+                    $parameters[$index] = $this->container->get($typeHint->getName());
 
                     continue;
                 }
@@ -145,7 +136,7 @@ class RouteInvoker
             if (isset($arguments[$parameter->getName()])) {
                 $parameters[$index] = $arguments[$parameter->getName()];
             } elseif (null !== $this->container && $this->container->has($parameter->getName())) {
-                $parameters[$index] = $this->container->get($typeHint->getName());
+                $parameters[$index] = $this->container->get($parameter->getName());
             } elseif ($parameter->allowsNull() && !$parameter->isDefaultValueAvailable()) {
                 $parameters[$index] = null;
             }
