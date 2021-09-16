@@ -82,7 +82,7 @@ final class RouteMatcher implements RouteMatcherInterface
         $requestUri = $request->getUri();
 
         // Resolve request path to match sub-directory or /index.php/path
-        if (!empty($pathInfo = $request->getServerParams()['PATH_INFO'] ?? '')) {
+        if ('' !== ($pathInfo = $request->getServerParams()['PATH_INFO'] ?? '') && $pathInfo !== $requestUri->getPath()) {
             $requestUri = $requestUri->withPath($pathInfo);
         }
 
@@ -96,7 +96,7 @@ final class RouteMatcher implements RouteMatcherInterface
     {
         $requestPath = $uri->getPath();
 
-        if (isset(BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]])) {
+        if (\array_key_exists($requestPath[-1], BaseRoute::URL_PREFIX_SLASHES)) {
             $requestPath = \substr($requestPath, 0, -1) ?: '/';
         }
 

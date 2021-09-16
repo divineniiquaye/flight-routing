@@ -18,7 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
-use Flight\Routing\Interfaces\{RouteMapInterface, RouteMatcherInterface};
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
 use Laminas\Stratigility\Next;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
@@ -50,22 +52,49 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /** @var \SplQueue */
     private $pipeline;
 
-    /** @var callable|null */
+    /** @var RouteCollection|callable|null */
     private $collection;
 
-    /** @var RouteMatcher */
-    protected $matcher;
+    /** @var RouteCompilerInterface|null */
+    private $compiler;
+
+    /** @var RouteMatcherInterface */
+    private $matcher;
 
     /** @var CacheItemPoolInterface|string */
     private $cacheData;
 
     /**
-     * @param CacheItemPoolInterface|string $cacheFile use file path or PSR-6 cache
+     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
      */
-    public function __construct($cache = '')
+    public function __construct(RouteCompilerInterface $compiler = null, $cache = '')
     {
+        $this->compiler = $compiler;
         $this->pipeline = new \SplQueue();
         $this->cacheData = $cache;
+    }
+
+    /**
+     * Set a route collection instance into Router in order to use addRoute method.
+     *
+     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
+     */
+    public static function withCollection(?RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = ''): static
+    {
+        $new = new static($compiler, $cache);
+        $new->collection = $collection ?? new RouteCollection();
+
+        return $new;
+    }
+
+    /**
+     * This method works only if withCollection method is used.
+     */
+    public function addRoute(Route ...$routes): void
+    {
+        if ($this->collection instanceof RouteCollection) {
+            $this->collection->add(...$routes);
+        }
     }
 
     /**
@@ -105,17 +134,14 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Sets the RouteCollection instance associated with this Router.
      *
-     * @param callable(RouteMapInterface) $routeDefinitionCallback
+     * @param callable $routeDefinitionCallback takes only one parameter of route collection.
      */
-    public function setCollection(callable $routeDefinitionCallback, $routeCollector = RouteCollection::class): void
+    public function setCollection(callable $routeDefinitionCallback): void
     {
-        $this->collection = static function () use ($routeDefinitionCallback, $routeCollector): RouteMapInterface {
-            $routeCollector = new $routeCollector();
-            \assert($routeCollector instanceof RouteMapInterface);
+        $this->collection = static function () use ($routeDefinitionCallback): RouteCollection {
+            $routeDefinitionCallback($routeCollector = new RouteCollection());
 
-            $routeDefinitionCallback($routeCollector);
-
-            return $routeCollector->getData();
+            return $routeCollector;
         };
     }
 
@@ -130,17 +156,27 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Gets the Route matcher instance associated with this Router.
      */
-    public function getMatcher(): RouteMatcher
+    public function getMatcher(): RouteMatcherInterface
     {
         if (null !== $this->matcher) {
             return $this->matcher;
         }
 
         if (null === $collection = $this->collection) {
-            throw new \RuntimeException('A \'Flight\Routing\Interfaces\RouteMapInterface\' instance is missing in router, did you forget to set it.');
+            throw new \RuntimeException(\sprintf('Did you forget to set add the route collection with the "%s".', __CLASS__ . '::setCollection'));
         }
 
-        return $this->matcher = new RouteMatcher(!empty($this->cacheData) ? self::getCachedData($this->cacheData, $collection) : $collection());
+        if ($collection instanceof RouteCollection) {
+            $collection = static function () use ($collection): RouteCollection {
+                return $collection;
+            };
+        }
+
+        if (!empty($this->cacheData)) {
+            $matcher = $this->getCachedData($this->cacheData, $collection);
+        }
+
+        return $this->matcher = $matcher ?? new RouteMatcher($collection(), $this->compiler);
     }
 
     /**
@@ -155,16 +191,15 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
     /**
      * @param CacheItemPoolInterface|string $cache
-     * @param callable $loader
      */
-    private static function getCachedData($cache, callable $loader): RouteMapInterface
+    protected function getCachedData($cache, callable $loader): RouteMatcherInterface
     {
         if ($cache instanceof CacheItemPoolInterface) {
             $cachedData = $cache->getItem(__FILE__)->get();
 
-            if (!$cachedData instanceof RouteMapInterface) {
+            if (!$cachedData instanceof RouteMatcherInterface) {
                 $cache->deleteItem(__FILE__);
-                $cache->save($cache->getItem(__FILE__)->set($cachedData = $loader()));
+                $cache->save($cache->getItem(__FILE__)->set($cachedData = new RouteMatcher($loader(), $this->compiler)));
             }
 
             return $cachedData;
@@ -172,8 +207,8 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
         $cachedData = @include $cache;
 
-        if (!$cachedData instanceof RouteMapInterface) {
-            $cachedData = $loader();
+        if (!$cachedData instanceof RouteMatcherInterface) {
+            $cachedData = new RouteMatcher($loader(), $this->compiler);
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
