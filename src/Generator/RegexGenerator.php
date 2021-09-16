@@ -52,6 +52,19 @@ class RegexGenerator
         $this->prefix = $prefix;
     }
 
+    public function getPrefix(): string
+    {
+        return $this->prefix;
+    }
+
+    /**
+     * @return array[]|self[]
+     */
+    public function getRoutes(): array
+    {
+        return $this->items;
+    }
+
     /**
      * This method uses default routes compiler.
      *
