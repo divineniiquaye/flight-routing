@@ -383,15 +383,15 @@ class FastRoute
      */
     public function get(string $name)
     {
-        $name = static::$getter[$name] ?? throw new \InvalidArgumentException(
-            \sprintf('Invalid call for "%s" in %s(\'%1$s\'), try any of [%s].', $name, __METHOD__, \implode(',', \array_keys(static::$getter)))
-        );
-
-        if ('*' === $name[-1]) {
-            return \array_unique($this->data[\substr($name, 0, -1)] ?? []);
+        if (null === $key = static::$getter[$name] ?? null) {
+            throw new \InvalidArgumentException(\sprintf('Invalid call for "%s" in %s(\'%1$s\'), try any of [%s].', $name, __METHOD__, \implode(',', \array_keys(static::$getter))));
         }
 
-        return $this->data[$name] ?? null;
+        if ('*' === $key[-1]) {
+            return \array_unique($this->data[\substr($key, 0, -1)] ?? []);
+        }
+
+        return $this->data[$key] ?? null;
     }
 
     /**
