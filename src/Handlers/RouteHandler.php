@@ -164,7 +164,7 @@ class RouteHandler implements RequestHandlerInterface
             }
 
             if ($handler instanceof ResourceHandler) {
-                $handler = $handler(\strtolower($request->getMethod()));
+                $handler = $handler($request->getMethod());
             }
 
             $handler = ($this->handlerResolver)($handler, $parameters);

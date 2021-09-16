@@ -238,6 +238,14 @@ class RouteTest extends TestCase
         $this->assertEquals($expectedRouteName, $route->getName());
     }
 
+    public function testRoutePipeline(): void
+    {
+        $route = new Route('/foo');
+        $route->piped('web');
+
+        $this->assertEquals(['web'], $route->getPiped());
+    }
+
     /**
      * @return string[]
      */

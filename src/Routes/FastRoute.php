@@ -65,6 +65,9 @@ class FastRoute
     /** @var array<string,mixed> */
     protected $data = [];
 
+    /** @var array<int,string> */
+    protected $middlewares = [];
+
     /** @var RouteCollection|null */
     private $collection;
 
@@ -290,6 +293,20 @@ class FastRoute
     }
 
     /**
+     * Attach a named middleware group(s) to route.
+     *
+     * @return $this
+     */
+    public function piped(string ...$to): self
+    {
+        foreach ($to as $namedMiddleware) {
+            $this->middlewares[] = $namedMiddleware;
+        }
+
+        return $this;
+    }
+
+    /**
      * Sets the requirement for a route variable.
      *
      * @param string|string[] $regexp The regexp to apply
@@ -392,6 +409,16 @@ class FastRoute
         }
 
         return $this->data[$key] ?? null;
+    }
+
+    /**
+     * Return the list of attached grouped middlewares.
+     *
+     * @return array<int,string>
+     */
+    public function getPiped(): array
+    {
+        return $this->middlewares;
     }
 
     /**

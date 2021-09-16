@@ -49,6 +49,9 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
+    /** @var array<string,MiddlewareInterface[]> */
+    private $middlewares = [];
+
     /** @var \SplQueue */
     private $pipeline;
 
@@ -132,6 +135,14 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     }
 
     /**
+     * Attach a name to a group of middlewares.
+     */
+    public function pipes(string $name, MiddlewareInterface ...$middlewares): void
+    {
+        $this->middlewares[$name] = $middlewares;
+    }
+
+    /**
      * Sets the RouteCollection instance associated with this Router.
      *
      * @param callable $routeDefinitionCallback takes only one parameter of route collection.
@@ -185,6 +196,14 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $route = $this->getMatcher()->matchRequest($request);
+
+        if (null !== $route) {
+            foreach ($route->getPiped() as $middleware) {
+                foreach ($this->middlewares[$middleware] ?? [] as $pipedMiddleware) {
+                    $this->pipeline->enqueue($pipedMiddleware);
+                }
+            }
+        }
 
         return (new Next($this->pipeline, $handler))->handle($request->withAttribute(Route::class, $route));
     }

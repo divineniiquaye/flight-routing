@@ -57,10 +57,10 @@ final class ResourceHandler
     }
 
     /**
-     * @return string[]
+     * @return array<int,object|string>
      */
     public function __invoke(string $requestMethod): array
     {
-        return [$this->classResource, $requestMethod . $this->actionResource];
+        return [$this->classResource, \strtolower($requestMethod) . $this->actionResource];
     }
 }
