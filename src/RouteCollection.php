@@ -47,6 +47,7 @@ namespace Flight\Routing;
  * @method RouteCollection asserts(array $patterns)
  * @method RouteCollection arguments(array $parameters)
  * @method RouteCollection namespace(string $namespace)
+ * @method RouteCollection piped(string ...$to)
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
