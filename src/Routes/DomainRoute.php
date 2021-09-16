@@ -71,15 +71,17 @@ class DomainRoute extends FastRoute
      */
     public function match(string $method, UriInterface $uri): self
     {
+        $matched = parent::match($method, $uri);
+
         if (isset($this->data['schemes'])) {
             if (\in_array($uri->getScheme(), $this->get('schemes'), true)) {
-                return $this;
+                return $matched;
             }
 
             throw new UriHandlerException(\sprintf('Unfortunately current scheme "%s" is not allowed on requested uri [%s].', $uri->getScheme(), $uri->getPath()), 400);
         }
 
-        return parent::match($method, $uri);
+        return $matched;
     }
 
     /**
