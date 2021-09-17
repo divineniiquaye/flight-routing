@@ -149,7 +149,7 @@ class FastRoute
      *
      * @return static
      */
-    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null): self
+    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
     {
         return new static($pattern, $methods, $handler);
     }
@@ -173,9 +173,9 @@ class FastRoute
     /**
      * Sets the route path prefix.
      *
-     * @return $this
+     * @return static
      */
-    public function prefix(string $path): self
+    public function prefix(string $path)
     {
         $this->data['path'] = $path . $this->data['path'] ?? '';
 
@@ -185,9 +185,9 @@ class FastRoute
     /**
      * Sets the route path pattern.
      *
-     * @return $this
+     * @return static
      */
-    public function path(string $pattern): self
+    public function path(string $pattern)
     {
         $this->data['path'] = $pattern;
 
@@ -199,9 +199,9 @@ class FastRoute
      *
      * @param string $methods the HTTP method(s) name
      *
-     * @return $this
+     * @return static
      */
-    public function method(string ...$methods): self
+    public function method(string ...$methods)
     {
         foreach ($methods as $method) {
             $this->data['methods'][] = \strtoupper($method);
@@ -213,9 +213,9 @@ class FastRoute
     /**
      * Sets the route name.
      *
-     * @return $this
+     * @return static
      */
-    public function bind(string $routeName): self
+    public function bind(string $routeName)
     {
         $this->data['name'] = $routeName;
 
@@ -227,9 +227,9 @@ class FastRoute
      *
      * @param mixed $value The parameter value
      *
-     * @return $this
+     * @return static
      */
-    public function argument(string $parameter, $value): self
+    public function argument(string $parameter, $value)
     {
         if (\is_numeric($value)) {
             $value = (int) $value;
@@ -247,9 +247,9 @@ class FastRoute
      *
      * @param array<int|string> $parameters The route handler parameters
      *
-     * @return $this
+     * @return static
      */
-    public function arguments(array $parameters): self
+    public function arguments(array $parameters)
     {
         foreach ($parameters as $variable => $value) {
             $this->argument($variable, $value);
@@ -263,9 +263,9 @@ class FastRoute
      *
      * @param mixed $to PHP class, object or callable that returns the response when matched
      *
-     * @return $this
+     * @return static
      */
-    public function run($to): self
+    public function run($to)
     {
         $this->data['handler'] = $to;
 
@@ -277,9 +277,9 @@ class FastRoute
      *
      * @throws InvalidControllerException if $namespace is invalid
      *
-     * @return $this
+     * @return static
      */
-    public function namespace(string $namespace): self
+    public function namespace(string $namespace)
     {
         if ('' !== $namespace) {
             if ('\\' === $namespace[-1]) {
@@ -297,9 +297,9 @@ class FastRoute
     /**
      * Attach a named middleware group(s) to route.
      *
-     * @return $this
+     * @return static
      */
-    public function piped(string ...$to): self
+    public function piped(string ...$to)
     {
         foreach ($to as $namedMiddleware) {
             $this->middlewares[] = $namedMiddleware;
@@ -313,9 +313,9 @@ class FastRoute
      *
      * @param string|string[] $regexp The regexp to apply
      *
-     * @return $this
+     * @return static
      */
-    public function assert(string $variable, $regexp): self
+    public function assert(string $variable, $regexp)
     {
         $this->data['patterns'][$variable] = $regexp;
 
@@ -327,9 +327,9 @@ class FastRoute
      *
      * @param array<string,string|string[]> $regexps The regexps to apply
      *
-     * @return $this
+     * @return static
      */
-    public function asserts(array $regexps): self
+    public function asserts(array $regexps)
     {
         foreach ($regexps as $variable => $regexp) {
             $this->assert($variable, $regexp);
@@ -343,9 +343,9 @@ class FastRoute
      *
      * @param mixed $default The default value
      *
-     * @return $this
+     * @return static
      */
-    public function default(string $variable, $default): self
+    public function default(string $variable, $default)
     {
         $this->data['defaults'][$variable] = $default;
 
@@ -357,9 +357,9 @@ class FastRoute
      *
      * @param array<string,mixed> $values
      *
-     * @return $this
+     * @return static
      */
-    public function defaults(array $values): self
+    public function defaults(array $values)
     {
         foreach ($values as $variable => $default) {
             $this->default($variable, $default);

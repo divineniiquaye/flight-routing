@@ -366,11 +366,9 @@ class RouteCollectionTest extends TestCase
 
     public function testGroupWithInvalidController(): void
     {
-        $collector = new RouteCollection();
-
-        $this->expectExceptionMessage('Flight\Routing\RouteCollection::injectGroup(): Argument #2 ($controllers) must be of type Flight\Routing\RouteCollection, Flight\Routing\Tests\Fixtures\BlankController given');
         $this->expectException(\TypeError::class);
 
+        $collector = new RouteCollection();
         $collector->group('invalid', new Fixtures\BlankController());
     }
 

@@ -50,7 +50,7 @@ class Route extends DomainRoute
     /**
      * {@inheritdoc}
      */
-    public function prefix(string $path): self
+    public function prefix(string $path)
     {
         $this->data['path'] = self::resolvePrefix($this->data['path'], $path);
 

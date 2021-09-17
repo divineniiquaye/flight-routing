@@ -130,7 +130,7 @@ class SimpleRouteCompilerTest extends TestCase
         }, \iterator_to_array($this->provideCompilePathData()));
 
         $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection->add(...\array_values($routes));
 
         foreach ($collection->getRoutes() as $route) {
             $compiledRoute = $compiler->compile($route);
@@ -162,7 +162,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         $compiler = new RouteCompiler();
         $collection = new RouteCollection();
-        $collection->add(...$routes);
+        $collection->add(...\array_values($routes));
 
         [$regexList,] = RegexGenerator::beforeCaching($compiler, $collection->getRoutes());
 

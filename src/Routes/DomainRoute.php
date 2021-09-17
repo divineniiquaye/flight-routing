@@ -87,7 +87,7 @@ class DomainRoute extends FastRoute
     /**
      * {@inheritdoc}
      */
-    public function path(string $pattern): self
+    public function path(string $pattern)
     {
         return parent::path($this->resolvePattern($pattern));
     }
@@ -97,9 +97,9 @@ class DomainRoute extends FastRoute
      *
      * @param string $hosts The host for which this route should be enabled
      *
-     * @return $this
+     * @return static
      */
-    public function domain(string ...$hosts): self
+    public function domain(string ...$hosts)
     {
         foreach ($hosts as $host) {
             \preg_match(self::URL_PATTERN[0], $host, $matches, \PREG_UNMATCHED_AS_NULL);
@@ -121,9 +121,9 @@ class DomainRoute extends FastRoute
      *
      * @param string ...$schemes
      *
-     * @return $this
+     * @return static
      */
-    public function scheme(string ...$schemes): self
+    public function scheme(string ...$schemes)
     {
         foreach ($schemes as $scheme) {
             $this->data['schemes'][] = \strtolower($scheme);
