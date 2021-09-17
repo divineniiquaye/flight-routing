@@ -3,7 +3,7 @@
        xmlns="https://getpsalm.org/schema/config"
        name="Psalm for Flight Routing"
        useDocblockTypes="true"
-       errorLevel="7"
+       errorLevel="5"
        strictBinaryOperands="false"
        rememberPropertyAssignmentsAfterCall="true"
        checkForThrowsDocblock="false"
@@ -21,113 +21,22 @@
     </projectFiles>
 
     <issueHandlers>
-        <TypeDoesNotContainType>
+        <MethodSignatureMismatch>
             <errorLevel type="suppress">
-                <file name="src/Annotation/Listener.php"/>
-                <file name="src/RouteResolver.php"/>
-                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
+                <directory name="src/Routes" />
             </errorLevel>
-        </TypeDoesNotContainType>
+        </MethodSignatureMismatch>
 
-        <RedundantCondition>
+        <InvalidReturnType>
             <errorLevel type="suppress">
-                <file name="src/Exceptions/InvalidMiddlewareException.php"/>
+                <file name="src/RouteMatcher.php" />
             </errorLevel>
-        </RedundantCondition>
+        </InvalidReturnType>
 
-        <InvalidOperand>
+        <InvalidReturnStatement>
             <errorLevel type="suppress">
-                <file name="src/Traits/DumperTrait.php"/>
+                <file name="src/RouteMatcher.php" />
             </errorLevel>
-        </InvalidOperand>
-
-        <InvalidArrayOffset>
-            <errorLevel type="suppress">
-                <file name="src/Matchers/SimpleRouteMatcher.php"/>
-            </errorLevel>
-        </InvalidArrayOffset>
-
-        <InvalidCatch>
-            <errorLevel type="suppress">
-                <referencedClass name="Psr\Container\NotFoundExceptionInterface" />
-            </errorLevel>
-        </InvalidCatch>
-
-        <NullArgument>
-            <errorLevel type="suppress">
-                <referencedFunction name="Flight\Routing\RouteCollection::offsetSet"/>
-            </errorLevel>
-        </NullArgument>
-
-        <PossiblyNullArgument>
-            <errorLevel type="suppress">
-                <referencedFunction name="Flight\Routing\DebugRoute::__construct"/>
-                <referencedFunction name="Flight\Routing\Router::resolveMiddlewares"/>
-                <referencedFunction name="Flight\Routing\RouteResolver::__invoke"/>
-                <referencedFunction name="Flight\Routing\Handlers\RouteHandler::detectResponse"/>
-                <file name="src/Traits/CastingTrait.php"/>
-            </errorLevel>
-        </PossiblyNullArgument>
-
-        <PossiblyInvalidArgument>
-            <errorLevel type="suppress">
-                <referencedFunction name="Flight\Routing\Matchers\SimpleRouteMatcher::__construct"/>
-            </errorLevel>
-        </PossiblyInvalidArgument>
-
-        <ArgumentTypeCoercion>
-            <errorLevel type="suppress">
-                <referencedFunction name="Flight\Routing\Router::generateCompiledRoutes"/>
-                <referencedFunction name="Flight\Routing\Annotation\Listener::addRoute"/>
-            </errorLevel>
-        </ArgumentTypeCoercion>
-
-        <PossiblyNullReference>
-            <errorLevel type="suppress">
-                <file name="src/Router.php"/>
-                <file name="src/Traits/RouterTrait.php"/>
-            </errorLevel>
-        </PossiblyNullReference>
-
-        <MoreSpecificReturnType>
-            <errorLevel type="suppress">
-                <file name="src/Router.php"/>
-            </errorLevel>
-        </MoreSpecificReturnType>
-
-        <LessSpecificReturnStatement>
-            <errorLevel type="suppress">
-                <file name="src/Router.php"/>
-            </errorLevel>
-        </LessSpecificReturnStatement>
-
-        <PossiblyNullArrayOffset>
-            <errorLevel type="suppress">
-                <file name="src/Traits/CastingTrait.php"/>
-                <file name="src/Matchers/SimpleRouteDumper.php" />
-            </errorLevel>
-        </PossiblyNullArrayOffset>
-
-        <InvalidPropertyAssignmentValue>
-            <errorLevel type="suppress">
-                <file name="src/Traits/CastingTrait.php"/>
-                <file name="src/RouteCollection.php"/>
-                <file name="src/Matchers/SimpleRouteDumper.php"/>
-            </errorLevel>
-        </InvalidPropertyAssignmentValue>
-
-        <PossiblyUndefinedStringArrayOffset>
-            <errorLevel type="suppress">
-                <file name="src/Route.php"/>
-                <file name="src/Router.php"/>
-                <file name="src/Annotation/Route.php"/>
-                <file name="src/Traits/CastingTrait.php"/>
-                <file name="src/Traits/RouterTrait.php"/>
-                <file name="src/Traits/DumperTrait.php"/>
-                <file name="src/Matchers/SimpleRouteCompiler.php"/>
-                <file name="src/Matchers/SimpleRouteMatcher.php"/>
-                <file name="src/Matchers/SimpleRouteDumper.php"/>
-            </errorLevel>
-        </PossiblyUndefinedStringArrayOffset>
+        </InvalidReturnStatement>
     </issueHandlers>
 </psalm>

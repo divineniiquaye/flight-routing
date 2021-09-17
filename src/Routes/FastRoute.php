@@ -91,6 +91,8 @@ class FastRoute
      * @param string[] $arguments
      *
      * @throws \BadMethodCallException
+     *
+     * @return mixed
      */
     public function __call(string $method, array $arguments)
     {
@@ -116,7 +118,7 @@ class FastRoute
     /**
      * @internal
      *
-     * @param array<string,mixed>
+     * @param array<string,mixed> $data
      */
     public function __unserialize(array $data): void
     {

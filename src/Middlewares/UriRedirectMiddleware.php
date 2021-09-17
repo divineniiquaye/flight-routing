@@ -77,7 +77,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
             }
         }
 
-        if ('#' === $redirectedUri[0]) {
+        if (is_string($redirectedUri) && '#' === $redirectedUri[0]) {
             $redirectedUri = $uri->withPath(\substr($redirectedUri, 1));
         }
 

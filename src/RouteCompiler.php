@@ -170,7 +170,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * Check for mandatory parameters then interpolate $uriRoute with given $parameters.
      *
-     * @param array<string,mixed> $parameters
+     * @param array<int|string,mixed> $parameters
      * @param array<string,mixed> $defaults
      */
     private static function interpolate(string $uriRoute, array $parameters, array $defaults): string
@@ -235,8 +235,6 @@ final class RouteCompiler implements RouteCompilerInterface
      * @throws UriHandlerException if a variable name starts with a digit or
      *                             if it is too long to be successfully used as a PCRE subpattern or
      *                             if a variable is referenced more than once
-     *
-     * @return array<string,mixed>
      */
     private static function compilePattern(string $uriPattern, bool $reversed = false, array $requirements = []): array
     {
@@ -286,8 +284,6 @@ final class RouteCompiler implements RouteCompilerInterface
 
     /**
      * Filter variable name to meet requirements.
-     *
-     * @param array<string,string|null> $varNames
      */
     private static function filterVariableName(string $varName, string $pattern): void
     {

@@ -31,7 +31,7 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  */
 final class RouteMatcher implements RouteMatcherInterface
 {
-    /** @var array<int,Route>|array<int,mixed> */
+    /** @var array<int,Route>|array<int,array<int,mixed>> */
     private $routes;
 
     /** @var RouteCompilerInterface */
@@ -67,7 +67,7 @@ final class RouteMatcher implements RouteMatcherInterface
     /**
      * @internal
      *
-     * @param array<string,mixed>
+     * @param array<int,mixed> $data
      */
     public function __unserialize(array $data): void
     {
@@ -101,6 +101,7 @@ final class RouteMatcher implements RouteMatcherInterface
         }
 
         if (null === $this->generatedRegex) {
+            /** @var Route $route */
             foreach ($this->routes as $route) {
                 [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
 

@@ -30,7 +30,7 @@ use Psr\Container\ContainerInterface;
  */
 class RouteInvoker
 {
-    /** @var ContainerInterface */
+    /** @var ContainerInterface|null */
     private $container;
 
     public function __construct(ContainerInterface $container = null)
