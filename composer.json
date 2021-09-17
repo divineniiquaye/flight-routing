@@ -2,15 +2,7 @@
     "name": "divineniiquaye/flight-routing",
     "type": "library",
     "description": "Flight routing is a simple, fast PHP router that is easy to get integrated with other routers.",
-    "keywords": [
-        "router",
-        "url routing",
-        "php-17",
-        "psr-15",
-        "psr-7",
-        "php",
-        "biurad"
-    ],
+    "keywords": ["router", "url routing", "php-17", "psr-15", "psr-7", "php", "biurad"],
     "homepage": "https://www.divinenii.com",
     "license": "BSD-3-Clause",
     "authors": [
@@ -41,7 +33,6 @@
         "nyholm/psr7": "^1.4",
         "nyholm/psr7-server": "^1.0",
         "phpstan/phpstan": "^0.12",
-        "phpstan/phpstan-strict-rules": "^0.12",
         "phpunit/phpunit": "^8.5 || ^9.5",
         "spiral/attributes": "dev-master",
         "squizlabs/php_codesniffer": "^3.6",
