@@ -161,7 +161,7 @@ final class RouteCompiler implements RouteCompilerInterface
         }
 
         if (isset($hostRegex)) {
-            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults + ($hostVariables?? [])));
+            $createUri->withHost(self::interpolate($hostRegex, $parameters, $defaults + ($hostVariables ?? [])));
         }
 
         return $createUri;
