@@ -8,7 +8,7 @@
 [![Quality Score](https://img.shields.io/scrutinizer/g/divineniiquaye/flight-routing.svg?style=flat-square)](https://scrutinizer-ci.com/g/divineniiquaye/flight-routing)
 [![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://biurad.com/sponsor)
 
-**divineniiquaye/flight-routing** is a HTTP router for [PHP] 7.1+ based on [PSR-7] and [PSR-15] with support for annotations, created by [Divine Niiquaye][@divineniiquaye]. This library helps create a human friendly urls (also more cool & prettier) while allows you to use any current trends of **`PHP Http Router`** implementation and fully meets developers' desires.
+**divineniiquaye/flight-routing** is a HTTP router for [PHP] 7.2+ based on [PSR-7] and [PSR-15] with support for annotations, created by [Divine Niiquaye][@divineniiquaye]. This library helps create a human friendly urls (also more cool & prettier) while allows you to use any current trends of **`PHP Http Router`** implementation and fully meets developers' desires.
 
 [![Xcode](https://xscode.com/assets/promo-banner.svg)](https://xscode.com/divineniiquaye/flight-routing)
 
@@ -133,7 +133,7 @@ $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
 
 $psr17Factory = new Psr17Factory();
-$matcher = new RouteMatcher($routes->getData());
+$matcher = new RouteMatcher($routes);
 
 // Routing can match routes with incoming request
 $route = $matcher->matchRequest($psr17Factory->fromGlobalRequest());
@@ -145,7 +145,26 @@ $url = $matcher->generateUri('blog_show', ['slug' => 'my-blog-post']);
 
 ```
 
-To use the router class, Flight Routing has a default route request handler class to use with router.
+To use the router class, Flight Routing has a default route request handler class to use with router. Also there are two ways of using router with collection:
+
+Router one #1:
+
+```php
+$router = new Router();
+
+$router->setCollection(static function (RouteCollection $routes): void {
+    $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
+});
+```
+
+Router two #2:
+
+```php
+$router = Router::withCollection();
+$router->addRoute((new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show'));
+```
+
+Default way of dispatching Router's route to web browser:
 
 ```php
 use App\Controller\BlogController;
@@ -153,19 +172,12 @@ use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
 use Flight\Routing\{Handlers\RouteHandler, RouteCollection, Router};
 use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-$psr17Factory = new Psr17Factory();
-$router = new Router();
-
-$router->setCollection(static function (RouteCollection $routes): void {
-    $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
-});
-
 $router->pipe(...); # Add PSR-15 middlewares ...
 
 $handlerResolver = ... // You can add your own route handler resolver else default is null
 
 // Default route handler, a custom request route handler can be used also.
-$handler = new RouteHandler($psr17Factory, $handlerResolver);
+$handler = new RouteHandler($psr17Factory = new Psr17Factory(), $handlerResolver);
 
 // Match routes with incoming request and return a response
 $response = $router->process($psr17Factory->fromGlobalRequest(), $handler);
@@ -183,7 +195,15 @@ $response = $router->process($psr17Factory->fromGlobalRequest(), $handler);
 
 ---
 
-This library is shipped with annotations support, check **Annotation** directory to find out more about collecting annotations using `Flight\Routing\RouteCollection::loadAnnotation` method.
+This library is shipped with annotations support, check **Annotation** directory to find out more about collecting annotations into the routes collection's class.
+
+I suggests using [biurad-annotations] to use doctrine annotations and PHP 8 attributes on route classes. You can also create your own implementation to use load annotations using the `Flight\Routing\Annotation\Route` class.
+
+run this in command line if the package has not be added.
+
+```bash
+composer require biurad/annotations
+```
 
 ```php
 use Biurad\Annotations\AnnotationLoader;
@@ -192,14 +212,24 @@ use Flight\Routing\Annotation\Listener;
 use Flight\Routing\RouteCollection;
 use Spiral\Attributes\{AnnotationReader, AttributeReader};
 
-$loader = new AnnotationLoader(new AttributeReader());
-$loader->listener(new Listener());
+// Setting a reader means spiral/attributes package must exist, if you're on PHP >= 8 a reader is not required.
+$reader = new AttributeReader();
+$loader = new AnnotationLoader($reader);
 
+$loader->listener(new Listener($routes = new RouteCollection()));
 $loader->resource('src/Controller', 'src/Bundle/BundleName/Controller']);
-$loader->build(); // Load and cache attributes found reusability
+$loader->build(); // Load and cache attributes found for reusability
 
-$routes = new RouteCollection();
-$routes->loadAnnotation($loader);
+$matcher = new RouteMatcher($routes);
+// or
+$router = new Router();
+$router->setCollection(static function (RouteCollection $routes) use ($loader): void {
+    $annotations = $loader->load('Flight\Routing\Annotation\Route');
+
+    $routes->populate($annotations);
+    // or you can use grouping
+    $routes->group('', $annotations);
+});
 
 ```
 
@@ -234,7 +264,7 @@ Below is a very basic example of setting up a route. First parameter is the url 
 ```php
 use Flight\Routing\Route;
 
-$route = new Route('/', 'GET|HEAD', fn () => 'Hello world'});
+$route = new Route('/', ['GET', 'HEAD'], fn () => 'Hello world'});
 
 // Create a new route using $router.
 $routes->add($route);
@@ -250,7 +280,7 @@ use Psr\Http\Message\{ResponseFactoryInterface, ServerRequestInterface};
 
 $route = new Route(
     '/{name}',
-    'GET|HEAD',
+    Route::DEFAULT_METHODS,
     function (ServerRequestInterface $request, ResponseFactoryInterface $responseFactory) {
         $response = $responseFactory->createResponse()->withHeader('Content-Type', 'text/html; charset=utf-8');
         $response->getBody()->write("hello world");
@@ -405,7 +435,7 @@ $collector
 Sometimes you might need to create a route that accepts multiple HTTP-verbs. If you need to match all HTTP-verbs you can use the `any` method.
 
 ```php
-$collector->addRoute('/', 'get|post', function() {
+$collector->addRoute('/', ['get', 'post'], function() {
   // ...
 });
 
@@ -601,7 +631,7 @@ Input --[Request]↦ Router ↦ Middleware 1 ↦ ... ↦ Middleware N ↦ Contro
 Output ↤[Response]- Router ↤ Middleware 1 ↤ ... ↤ Middleware N ↤ [Response]
 ```
 
-We using using [laminas-stratigility] to allow better and saver middleware usage.
+We using [laminas-stratigility] to allow better and saver middleware usage.
 
 run this in command line if the package has not be added.
 
@@ -753,10 +783,10 @@ use Flight\Routing\Handlers\ResourceHandler;
 
 $route = new Route('/user/{id:\d+}', ['GET', 'POST'], new ResourceHandler(UserController::class, 'user'));
 
-// Using `ResourceHandler` as route handler means, the route is restful, the "user" passed into resource handler second parameter, is to be prefixed on class object method. Eg: getUser() which can be served on uri like /user/23
+// Using the `ResourceHandler` class means, the route is restful, the "user" passed into resource handler second parameter, is to be prefixed on class object method. Eg: getUser() which can be served on uri like /user/23
 ```
 
-Add route using `Flight\Routing\RouteCollection::resource`:
+Add route using `Flight\Routing\RouteCollection::resource`, doing this means, route becomes available for all standard request methods:
 
 ```php
 use Demo\UserController;
@@ -774,7 +804,8 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\{GeneratedUri, Route};
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Routes\Route;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 class MyRouteCompiler implements RouteCompilerInterface
@@ -798,7 +829,7 @@ class MyRouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function generateUri(Route $route, array $parameters, array $defaults = []): GeneratedUri
+    public function generateUri(Route $route, array $parameters): GeneratedUri
     {
         // Same as compile method implementation or may differ, result should reverse the route and/or domain
         // patterns into URI.
@@ -891,6 +922,7 @@ Check out the other cool things people are doing with `divineniiquaye/flight-rou
 [Biurad Lap]: https://team.biurad.com
 [email]: support@biurad.com
 [message]: https://projects.biurad.com/message
+[biurad-annotations]: https://github.com/biurad/annotations
 [biurad-http-galaxy]: https://github.com/biurad/php-http-galaxy
 [DefaultCompiler]: https://github.com/divineniiquaye/flight-routing/blob/master/src/RouteCompiler.php
 [Anatoly Fenric]: https://anatoly.fenric.ru/
