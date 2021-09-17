@@ -69,7 +69,7 @@ class DomainRoute extends FastRoute
      *
      * @throws UriHandlerException
      */
-    public function match(string $method, UriInterface $uri): self
+    public function match(string $method, UriInterface $uri): static
     {
         $matched = parent::match($method, $uri);
 

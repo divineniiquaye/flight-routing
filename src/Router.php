@@ -81,8 +81,10 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      * Set a route collection instance into Router in order to use addRoute method.
      *
      * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
+     *
+     * @return static
      */
-    public static function withCollection(?RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = ''): static
+    public static function withCollection(?RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = '')
     {
         $new = new static($compiler, $cache);
         $new->collection = $collection ?? new RouteCollection();

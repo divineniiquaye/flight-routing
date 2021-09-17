@@ -161,7 +161,7 @@ class FastRoute
      *
      * @return $this
      */
-    public function match(string $method, UriInterface $uri): self
+    public function match(string $method, UriInterface $uri): static
     {
         if (!\in_array($method, $methods = $this->get('methods'), true)) {
             throw new MethodNotAllowedException($methods, $uri->getPath(), $method);
