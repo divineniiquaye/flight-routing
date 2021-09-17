@@ -17,28 +17,28 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Routes\FastRoute as Route;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\MiddlewareInterface;
 
-/**
- * PhpInfoListener
- */
-class PhpInfoListener implements MiddlewareInterface
+class RouteMiddleware implements MiddlewareInterface
 {
+    /** @var string */
+    private $sampleText;
+
+    public function __construct(string $sampleText = 'test')
+    {
+        $this->sampleText = $sampleText;
+    }
+
     /**
      * {@inheritdoc}
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $route = $request->getAttribute(Route::class);
+        $response = $handler->handle($request);
 
-        if ($route instanceof Route && 'phpinfo' === $route->getHandler()) {
-            $request = $request->withAttribute(Route::class, $route->argument('what', INFO_ALL));
-        }
-
-        return $handler->handle($request);
+        return $response->withHeader('NamedRoute', $this->sampleText);
     }
 }

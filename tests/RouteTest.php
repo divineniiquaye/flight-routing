@@ -19,6 +19,8 @@ namespace Flight\Routing\Tests;
 
 use Flight\Routing\Routes\{DomainRoute, FastRoute, Route};
 use Flight\Routing\Exceptions\InvalidControllerException;
+use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Handlers\ResourceHandler;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -127,6 +129,10 @@ class RouteTest extends TestCase
         $this->assertEmpty($dRoute3->getSchemes());
         $this->assertEmpty($dRoute3->getHosts());
 
+        $dRoute4 = DomainRoute::to('//biurad.com/')->path('//localhost/foo');
+        $this->assertEquals('/foo', $dRoute4->getPath());
+        $this->assertEquals(['biurad.com', 'localhost'], $dRoute4->getHosts());
+
         $dRoute = DomainRoute::to('https://biurad.com/hi');
         $dRoute->scheme('https')->domain('https://greet.biurad.com', 'biurad.com');
 
@@ -192,14 +198,23 @@ class RouteTest extends TestCase
         $this->assertSame($patternRoute1->getHandler(), $patternRoute2->getHandler());
     }
 
+    public function testRouteArguments(): void
+    {
+        $route = FastRoute::to('/foo')->argument('number', '345')->arguments(['hello' => 'world']);
+
+        $this->assertEquals(['number' => 345, 'hello' => 'world'], $route->getArguments());
+    }
+
     public function testRouteNamespace(): void
     {
         $testRoute1 = Route::to('/foo')->run('\\BlankController')->namespace('Flight\Routing\Tests\Fixtures');
         $testRoute2 = Route::to('/foo')->run('\\Fixtures\BlankController')->namespace('Flight\Routing\Tests');
         $testRoute3 = Route::to('/foo')->run('Fixtures\BlankController')->namespace('Flight\Routing\Tests');
+        $testRoute4 = Route::to('/foo')->run(new ResourceHandler('\\Fixtures\BlankRestful', 'user'))->namespace('Flight\Routing\Tests');
 
         $this->assertSame($testRoute1->getHandler(), $testRoute2->getHandler());
         $this->assertEquals('Fixtures\BlankController', $testRoute3->getHandler());
+        $this->assertEquals([Fixtures\BlankRestful::class, 'getUser'], $testRoute4->getHandler()('GET'));
 
         $this->expectExceptionMessage('Namespace "Flight\Routing\Tests\" provided for routes must not end with a "\".');
         $this->expectException(InvalidControllerException::class);
@@ -226,6 +241,30 @@ class RouteTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $route->exception();
+    }
+
+    public function testNotAllowedEmptyPath(): void
+    {
+        $this->expectExceptionMessage('The route pattern "" is invalid as route path must be present in pattern.');
+        $this->expectException(UriHandlerException::class);
+
+        $route = new Route('');
+    }
+
+    public function testNotAllowedEmptyPathInHost(): void
+    {
+        $this->expectExceptionMessage('The route pattern "//localhost" is invalid as route path must be present in pattern.');
+        $this->expectException(UriHandlerException::class);
+
+        new Route('//localhost');
+    }
+
+    public function testNotAllowedEmptyPathInHostAndScheme(): void
+    {
+        $this->expectExceptionMessage('The route pattern "http://biurad.com" is invalid as route path must be present in pattern.');
+        $this->expectException(UriHandlerException::class);
+
+        new Route('http://biurad.com');
     }
 
     /**

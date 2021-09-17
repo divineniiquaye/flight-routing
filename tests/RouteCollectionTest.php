@@ -412,7 +412,7 @@ class RouteCollectionTest extends TestCase
                         ->scheme('https', 'http')->method(Router::METHOD_CONNECT)->default('hello', 'world')
                         ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument('foo', 'hello')->end()
                     ->end()
-                    ->method(Router::METHOD_OPTIONS)
+                    ->method(Router::METHOD_OPTIONS)->piped('web')
                 ->end()
                 ->group('')
                     ->prototype()
@@ -440,6 +440,8 @@ class RouteCollectionTest extends TestCase
         $routes->uasort(static function (FastRoute $a, FastRoute $b): int {
             return \strcmp($a->getName(), $b->getName());
         });
+
+        $this->assertEquals(['web'], $routes[4]->getPiped());
         $routes = Fixtures\Helper::routesToArray($routes);
 
         $this->assertEquals([

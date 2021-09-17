@@ -23,6 +23,7 @@ use Flight\Routing\Handlers\CallbackHandler;
 use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Routes\FastRoute;
 use Flight\Routing\Routes\Route;
+use Laminas\Stratigility\MiddlewarePipe;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
@@ -51,6 +52,17 @@ class RouteHandlerTest extends TestCase
 
         $factory = new RouteHandler(new Psr17Factory());
         $factory->handle($this->serverCreator());
+    }
+
+    public function testOverrideRouteNotFound(): void
+    {
+        $request = $this->serverCreator();
+        $handler = new RouteHandler(new Psr17Factory());
+
+        $pipe1 = (new MiddlewarePipe())->process($request->withAttribute(RouteHandler::OVERRIDE_HTTP_RESPONSE, true), $handler);
+        $pipe2 = (new MiddlewarePipe())->process($request->withAttribute(RouteHandler::OVERRIDE_HTTP_RESPONSE, $pipe1), $handler);
+
+        $this->assertEquals($pipe1, $pipe2);
     }
 
     public function testHandle(): void

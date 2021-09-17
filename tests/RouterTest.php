@@ -18,83 +18,79 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests;
 
 use DivineNii\Invoker\Exceptions\NotEnoughParametersException;
-use DivineNii\Invoker\Invoker;
-use Exception;
-use Flight\Routing\DebugRoute;
-use Flight\Routing\Exceptions\DuplicateRouteException;
 use Flight\Routing\Exceptions\InvalidControllerException;
-use Flight\Routing\Exceptions\InvalidMiddlewareException;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Route;
+use Flight\Routing\Handlers\ResourceHandler;
+use Flight\Routing\Handlers\RouteHandler;
+use Flight\Routing\Routes\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
+use Flight\Routing\Routes\FastRoute;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
-use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
+use Nyholm\Psr7\Uri;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
+
+use function Laminas\Stratigility\middleware;
 
 /**
- * RouterTest
+ * RouterTest.
  */
 class RouterTest extends BaseTestCase
 {
     public function testConstructor(): void
     {
-        $router = $this->getRouter();
+        $router = new Router();
+        $this->assertInstanceOf(MiddlewareInterface::class, $router);
 
-        $this->assertInstanceOf(RequestHandlerInterface::class, $router);
+        $this->expectExceptionMessage('Did you forget to set add the route collection with the "Flight\Routing\Router::setCollection".');
+        $this->expectException(\RuntimeException::class);
+
+        $router->getMatcher();
     }
 
     public function testAddRoute(): void
     {
-        $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-        ];
+        $routes = [new Route('/foo'), new Route('/bar'), new Route('/baz')];
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
-        $collection = $router->getCollection();
-
-        $this->assertCount(3, $collection);
-
-        $collection->add(new Fixtures\TestRoute()); // Will not be added ...
-
-        $this->assertCount(3, $collection->getIterator());
+        $this->assertCount(3, $router->getMatcher()->getRoutes());
     }
 
     public function testMiddlewareOnRoute(): void
     {
-        $router  = $this->getRouter();
-        $route   = new Route('/phpinfo', Router::METHOD_GET, 'phpinfo');
-        $request = new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath());
+        $router = Router::withCollection();
+        $route = new Route('/phpinfo', Router::METHOD_GET, 'phpinfo');
+        $request = new ServerRequest($route->getMethods()[0], $route->getPath());
 
-        $router->addRoute($route->middleware(new Fixtures\PhpInfoListener()));
+        $router->addRoute($route);
+        $router->pipe(new Fixtures\PhpInfoListener());
 
-        $response = $router->handle($request);
+        $response = $router->process($request, new RouteHandler(new Psr17Factory()));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals('text/plain; charset=utf-8', $response->getHeaderLine('Content-Type'));
+        $this->assertEquals('text/html; charset=utf-8', $response->getHeaderLine('Content-Type'));
     }
 
-    public function testAddRouteListenerWithExcetion(): void
+    public function testAddRouteListenerWithException(): void
     {
-        $router  = $this->getRouter();
-        $route   = new Route('/phpinfo', Router::METHOD_GET, 'phpinfo');
-        $request = new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath());
+        $router = Router::withCollection();
+        $route = new Route('/phpinfo', Router::METHOD_GET, 'phpinfo');
+        $request = new ServerRequest($route->getMethods()[0], $route->getPath());
 
         $router->addRoute($route);
 
         try {
-            $this->assertInstanceOf(ResponseInterface::class, $router->handle($request));
+            $this->assertInstanceOf(ResponseInterface::class, $router->process($request, new RouteHandler(new Psr17Factory())));
         } catch (NotEnoughParametersException $e) {
             $this->assertEquals(
                 'Unable to invoke the callable because no value was given for parameter 1 ($what)',
@@ -105,128 +101,102 @@ class RouterTest extends BaseTestCase
 
     public function testSetNamespace(): void
     {
-        $router = $this->getRouter();
-        $router->setOptions(['namespace' => 'Flight\\Routing\\Tests']);
+        $router = Router::withCollection();
+        $route = new Route('/foo', Router::METHOD_GET, '\\Fixtures\\BlankRequestHandler');
 
-        $router->addRoute($route = new Route(
-            Fixtures\TestRoute::getTestRoutePath(),
-            Router::METHOD_GET,
-            '\\Fixtures\\BlankRequestHandler'
-        ));
+        $router->addRoute($route->namespace('Flight\\Routing\\Tests'));
 
-        $request = new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath());
-        $route   = $router->match($request);
+        $request = new ServerRequest($route->getMethods()[0], $route->getPath());
+        $route = $router->matchRequest($request);
 
         $this->assertInstanceOf(Route::class, $route);
-        $this->assertInstanceOf(ResponseInterface::class, $router->handle($request));
-    }
-
-    public function testAddExistingRoute(): void
-    {
-        $route = new Fixtures\TestRoute();
-        $route->bind('existing_route');
-
-        $router = $this->getRouter();
-        $router->addRoute($route);
-
-        $this->expectExceptionMessage('A route with the name "existing_route" already exists.');
-        $this->expectException(DuplicateRouteException::class);
-
-        $router->addRoute($route);
+        $this->assertInstanceOf(ResponseInterface::class, $router->process($request, new RouteHandler(new Psr17Factory())));
     }
 
     public function testGenerateUri(): void
     {
-        $route = new Fixtures\TestRoute();
-        $path  = '.' . $route->getPath();
+        $route = new Route('/foo');
+        $path = '.' . $route->getPath();
 
-        $router = $this->getRouter();
-        $router->addRoute($route);
+        $router = Router::withCollection();
+        $router->addRoute($route->bind('hello'));
 
         $this->assertSame($path, (string) $router->generateUri($route->getName()));
     }
 
     public function testGenerateUriWithDomain(): void
     {
-        $route = new Fixtures\TestRoute();
-        $path  = 'http://biurad.com' . $route->getPath();
+        $route = new Route('/foo');
+        $path = 'http://biurad.com' . $route->getPath();
 
-        $router = $this->getRouter();
-        $router->addRoute($route->domain('http://biurad.com'));
+        $router = Router::withCollection();
+        $router->addRoute($route->domain('http://biurad.com')->bind('hello'));
 
         $this->assertSame($path, (string) $router->generateUri($route->getName()));
     }
 
     public function testGenerateUriWithQuery(): void
     {
-        $route = new Fixtures\TestRoute();
-        $path  = '.' . $route->getPath() . '?hello=world&first=1';
+        $route = new Route('/foo');
+        $path = '.' . $route->getPath() . '?hello=world&first=1';
 
-        $router = $this->getRouter();
-        $router->addRoute($route);
+        $router = Router::withCollection();
+        $router->addRoute($route->bind('hello'));
 
         $this->assertSame(
             $path,
-            (string) $router->generateUri($route->getName(), [], ['hello' => 'world', 'first' => 1])
+            (string) $router->generateUri($route->getName())->withQuery(['hello' => 'world', 'first' => 1])
         );
     }
 
     public function testGenerateUriException(): void
     {
-        $router = $this->getRouter();
+        $router = Router::withCollection();
 
-        //$this->expectExceptionMessage(
-        //    'Unable to generate a URL for the named route "none" as such route does not exist.'
-        //);
-        //$this->expectException(UrlGenerationException::class);
+        $this->expectExceptionMessage('Unable to generate a URL for the named route "none" as such route does not exist.');
+        $this->expectException(UrlGenerationException::class);
 
-        $router->generateUri('');
+        $router->generateUri('none');
     }
 
     public function testMatch(): void
     {
         $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
+            new Route('/path1'),
+            new Route('/path2'),
+            new Route('/path3'),
+            new Route('/path4'),
+            new Route('/path5'),
         ];
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
-        $request = new ServerRequest(\array_keys($routes[2]->getMethods())[1], $routes[2]->getPath());
-        $route   = $router->match($request);
+        $route = $router->match($routes[2]->getMethods()[1], new Uri($routes[2]->getPath()));
 
         $this->assertInstanceOf(Route::class, $route);
     }
 
-    public function testMatchForUnallowedMethod(): void
+    public function testMatchForUnAllowedMethod(): void
     {
         $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
+            new Route('/path1', Router::METHOD_PATCH),
+            new Route('/path2', Router::METHOD_PATCH),
+            new Route('/path3', Router::METHOD_PATCH),
+            new Route('/path4', Router::METHOD_PATCH),
+            new Route('/path5', Router::METHOD_PATCH),
         ];
 
-        $routes[2] = new Route(\uniqid(), \array_keys($routes[2]->getMethods()), $routes[1]->getPath(), 'phpinfo');
-        $routes[3] = new Route(\uniqid(), \array_keys($routes[3]->getMethods()), $routes[1]->getPath(), 'phpinfo');
-
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
         // the given exception message should be tested through exceptions factory...
-        $this->expectException(MethodNotAllowedException::class);
-
-        $request = new ServerRequest('GET', $routes[2]->getPath());
+        $this->expectExceptionObject(new MethodNotAllowedException([Router::METHOD_PATCH], '/path3', Router::METHOD_GET));
 
         try {
-            $router->match($request);
+            $router->match('GET', new Uri($routes[2]->getPath()));
         } catch (MethodNotAllowedException $e) {
-            $this->assertSame(\array_keys($routes[2]->getMethods()), $e->getAllowedMethods());
+            $this->assertSame($routes[2]->getMethods(), $e->getAllowedMethods());
 
             throw $e;
         }
@@ -234,36 +204,31 @@ class RouterTest extends BaseTestCase
 
     public function testMatchForUndefinedRoute(): void
     {
-        $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-        ];
-
-        $router = $this->getRouter();
-        $router->addRoute(...$routes);
+        $router = new Router();
+        $router->setCollection(static function (RouteCollection $collection): void {
+            $collection->add(new Route('/foo'), new Route('/bar'), new Route('/baz'));
+        });
 
         $this->expectExceptionMessage('Unable to find the controller for path "/". The route is wrongly configured.');
         $this->expectException(RouteNotFoundException::class);
 
-        $request = new ServerRequest(\array_keys($routes[0]->getMethods())[0], '/');
-        $router->match($request);
+        $router->process(new ServerRequest(Router::METHOD_GET, '/'), new RouteHandler(new Psr17Factory()));
     }
 
     public function testHandleResponse(): void
     {
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route = new Route(
-            Fixtures\TestRoute::getTestRoutePath(),
+            '/foo',
             Router::METHOD_GET,
-            function (ResponseInterface $response): ResponseInterface {
-                $response->getBody()->write('I am a GET method');
+            function (ResponseFactoryInterface $responseFactory): ResponseInterface {
+                ($response = $responseFactory->createResponse())->getBody()->write('I am a GET method');
 
                 return $response;
             }
         ));
 
-        $response = $router->handle(new ServerRequest(Router::METHOD_GET, $route->getPath()));
+        $response = $router->process(new ServerRequest(Router::METHOD_GET, $route->getPath()), new RouteHandler(new Psr17Factory()));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertSame('I am a GET method', (string) $response->getBody());
@@ -273,25 +238,21 @@ class RouterTest extends BaseTestCase
     {
         $subPath = '/sub-directory';
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route = new Route(
-            Fixtures\TestRoute::getTestRoutePath(),
+            '/foo',
             Router::METHOD_GET,
-            function (ResponseInterface $response): ResponseInterface {
-                $response->getBody()->write('I am a GET method');
+            static function (ResponseFactoryInterface $responseFactory): ResponseInterface {
+                ($response = $responseFactory->createResponse())->getBody()->write('I am a GET method');
 
                 return $response;
             }
         ));
 
-        $response = $router->handle(new ServerRequest(
-            Router::METHOD_GET,
-            $subPath . $route->getPath(),
-            [],
-            null,
-            '1.1',
-            ['SCRIPT_NAME' => $subPath . '/index.php']
-        ));
+        $response = $router->process(
+            new ServerRequest(Router::METHOD_GET, $subPath . $route->getPath(), [], null, '1.1', ['PATH_INFO' => $route->getPath()]),
+            new RouteHandler(new Psr17Factory())
+        );
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertSame('I am a GET method', (string) $response->getBody());
@@ -301,49 +262,24 @@ class RouterTest extends BaseTestCase
     {
         $subPath = '/directory';
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route = new Route(
-            Fixtures\TestRoute::getTestRoutePath(),
+            '/foo',
             Router::METHOD_GET,
-            function (ResponseInterface $response): ResponseInterface {
-                $response->getBody()->write('I am a GET method');
+            function (ResponseFactoryInterface $responseFactory): ResponseInterface {
+                ($response = $responseFactory->createResponse())->getBody()->write('I am a GET method');
 
                 return $response;
             }
         ));
 
-        $response = $router->handle(new ServerRequest(
-            Router::METHOD_GET,
-            $route->getPath(),
-            [],
-            null,
-            '1.1',
-            ['SCRIPT_NAME' => $subPath]
-        ));
+        $response = $router->process(
+            new ServerRequest(Router::METHOD_GET, $route->getPath(), [], null, '1.1', ['SCRIPT_NAME' => $subPath]),
+            new RouteHandler(new Psr17Factory())
+        );
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertSame('I am a GET method', (string) $response->getBody());
-    }
-
-    public function testHandleWithDebug(): void
-    {
-        $router = $this->getRouter(null, null, true);
-        $router->addRoute($route = new Route(
-            Fixtures\TestRoute::getTestRoutePath(),
-            Router::METHOD_GET,
-            function (ResponseInterface $response): ResponseInterface {
-                $response->getBody()->write('I am a GET method on Debug');
-
-                return $response;
-            }
-        ));
-
-        $response = $router->handle(new ServerRequest(Router::METHOD_GET, $route->getPath()));
-
-        $this->assertInstanceOf(DebugRoute::class, $router->getProfile());
-        $this->assertCount(1, $router->getProfile());
-        $this->assertInstanceOf(Route::class, \current(\iterator_to_array($router->getProfile()))->getRoute());
-        $this->assertSame('I am a GET method on Debug', (string) $response->getBody());
     }
 
     public function testEmptyRequestHandler(): void
@@ -351,23 +287,19 @@ class RouterTest extends BaseTestCase
         $middlewares = [
             new Fixtures\BlankMiddleware(),
             new Fixtures\BlankMiddleware(),
-            Fixtures\BlankMiddleware::class,
         ];
 
-        $pipeline = $this->getRouter();
-        $pipeline->addMiddleware(...$middlewares);
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(...$middlewares);
 
         $this->expectExceptionMessage('Unable to find the controller for path "test". The route is wrongly configured.');
         $this->expectException(RouteNotFoundException::class);
 
-        $pipeline->handle(new ServerRequest('GET', 'test'));
+        $pipeline->process(new ServerRequest('GET', 'test'), new RouteHandler(new Psr17Factory()));
     }
 
     /**
-     * @dataProvider hasParamtersData
-     *
-     * @param string $path
-     * @param string $body
+     * @dataProvider hasParametersData
      */
     public function testAddParameters(string $path, string $body): void
     {
@@ -379,17 +311,16 @@ class RouterTest extends BaseTestCase
             }
         );
 
-        $router = $this->getRouter();
-        $router->getCollection()->add($route);
-        $router->getCollection()->withAssert('cool', ['23', 'me'])->withDefault('name', 'Divine');
+        $collection = new RouteCollection();
+        $collection->add($route);
+        $collection->assert('cool', ['23', 'me'])->argument('name', 'Divine');
+
+        $router = Router::withCollection($collection);
 
         try {
-            $response = $router->handle(new ServerRequest(Router::METHOD_GET, $path));
+            $response = $router->process(new ServerRequest(Router::METHOD_GET, $path), new RouteHandler(new Psr17Factory()));
         } catch (RouteNotFoundException $e) {
-            $this->assertEquals(
-                $e->getMessage(),
-                'Unable to find the controller for path "/none". The route is wrongly configured.'
-            );
+            $this->assertEquals($e->getMessage(), 'Unable to find the controller for path "/none". The route is wrongly configured.');
 
             return;
         }
@@ -399,27 +330,22 @@ class RouterTest extends BaseTestCase
 
     public function testHandleWithMiddlewares(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo', Route::DEFAULT_METHODS, 'phpinfo');
 
         $middlewares = [
             new Fixtures\BlankMiddleware(),
             new Fixtures\BlankMiddleware(),
-            Fixtures\BlankMiddleware::class,
-            [new Fixtures\BlankMiddleware(), 'process'],
+            middleware([new Fixtures\BlankMiddleware(), 'process']),
         ];
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
-        $router->addMiddleware(...$middlewares);
+        $router->pipe(...$middlewares);
 
-        $response = $router->handle(new ServerRequest(
-            \array_keys($route->getMethods())[0],
-            $route->getPath(),
-            [],
-            null,
-            '1.1',
-            ['Broken' => 'test']
-        ));
+        $response = $router->process(
+            new ServerRequest($route->getMethods()[0], $route->getPath(), [], null, '1.1', ['Broken' => 'test']),
+            new RouteHandler(new Psr17Factory())
+        );
 
         $this->assertTrue($middlewares[0]->isRunned());
         $this->assertTrue($middlewares[1]->isRunned());
@@ -429,106 +355,58 @@ class RouterTest extends BaseTestCase
 
     public function testHandleWithMiddlewareOnRoute(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route1 = new Route('/foo');
+        $route2 = Route::to('/bar', Router::METHOD_PURGE)->bind('test')->piped('ping');
+        $handler = function (ServerRequestInterface $request, ResponseFactoryInterface $factory): ResponseInterface {
+            $this->assertArrayHasKey('Broken', $request->getServerParams());
+            $this->assertInstanceOf(Route::class, $request->getAttribute(FastRoute::class));
 
-        $route->run(
-            function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
-                $this->assertArrayHasKey('Broken', $request->getServerParams());
-                $this->assertInstanceOf(Route::class, $request->getAttribute(Route::class));
+            ($response = $factory->createResponse())->getBody()->write(\sprintf('I am a %s method', \strtoupper($request->getMethod())));
 
-                $response->getBody()->write(\sprintf('I am a %s method', \strtoupper($request->getMethod())));
+            return $response;
+        };
 
-                return $response;
+        $route1->run($handler);
+        $route2->run($handler);
+
+        ($router = Router::withCollection())->addRoute($route1, $route2);
+        $router->pipe($middleware = new Fixtures\BlankMiddleware());
+        $router->pipes('ping', new Fixtures\RouteMiddleware());
+
+        $handler = new RouteHandler(new Psr17Factory());
+        $request1 = new ServerRequest($route1->getMethods()[0], $route1->getPath(), [], null, '1.1', ['Broken' => 'test']);
+        $request2 = new ServerRequest($route2->getMethods()[0], $route2->getPath(), [], null, '1.1', ['Broken' => 'test']);
+
+        foreach ([$request1, $request2] as $request) {
+            $response = $router->process($request, $handler);
+            $method = $request->getMethod();
+
+            if ($response->hasHeader('NamedRoute')) {
+                $this->assertEquals($route2->getName(), $response->getHeaderLine('NamedRoute'));
             }
-        );
-        $route->middleware($middleware = new Fixtures\BlankMiddleware());
 
-        ($router = $this->getRouter())->addRoute($route);
-
-        $response = $router->handle(new ServerRequest(
-            $method = \array_keys($route->getMethods())[0],
-            $route->getPath(),
-            [],
-            null,
-            '1.1',
-            ['Broken' => 'test']
-        ));
-
-        $this->assertTrue($middleware->isRunned());
-        $this->assertTrue($response->hasHeader('Middleware'));
-        $this->assertEquals('broken', $response->getHeaderLine('Middleware-Broken'));
-        $this->assertSame(\sprintf('I am a %s method', $method), (string) $response->getBody());
-    }
-
-    public function testHandleMiddlewareWithContainer(): void
-    {
-        $route = new Fixtures\TestRoute();
-
-        $container = $this->getMockBuilder(ContainerInterface::class)->getMock();
-        $container->method('has')->willReturn(true);
-        $container->method('get')->willReturn(new Fixtures\BlankMiddleware());
-
-        $route->middleware('container');
-
-        $router = $this->getRouter(null, new Invoker([], $container));
-        $router->addRoute($route);
-
-        $response = $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
-
-        $this->assertTrue($response->hasHeader('Middleware'));
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-    }
-
-    public function testHandleMiddlewareWithContainerWithError(): void
-    {
-        $route = new Fixtures\TestRoute();
-
-        $container = $this->getMockBuilder(ContainerInterface::class)->getMock();
-        $container->method('has')->willReturn(true);
-        $container->method('get')->willThrowException(new class () extends Exception implements NotFoundExceptionInterface {
-        });
-
-        $route->middleware(Fixtures\BlankMiddleware::class);
-
-        $router = $this->getRouter(null, new Invoker([], $container));
-        $router->addRoute($route);
-
-        $response = $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
-
-        $this->assertTrue($response->hasHeader('Middleware'));
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-    }
-
-    public function testHandleMultipleMiddlewares(): void
-    {
-        $route = new Fixtures\TestRoute();
-
-        $middlewares = [[Fixtures\BlankMiddleware::class, Fixtures\BlankRequestHandler::class]];
-        $route->middleware(...$middlewares);
-
-        $router = $this->getRouter();
-        $router->addRoute($route);
-
-        $response = $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
-
-        $this->assertTrue($response->hasHeader('Middleware'));
-        $this->assertInstanceOf(ResponseInterface::class, $response);
+            $this->assertTrue($middleware->isRunned());
+            $this->assertTrue($response->hasHeader('Middleware'));
+            $this->assertEquals('broken', $response->getHeaderLine('Middleware-Broken'));
+            $this->assertSame(\sprintf('I am a %s method', $method), (string) $response->getBody());
+        }
     }
 
     public function testHandleWithBrokenMiddleware(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo');
 
         $middlewares = [
             new Fixtures\BlankMiddleware(),
             new Fixtures\BlankMiddleware(true),
             new Fixtures\BlankMiddleware(),
         ];
-        $route->middleware(...$middlewares);
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
-        $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
+        $router->pipe(...$middlewares);
+
+        $router->process(new ServerRequest($route->getMethods()[0], $route->getPath()), new RouteHandler(new Psr17Factory()));
 
         $this->assertTrue($middlewares[0]->isRunned());
         $this->assertTrue($middlewares[1]->isRunned());
@@ -537,55 +415,31 @@ class RouterTest extends BaseTestCase
 
     public function testHandleRouteHandlerAsResponse(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo');
         $route->run(new Response(200, ['Response' => 'Controller']));
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
-        $response = $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
+        $response = $router->process(new ServerRequest($route->getMethods()[0], $route->getPath()), new RouteHandler(new Psr17Factory()));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals('Controller', $response->getHeaderLine('Response'));
     }
 
-    public function testHandleInvalidMiddleware(): void
+    public function testHandleForUnAllowedMethod(): void
     {
-        $route = new Fixtures\TestRoute();
-        $route->middleware('none');
+        $routes = [new Route('/foo'), new Route('/baz', Router::METHOD_CONNECT, 'phpinfo'), new Route('/bar')];
 
-        $router = $this->getRouter();
-        $router->addRoute($route);
-
-        $this->expectExceptionMessage(
-            'Middleware "none" is neither a string service name, a PHP callable, ' .
-            'a Psr\Http\Server\MiddlewareInterface instance, a Psr\Http\Server\RequestHandlerInterface instance, ' .
-            'or an array of such arguments'
-        );
-        $this->expectException(InvalidMiddlewareException::class);
-
-        $router->handle(new ServerRequest(\array_keys($route->getMethods())[0], $route->getPath()));
-    }
-
-    public function testHandleForUnallowedMethod(): void
-    {
-        $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-        ];
-
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
         // the given exception message should be tested through exceptions factory...
         $this->expectException(MethodNotAllowedException::class);
 
         try {
-            $router->handle(new ServerRequest(Router::METHOD_GET, $routes[1]->getPath()));
+            $router->process(new ServerRequest(Router::METHOD_GET, $routes[1]->getPath()), new RouteHandler(new Psr17Factory()));
         } catch (MethodNotAllowedException $e) {
-            $allowedMethods = $routes[1]->getMethods();
-
-            $this->assertSame(\array_keys($allowedMethods), $e->getAllowedMethods());
+            $this->assertSame($routes[1]->getMethods(), $e->getAllowedMethods());
 
             throw $e;
         }
@@ -593,125 +447,76 @@ class RouterTest extends BaseTestCase
 
     public function testHandleForUndefinedRoute(): void
     {
-        $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-        ];
+        $routes = [new Route('/foo'), new Route('/bar'), new Route('/baz')];
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
         $this->expectExceptionMessage('Unable to find the controller for path "/". The route is wrongly configured.');
         $this->expectException(RouteNotFoundException::class);
 
-        $router->handle(new ServerRequest(\array_keys($routes[0]->getMethods())[0], '/'));
+        $router->process(new ServerRequest($routes[0]->getMethods()[0], '/'), new RouteHandler(new Psr17Factory()));
     }
 
     public function testHandleForUndefinedScheme(): void
     {
-        $routes = [
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-            new Fixtures\TestRoute(),
-        ];
-
+        $routes = [new Route('/foo'), new Route('/bar'), new Route('/baz')];
         $routes[0]->scheme('ftp');
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute(...$routes);
 
-        $this->expectExceptionMessage(\sprintf(
-            'Unfortunately current scheme "http" is not allowed on requested uri [%s]',
-            $routes[0]->getPath()
-        ));
+        $this->expectExceptionMessage('Unfortunately current scheme "http" is not allowed on requested uri [/foo]');
         $this->expectException(UriHandlerException::class);
 
-        $router->handle(new ServerRequest(
-            \array_keys($routes[0]->getMethods())[0],
-            'http://localhost.com' . $routes[0]->getPath()
-        ));
+        $router->process(new ServerRequest($routes[0]->getMethods()[0], 'http://localost/foo'), new RouteHandler(new Psr17Factory()));
     }
 
     public function testHandleDomainAndPort(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo', Route::DEFAULT_METHODS, 'phpinfo');
 
         $route->domain('localhost.com:8000');
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
 
-        $response = $router->handle(new ServerRequest(
-            \array_keys($route->getMethods())[0],
-            'http://localhost.com:8000' . $route->getPath()
-        ));
-
+        $requestPath = 'http://localhost.com:8000' . $route->getPath();
+        $response = $router->process(new ServerRequest($route->getMethods()[0], $requestPath), new RouteHandler(new Psr17Factory()));
         $this->assertInstanceOf(ResponseInterface::class, $response);
     }
 
     public function testHandleForUndefinedDomain(): void
     {
-        $route = new Fixtures\TestRoute();
+        $route = new Route('/foo', Route::DEFAULT_METHODS, 'phpinfo');
         $route->domain('{foo}.biurad.com');
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
 
-        $this->expectExceptionMessage(\sprintf(
-            'Unfortunately current domain "localhost.com" is not allowed on requested uri [%s]',
-            $route->getPath()
-        ));
+        $this->expectExceptionMessage('Unfortunately current host "localhost.com" is not allowed on requested path [/foo].');
         $this->expectException(UriHandlerException::class);
 
-        $router->handle(new ServerRequest(
-            \array_keys($route->getMethods())[0],
-            'http://localhost.com' . $route->getPath()
-        ));
-    }
-
-    public function testHandleWithMiddlewareException(): void
-    {
-        $route = new Route(
-            '/middleware',
-            Router::METHOD_GET,
-            Fixtures\BlankRequestHandler::class
-        );
-        $route->middleware('none');
-
-        ($pipeline = $this->getRouter())->addRoute($route);
-
-        $this->expectExceptionMessage(
-            'Middleware "none" is neither a string service name, ' .
-            'a PHP callable, a Psr\Http\Server\MiddlewareInterface instance, ' .
-            'a Psr\Http\Server\RequestHandlerInterface instance, or an array of such arguments'
-        );
-        $this->expectException(InvalidMiddlewareException::class);
-
-        $pipeline->handle(new ServerRequest(Router::METHOD_GET, '/middleware'));
+        $requestPath = 'http://localhost.com' . $route->getPath();
+        $router->process(new ServerRequest($route->getMethods()[0], $requestPath), new RouteHandler(new Psr17Factory()));
     }
 
     /**
      * @dataProvider handleNamespaceData
      *
-     * @param string          $namespace
      * @param string|string[] $controller
      */
     public function testHandleWithNamespace(string $namespace, $controller): void
     {
-        $route = new Route(
-            '/namespace',
-            Router::METHOD_GET,
-            $controller
-        );
+        $route = new Route('/namespace', Router::METHOD_GET, $controller);
 
-        $router = $this->getRouter();
-        $router->setOptions(compact('namespace'));
-        $router->addRoute($route);
+        $router = Router::withCollection();
+        $router->addRoute($route->namespace($namespace));
 
-        $response = $router->handle(new ServerRequest(Router::METHOD_GET, '/namespace'));
+        $response = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/namespace'));
 
-        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertInstanceOf(FastRoute::class, $response);
+        $this->assertSame($route, $response);
     }
 
     /**
@@ -720,41 +525,37 @@ class RouterTest extends BaseTestCase
     public function handleNamespaceData(): array
     {
         return [
-            ['Flight\\Routing\\Tests\\Fixtures\\', 'BlankController'],
+            ['Flight\\Routing\\Tests\\Fixtures', '\\BlankController'],
             ['Flight\\Routing\\Tests', '\\Fixtures\\BlankController'],
-            ['Flight\\Routing\\Tests\\', ['Fixtures\\BlankController', 'handle']],
+            ['Flight\\Routing\\Tests', ['\\Fixtures\\BlankController', 'handle']],
         ];
     }
 
     /**
      * @dataProvider hasResourceData
      *
-     * @param string $method
-     * @param mixed  $controller
+     * @param mixed $controller
      */
     public function testHandleResource(string $method, $controller): void
     {
-        $route = new Route('api://user/user/{id:\d+}', Router::HTTP_METHODS_STANDARD, $controller);
+        $route = new Route('/user/{id:\d+}', Router::HTTP_METHODS_STANDARD, new ResourceHandler($controller, 'user'));
 
-        $router = $this->getRouter();
+        $router = Router::withCollection();
         $router->addRoute($route);
 
         try {
-            $response = $router->handle(new ServerRequest($method, '/user/23'));
+            $response = $router->process(new ServerRequest($method, '/user/23'), new RouteHandler(new Psr17Factory()));
 
             $this->assertInstanceOf(ResponseInterface::class, $response);
             $this->assertEquals(\strtolower($method) . ' 23', (string) $response->getBody());
         } catch (MethodNotAllowedException $e) {
             $this->assertEquals(
                 'Unfortunately current uri "/user/23" is allowed on [HEAD,GET,POST,PUT,PATCH,' .
-                'DELETE,PURGE,OPTIONS,TRACE,CONNECT] request methods, "NONE" is invalid',
+                'DELETE,PURGE,OPTIONS,TRACE,CONNECT] request methods, "NONE" is invalid.',
                 $e->getMessage()
             );
         } catch (InvalidControllerException $e) {
-            $this->assertEquals(
-                'Resource handler type should be a class string or class object, and not otherwise',
-                $e->getMessage()
-            );
+            $this->assertEquals('Route has an invalid handler type of "array".', $e->getMessage());
         }
     }
 
@@ -773,9 +574,6 @@ class RouterTest extends BaseTestCase
 
     /**
      * @dataProvider hasCollectionGroupData
-     *
-     * @param string $expectedMethod
-     * @param string $expectedUri
      */
     public function testHandleCollectionGrouping(string $expectedMethod, string $expectedUri): void
     {
@@ -786,17 +584,18 @@ class RouterTest extends BaseTestCase
             $group->get('/ping', new Fixtures\BlankRequestHandler());
 
             $group->group('', function (RouteCollection $group): void {
-                $group->head('/hello/{me}', new Fixtures\BlankRequestHandler())->middleware('hello');
-            })
-            ->withPrefix('/v1')->withDomain('https://biurad.com');
-        })->withPrefix('/api');
+                $group->prototype()->prefix('/v1')->domain('https://biurad.com')->end();
 
-        $router = $this->getRouter();
-        $router->addRoute(...$collector);
+                $group->head('/hello/{me}', new Fixtures\BlankRequestHandler())->piped('hello');
 
-        $router->addMiddleware(['hello' => $middleware = new Fixtures\BlankMiddleware()]);
+                $group->group('_lake_')->head('/ffffffff')->end();
+            });
+        })->prefix('/api');
 
-        $response = $router->handle(new ServerRequest($expectedMethod, $expectedUri));
+        $router = Router::withCollection($collector);
+        $router->pipes('hello', $middleware = new Fixtures\BlankMiddleware());
+
+        $response = $router->process(new ServerRequest($expectedMethod, $expectedUri), new RouteHandler(new Psr17Factory()));
 
         if ('https://biurad.com/api/v1/hello/23' === $expectedUri) {
             $this->assertTrue($middleware->isRunned());
@@ -821,7 +620,7 @@ class RouterTest extends BaseTestCase
     /**
      * @return string[]
      */
-    public function hasParamtersData(): array
+    public function hasParametersData(): array
     {
         return [
             ['/me', 'My name is Divine with id: me'],

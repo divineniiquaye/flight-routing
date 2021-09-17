@@ -21,15 +21,27 @@ use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Routes\Route;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
+use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * PathMiddlewareTest.
  */
 class PathMiddlewareTest extends BaseTestCase
 {
+    public function testMiddleware(): void
+    {
+        $middleware = new PathMiddleware();
+        $response = $middleware->process(new ServerRequest(Router::METHOD_GET, '/foo'), new BlankRequestHandler());
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertFalse($response->hasHeader('Location'));
+    }
+
     public function testProcessStatus(): void
     {
         $pipeline = Router::withCollection();
@@ -41,6 +53,27 @@ class PathMiddlewareTest extends BaseTestCase
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertFalse($response->hasHeader('Location'));
+    }
+
+    public function testProcessOnSubFolder(): void
+    {
+        $subFolder = null;
+        $handler = function (ServerRequestInterface $request, ResponseFactoryInterface $factory) use (&$subFolder): ResponseInterface {
+            $subFolder = $request->getAttribute(PathMiddleware::SUB_FOLDER);
+
+            return $factory->createResponse();
+        };
+
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware());
+        $pipeline->addRoute(new Route('/foo', Route::DEFAULT_METHODS, $handler));
+
+        $request = new ServerRequest(Router::METHOD_GET, '/build/foo/', [], null, '1.1', ['PATH_INFO' => '/foo/']);
+        $response = $pipeline->process($request, $this->getRequestHandler());
+
+        $this->assertEquals('/build', $subFolder);
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertEquals('/foo', $response->getHeaderLine('Location'));
     }
 
     /**

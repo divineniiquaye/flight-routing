@@ -19,6 +19,7 @@ namespace Flight\Routing\Tests\Matchers;
 
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Generator\RegexGenerator;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
@@ -208,6 +209,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         $this->assertEquals('./hello', (string) $compiler->generateUri($route1, ['foo' => 'hello']));
         $this->assertEquals('./', (string) $compiler->generateUri($route2, []));
+        $this->assertEquals('./hello', new GeneratedUri('hello'));
     }
 
     public function testGeneratedUriInstanceWithHostAndScheme(): void
