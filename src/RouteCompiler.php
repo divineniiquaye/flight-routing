@@ -249,6 +249,11 @@ final class RouteCompiler implements RouteCompilerInterface
         // Match all variables enclosed in "{}" and iterate over them...
         \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_SET_ORDER | \PREG_UNMATCHED_AS_NULL);
 
+        if (PHP_VERSION_ID < 70400) {
+            $matches[2] = $matches[2] ?? null;
+            $matches[3] = $matches[3] ?? null;
+        }
+
         foreach ($matches as [$placeholder, $varName, $segment, $default]) {
             // Filter variable name to meet requirement
             self::filterVariableName($varName, $uriPattern);
