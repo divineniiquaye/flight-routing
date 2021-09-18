@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,48 +17,136 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use BadMethodCallException;
-use Flight\Routing\Interfaces\MatcherDumperInterface;
-use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Route;
+use Flight\Routing\Routes\{DomainRoute, FastRoute, Route};
+use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\RouteCollection;
+use Flight\Routing\RouteCompiler;
 use Flight\Routing\Router;
-use LogicException;
 use Nyholm\Psr7\ServerRequest;
+use PHPUnit\Framework\TestCase;
 
 /**
- * RouteCollectionTest
+ * RouteCollectionTest.
  */
-class RouteCollectionTest extends BaseTestCase
+class RouteCollectionTest extends TestCase
 {
+    /** @var string */
+    private static $cacheFile = __DIR__ . '/Fixtures/routes/compiled.php';
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function tearDownAfterClass(): void
+    {
+        if (\file_exists(self::$cacheFile)) {
+            @\unlink(self::$cacheFile);
+        }
+    }
+
     public function testAdd(): void
     {
-        $route = new Fixtures\TestRoute();
-        $route->bind('foo');
-
         $collection = new RouteCollection();
-        $collection->add($route);
+        $collection->add(new FastRoute('/1'), new DomainRoute('/2'), new Route('/3'));
+        $collection = $this->getIterable($collection);
 
-        $this->assertInstanceOf(Fixtures\TestRoute::class, $collection->getIterator()->current());
-        $this->assertCount(1, $collection->getIterator());
+        $this->assertInstanceOf(FastRoute::class, $route = $collection->current());
+        $this->assertEquals([
+            'handler' => null,
+            'methods' => Route::DEFAULT_METHODS,
+            'name' => null,
+            'path' => '/1',
+            'patterns' => [],
+            'arguments' => [],
+            'defaults' => [],
+        ], $route->getData());
+
+        $collection->next();
+        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertEquals([
+            'handler' => null,
+            'methods' => Route::DEFAULT_METHODS,
+            'schemes' => [],
+            'hosts' => [],
+            'name' => null,
+            'path' => '/2',
+            'patterns' => [],
+            'arguments' => [],
+            'defaults' => [],
+        ], $route->getData());
+
+        $collection->next();
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
+        $this->assertEquals([
+            'handler' => null,
+            'methods' => Route::DEFAULT_METHODS,
+            'schemes' => [],
+            'hosts' => [],
+            'name' => null,
+            'path' => '/3',
+            'patterns' => [],
+            'arguments' => [],
+            'defaults' => [],
+        ], $route->getData());
+
+        $this->assertCount(3, $collection);
+    }
+
+    public function testAddRoute(): void
+    {
+        $collection = new RouteCollection();
+        $collection->addRoute('/foo', [Router::METHOD_GET])->bind('foo');
+        $collection->fastRoute('/bar', [Router::METHOD_GET]);
+        $collection = $this->getIterable($collection);
+
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
+        $this->assertEquals([
+            'handler' => null,
+            'methods' => [Router::METHOD_GET],
+            'schemes' => [],
+            'hosts' => [],
+            'name' => 'foo',
+            'path' => '/foo',
+            'patterns' => [],
+            'arguments' => [],
+            'defaults' => [],
+        ], $route->getData());
+
+        $collection->next();
+        $this->assertInstanceOf(FastRoute::class, $collection->current());
+
+        $this->assertCount(2, $collection);
     }
 
     public function testCannotOverriddenRoute(): void
     {
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET));
-        $collection->add(new Route('/foo1', Router::METHOD_GET));
+        $collection->add(new DomainRoute('/foo1', Router::METHOD_GET));
+        $collection->group('not_same', clone $collection);
+        $collection = $this->getIterable($collection);
 
-        $routes = $collection->getIterator()->getArrayCopy();
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
+        $this->assertNull($route->getName());
 
-        $this->assertEquals('/foo', \current($routes)->getPath());
-        $this->assertEquals('/foo1', \end($routes)->getPath());
+        $collection->next();
+        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertNull($route->getName());
+
+        $collection->next();
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
+        $this->assertEquals('not_sameGET_foo', $route->getName());
+
+        $collection->next();
+        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertEquals('not_sameGET_foo1', $route->getName());
+
+        $this->assertCount(4, $collection);
     }
 
     public function testCannotFindMethodInRoute(): void
     {
-        $this->expectExceptionMessage('Invalid call for "exception" as method, Flight\Routing\Route::get(\'exception\') not supported.');
-        $this->expectException(BadMethodCallException::class);
+        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\Routes\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
+        $this->expectException(\InvalidArgumentException::class);
 
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET))->exception();
@@ -66,120 +154,56 @@ class RouteCollectionTest extends BaseTestCase
 
     public function testCannotFindMethodInCollection(): void
     {
-        $this->expectExceptionMessage('Arguments passed into "exceptions" method not supported, as method does not exist.');
-        $this->expectException(BadMethodCallException::class);
+        $this->expectExceptionMessage('Arguments passed into "Flight\Routing\Routes\FastRoute::exceptions(...)" not supported, method invalid.');
+        $this->expectException(\BadMethodCallException::class);
 
         $collection = new RouteCollection();
-        $collection->add(new Route('/foo', Router::METHOD_GET))->withExceptions(['nothing']);
+        $collection->add(new Route('/foo', Router::METHOD_GET))->exceptions(['nothing']);
     }
 
-    public function testDeepOverriddenRoute(): void
+    public function testRoutesSerialization(): void
+    {
+        $collection = new RouteCollection();
+
+        for ($i = 0; $i < 100; ++$i) {
+            $h = \substr(\md5((string) $i), 0, 6);
+            $collection->get('/' . $h . '/{a}/{b}/{c}/' . $h)->bind('_' . $i);
+        }
+
+        $serialized = \serialize($collection);
+
+        $this->assertCount(100, $collection->getRoutes());
+        $this->assertCount(100, ($collection = \unserialize($serialized))->getRoutes());
+        $this->assertTrue($collection->isLocked());
+    }
+
+    /**
+     * @dataProvider populationProvider
+     */
+    public function testDeepOverriddenRoute(bool $c1, bool $c2, array $expected): void
     {
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET));
 
         $collection1 = new RouteCollection();
-        $collection1->add(new Route('/foo1', Router::METHOD_GET));
+        $collection1->add(new Route('/foo', Router::METHOD_GET));
 
         $collection2 = new RouteCollection();
-        $collection2->add(new Route('foo2', Router::METHOD_GET));
+        $collection2->add(new Route('foo', Router::METHOD_GET));
 
-        $collection1->add(...$collection2);
-        $collection->add(...$collection->getIterator());
+        $collection1->populate($collection2, $c2);
+        $collection->populate($collection1, $c1);
 
-        $this->assertEquals('/foo1', $collection1->getIterator()->current()->getPath());
-        $this->assertEquals('/foo', \current($collection->getIterator()->getArrayCopy())->getPath());
-    }
-
-    public function testAddRoute(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeMethods        = Fixtures\TestRoute::getTestRouteMethods();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->addRoute(
-            $routePath,
-            $routeMethods,
-            $routeRequestHandler
+        $this->assertCount(3, $routes = $collection->getRoutes());
+        $this->assertEquals(
+            $expected,
+            \array_map(
+                static function (FastRoute $route): ?string {
+                    return $route->getName();
+                },
+                $routes
+            )
         );
-        $route->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame($routeMethods, \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
-    }
-
-    public function testRouteWithOptionalParams(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeMethods        = Fixtures\TestRoute::getTestRouteMethods();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-        $routeMiddlewares    = Fixtures\TestRoute::getTestRouteMiddlewares();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->addRoute(
-            $routePath,
-            $routeMethods,
-            $routeRequestHandler
-        )
-        ->bind($routeName)->middleware(...$routeMiddlewares);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame($routeMethods, \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-        $this->assertSame($routeMiddlewares, $route->getMiddlewares());
-    }
-
-    public function testConflictingRouteNames(): void
-    {
-        $controllers = new RouteCollection();
-
-        $mountedRootController = $controllers->get('/', function (): void {
-        });
-
-        $mainRootController = new Route('/');
-        $mainRootController->bind($mainRootController->generateRouteName('main_1'));
-
-        $controllers->getIterator();
-
-        $this->assertNotEquals($mainRootController->getName(), $mountedRootController->getName());
-    }
-
-    public function testUniqueGeneratedRouteNames(): void
-    {
-        $controllers = new RouteCollection();
-
-        $controllers->addRoute('/a-a', [], function (): void {
-        });
-        $controllers->addRoute('/a_a', [], function (): void {
-        });
-        $controllers->addRoute('/a/a', [], function (): void {
-        });
-
-        $routes = $controllers->getIterator();
-
-        $this->assertCount(3, $routes);
-        $this->assertEquals(['_a_a', '_a_a_1', '_a_a_2'], \array_map(
-            function (Route $route) {
-                return $route->getName();
-            },
-            (array) $routes
-        ));
     }
 
     public function testUniqueGeneratedRouteNamesAmongMounts(): void
@@ -189,247 +213,186 @@ class RouteCollectionTest extends BaseTestCase
         $controllers->group('', $rootA = new RouteCollection());
         $controllers->group('', $rootB = new RouteCollection());
 
-        $rootA->addRoute('/leaf-a', [], function (): void {
-        });
-        $rootB->addRoute('/leaf_a', [], function (): void {
-        });
+        $rootA->addRoute('/leaf-a', []);
+        $rootB->addRoute('/leaf_a', []);
 
-        $routes = $controllers->getIterator();
-
-        $this->assertCount(2, $routes);
+        $this->assertCount(2, $routes = $controllers->getRoutes());
         $this->assertEquals(['_leaf_a', '_leaf_a_1'], \array_map(
-            function (Route $route) {
+            static function (FastRoute $route): string {
                 return $route->getName();
             },
-            (array) $routes
+            $routes
         ));
     }
 
-    public function testHead(): void
+    public function testLockedGroupCollection(): void
     {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
         $collector = new RouteCollection();
+        $collector->getRoutes();
 
-        $route = $collector->head(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_HEAD], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
+        $this->expectExceptionObject(new \RuntimeException('Grouping cannot be added on runtime, do add all routes before runtime.'));
+        $collector->group('');
     }
 
-    public function testGet(): void
+    public function testLockedRoutesCollection(): void
     {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
         $collector = new RouteCollection();
+        $collector->getRoutes();
+        $this->assertEmpty($collector->getRoutes());
 
-        $route = $collector->get(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_GET, Router::METHOD_HEAD], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
+        $this->expectExceptionObject(new \RuntimeException('Routes cannot be added on runtime, do add all routes before runtime.'));
+        $collector->addRoute('/foo', [Router::METHOD_GET]);
     }
 
-    public function testPost(): void
+    public function testEmptyPrototype(): void
     {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
         $collector = new RouteCollection();
+        $collector->prototype()
+            ->prefix()
+        ->end();
+        $collector->get('/foo');
 
-        $route = $collector->post(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_POST], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
+        $this->assertEquals('/foo', $collector->getRoutes()[0]->getPath());
     }
 
-    public function testPut(): void
+    public function testRequestMethodAsCollectionMethod(): void
     {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
         $collector = new RouteCollection();
+        $collector->get('/get');
+        $collector->post('/post');
+        $collector->put('/put');
+        $collector->patch('/patch');
+        $collector->delete('/delete');
+        $collector->options('/options');
+        $collector->any('/any');
+        $collector->resource('/resource', Fixtures\BlankRestful::class, 'user');
 
-        $route = $collector->put(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
+        $routes = $this->getIterable($collector);
+        $routes->uasort(function (FastRoute $a, FastRoute $b): int {
+            return \strcmp($a->getPath(), $b->getPath());
+        });
 
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_PUT], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
-    }
-
-    public function testPatch(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->patch(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_PATCH], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
-    }
-
-    public function testDelete(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->delete(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_DELETE], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
-    }
-
-    public function testOptions(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->options(
-            $routePath,
-            $routeRequestHandler
-        )->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame([Router::METHOD_OPTIONS], \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
-    }
-
-    public function testAny(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-        $routeRequestHandler = Fixtures\TestRoute::getTestRouteRequestHandler();
-
-        $collector = new RouteCollection();
-
-        $route = $collector->any(
-            $routePath,
-            $routeRequestHandler
-        );
-        $route->bind($routeName);
-
-        $this->assertInstanceOf(Route::class, $route);
-
-        $this->assertSame($routeName, $route->getName());
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame(Router::HTTP_METHODS_STANDARD, \array_keys($route->getMethods()));
-        $this->assertSame($routeRequestHandler, $route->getController());
-
-        // default property values...
-        $this->assertSame([], $route->getMiddlewares());
-        $this->assertSame([], $route->getDefaults());
-        $this->assertSame([], \array_keys($route->getSchemes()));
-        $this->assertSame([], $route->getPatterns());
+        $this->assertEquals([
+            [
+                'name' => null,
+                'path' => '/any',
+                'hosts' => [],
+                'methods' => Router::HTTP_METHODS_STANDARD,
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/delete',
+                'hosts' => [],
+                'methods' => [Router::METHOD_DELETE],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/get',
+                'hosts' => [],
+                'methods' => Route::DEFAULT_METHODS,
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/options',
+                'hosts' => [],
+                'methods' => [Router::METHOD_OPTIONS],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/patch',
+                'hosts' => [],
+                'methods' => [Router::METHOD_PATCH],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/post',
+                'hosts' => [],
+                'methods' => [Router::METHOD_POST],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/put',
+                'hosts' => [],
+                'methods' => [Router::METHOD_PUT],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => null,
+                'path' => '/resource',
+                'hosts' => [],
+                'methods' => Router::HTTP_METHODS_STANDARD,
+                'handler' => ResourceHandler::class,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+        ], Fixtures\Helper::routesToArray($routes));
     }
 
     public function testGroupWithInvalidController(): void
     {
+        $this->expectException(\TypeError::class);
+
         $collector = new RouteCollection();
+        $collector->group('invalid', new Fixtures\BlankController());
+    }
 
-        $this->expectExceptionMessage('The "group" method takes either a "RouteCollection" instance or callable.');
-        $this->expectException(LogicException::class);
+    public function testEmptyGroupPrototype(): void
+    {
+        $collector = new RouteCollection();
+        $collector->prototype()
+            ->prefix('/foo')
+        ->end()
+        ->prefix('/bar');
 
-        $collector->group('invalid', new Fixtures\TestRoute());
+        $collector->get('/', Fixtures\BlankRequestHandler::class)->bind('home');
+
+        $this->assertEquals([
+            'name' => 'home',
+            'path' => '/',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $collector->getRoutes()[0]->getData());
     }
 
     public function testDeepGrouping(): void
@@ -438,209 +401,164 @@ class RouteCollectionTest extends BaseTestCase
         $collector->get('/', new Fixtures\BlankRequestHandler())->bind('home');
 
         $collector->group('api.')
-            ->withPrefix('/api')
-            ->get('/', new Fixtures\BlankRequestHandler())->bind('home')->end()
-            ->get('/ping', new Fixtures\BlankRequestHandler())->bind('ping')->end()
-            ->group('')
-                ->withScheme('https', 'http')
-                ->withMethod(Router::METHOD_CONNECT)
-                ->withDefault('hello', 'world')
-                ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument(0, 'hello')->end()
-            ->end()
-            ->group('')
-                ->withPrefix('/v1')->withDomain('https://youtube.com')
+            ->prototype()
+                ->prefix('/api')
+                ->get('/', new Fixtures\BlankRequestHandler())->bind('home')->end()
+                ->get('/ping', new Fixtures\BlankRequestHandler())->bind('ping')->end()
                 ->group('')
-                    ->withPrefix('/section')->withMiddleware(Fixtures\BlankMiddleware::class)
-                    ->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create')->end()
-                    ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update')->end()
+                    ->prototype()
+                        ->scheme('https', 'http')->method(Router::METHOD_CONNECT)->default('hello', 'world')
+                        ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument('foo', 'hello')->end()
+                    ->end()
+                    ->method(Router::METHOD_OPTIONS)->piped('web')
                 ->end()
                 ->group('')
-                    ->withPrefix('/product')
-                    ->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create')->end()
-                    ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update')->end()
+                    ->prototype()
+                        ->prefix('/v1')->domain('https://youtube.com')
+                        ->group('')
+                            ->prototype()->prefix('/section')
+                                ->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create')->end()
+                                ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update')->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                    ->group('')
+                        ->prototype()
+                            ->prefix('/product')
+                            ->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create')->end()
+                            ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update')->end()
+                        ->end()
+                    ->end()
                 ->end()
             ->end()
         ->end()
             ->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us')->end();
 
-        $routes = $collector->getIterator();
+        $this->assertCount(9, $routes = $this->getIterable($collector));
+        $routes->uasort(static function (FastRoute $a, FastRoute $b): int {
+            return \strcmp($a->getName(), $b->getName());
+        });
 
-        $this->assertContains([
-            'name'        => 'home',
-            'path'        => '/',
-            'domain'      => [],
-            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals(['web'], $routes[4]->getPiped());
+        $routes = Fixtures\Helper::routesToArray($routes);
 
-        $this->assertContains([
-            'name'        => 'api.home',
-            'path'        => '/api/',
-            'domain'      => [],
-            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'home',
+            'path' => '/',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[8]);
 
-        $this->assertContains([
-            'name'        => 'api.ping',
-            'path'        => '/api/ping',
-            'domain'      => [],
-            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.home',
+            'path' => '/api/',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[2]);
 
-        $this->assertContains([
-            'name'        => 'api.hello',
-            'path'        => '/api/hello',
-            'domain'      => [],
-            'methods'     => [Router::METHOD_HEAD, Router::METHOD_CONNECT],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => ['https', 'http'],
-            'defaults'    => ['hello' => 'world'],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.ping',
+            'path' => '/api/ping',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[3]);
 
-        $this->assertContains([
-            'name'        => 'api.section.create',
-            'path'        => '/api/v1/section/create',
-            'domain'      => ['youtube.com'],
-            'methods'     => [Router::METHOD_POST],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [Fixtures\BlankMiddleware::class],
-            'schemes'     => ['https'],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.hello',
+            'path' => '/api/hello',
+            'hosts' => [],
+            'methods' => [Router::METHOD_HEAD, Router::METHOD_CONNECT, Router::METHOD_OPTIONS],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => ['https', 'http'],
+            'defaults' => ['hello' => 'world'],
+            'patterns' => [],
+            'arguments' => ['foo' => 'hello'],
+        ], $routes[1]);
 
-        $this->assertContains([
-            'name'        => 'api.section.update',
-            'path'        => '/api/v1/section/update/{id}',
-            'domain'      => ['youtube.com'],
-            'methods'     => [Router::METHOD_PATCH],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [Fixtures\BlankMiddleware::class],
-            'schemes'     => ['https'],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.section.create',
+            'path' => '/api/v1/section/create',
+            'hosts' => ['youtube.com'],
+            'methods' => [Router::METHOD_POST],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => ['https'],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[6]);
 
-        $this->assertContains([
-            'name'        => 'api.product.create',
-            'path'        => '/api/v1/product/create',
-            'domain'      => ['youtube.com'],
-            'methods'     => [Router::METHOD_POST],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => ['https'],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.section.update',
+            'path' => '/api/v1/section/update/{id}',
+            'hosts' => ['youtube.com'],
+            'methods' => [Router::METHOD_PATCH],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => ['https'],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[7]);
 
-        $this->assertContains([
-            'name'        => 'api.product.update',
-            'path'        => '/api/v1/product/update/{id}',
-            'domain'      => ['youtube.com'],
-            'methods'     => [Router::METHOD_PATCH],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => ['https'],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
+        $this->assertEquals([
+            'name' => 'api.product.create',
+            'path' => '/api/v1/product/create',
+            'hosts' => ['youtube.com'],
+            'methods' => [Router::METHOD_POST],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => ['https'],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[4]);
 
-        $this->assertContains([
-            'name'        => 'about-us',
-            'path'        => '/about-us',
-            'domain'      => [],
-            'methods'     => [Router::METHOD_GET, Router::METHOD_HEAD],
-            'handler'     => Fixtures\BlankRequestHandler::class,
-            'middlewares' => [],
-            'schemes'     => [],
-            'defaults'    => [],
-            'patterns'    => [],
-            'arguments'   => [],
-        ], Fixtures\Helper::routesToArray($routes));
-    }
+        $this->assertEquals([
+            'name' => 'api.product.update',
+            'path' => '/api/v1/product/update/{id}',
+            'hosts' => ['youtube.com'],
+            'methods' => [Router::METHOD_PATCH],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => ['https'],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[5]);
 
-    public function testResource(): void
-    {
-        $routeName     = Fixtures\TestRoute::getTestRouteName();
-        $routePath     = Fixtures\TestRoute::getTestRoutePath();
-        $routeResource = new Fixtures\BlankRestful();
-
-        $collector = new RouteCollection();
-
-        $collector->resource(
-            $routeName,
-            \ltrim($routePath, '/'),
-            $routeResource
-        );
-
-        $route = $collector->getIterator()->current();
-
-        $this->assertTrue(str_starts_with($route->getName(), 'HEAD_GET_POST_PUT_PATCH_DELETE_PURGE_OPTIONS_TRACE_CONNECT'));
-        $this->assertEquals($routeName, $route->getDefaults()['_api']);
-        $this->assertSame($routePath, $route->getPath());
-        $this->assertSame(Router::HTTP_METHODS_STANDARD, \array_keys($route->getMethods()));
-        $this->assertSame($routeResource, $route->getController());
-    }
-
-    public function testResourceWithException(): void
-    {
-        $routeName           = Fixtures\TestRoute::getTestRouteName();
-        $routePath           = Fixtures\TestRoute::getTestRoutePath();
-
-        $collector = new RouteCollection();
-
-        //$this->expectException(InvalidControllerException::class);
-        //$this->getExpectedExceptionMessage(
-        //    'Resource handler type should be a class string or class object, but not a callable or array'
-        //);
-
-        $collector->resource(
-            $routeName,
-            $routePath,
-            'Flight\Routing\Tests\Fixtures\BlankHandler'
-        );
+        $this->assertEquals([
+            'name' => 'about-us',
+            'path' => '/about-us',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+            'handler' => Fixtures\BlankRequestHandler::class,
+            'schemes' => [],
+            'defaults' => [],
+            'patterns' => [],
+            'arguments' => [],
+        ], $routes[0]);
     }
 
     /**
      * @dataProvider provideCollectionData
-     *
-     * @param bool $cached
      */
     public function testCollectionGroupingAndWithCache(bool $cached): void
     {
-        $router = $this->getRouter();
-        $router->setOptions(['cache_dir' => __DIR__ . '/Fixtures/routes', 'debug' => $cached]);
+        $router = new Router(null, $cached ? self::$cacheFile : '');
 
-        $routes = [];
-
-        if (!$router->isFrozen()) {
-            // Master collection
-            $mergedCollection = new RouteCollection();
-
+        $router->setCollection(static function (RouteCollection $mergedCollection): void {
             // Collection without names
             $demoCollection = new RouteCollection();
             $demoCollection->add(new Route('/admin/post/', Router::METHOD_POST));
@@ -656,15 +574,16 @@ class RouteCollectionTest extends BaseTestCase
             $demoCollection->add(new Route('/blog/search', Router::METHOD_GET));
             $demoCollection->add(new Route('/login', Router::METHOD_POST));
             $demoCollection->add(new Route('/logout', Router::METHOD_POST));
-            $demoCollection->withPrefix('/{_locale}');
-            $demoCollection->add($routes[] = new Route('/', Router::METHOD_GET));
-            $demoCollection->withMethod(Router::METHOD_CONNECT);
-            $mergedCollection->group('demo.', $demoCollection)->withDefault('_locale', 'en')->withAssert('_locale', 'en|fr');
+            $demoCollection->add(new Route('/', Router::METHOD_GET));
+            $demoCollection->prefix('/{_locale}');
+            $demoCollection->method(Router::METHOD_CONNECT);
+            $mergedCollection->group('demo.', $demoCollection)->default('_locale', 'en')->assert('_locale', 'en|fr');
 
             $chunkedCollection = new RouteCollection();
-            $chunkedCollection->withDomain('http://localhost');
-            $chunkedCollection->withScheme('https', 'http');
-            $chunkedCollection->withMiddleware(Fixtures\BlankMiddleware::class);
+            $chunkedCollection->prototype()
+                ->domain('http://localhost')
+                ->scheme('https', 'http')
+            ->end();
 
             for ($i = 0; $i < 100; ++$i) {
                 $h = \substr(\md5((string) $i), 0, 6);
@@ -679,53 +598,206 @@ class RouteCollectionTest extends BaseTestCase
             $groupOptimisedCollection->addRoute('/{param}', [Router::METHOD_GET])->bind('a_wildcard');
             $groupOptimisedCollection->addRoute('/a/44/', [Router::METHOD_GET])->bind('a_fourth');
             $groupOptimisedCollection->addRoute('/a/55/', [Router::METHOD_GET])->bind('a_fifth');
-            $routes[] = $groupOptimisedCollection->addRoute('/nested/{param}', [Router::METHOD_GET])->bind('nested_wildcard');
+            $groupOptimisedCollection->addRoute('/nested/{param}', [Router::METHOD_GET])->bind('nested_wildcard');
             $groupOptimisedCollection->addRoute('/nested/group/a/', [Router::METHOD_GET])->bind('nested_a');
             $groupOptimisedCollection->addRoute('/nested/group/b/', [Router::METHOD_GET])->bind('nested_b');
             $groupOptimisedCollection->addRoute('/nested/group/c/', [Router::METHOD_GET])->bind('nested_c');
-            $routes[] = $groupOptimisedCollection->addRoute('a_sixth', [Router::METHOD_GET], '/a/66/', Fixtures\BlankController::class);
+            $groupOptimisedCollection->addRoute('a_sixth', [Router::METHOD_GET], '/a/66/', Fixtures\BlankController::class);
 
             $groupOptimisedCollection->addRoute('/slashed/group/', [Router::METHOD_GET])->bind('slashed_a');
             $groupOptimisedCollection->addRoute('/slashed/group/b/', [Router::METHOD_GET])->bind('slashed_b');
-            $routes[] = $groupOptimisedCollection->addRoute('/slashed/group/c/', [Router::METHOD_GET])->bind('slashed_c');
+            $groupOptimisedCollection->addRoute('/slashed/group/c/', [Router::METHOD_GET])->bind('slashed_c');
 
             $mergedCollection->group('', $groupOptimisedCollection);
+        });
 
-            $merged = $mergedCollection->getIterator();
-            $router->addRoute(...$merged);
+        $this->assertCount(128, $routes = $router->getMatcher()->getRoutes());
+        \uasort($routes, static function (FastRoute $a, FastRoute $b): int {
+            return \strcmp($a->get('name'), $b->get('name'));
+        });
 
-            $this->assertCount(128, $router->getCollection());
-            $this->assertSame((array) $merged, (array) $router->getCollection()->getIterator());
+        $this->assertEquals([
+            0 => 'GET_a_sixth',
+            1 => 'a_fifth',
+            2 => 'a_first',
+            3 => 'a_fourth',
+            4 => 'a_second',
+            5 => 'a_third',
+            6 => 'a_wildcard',
+            7 => 'chuck__0',
+            8 => 'chuck__1',
+            9 => 'chuck__10',
+            10 => 'chuck__11',
+            11 => 'chuck__12',
+            12 => 'chuck__13',
+            13 => 'chuck__14',
+            14 => 'chuck__15',
+            15 => 'chuck__16',
+            16 => 'chuck__17',
+            17 => 'chuck__18',
+            18 => 'chuck__19',
+            19 => 'chuck__2',
+            20 => 'chuck__20',
+            21 => 'chuck__21',
+            22 => 'chuck__22',
+            23 => 'chuck__23',
+            24 => 'chuck__24',
+            25 => 'chuck__25',
+            26 => 'chuck__26',
+            27 => 'chuck__27',
+            28 => 'chuck__28',
+            29 => 'chuck__29',
+            30 => 'chuck__3',
+            31 => 'chuck__30',
+            32 => 'chuck__31',
+            33 => 'chuck__32',
+            34 => 'chuck__33',
+            35 => 'chuck__34',
+            36 => 'chuck__35',
+            37 => 'chuck__36',
+            38 => 'chuck__37',
+            39 => 'chuck__38',
+            40 => 'chuck__39',
+            41 => 'chuck__4',
+            42 => 'chuck__40',
+            43 => 'chuck__41',
+            44 => 'chuck__42',
+            45 => 'chuck__43',
+            46 => 'chuck__44',
+            47 => 'chuck__45',
+            48 => 'chuck__46',
+            49 => 'chuck__47',
+            50 => 'chuck__48',
+            51 => 'chuck__49',
+            52 => 'chuck__5',
+            53 => 'chuck__50',
+            54 => 'chuck__51',
+            55 => 'chuck__52',
+            56 => 'chuck__53',
+            57 => 'chuck__54',
+            58 => 'chuck__55',
+            59 => 'chuck__56',
+            60 => 'chuck__57',
+            61 => 'chuck__58',
+            62 => 'chuck__59',
+            63 => 'chuck__6',
+            64 => 'chuck__60',
+            65 => 'chuck__61',
+            66 => 'chuck__62',
+            67 => 'chuck__63',
+            68 => 'chuck__64',
+            69 => 'chuck__65',
+            70 => 'chuck__66',
+            71 => 'chuck__67',
+            72 => 'chuck__68',
+            73 => 'chuck__69',
+            74 => 'chuck__7',
+            75 => 'chuck__70',
+            76 => 'chuck__71',
+            77 => 'chuck__72',
+            78 => 'chuck__73',
+            79 => 'chuck__74',
+            80 => 'chuck__75',
+            81 => 'chuck__76',
+            82 => 'chuck__77',
+            83 => 'chuck__78',
+            84 => 'chuck__79',
+            85 => 'chuck__8',
+            86 => 'chuck__80',
+            87 => 'chuck__81',
+            88 => 'chuck__82',
+            89 => 'chuck__83',
+            90 => 'chuck__84',
+            91 => 'chuck__85',
+            92 => 'chuck__86',
+            93 => 'chuck__87',
+            94 => 'chuck__88',
+            95 => 'chuck__89',
+            96 => 'chuck__9',
+            97 => 'chuck__90',
+            98 => 'chuck__91',
+            99 => 'chuck__92',
+            100 => 'chuck__93',
+            101 => 'chuck__94',
+            102 => 'chuck__95',
+            103 => 'chuck__96',
+            104 => 'chuck__97',
+            105 => 'chuck__98',
+            106 => 'chuck__99',
+            107 => 'demo.DELETE_CONNECT_locale_admin_post_id_delete',
+            108 => 'demo.GET_CONNECT_locale_',
+            109 => 'demo.GET_CONNECT_locale_blog_',
+            110 => 'demo.GET_CONNECT_locale_blog_comments_id_new',
+            111 => 'demo.GET_CONNECT_locale_blog_page_page',
+            112 => 'demo.GET_CONNECT_locale_blog_posts_page',
+            113 => 'demo.GET_CONNECT_locale_blog_rss.xml',
+            114 => 'demo.GET_CONNECT_locale_blog_search',
+            115 => 'demo.PATCH_CONNECT_locale_admin_post_id_edit',
+            116 => 'demo.POST_CONNECT_locale_admin_post_',
+            117 => 'demo.POST_CONNECT_locale_admin_post_id',
+            118 => 'demo.POST_CONNECT_locale_admin_post_new',
+            119 => 'demo.POST_CONNECT_locale_login',
+            120 => 'demo.POST_CONNECT_locale_logout',
+            121 => 'nested_a',
+            122 => 'nested_b',
+            123 => 'nested_c',
+            124 => 'nested_wildcard',
+            125 => 'slashed_a',
+            126 => 'slashed_b',
+            127 => 'slashed_c',
+        ], Fixtures\Helper::routesToNames($routes));
 
-            foreach ($routes as $testRoute) {
-                if (str_starts_with($path = $testRoute->getPath(), '{_locale}')) {
-                    $path = \str_replace('{_locale}', 'en', $path);
-                }
+        $route = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/fr/blog'));
 
-                $route = $router->match(new ServerRequest(\current(\array_keys($testRoute->getMethods())), $path));
+        $this->assertEquals([
+            'name' => 'demo.GET_CONNECT_locale_blog_',
+            'path' => '/{_locale}/blog/',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_CONNECT],
+            'handler' => null,
+            'schemes' => [],
+            'defaults' => ['_locale' => 'en'],
+            'arguments' => ['_locale' => 'fr'],
+            'patterns' => ['_locale' => 'en|fr'],
+        ], $route->getData());
 
-                $this->assertInstanceOf(Route::class, $route);
-            }
-
-            $this->assertInstanceOf(RouteMatcherInterface::class, $router->getMatcher());
-        }
-
-        $cacheFile = __DIR__ . '/Fixtures/routes/compiled_routes.php';
-
-        if (\file_exists($cacheFile)) {
-            if (!$cached) {
-                @\unlink($cacheFile);
-            }
-
-            $this->assertInstanceOf(MatcherDumperInterface::class, $router->getMatcher());
-        }
+        $this->assertEquals($cached, $router->isCached());
+        $this->assertEquals('./hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));
+        $this->assertInstanceOf(RouteCompiler::class, $router->getMatcher()->getCompiler());
     }
 
     /**
-     * @return string[]
+     * @return array<int,array<int,bool>>
      */
     public function provideCollectionData(): array
     {
-        return [[false], [true], [true], [false]];
+        return [[false], [true], [true]];
+    }
+
+    /**
+     * @return array>int,array<int,mixed>>
+     */
+    public function populationProvider(): array
+    {
+        // [collection1, collection2, expect]
+        return [
+            [true, true, [null, 'GET_foo', 'GET_foo']],
+            [false, true, [null, null, 'GET_foo']],
+            [true, false, [null, 'GET_foo', 'GET_foo_1']],
+            [false, false, [null, null, null]],
+        ];
+    }
+
+    /**
+     * Return Collections Routes as iterator.
+     *
+     * @return \ArrayIterator<FastRoute>
+     */
+    private function getIterable(RouteCollection $collection): \ArrayIterator
+    {
+        $routes = $collection->getRoutes();
+        $this->assertTrue($collection->isLocked());
+
+        return new \ArrayIterator($routes);
     }
 }

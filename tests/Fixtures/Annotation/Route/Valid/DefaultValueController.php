@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,7 +24,7 @@ class DefaultValueController
     /**
      * @Route("/{default}/path", methods={"GET", "POST"}, name="action")
      */
-    public function action($default = 'value')
+    public function action($default = 'value'): void
     {
     }
 
@@ -36,16 +36,16 @@ class DefaultValueController
      * )
      * @Route(
      *     "/cool/{name=<Symfony>}",
-     *     patterns={"name": "\w+"},
+     *     where={"name": "\w+"},
      *     methods={"GET", "POST"},
      *     name="hello_with_default"
      * )
      */
-    public function hello(string $name = 'World')
+    public function hello(string $name = 'World'): void
     {
     }
 
-    private function notAccessed()
+    private function notAccessed(): void
     {
     }
 }

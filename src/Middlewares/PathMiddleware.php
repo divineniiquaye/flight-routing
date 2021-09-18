@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,23 +17,36 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Route;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
-class PathMiddleware implements MiddlewareInterface
+/**
+ * Resolved route path against request uri paths and match a valid response status
+ * code, including resolving sub-directory paths.
+ *
+ * The response status code is 302 if the permanent parameter is false (default),
+ * and 301 if the redirection is permanent on redirection. If keep request method
+ * parameter is true, response code 307, and if permanent is true status code is 308.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
+final class PathMiddleware implements MiddlewareInterface
 {
-    /** @var bool */
-    private $permanent;
+    public const SUB_FOLDER = __CLASS__ . '::subFolder';
+
+    private bool $permanent;
+
+    private bool $keepRequestMethod;
 
     /**
-     * @param bool $permanent
+     * @param bool $permanent         Whether the redirection is permanent
+     * @param bool $keepRequestMethod Whether redirect action should keep HTTP request method
      */
-    public function __construct(bool $permanent = true)
+    public function __construct(bool $permanent = false, bool $keepRequestMethod = false)
     {
         $this->permanent = $permanent;
+        $this->keepRequestMethod = $keepRequestMethod;
     }
 
     /**
@@ -41,66 +54,48 @@ class PathMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $route    = $request->getAttribute(Route::class);
+        $requestPath = ($requestUri = self::resolveUri($request))->getPath(); // Determine right request uri path.
+
         $response = $handler->handle($request);
+        $route = $request->getAttribute(Route::class);
 
         if ($route instanceof Route) {
-            $path = $this->comparePath($route->get('path'), $request->getUri()->getPath());
+            // Determine the response code should keep HTTP request method ...
+            $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
+
+            $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->get('path')[-1]] ?? null;
+            $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
+
+            if ($routeEndTail === $requestEndTail) {
+                return $response;
+            }
+
+            // Resolve request tail end to avoid conflicts and infinite redirection looping ...
+            if (null === $requestEndTail && null !== $routeEndTail) {
+                $requestPath .= $routeEndTail;
+            } elseif (null === $routeEndTail && null !== $requestEndTail) {
+                $requestPath = \substr($requestPath, 0, -1);
+            }
 
             // Allow Redirection if exists and avoid static request.
-            if (null !== $path) {
-                return $response->withAddedHeader('Location', $path)
-                    ->withStatus($this->determineResponseCode($request));
-            }
+            return $response->withHeader('Location', (string) $requestUri->withPath($requestPath))->withStatus($statusCode);
         }
 
         return $response;
     }
 
-    /**
-     * Check if the user is on the right uri which was matched.
-     * If matched returns null, else returns the path the user should be in.
-     *
-     * @param string $routeUri
-     * @param string $requestUri
-     *
-     * @return null|string
-     */
-    private function comparePath(string $routeUri, string $requestUri): ?string
+    public static function resolveUri(ServerRequestInterface &$request): UriInterface
     {
-        // Resolve Request Uri.
-        $newRequestUri = '/' === $requestUri ? '/' : \rtrim($requestUri, '/');
-        $newRouteUri   = '/' === $routeUri ? $routeUri : \rtrim($routeUri, '/');
+        $requestUri = $request->getUri();
+        $pathInfo = $request->getServerParams()['PATH_INFO'] ?? '';
 
-        $paths = [
-            'path'      => \substr($requestUri, \strlen($newRequestUri)),
-            'route'     => \substr($routeUri, \strlen($newRouteUri)),
-        ];
+        // Checks if the project is in a sub-directory, expect PATH_INFO in $_SERVER.
+        if ('' !== $pathInfo && $pathInfo !== $requestUri->getPath()) {
+            $request = $request->withAttribute(self::SUB_FOLDER, \substr($requestUri->getPath(), 0, -(\strlen($pathInfo))));
 
-        if (!empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri . $paths['route'];
+            return $requestUri->withPath($pathInfo);
         }
 
-        if (empty($paths['route']) && $paths['route'] !== $paths['path']) {
-            return $newRequestUri;
-        }
-
-        return null;
-    }
-
-    /**
-     * Determine the response code according with the method and the permanent config.
-     *
-     * @param ServerRequestInterface $request
-     *
-     * @return int
-     */
-    private function determineResponseCode(ServerRequestInterface $request): int
-    {
-        if (\in_array($request->getMethod(), ['GET', 'HEAD', 'CONNECT', 'TRACE', 'OPTIONS'], true)) {
-            return $this->permanent ? 301 : 302;
-        }
-
-        return $this->permanent ? 308 : 307;
+        return $requestUri;
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -15,10 +15,18 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Exceptions;
+namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Invalid;
 
-use Flight\Routing\Interfaces\ExceptionInterface;
+use Flight\Routing\Annotation\Route;
+use Flight\Routing\Tests\Fixtures\Annotation\Route\Valid\MultipleMethodRouteController;
 
-class DuplicateRouteException extends \LogicException implements ExceptionInterface
+/**
+ * @Route(
+ *   path="/class-group-resource",
+ *   methods={"GET"},
+ *   resource="action"
+ * )
+ */
+class ClassGroupWithResource extends MultipleMethodRouteController
 {
 }

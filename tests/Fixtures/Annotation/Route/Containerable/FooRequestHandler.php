@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,8 +24,7 @@ use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
  * @Route(
  *   name="foo",
  *   path="/foo",
- *   methods={"GET"},
- *   middlewares={"blank"}
+ *   methods={"GET"}
  * )
  */
 class FooRequestHandler extends BlankRequestHandler

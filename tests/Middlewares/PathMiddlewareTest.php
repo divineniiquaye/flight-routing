@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -18,73 +18,159 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\PathMiddleware;
-use Flight\Routing\Route;
+use Flight\Routing\Routes\Route;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
+use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 use Nyholm\Psr7\ServerRequest;
-use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * PathMiddlewareTest
+ * PathMiddlewareTest.
  */
 class PathMiddlewareTest extends BaseTestCase
 {
-    public function testProcessStatus(): void
+    public function testMiddleware(): void
     {
-        $pipeline = $this->getRouter();
-
-        $pipeline->addMiddleware(new PathMiddleware());
-        $pipeline->addRoute(new Route('/foo', Router::METHOD_GET, [$this, 'handlePath']));
-
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, '/foo'));
+        $middleware = new PathMiddleware();
+        $response = $middleware->process(new ServerRequest(Router::METHOD_GET, '/foo'), new BlankRequestHandler());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('/foo', $response->getHeaderLine('Expected'));
+        $this->assertFalse($response->hasHeader('Location'));
+    }
+
+    public function testProcessStatus(): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware());
+        $pipeline->addRoute(new Route('/foo', Router::METHOD_GET, [$this, 'handlePath']));
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, '/foo'), $this->getRequestHandler());
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertFalse($response->hasHeader('Location'));
+    }
+
+    public function testProcessOnSubFolder(): void
+    {
+        $subFolder = null;
+        $handler = function (ServerRequestInterface $request, ResponseFactoryInterface $factory) use (&$subFolder): ResponseInterface {
+            $subFolder = $request->getAttribute(PathMiddleware::SUB_FOLDER);
+
+            return $factory->createResponse();
+        };
+
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware());
+        $pipeline->addRoute(new Route('/foo', Route::DEFAULT_METHODS, $handler));
+
+        $request = new ServerRequest(Router::METHOD_GET, '/build/foo/', [], null, '1.1', ['PATH_INFO' => '/foo/']);
+        $response = $pipeline->process($request, $this->getRequestHandler());
+
+        $this->assertEquals('/build', $subFolder);
+        $this->assertEquals(302, $response->getStatusCode());
+        $this->assertEquals('/foo', $response->getHeaderLine('Location'));
     }
 
     /**
      * @dataProvider pathCombinationsData
-     *
-     * @param string $uriPath
-     * @param string $expectedPath
-     * @param bool   $expectsStatus
      */
-    public function testProcess(string $uriPath, string $expectedPath, bool $expectsStatus): void
+    public function testProcessWithPermanent(string $uriPath, string $requestPath, string $expectedPath, int $expectsStatus): void
     {
-        $pipeline   = $this->getRouter();
-
-        $pipeline->addMiddleware(new PathMiddleware($expectsStatus));
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware(true));
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $expectedPath));
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals($expectsStatus ? 301 : 302, $response->getStatusCode());
-        $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
 
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, $expectedPath));
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals($expectsStatus ? 308 : 307, $response->getStatusCode());
-        $this->assertEquals($expectedPath, $response->getHeaderLine('Expected'));
-    }
-
-    public function handlePath(RequestInterface $request, ResponseInterface $response): ResponseInterface
-    {
-        return $response->withHeader('Expected', $request->getUri()->getPath());
+        $this->assertEquals($expectsStatus, $response->getStatusCode());
+        $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
     }
 
     /**
-     * @return string[]
+     * @dataProvider pathCombinationsData
+     */
+    public function testProcessWithoutPermanent(string $uriPath, string $requestPath, string $expectedPath, int $expectsStatus): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware());
+        $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+
+        $this->assertEquals(301 === $expectsStatus ? 302 : $expectsStatus, $response->getStatusCode());
+        $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * @dataProvider pathCombinationsData
+     */
+    public function testProcessWithPermanentAndKeepMethod(string $uriPath, string $requestPath, string $expectedPath, int $expectsStatus): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware(true, true));
+        $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(301 === $expectsStatus ? 308 : $expectsStatus, $response->getStatusCode());
+        $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * @dataProvider pathCombinationsData
+     */
+    public function testProcessWithoutPermanentAndKeepMethod(string $uriPath, string $requestPath, string $expectedPath, int $expectsStatus): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware(false, false));
+        $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(301 === $expectsStatus ? 302 : $expectsStatus, $response->getStatusCode());
+        $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * @dataProvider pathCombinationsData
+     */
+    public function testProcessWithoutPermenantButKeepMethod(string $uriPath, string $requestPath, string $expectedPath, int $expectsStatus): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new PathMiddleware(false, true));
+        $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(301 === $expectsStatus ? 307 : $expectsStatus, $response->getStatusCode());
+        $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
+    }
+
+    public function handlePath(ResponseFactoryInterface $responseFactory): ResponseInterface
+    {
+        return $responseFactory->createResponse();
+    }
+
+    /**
+     * @return array<int,array<string
      */
     public function pathCombinationsData(): array
     {
         return [
-            // name                      => [$uriPath, $expectedPath,   $expectsStatus ]
-            'root-prefix-tail'           => ['/foo',   '/foo/',        true],
-            'prefix-surround-tail'       => ['/foo/',  '/foo',         true],
-            'root-prefix-tail'           => ['/foo',   '/foo/',        false],
-            'prefix-surround-tail'       => ['/foo/',  '/foo',         false],
+            // name => [$uriPath, $requestPath, $expectedPath, $permanent ]
+            'root-without-prefix-tail_1' => ['/foo', '/foo', '', 200],
+            'root-without-prefix-tail_2' => ['/foo', '/foo', '', 200],
+            'root-without-prefix-tail_3' => ['/foo', '/foo/', '/foo', 301],
+            'root-without-prefix-tail_4' => ['/foo', '/foo/', '/foo', 301],
+            'root-with-prefix-tail_1' => ['/foo/', '/foo/', '', 200],
+            'root-with-prefix-tail_2' => ['/foo/', '/foo/', '', 200],
+            'root-with-prefix-tail_3' => ['/foo/', '/foo', '/foo/', 301],
+            'root-with-prefix-tail_4' => ['/foo/', '/foo', '/foo/', 301],
         ];
     }
 }

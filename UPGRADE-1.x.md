@@ -77,6 +77,9 @@
 
 - Renamed `Flight\Routing\RouteCollector` to `Flight\Routing\RouteCollection` class (BR Changes)
 - Removed `Flight\Routing\RouteFactory` class (BR Changes)
+- Added `Flight\Routing\RouteMatcher` class
+- Replaced **handle** to **process** in the `Flight\Routing\Router` class
+- Added a default `Flight\Routing\RouteHandler` class for dispatching matched route
 - Changed how routes are handled and dispatched
 
     _Before_
@@ -101,20 +104,20 @@
     _After_
 
     ```php
-    use Flight\Routing\{RouteCollection, Route, Router};
+    use Flight\Routing\{Handlers\RouteHandler, RouteCollection, Router};
     use Biurad\Http\Factory\GuzzleHttpPsr7Factory as Psr17Factory;
     use Laminas\HttpHandlerRunner\Emitter\SapiStreamEmitter;
 
-    $collector = new RouteCollection();
-    $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+    $router = new Router();
+    $router->setCollection(static function (RouteCollection $collector): void {
+        $collector->get('/phpinfo', 'phpinfo'); // Will create a phpinfo route.
+    });
 
-    $factory = new Psr17Factory();
-    $router = new Router($factory, $factory);
-
-    $router->addRoute(...$collector->getRoutes());
+    $psr17Factory = new Psr17Factory();
+    $response = $router->process($psr17Factory->fromGlobalRequest(), new RouteHandler($psr17Factory));
 
     // Start the routing
-    (new SapiStreamEmitter())->emit($router->handle($factory::fromGlobalRequest()));
+    (new SapiStreamEmitter())->emit($response);
     ```
 
 -   Changed how route grouping is handled
@@ -146,9 +149,15 @@
 
     // or collection grouping
     $group2 = new RouteCollection();
-    $group2->addRoute('/phpinfo', 'GET|HEAD', 'phpinfo');
+    $group2->addRoute('/phpinfo', ['GET', 'HEAD'], 'phpinfo');
 
     $collection->group('group_name', $group1);
     $collection->group('group_name', $group2);
+
+    //or dsl
+    $collection->group('group_name')
+        ->addRoute('/phpinfo', ['GET', 'HEAD'], 'phpinfo')->end()
+        // ... More can be added including nested grouping
+    ->end();
     ```
 

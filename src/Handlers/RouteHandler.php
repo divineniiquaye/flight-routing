@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,134 +17,162 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Exceptions\{InvalidControllerException, RouteNotFoundException};
+use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Provides ability to invoke any handler and write it's response into ResponseInterface.
+ * Default routing request handler.
+ *
+ * if route is found in request attribute, dispatch the route handler's
+ * response to the browser and provides ability to detect right response content-type.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteHandler implements RequestHandlerInterface
+class RouteHandler implements RequestHandlerInterface
 {
-    public const CONTENT_TYPE = 'Content-Type';
+    /**
+     * This allows a response to be served when no route is found.
+     */
+    public const OVERRIDE_HTTP_RESPONSE = ResponseInterface::class;
+
+    protected const CONTENT_TYPE = 'Content-Type';
+
+    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
+
+    protected ResponseFactoryInterface $responseFactory;
 
     /** @var callable */
-    private $callable;
+    protected $handlerResolver;
 
-    /** @var ResponseFactoryInterface */
-    private $responseFactory;
-
-    /**
-     * @param callable                 $callable
-     * @param ResponseFactoryInterface $responseFactory
-     */
-    public function __construct(callable $callable, ResponseFactoryInterface $responseFactory)
+    public function __construct(ResponseFactoryInterface $responseFactory, callable $handlerResolver = null)
     {
-        $this->callable        = $callable;
         $this->responseFactory = $responseFactory;
+        $this->handlerResolver = $handlerResolver ?? new RouteInvoker();
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws \Throwable
+     * @throws RouteNotFoundException|InvalidControllerException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        static $result;
+        $route = $request->getAttribute(Route::class);
 
+        if (!$route instanceof Route) {
+            if (true === $notFoundResponse = $request->getAttribute(static::OVERRIDE_HTTP_RESPONSE)) {
+                return $this->responseFactory->createResponse();
+            }
+
+            if ($notFoundResponse instanceof ResponseInterface) {
+                return $notFoundResponse;
+            }
+
+            throw new RouteNotFoundException(\sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $request->getUri()->getPath()), 404);
+        }
+
+        // Resolve route handler arguments ...
+        if (!$response = $this->resolveRoute($route, $request)) {
+            throw new InvalidControllerException('The route handler\'s content is not a valid PSR7 response body stream.');
+        }
+
+        if (!$response instanceof ResponseInterface) {
+            ($result = $this->responseFactory->createResponse())->getBody()->write($response);
+            $response = $result;
+        }
+
+        return $response->hasHeader(self::CONTENT_TYPE) ? $response : $this->negotiateContentType($response);
+    }
+
+    /**
+     * @return ResponseInterface|string|false
+     */
+    protected function resolveRoute(Route $route, ServerRequestInterface $request)
+    {
         \ob_start(); // Start buffering response output
 
-        $response = $this->responseFactory->createResponse()
-            ->withHeader(self::CONTENT_TYPE, 'text/html; charset=utf-8');
-
         try {
-            $result = ($this->callable)($request, $response);
+            // The route handler to resolve ...
+            $response = $this->resolveHandler($request, $route);
+
+            if ($response instanceof ResponseInterface || \is_string($response)) {
+                return $response;
+            }
+
+            if (\is_array($response) || \is_iterable($response) || $response instanceof \JsonSerializable) {
+                $response = \json_encode($response, \PHP_VERSION_ID >= 70300 ? \JSON_THROW_ON_ERROR : 0);
+            }
         } catch (\Throwable $e) {
             \ob_get_clean();
 
             throw $e;
+        } finally {
+            while (\ob_get_level() > 1) {
+                $response = \ob_get_clean(); // If more than one output buffers is set ...
+            }
         }
 
-        return $this->wrapResponse($response, $result, (string) \ob_get_clean());
+        return $response ?? \ob_get_clean();
     }
 
     /**
-     * Convert endpoint result into valid PSR 7 response.
-     * content-type fallback is "text/html; charset=utf-8".
-     *
-     * @param ResponseInterface $response initial pipeline response
-     * @param mixed             $result   generated endpoint output
-     * @param string            $output   buffer output
-     *
-     * @return ResponseInterface
+     * A HTTP response Content-Type header negotiator for html, json, svg, xml, and plain-text.
      */
-    private function wrapResponse(ResponseInterface $response, $result, string $output): ResponseInterface
+    protected function negotiateContentType(ResponseInterface $response): ResponseInterface
     {
-        // Always return the response...
-        if ($result instanceof ResponseInterface) {
-            return $result;
+        $contents = (string) $response->getBody();
+        $contentType = 'text/html; charset=utf-8'; // Default content type.
+
+        if (1 === $matched = \preg_match(static::CONTENT_REGEX, $contents, $matches, \PREG_UNMATCHED_AS_NULL)) {
+            if (null === $matches[2]) {
+                $contentType = 'application/json';
+            } elseif ('xml' === $matches[1]) {
+                $contentType = 'svg' === $matches[2] ? 'image/svg+xml' : \sprintf('application/%s; charset=utf-8', 'rss' === $matches[2] ? 'rss+xml' : 'xml');
+            }
+        } elseif (0 === $matched) {
+            $contentType = 'text/plain; charset=utf-8';
         }
 
-        if (\is_array($result) || ($result instanceof \JsonSerializable || $result instanceof \stdClass)) {
-            $result = \json_encode($result);
-        }
-
-        //Always detect response anf glue buffered output
-        return $this->detectResponse($response, $output ?: $result);
+        return $response->withHeader(self::CONTENT_TYPE, $contentType);
     }
 
     /**
-     * @param ResponseInterface $response
+     * @internal
      *
-     * @return ResponseInterface
+     * @return mixed
      */
-    private function detectResponse(ResponseInterface $response, string $contents): ResponseInterface
+    private function resolveHandler(ServerRequestInterface $request, Route $route)
     {
-        $response->getBody()->write($contents);
+        $handler = $route->get('handler');
 
-        if ($this->isJson($contents)) {
-            return $response->withHeader(self::CONTENT_TYPE, 'application/json');
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler->handle($request);
         }
 
-        if ($this->isXml($contents)) {
-            return $response->withHeader(self::CONTENT_TYPE, 'application/xml; charset=utf-8');
+        if (!$handler instanceof ResponseInterface) {
+            $parameters = $route->get('arguments');
+
+            foreach ([$request, $this->responseFactory] as $psr7) {
+                $parameters[\get_class($psr7)] = $psr7;
+
+                foreach ((@\class_implements($psr7) ?: []) as $psr7Interface) {
+                    $parameters[$psr7Interface] = $psr7;
+                }
+            }
+
+            if ($handler instanceof ResourceHandler) {
+                $handler = $handler($request->getMethod());
+            }
+
+            $handler = ($this->handlerResolver)($handler, $parameters);
+
+            if ($handler instanceof RequestHandlerInterface) {
+                return $handler->handle($request);
+            }
         }
 
-        // Set content-type to plain text if string doesn't contain </html> tag.
-        if (0 === \preg_match('/(.*)(<\/html[^>]*>)/i', $contents)) {
-            return $response->withHeader(self::CONTENT_TYPE, 'text/plain; charset=utf-8');
-        }
-
-        return $response;
-    }
-
-    /**
-     * @param string $contents
-     *
-     * @return bool
-     */
-    private function isJson(string $contents): bool
-    {
-        \json_decode($contents, true);
-
-        return \JSON_ERROR_NONE === \json_last_error();
-    }
-
-    /**
-     * @param string $contents
-     *
-     * @return bool
-     */
-    private function isXml(string $contents): bool
-    {
-        $previousValue = \libxml_use_internal_errors(true);
-        $isXml         = \simplexml_load_string($contents);
-        \libxml_use_internal_errors($previousValue);
-
-        return false !== $isXml && false !== \strpos($contents, '<?xml');
+        return true === $handler ? null : $handler;
     }
 }

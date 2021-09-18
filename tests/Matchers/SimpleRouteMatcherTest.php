@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,22 +17,23 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Matchers;
 
+use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Route;
-use Flight\Routing\Matchers\SimpleRouteMatcher;
+use Flight\Routing\Routes\Route;
+use Flight\Routing\RouteMatcher;
 use Flight\Routing\RouteCollection;
-use Generator;
 use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 /**
- * SimpleRouteMatcherTest
+ * SimpleRouteMatcherTest.
  */
 class SimpleRouteMatcherTest extends TestCase
 {
     public function testConstructor(): void
     {
-        $factory = new SimpleRouteMatcher(new RouteCollection());
+        $factory = new RouteMatcher(new RouteCollection());
 
         $this->assertInstanceOf(RouteMatcherInterface::class, $factory);
     }
@@ -40,32 +41,29 @@ class SimpleRouteMatcherTest extends TestCase
     /**
      * @dataProvider routeCompileData
      *
-     * @param string $path
-     * @param array<string,null|int|string> $variables
+     * @param array<string,int|string|null> $variables
      */
     public function testCompileRoute(string $path, array $variables): void
     {
         $collection = new RouteCollection();
         $collection->add($route = new Route('http://[{lang:[a-z]{2}}.]example.com/{foo}', ['FOO', 'BAR']));
 
-        $factory = new SimpleRouteMatcher($collection);
-        $route   = $factory->match(new ServerRequest(array_keys($route->getMethods())[0], $path));
+        $factory = new RouteMatcher($collection);
+        $route = $factory->matchRequest(new ServerRequest($route->getMethods()[0], $path));
 
         $this->assertInstanceOf(Route::class, $route);
-        $this->assertEquals($variables, $route->getDefaults()['_arguments'] ?? []);
+        $this->assertEquals($variables, $route->getArguments());
 
         $factory = $factory->getCompiler()->compile($route);
 
-        $this->assertEquals('/^\/(?P<foo>[^\/]++)$/sDu', $factory->getRegex());
-        $this->assertEquals(['/^(?:(?P<lang>[a-z]{2})\.)?example\.com$/sDi'], $factory->getHostsRegex());
-        $this->assertEquals(['foo' => null, 'lang' => null], $factory->getVariables());
+        $this->assertEquals('\/(?P<foo>[^\/]+)', $factory[0]);
+        $this->assertEquals('(?:(?P<lang>[a-z]{2})\.)?example\.com', $factory[1]);
+        $this->assertEquals(['foo' => null, 'lang' => null], $factory[2]);
     }
 
     /**
      * @dataProvider provideCompileData
      *
-     * @param string               $regex
-     * @param string               $match
      * @param array<string,string> $tokens
      */
     public function testGenerateUri(string $regex, string $match, array $tokens): void
@@ -73,9 +71,18 @@ class SimpleRouteMatcherTest extends TestCase
         $collection = new RouteCollection();
         $collection->addRoute($regex, ['FOO', 'BAR'])->bind('test');
 
-        $factory = new SimpleRouteMatcher($collection);
+        $factory = new RouteMatcher($collection);
 
-        $this->assertEquals($match, $factory->generateUri('test', $tokens));
+        $this->assertEquals($match, (string) $factory->generateUri('test', $tokens));
+    }
+
+    public function testGenerateUriNotFound(): void
+    {
+        $this->expectExceptionMessage('Unable to generate a URL for the named route "something" as such route does not exist.');
+        $this->expectException(UrlGenerationException::class);
+
+        $factory = new RouteMatcher(new RouteCollection());
+        $factory->generateUri('something');
     }
 
     public function testGenerateUriWithDefaults(): void
@@ -83,9 +90,42 @@ class SimpleRouteMatcherTest extends TestCase
         $collection = new RouteCollection();
         $collection->addRoute('/{foo}', ['FOO', 'BAR'])->bind('test')->default('foo', 'fifty');
 
-        $factory = new SimpleRouteMatcher($collection);
+        $factory = new RouteMatcher($collection);
 
         $this->assertEquals('./fifty', $factory->generateUri('test', []));
+    }
+
+    public function testRoutesData(): void
+    {
+        $collection = new RouteCollection();
+        $routes = [new Route('/foo'), new Route('/bar'), new Route('baz')];
+        $collection->add(...$routes);
+
+        $matcher = new RouteMatcher($collection);
+        $data = $matcher->getRoutes();
+
+        foreach ($data as $route) {
+            $this->assertInstanceOf(Route::class, $route);
+        }
+
+        $this->assertCount(3, $data);
+    }
+
+    public function testSerializedRoutesData(): void
+    {
+        $collection = new RouteCollection();
+        $routes = [new Route('/foo'), new Route('/bar'), new Route('baz')];
+        $collection->add(...$routes);
+
+        $matcher = \serialize(new RouteMatcher($collection));
+        $data = ($matcher = \unserialize($matcher))->getRoutes();
+
+        foreach ($data as $route) {
+            $this->assertInstanceOf(Route::class, $route);
+        }
+
+        $this->assertCount(3, $data);
+        $this->assertInstanceOf(RouteCompilerInterface::class, $matcher->getCompiler());
     }
 
     /**
@@ -99,21 +139,12 @@ class SimpleRouteMatcherTest extends TestCase
         ];
     }
 
-    /**
-     * @return Generator
-     */
-    public function provideCompileData(): Generator
+    public function provideCompileData(): \Generator
     {
         yield 'Build route with variable' => [
             '/{foo}',
             './two',
             ['foo' => 'two'],
-        ];
-
-        yield 'Build route with variable position' => [
-            '/{foo}',
-            './twelve',
-            ['twelve'],
         ];
 
         yield 'Build route with variable and domain' => [
@@ -123,13 +154,13 @@ class SimpleRouteMatcherTest extends TestCase
         ];
 
         yield 'Build route with variable and default' => [
-            '/{foo=<cool>}',
+            '/{foo=cool}',
             './cool',
             [],
         ];
 
         yield 'Build route with variable and override default' => [
-            '/{foo=<cool>}',
+            '/{foo=cool}',
             './yeah',
             ['foo' => 'yeah'],
         ];

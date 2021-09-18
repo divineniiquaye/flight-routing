@@ -15,18 +15,21 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
+namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Annotation\Route;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
-class MultipleMethodRouteController
+/**
+ * InvokeController.
+ */
+class InvokeController extends BlankController
 {
     /**
-     * @Route("/get", methods={"GET", "HEAD"})
-     * @Route("/post", methods={"POST"})
-     * @Route("/put", methods={"PUT"})
+     * @link https://www.php.net/manual/en/language.oop5.magic.php#object.invoke
      */
-    public function default(): void
+    public function __invoke(ServerRequestInterface $request): ResponseInterface
     {
+        return $this->handle($request);
     }
 }

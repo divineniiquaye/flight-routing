@@ -17,29 +17,19 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\MiddlewareInterface;
 
-/**
- * NamedBlankMiddleware.
- */
-class NamedBlankMiddleware implements MiddlewareInterface
+class RouteMiddleware implements MiddlewareInterface
 {
-    /**
-     * @var string
-     */
-    private $name;
+    /** @var string */
+    private $sampleText;
 
-    public function __construct(string $name)
+    public function __construct(string $sampleText = 'test')
     {
-        $this->name = $name;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
+        $this->sampleText = $sampleText;
     }
 
     /**
@@ -47,6 +37,8 @@ class NamedBlankMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        return $handler->handle($request);
+        $response = $handler->handle($request);
+
+        return $response->withHeader('NamedRoute', $this->sampleText);
     }
 }

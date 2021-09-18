@@ -1,7 +1,7 @@
 /.idea/
 /.vscode/
 /.phpcs-cache
-/.php_cs.dist
+/.php_cs.dist.php
 /.phpunit.result.cache
 /build/
 composer.lock

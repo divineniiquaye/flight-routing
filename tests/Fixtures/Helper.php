@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,54 +17,36 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Route;
+use Flight\Routing\Routes\FastRoute as Route;
 
 /**
- * Helper
+ * Helper.
  */
 class Helper
 {
     /**
      * @param iterable<int,Route> $routes
      *
-     * @return array<int,array<string,mixed>>
+     * @return array<int,array<string,mixed>>|array<string,mixed>
      */
-    public static function routesToArray(iterable $routes): array
+    public static function routesToArray(iterable $routes, bool $first = false): array
     {
-        $result = $arguments = [];
+        $result = [];
 
         foreach ($routes as $route) {
-            if (\is_object($controller = $route->getController())) {
-                $controller = \get_class($controller);
+            $item = $route->getData();
+
+            if (\is_object($item['handler'])) {
+                $item['handler'] = \get_class($item['handler']);
             }
 
-            $defaults = $route->getDefaults();
-
-            if (isset($defaults['_arguments'])) {
-                $arguments = $defaults['_arguments'];
-                unset($defaults['_arguments']);
+            if ($route instanceof Route) {
+                $item['hosts'] = $route->getHosts();
+                $item['schemes'] = $route->getSchemes();
             }
 
-            $item                = [];
-            $item['name']        = $route->getName();
-            $item['path']        = $route->getPath();
-            $item['domain']      = \array_keys($route->getDomain());
-            $item['methods']     = \array_keys($route->getMethods());
-            $item['handler']     = $controller;
-            $item['middlewares'] = [];
-            $item['schemes']     = \array_keys($route->getSchemes());
-            $item['defaults']    = $defaults;
-            $item['patterns']    = $route->getPatterns();
-            $item['arguments']   = $arguments;
-
-            foreach ($route->getMiddlewares() as $middleware) {
-                $classname = \is_string($middleware) ? $middleware : \get_class($middleware);
-
-                if ($middleware instanceof NamedBlankMiddleware) {
-                    $classname .= ':' . $middleware->getName();
-                }
-
-                $item['middlewares'][] = $classname;
+            if ($first) {
+                return $item;
             }
 
             $result[] = $item;

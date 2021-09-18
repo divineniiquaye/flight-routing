@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -15,29 +15,36 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Matchers;
+namespace Flight\Routing\Generator;
+
+use Flight\Routing\Routes\FastRoute;
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 /**
- * Prefix tree of routes preserving routes order.
+ * A helper Prefix tree class to help help in the compilation of routes in
+ * preserving routes order as a full regex excluding modifies.
+ *
+ * This class is retrieved from symfony's routing component to add
+ * high performance into Flight Routing and avoid requiring the whole component.
  *
  * @author Frank de Jonge <info@frankdejonge.nl>
  * @author Nicolas Grekas <p@tchwork.com>
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  *
  * @internal
  */
-class ExpressionCollection
+class RegexGenerator
 {
-    /** @var string */
-    private $prefix;
+    private string $prefix;
 
     /** @var string[] */
-    private $staticPrefixes = [];
+    private array $staticPrefixes = [];
 
     /** @var string[] */
-    private $prefixes = [];
+    private array $prefixes = [];
 
     /** @var array[]|self[] */
-    private $items = [];
+    private array $items = [];
 
     public function __construct(string $prefix = '/')
     {
@@ -55,6 +62,58 @@ class ExpressionCollection
     public function getRoutes(): array
     {
         return $this->items;
+    }
+
+    /**
+     * This method uses default routes compiler.
+     *
+     * @param array<int,FastRoute> $routes
+     *
+     * @return array<int,mixed>
+     */
+    public static function beforeCaching(RouteCompilerInterface $compiler, array $routes): array
+    {
+        $tree = new static();
+        $indexedRoutes = [];
+
+        for ($i = 0; $i < \count($routes); ++$i) {
+            [$pathRegex, $hostsRegex, $variables] = $compiler->compile($route = $routes[$i]);
+            $pathRegex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $pathRegex);
+
+            $tree->addRoute($pathRegex, [$pathRegex, $i, [$route, $hostsRegex, $variables]]);
+        }
+
+        $compiledRegex = '~^(?' . $tree->compile(0, $indexedRoutes) . ')$~u';
+        \ksort($indexedRoutes);
+
+        return [$compiledRegex, $indexedRoutes, $compiler];
+    }
+
+    /**
+     * Compiles a regexp tree of sub-patterns that matches nested same-prefix routes.
+     *
+     * The route item should contain:
+     * - pathRegex
+     * - an id used for (*:MARK)
+     * - an array of additional/optional values if maybe required.
+     */
+    public function compile(int $prefixLen, array &$variables = []): string
+    {
+        $code = '';
+
+        foreach ($this->items as $route) {
+            if ($route instanceof self) {
+                $prefix = \substr($route->prefix, $prefixLen);
+                $code .= '|' . \ltrim($prefix, '?') . '(?' . $route->compile($prefixLen + \strlen($prefix), $variables) . ')';
+
+                continue;
+            }
+
+            $code .= '|' . \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
+            $variables[$route[1]] = $route[2];
+        }
+
+        return $code;
     }
 
     /**
@@ -102,14 +161,14 @@ class ExpressionCollection
                 $item->addRoute($prefix, $route);
             } else {
                 // the new route and a previous one have a common prefix, let's merge them
-                $child                                           = new self($commonPrefix);
+                $child = new self($commonPrefix);
                 [$child->prefixes[0], $child->staticPrefixes[0]] = $child->getCommonPrefix($this->prefixes[$i], $this->prefixes[$i]);
                 [$child->prefixes[1], $child->staticPrefixes[1]] = $child->getCommonPrefix($prefix, $prefix);
-                $child->items                                    = [$this->items[$i], $route];
+                $child->items = [$this->items[$i], $route];
 
                 $this->staticPrefixes[$i] = $commonStaticPrefix;
-                $this->prefixes[$i]       = $commonPrefix;
-                $this->items[$i]          = $child;
+                $this->prefixes[$i] = $commonPrefix;
+                $this->items[$i] = $child;
             }
 
             return;
@@ -118,17 +177,11 @@ class ExpressionCollection
         // No optimised case was found, in this case we simple add the route for possible
         // grouping when new routes are added.
         $this->staticPrefixes[] = $staticPrefix;
-        $this->prefixes[]       = $prefix;
-        $this->items[]          = $route;
+        $this->prefixes[] = $prefix;
+        $this->items[] = $route;
     }
 
-    /**
-     * @param int $type
-     * @param string $msg
-     *
-     * @return bool
-     */
-    public static function handleError($type, $msg)
+    public static function handleError(int $type, string $msg): bool
     {
         return false !== \strpos($msg, 'Compilation failed: lookbehind assertion is not fixed length');
     }
@@ -140,8 +193,8 @@ class ExpressionCollection
      */
     private function getCommonPrefix(string $prefix, string $anotherPrefix): array
     {
-        $baseLength   = \strlen($this->prefix);
-        $end          = \min(\strlen($prefix), \strlen($anotherPrefix));
+        $baseLength = \strlen($this->prefix);
+        $end = \min(\strlen($prefix), \strlen($anotherPrefix));
         $staticLength = null;
         \set_error_handler([__CLASS__, 'handleError']);
 
@@ -185,6 +238,7 @@ class ExpressionCollection
                 break;
             }
         }
+
         \restore_error_handler();
 
         if ($i < $end && 0b10 === (\ord($prefix[$i]) >> 6) && \preg_match('//u', $prefix . ' ' . $anotherPrefix)) {

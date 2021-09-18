@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,14 +17,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use DivineNii\Invoker\Interfaces\InvokerInterface;
-use Flight\Routing\Matchers\SimpleRouteMatcher;
-use Flight\Routing\Router;
+use Flight\Routing\Handlers\RouteHandler;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -33,11 +30,9 @@ use Psr\Http\Message\UriFactoryInterface;
 class BaseTestCase extends TestCase
 {
     /**
-     * @param ResponseInterface $response
-     *
      * @return ResponseFactoryInterface
      */
-    public function getResponseFactory(ResponseInterface $response = null)
+    protected function getResponseFactory(ResponseInterface $response = null)
     {
         $responseFactory = $this->createMock(ResponseFactoryInterface::class);
         $responseFactory->method('CreateResponse')
@@ -46,10 +41,7 @@ class BaseTestCase extends TestCase
         return $responseFactory;
     }
 
-    /**
-     * @return UriFactoryInterface
-     */
-    public function getUriFactory()
+    protected function getUriFactory(): UriFactoryInterface
     {
         return new Psr17Factory();
     }
@@ -58,35 +50,21 @@ class BaseTestCase extends TestCase
      * @param string                               $method  — HTTP method
      * @param string|UriInterface                  $uri     — URI
      * @param array<string,string>                 $headers — Request headers
-     * @param null|resource|StreamInterface|string $body    — Request body
+     * @param resource|StreamInterface|string|null $body    — Request body
      *
      * @return ServerRequestFactoryInterface
      */
-    public function getServerRequestFactory(string $method, $uri, $headers = [], $body = null)
+    protected function getServerRequestFactory(string $method, $uri, $headers = [], $body = null)
     {
-        $serverReequestFactory = $this->createMock(ServerRequestFactoryInterface::class);
-        $serverReequestFactory->method('createServerRequest')
+        $serverRequestFactory = $this->createMock(ServerRequestFactoryInterface::class);
+        $serverRequestFactory->method('createServerRequest')
             ->willReturn(new ServerRequest($method, $uri, $headers, $body));
 
-        return $serverReequestFactory;
+        return $serverRequestFactory;
     }
 
-    /**
-     * @param null|class-string       $matcher
-     * @param null|InvokerInterface   $resolver
-     * @param null|ContainerInterface $container
-     *
-     * @return Router
-     */
-    public function getRouter(
-        ?string $matcher = null,
-        ?InvokerInterface $resolver = null,
-        bool $profiler = false
-    ): Router {
-        $router = new Router($this->getResponseFactory(), $this->getUriFactory(), $resolver);
-
-        $router->setOptions(['matcher_class' => $matcher ?? SimpleRouteMatcher::class, 'debug' => $profiler]);
-
-        return $router;
+    protected function getRequestHandler(ResponseInterface $response = null): RouteHandler
+    {
+        return new RouteHandler($this->getResponseFactory($response));
     }
 }

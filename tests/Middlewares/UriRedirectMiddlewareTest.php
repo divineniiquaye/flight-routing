@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -18,7 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Tests\Middlewares;
 
 use Flight\Routing\Middlewares\UriRedirectMiddleware;
-use Flight\Routing\Route;
+use Flight\Routing\Routes\Route;
 use Flight\Routing\Router;
 use Flight\Routing\Tests\BaseTestCase;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
@@ -28,7 +28,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 
 /**
- * UriRedirectMiddlewareTest
+ * UriRedirectMiddlewareTest.
  */
 class UriRedirectMiddlewareTest extends BaseTestCase
 {
@@ -36,17 +36,16 @@ class UriRedirectMiddlewareTest extends BaseTestCase
      * @dataProvider redirectionData
      *
      * @param array<string,string|UriInterface> $redirects
-     * @param string                            $expected
      */
     public function testProcess(array $redirects, string $expected): void
     {
-        $pipeline = $this->getRouter();
+        $pipeline = Router::withCollection();
         $pipeline->pipe(new UriRedirectMiddleware($redirects));
 
         $route = new Route($expected, Router::METHOD_GET, BlankRequestHandler::class);
         $pipeline->addRoute($route);
 
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $expected));
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $expected), $this->getRequestHandler());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
@@ -56,59 +55,58 @@ class UriRedirectMiddlewareTest extends BaseTestCase
      * @dataProvider redirectionData
      *
      * @param array<string,string|UriInterface> $redirects
-     * @param string                            $expected
      */
     public function testProcessWithRedirect(array $redirects, string $expected): void
     {
-        $pipeline = $this->getRouter();
+        $pipeline = Router::withCollection();
         $pipeline->pipe(new UriRedirectMiddleware($redirects));
 
-        $routes = [
-            new Route($expected, Router::METHOD_GET, BlankRequestHandler::class),
-            new Route(\key($redirects), Router::METHOD_GET, BlankRequestHandler::class),
-        ];
-        $pipeline->addRoute(...$routes);
+        $route = new Route($expected, Router::METHOD_GET, BlankRequestHandler::class);
+        $pipeline->addRoute($route);
 
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, \key($redirects)));
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $actualPath = \key($redirects)), $this->getRequestHandler());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301, $response->getStatusCode());
-    }
-
-    public function testProcessWithQuery(): void
-    {
-        $pipeline = $this->getRouter();
-        $middleware = new UriRedirectMiddleware(['/page?hello=me' => '/account/me']);
-        $pipeline->pipe($middleware->allowQueries(true));
-
-        $route = new Route('/page', Router::METHOD_GET, BlankRequestHandler::class);
-        $pipeline->addRoute($route);
-
-        $uri      = (new Uri('/page'))->withQuery('hello=me');
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_GET, $uri));
-
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals(301, $response->getStatusCode());
-    }
-
-    public function testProcessWithPermanent(): void
-    {
-        $pipeline = $this->getRouter();
-        $middleware = new UriRedirectMiddleware(['/foo' => '/bar']);
-        $pipeline->addMiddleware($middleware->setPermanentRedirection(false));
-
-        $route = new Route('/foo', Router::METHOD_POST, BlankRequestHandler::class);
-        $pipeline->addRoute($route);
-
-        $response = $pipeline->handle(new ServerRequest(Router::METHOD_POST, '/foo'));
-
-        $this->assertInstanceOf(ResponseInterface::class, $response);
-        $this->assertEquals(307, $response->getStatusCode());
+        $this->assertEquals($redirects[$actualPath], $response->getHeaderLine('Location'));
     }
 
     /**
-     * @return \Generator
+     * @dataProvider redirectionData
+     *
+     * @param array<string,string|UriInterface> $redirects
      */
+    public function testProcessWithRedirectAndKeepMethod(array $redirects, string $expected): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new UriRedirectMiddleware($redirects, true));
+
+        $route = new Route($expected, Router::METHOD_POST, BlankRequestHandler::class);
+        $pipeline->addRoute($route);
+
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $actualPath = \key($redirects)), $this->getRequestHandler());
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(308, $response->getStatusCode());
+        $this->assertEquals($redirects[$actualPath], $response->getHeaderLine('Location'));
+    }
+
+    public function testProcessWithAllAttributes(): void
+    {
+        $pipeline = Router::withCollection();
+        $pipeline->pipe(new UriRedirectMiddleware(['/user/\d+' => '#/account/me']));
+
+        $route = new Route('/account/me', Router::METHOD_GET, BlankRequestHandler::class);
+        $pipeline->addRoute($route);
+
+        $uri = new Uri('/user/23?page=settings#notification');
+        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $uri), $this->getRequestHandler());
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(301, $response->getStatusCode());
+        $this->assertEquals('/account/me?page=settings#notification', $response->getHeaderLine('Location'));
+    }
+
     public function redirectionData(): \Generator
     {
         yield 'Redirect string with symbols' => [

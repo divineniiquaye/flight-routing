@@ -1,33 +1,30 @@
-includes:
-    - vendor/phpstan/phpstan-strict-rules/rules.neon
-
 parameters:
-    level: 4
+    level: max
     paths: [src]
     treatPhpDocTypesAsCertain: false
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
 
     excludes_analyse:
-        - %currentWorkingDirectory%/src/Traits/DumperTrait.php
+        - %currentWorkingDirectory%/src/Handlers/RouteInvoker.php
 
     ignoreErrors:
-        - "#^Construct empty\\(\\) is not allowed. Use more strict comparison.|Result of && is always false.$#"
-        - "#^Short ternary operator is not allowed. Use null coalesce operator if applicable or consider using long ternary.$#"
-        - "#^Call to function is_callable\\(\\)|is_string\\(\\)|is_object\\(\\) with (string|object) will always evaluate to false.$#"
-        - "#^Only booleans are allowed in (a negated boolean|&&|an if condition), (int\\|false|mixed) given(?: on the (left|right) side)?.$#"
+        - "#^Unsafe usage of new static\\(\\).$#"
         -
-            message: "#^Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(mixed|Flight\\\\Routing\\\\Route, string\\) given.|Array \\(array<Flight\\\\Routing\\\\Route>\\) does not accept Flight\\\\Routing\\\\RouteCollection.$#"
+            message: "#^Method Flight\\\\Routing\\\\Annotation\\\\Listener\\:\\:resolveRouteName\\(\\) never returns null so it can be removed from the return typehint.$#"
+            path: src/Annotation/Listener.php
+        -
+            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:addRoute\\(\\) should return Flight\\\\Routing\\\\Routes\\\\Route but returns Flight\\\\Routing\\\\Routes\\\\FastRoute.$#"
             path: src/RouteCollection.php
         -
-            message: "#^Variable property access on Flight\\\\Routing\\\\Route|\\$this\\(Flight\\\\Routing\\\\Route\\).$#"
-            path: src/Route.php
+            message: "#^Cannot unset offset int<-1, max> on array<string, array>|Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(Flight\\\\Routing\\\\(?|Routes\\\\FastRoute|RouteCollection), string\\) given.$#"
+            path: src/RouteCollection.php
         -
-            message: "#^Cannot call method setMatched\\(\\)|getProfiles|\\(\\)|getController\\(\\) on Flight\\\\Routing\\\\(?:Debug)Route\\|null.$#"
+            message: "#^Parameter \\#1 \\$annotations|\\$classAnnotations of method Flight\\\\Routing\\\\Annotation\\\\Listener\\:\\:(?|getRoutes|addRoute)\\(\\) expects iterable<Flight\\\\Routing\\\\Annotation\\\\Route>, iterable<object> given.$#"
+            path: src/Annotation/Listener.php
+        -
+            message: "#^Parameter \\#1 \\$filename of function file_exists expects string, Psr\\\\Cache\\\\CacheItemPoolInterface\\|string given.$#"
             path: src/Router.php
         -
-            message: "#^Variable (\\$i|\\$n|\\$j) might not be defined.$#"
-            path: src/Matchers/ExpressionCollection.php
-        -
-            message: "#^Variable property access on \\$this\\(Flight\\\\Routing\\\\Annotation\\\\Route\\).$#"
-            path: src/Annotation/Route.php
+            message: "#^Method Flight\\\\Routing\\\\RouteMatcher\\:\\:getRoutes\\(\\) should return array<Flight\\\\Routing\\\\Routes\\\\FastRoute> but returns array<int, array<int, mixed>\\|Flight\\\\Routing\\\\Routes\\\\FastRoute>.$#"
+            path: src/RouteMatcher.php

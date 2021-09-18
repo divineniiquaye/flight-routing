@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -20,11 +20,11 @@ namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 use Flight\Routing\Annotation\Route;
 
 /**
- * @Route("/here", name="lol", methods={"GET", "POST"}, schemes={"https"})
+ * @Route("/here", "lol", methods={"GET", "POST"}, schemes={"https"})
  */
 class InvokableController
 {
-    public function __invoke()
+    public function __invoke(): void
     {
     }
 }

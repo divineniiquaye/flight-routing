@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,22 +17,26 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Biurad\Annotations\InvalidAnnotationException;
-use Biurad\Annotations\ListenerInterface;
-use Biurad\Annotations\Locate\{Annotation, Class_, Function_, Method};
-use Flight\Routing\Route as BaseRoute;
-use Flight\Routing\RouteCollection;
+use Biurad\Annotations\{InvalidAnnotationException, ListenerInterface};
+use Biurad\Annotations\Locate\Class_;
+use Flight\Routing\{Routes\DomainRoute, RouteCollection};
 
 class Listener implements ListenerInterface
 {
-    /** @var RouteCollection */
-    private $collector;
+    private RouteCollection $collector;
 
-    /** @var int */
-    private $defaultUnnamedIndex = 0;
+    private ?string $unNamedPrefix;
 
-    public function __construct(?RouteCollection $collector = null)
+    /** @var array<string,int> */
+    private array $defaultUnnamedIndex = [];
+
+    /**
+     * @param string $unNamedPrefix Setting a prefix or empty string will generate a name for all routes.
+     *                              If set to null, only named grouped class routes names will be generated.
+     */
+    public function __construct(RouteCollection $collector = null, ?string $unNamedPrefix = '')
     {
+        $this->unNamedPrefix = $unNamedPrefix;
         $this->collector = $collector ?? new RouteCollection();
     }
 
@@ -41,27 +45,28 @@ class Listener implements ListenerInterface
      */
     public function load(array $annotations): RouteCollection
     {
+        $foundAnnotations = [];
+
         foreach ($annotations as $annotation) {
-            if ($annotation instanceof Class_ && [] !== $annotation->methods) {
+            if ($annotation instanceof Class_) {
+                $methodAnnotations = [];
+
                 foreach ($annotation->methods as $method) {
-                    if ([] !== $attributes = $annotation->getAnnotation()) {
-                        foreach ($attributes as $attribute) {
-                            $this->addRoute($attribute, $method);
-                        }
-
-                        continue;
-                    }
-
-                    $this->addRoute(null, $method);
+                    $controller = [$method->getReflection()->class, (string) $method];
+                    $this->getRoutes($method->getAnnotation(), $controller, $methodAnnotations);
                 }
 
-                continue;
+                if (!empty($methodAnnotations)) {
+                    $this->addRoute($annotation->getAnnotation(), $methodAnnotations, $foundAnnotations);
+
+                    continue;
+                }
             }
 
-            $this->addRoute(null, $annotation);
+            $this->getRoutes($annotation->getAnnotation(), (string) $annotation, $foundAnnotations, $annotation instanceof Class_);
         }
 
-        return $this->collector;
+        return $this->collector->add(...$foundAnnotations);
     }
 
     /**
@@ -73,55 +78,90 @@ class Listener implements ListenerInterface
     }
 
     /**
-     * Add a route from annotation.
+     * Add a route from class annotated methods.
      *
-     * @param Function_|Method|Class_ $listener
+     * @param iterable<Route> $classAnnotations
+     * @param DomainRoute[]   $methodAnnotations
+     * @param DomainRoute[]   $foundAnnotations
      */
-    protected function addRoute(?Route $routeAnnotation, Annotation $listener): void
+    protected function addRoute(iterable $classAnnotations, array $methodAnnotations, array &$foundAnnotations): void
     {
-        $controller = $listener->getReflection()->getName();
+        foreach ($methodAnnotations as $methodAnnotation) {
+            if (!empty($classAnnotations)) {
+                foreach ($classAnnotations as $classAnnotation) {
+                    if (null !== $classAnnotation->resource) {
+                        throw new InvalidAnnotationException('Restful annotated class cannot contain annotated method(s).');
+                    }
 
-        if ($listener instanceof Method) {
-            $controller = [$listener->getReflection()->class, $controller];
-        }
+                    $annotatedMethod = clone $methodAnnotation->method(...$classAnnotation->methods)
+                        ->scheme(...$classAnnotation->schemes)
+                        ->domain(...$classAnnotation->hosts)
+                        ->defaults($classAnnotation->defaults)
+                        ->asserts($classAnnotation->patterns);
 
-        /** @var Route $annotation */
-        foreach ($listener->getAnnotation() as $annotation) {
-            if ($routeAnnotation instanceof Route) {
-                [$prefixName, $prefixPath] = [$routeAnnotation->name, $routeAnnotation->path];
+                    if (null !== $classAnnotation->path) {
+                        $annotatedMethod->prefix($classAnnotation->path);
+                    }
 
-                // CLone annotations on class ...
-                $annotation->clone($routeAnnotation);
-            }
+                    if (!empty($routeName = $this->resolveRouteName($classAnnotation->name, $annotatedMethod, true))) {
+                        $annotatedMethod->bind($routeName);
+                    }
 
-            if (null === $annotation->path) {
-                throw new InvalidAnnotationException('@Route.path must not be left empty.');
-            }
-
-            $route = BaseRoute::__set_state([
-                'path' => $annotation->path,
-                'controller' => $controller,
-                'methods' => $annotation->methods,
-                'schemes' => $annotation->schemes,
-                'middlewares' => $annotation->middlewares,
-                'patterns' => $annotation->patterns,
-                'defaults' => $annotation->defaults,
-            ]);
-            $route->domain(...$annotation->domain);
-
-            if (empty($name = $annotation->name)) {
-                $name = $base = $route->generateRouteName('annotated_');
-
-                while ($this->collector->find($name)) {
-                    $name = $base . '_' . ++$this->defaultUnnamedIndex;
+                    $foundAnnotations[] = $annotatedMethod;
                 }
+
+                continue;
             }
 
-            if (isset($prefixPath)) {
-                $route->prefix($prefixPath);
+            if (!empty($routeName = $this->resolveRouteName(null, $methodAnnotation))) {
+                $methodAnnotation->bind($routeName);
             }
 
-            $this->collector->add($route->bind(isset($prefixName) ? $prefixName .= $name : $name));
+            $foundAnnotations[] = $methodAnnotation;
         }
+    }
+
+    /**
+     * @param iterable<Route> $annotations
+     * @param mixed           $handler
+     * @param DomainRoute[]   $foundAnnotations
+     */
+    protected function getRoutes(iterable $annotations, $handler, array &$foundAnnotations, bool $single = false): void
+    {
+        foreach ($annotations as $annotation) {
+            if (!$single && null !== $annotation->resource) {
+                throw new InvalidAnnotationException('Restful annotation is only supported on classes.');
+            }
+
+            $route = $annotation->getRoute($handler);
+
+            if ($single && $routeName = $this->resolveRouteName(null, $route)) {
+                $route->bind($routeName);
+            }
+
+            $foundAnnotations[] = $route;
+        }
+    }
+
+    /**
+     * Resolve route naming.
+     */
+    private function resolveRouteName(?string $prefix, DomainRoute $route, bool $force = false): ?string
+    {
+        $name = $route->get('name');
+
+        if ((null !== $this->unNamedPrefix || $force) && empty($name)) {
+            $name = $base = $prefix . $route->generateRouteName($this->unNamedPrefix ?? '');
+
+            if (isset($this->defaultUnnamedIndex[$name])) {
+                $name = $base . '_' . ++$this->defaultUnnamedIndex[$name];
+            } else {
+                $this->defaultUnnamedIndex[$name] = 0;
+            }
+
+            return $name;
+        }
+
+        return $prefix . $name;
     }
 }
