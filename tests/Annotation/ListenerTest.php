@@ -188,6 +188,7 @@ class ListenerTest extends TestCase
     }
 
     /**
+     * @requires OS WIN32|WINNT|Linux
      * @runInSeparateProcess
      */
     public function testLoadingWithAnnotationBuildWithPrefix(): void
