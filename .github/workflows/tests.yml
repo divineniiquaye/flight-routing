@@ -1,5 +1,10 @@
-name: Tests
+# GitHub Actions Documentation: https://docs.github.com/en/actions
+
+name: build
 on: [push, pull_request]
+
+env:
+  CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
 
 jobs:
   build:
@@ -7,26 +12,17 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: [ubuntu-latest, windows-latest, macos-latest]
-        php-versions: ['7.4', '8.0']
-        coverage: ["true"]
-        composer-flags: [""]
-        static-tests: ["true"]
-        include:
-          - php-versions: "7.2"
-            static-tests: "false"
+        php-versions: ['7.4', '8.0', '8.1']
 
-          - php-versions: "7.3"
-            static-tests: "false"
-
-          - php-versions: "8.0"
-            composer-flags: "--ignore-platform-req=php"
-
-          - php-versions: "8.1"
-            coverage: "false"
-            composer-flags: "--ignore-platform-req=php"
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.operating-system }}
 
     steps:
+      - name: Set git to use LF on Windows
+        if: matrix.operating-system == 'windows-latest'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -36,44 +32,54 @@ jobs:
           php-version: ${{ matrix.php-versions }}
           extensions: mbstring, xml, ctype, iconv, curl
           coverage: xdebug
-          tools: composer:v2
+          tools: composer
 
-      - name: Get composer cache directory
-        id: composercache
+      - name: Get Composer Cache Directory
+        id: composer-cache
         run: echo "::set-output name=dir::$(composer config cache-files-dir)"
 
       - name: Cache composer dependencies
         uses: actions/cache@v2
         with:
-          path: ${{ steps.composercache.outputs.dir }}
-          # Use composer.json for key, if composer.lock is not committed.
-          # key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer install --no-progress --optimize-autoloader ${{ matrix.composer-flags }}
+        shell: bash
+        run: |
+          composer_flags=""
+          if [ ${{ matrix.php-versions }} == 8.1 ]; then composer_flags="--ignore-platform-req=php"; fi;
 
-      - name: Check Coding Standard
+          composer install --no-progress --optimize-autoloader $composer_flags
+
+      - name: Setup Code Climate test-reporter
+        if: matrix.operating-system == 'ubuntu-latest' && matrix.php-versions == 8.0
+        run: |
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+          ./cc-test-reporter before-build
+
+      - name: Check coding standards (PHP_CodeSniffer)
         run: vendor/bin/phpcs
 
-      - name: Test with Phpunit
-        run: |
-          if [ "${{ !matrix.coverage }}" == "false" ]; then
-            vendor/bin/phpunit --no-coverage
-          else
-            vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
-            bash <(curl -s https://codecov.io/bash) -f coverage.clover
-          fi
+      - name: Run unit tests (PHPUnit)
+        continue-on-error: ${{ matrix.php-versions == 8.1 }}
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=clover.xml
 
-      - name: Test with Phpstan
+      - name: Publish coverage report to Codecov
+        if: matrix.operating-system == 'ubuntu-latest'
         run: |
-          if [ "${{ matrix.static-tests }}" == "true" ]; then
-            vendor/bin/phpstan analyse
-          fi
+          bash <(curl -s https://codecov.io/bash) -f clover.xml
+          if [ ${{ matrix.php-versions }} == 8.0 ]; then ./cc-test-reporter after-build --coverage-input-type clover; fi;
 
-      - name: Test with Psalm
-        run: |
-          if [ "${{ matrix.static-tests }}" == "true" ]; then
-            vendor/bin/psalm --output-format=github
-          fi
+      - name: "Statically analyze code (PHPStan)"
+        run: vendor/bin/phpstan analyse
+
+      - name: Statically analyze code (Psalm)
+        run: vendor/bin/psalm --output-format=github --taint-analysis --shepherd --report=build/logs/psalm.sarif
+
+      - name: "Upload security analysis results to GitHub"
+        uses: "github/codeql-action/upload-sarif@v1"
+        with:
+          sarif_file: "build/logs/psalm.sarif"
