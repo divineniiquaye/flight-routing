@@ -1,6 +1,6 @@
 # GitHub Actions Documentation: https://docs.github.com/en/actions
 
-name: build
+name: Tests
 on: [push, pull_request]
 
 env:
