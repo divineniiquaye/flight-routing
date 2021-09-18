@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -41,8 +41,7 @@ class RouteHandler implements RequestHandlerInterface
 
     protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
 
-    /** @var ResponseFactoryInterface */
-    protected $responseFactory;
+    protected ResponseFactoryInterface $responseFactory;
 
     /** @var callable */
     protected $handlerResolver;
@@ -115,7 +114,7 @@ class RouteHandler implements RequestHandlerInterface
             }
         }
 
-        return $response ?? ob_get_clean();
+        return $response ?? \ob_get_clean();
     }
 
     /**

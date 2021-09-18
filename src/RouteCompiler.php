@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -171,7 +171,7 @@ final class RouteCompiler implements RouteCompilerInterface
      * Check for mandatory parameters then interpolate $uriRoute with given $parameters.
      *
      * @param array<int|string,mixed> $parameters
-     * @param array<string,mixed> $defaults
+     * @param array<string,mixed>     $defaults
      */
     private static function interpolate(string $uriRoute, array $parameters, array $defaults): string
     {
@@ -248,11 +248,6 @@ final class RouteCompiler implements RouteCompilerInterface
 
         // Match all variables enclosed in "{}" and iterate over them...
         \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_SET_ORDER | \PREG_UNMATCHED_AS_NULL);
-
-        if (PHP_VERSION_ID < 70400) {
-            $matches[2] = $matches[2] ?? null;
-            $matches[3] = $matches[3] ?? null;
-        }
 
         foreach ($matches as [$placeholder, $varName, $segment, $default]) {
             // Filter variable name to meet requirement

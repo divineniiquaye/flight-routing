@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -53,29 +53,26 @@ namespace Flight\Routing;
  */
 final class RouteCollection
 {
-    /** @var self|null */
-    private $parent;
+    private ?self $parent = null;
 
     /** @var array<string,mixed[]>|null */
-    private $prototypes = [];
+    private ?array $prototypes = [];
 
     /** @var array<string,bool> */
-    private $prototyped = [];
+    private array $prototyped = [];
 
     /** @var Routes\FastRoute[] */
-    private $routes = [];
+    private array $routes = [];
 
     /** @var self[] */
-    private $groups = [];
+    private array $groups = [];
 
-    /** @var string */
-    private $uniqueId;
+    private string $uniqueId;
 
-    /** @var string */
-    private $namedPrefix;
+    private string $namedPrefix;
 
     /** @var bool Prevent adding routes once already used or serialized */
-    private $locked = false;
+    private bool $locked = false;
 
     /**
      * @param string $namedPrefix The unqiue name for this group
@@ -219,7 +216,7 @@ final class RouteCollection
      * @param string                   $name        The route group prefixed name
      * @param callable|RouteCollection $controllers A RouteCollection instance or a callable for defining routes
      *
-     * @throws \TypeError if $controllers not instance of route collection's class.
+     * @throws \TypeError        if $controllers not instance of route collection's class
      * @throws \RuntimeException if locked
      */
     public function group(string $name, $controllers = null): self

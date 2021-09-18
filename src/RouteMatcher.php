@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -32,24 +32,19 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 final class RouteMatcher implements RouteMatcherInterface
 {
     /** @var array<int,Route>|array<int,array<int,mixed>> */
-    private $routes;
+    private array $routes;
 
-    /** @var RouteCompilerInterface */
-    private $compiler;
+    private RouteCompilerInterface $compiler;
 
-    /** @var string|null */
-    private $generatedRegex;
+    private ?string $generatedRegex = null;
 
     /**
      * @var callable
      *
-     * @internal Returns an optimised routes data.
+     * @internal returns an optimised routes data
      */
     private $beforeSerialization = [Generator\RegexGenerator::class, 'beforeCaching'];
 
-    /**
-     * @param RouteCompilerInterface|null $compiler
-     */
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
@@ -178,7 +173,7 @@ final class RouteMatcher implements RouteMatcherInterface
             $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
 
             if (1 !== \preg_match('#^' . $hostsRegex . '$#i', $hostAndPost, $hostsVar)) {
-                throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested path [%s].', $uri->getHost(), $uri->getPath()), 400);
+                throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested path [%s].', $hostAndPost, $uri->getPath()), 400);
             }
         }
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -17,21 +17,18 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Biurad\Annotations\InvalidAnnotationException;
-use Biurad\Annotations\ListenerInterface;
+use Biurad\Annotations\{InvalidAnnotationException, ListenerInterface};
 use Biurad\Annotations\Locate\Class_;
 use Flight\Routing\{Routes\DomainRoute, RouteCollection};
 
 class Listener implements ListenerInterface
 {
-    /** @var RouteCollection */
-    private $collector;
+    private RouteCollection $collector;
 
-    /** @var string|null */
-    private $unNamedPrefix;
+    private ?string $unNamedPrefix;
 
     /** @var array<string,int> */
-    private $defaultUnnamedIndex = [];
+    private array $defaultUnnamedIndex = [];
 
     /**
      * @param string $unNamedPrefix Setting a prefix or empty string will generate a name for all routes.

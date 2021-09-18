@@ -5,6 +5,9 @@ parameters:
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
 
+    excludes_analyse:
+        - %currentWorkingDirectory%/src/Handlers/RouteInvoker.php
+
     ignoreErrors:
         - "#^Unsafe usage of new static\\(\\).$#"
         -
@@ -14,7 +17,7 @@ parameters:
             message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:addRoute\\(\\) should return Flight\\\\Routing\\\\Routes\\\\Route but returns Flight\\\\Routing\\\\Routes\\\\FastRoute.$#"
             path: src/RouteCollection.php
         -
-            message: "#^Cannot unset offset int<-1, max> on array<string, array>|Parameter \\#1 \\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(Flight\\\\Routing\\\\(?|Routes\\\\FastRoute|RouteCollection), string\\) given.$#"
+            message: "#^Cannot unset offset int<-1, max> on array<string, array>|Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(Flight\\\\Routing\\\\(?|Routes\\\\FastRoute|RouteCollection), string\\) given.$#"
             path: src/RouteCollection.php
         -
             message: "#^Parameter \\#1 \\$annotations|\\$classAnnotations of method Flight\\\\Routing\\\\Annotation\\\\Listener\\:\\:(?|getRoutes|addRoute)\\(\\) expects iterable<Flight\\\\Routing\\\\Annotation\\\\Route>, iterable<object> given.$#"

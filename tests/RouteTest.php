@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,7 +24,7 @@ use Flight\Routing\Handlers\ResourceHandler;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RouteTest
+ * RouteTest.
  */
 class RouteTest extends TestCase
 {
@@ -75,7 +75,7 @@ class RouteTest extends TestCase
             'handler' => 'phpinfo',
             'arguments' => [],
             'defaults' => ['foo' => 'bar'],
-            'patterns' => []
+            'patterns' => [],
         ], FastRoute::__set_state($properties)->getData());
 
         $dRoute = DomainRoute::__set_state($properties);
@@ -88,7 +88,7 @@ class RouteTest extends TestCase
             'handler' => 'phpinfo',
             'arguments' => [],
             'defaults' => ['foo' => 'bar'],
-            'patterns' => []
+            'patterns' => [],
         ], $dRoute->getData());
 
         $testRoute = Route::__set_state($properties);
@@ -184,7 +184,7 @@ class RouteTest extends TestCase
         $closureRoute = new Route('/foo_2', Route::DEFAULT_METHODS, static function () {
             return 'Hello';
         });
-        $invokeRoute =  new Route('/foo_3', Route::DEFAULT_METHODS, new Fixtures\InvokeController());
+        $invokeRoute = new Route('/foo_3', Route::DEFAULT_METHODS, new Fixtures\InvokeController());
         $requestHandlerRoute = new Route('/foo_4', Route::DEFAULT_METHODS, new Fixtures\BlankRequestHandler());
         $patternRoute1 = new Route('/foo_5*<Flight\Routing\Tests\Fixtures\BlankController@handle>');
         $patternRoute2 = new Route('/foo_6*<handle>', Route::DEFAULT_METHODS, Fixtures\BlankController::class);

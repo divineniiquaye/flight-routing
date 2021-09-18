@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -138,7 +138,7 @@ class RouteHandlerTest extends TestCase
         $this->expectExceptionMessage('The route handler\'s content is not a valid PSR7 response body stream.');
         $this->expectException(InvalidControllerException::class);
 
-        $call =  static function (): bool {
+        $call = static function (): bool {
             return false;
         };
         $route = new Route('/bar', Route::DEFAULT_METHODS, $call);

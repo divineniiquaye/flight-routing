@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -27,7 +27,7 @@ use Flight\Routing\Routes\Route;
 use PHPUnit\Framework\TestCase;
 
 /**
- * SimpleRouteCompilerTest
+ * SimpleRouteCompilerTest.
  */
 class SimpleRouteCompilerTest extends TestCase
 {
@@ -40,7 +40,7 @@ class SimpleRouteCompilerTest extends TestCase
         $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
-        $serialized   = \serialize($compiled);
+        $serialized = \serialize($compiled);
         $deserialized = \unserialize($serialized);
 
         $this->assertEquals($compiled, $deserialized);
@@ -50,14 +50,12 @@ class SimpleRouteCompilerTest extends TestCase
     /**
      * @dataProvider provideCompilePathData
      *
-     * @param string               $path
      * @param string[]             $matches
-     * @param string               $regex
      * @param array<string,string> $variables
      */
     public function testCompile(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route($path, ['FOO', 'BAR']);
+        $route = new Route($path, ['FOO', 'BAR']);
         $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
@@ -77,14 +75,12 @@ class SimpleRouteCompilerTest extends TestCase
     /**
      * @dataProvider provideCompileHostData
      *
-     * @param string               $path
      * @param string[]             $matches
-     * @param string               $regex
      * @param array<string,string> $variables
      */
     public function testCompileDomainRegex(string $path, array $matches, string $regex, array $variables = []): void
     {
-        $route    = new Route($path, ['FOO', 'BAR']);
+        $route = new Route($path, ['FOO', 'BAR']);
         $compiler = new RouteCompiler();
         $compiled = $compiler->compile($route);
 
@@ -103,9 +99,6 @@ class SimpleRouteCompilerTest extends TestCase
 
     /**
      * @dataProvider getInvalidVariableName
-     *
-     * @param string $variable
-     * @param string $exceptionMessage
      */
     public function testCompileVariables(string $variable, string $exceptionMessage): void
     {
@@ -158,7 +151,6 @@ class SimpleRouteCompilerTest extends TestCase
 
             return new Route($values[0]);
         }, \iterator_to_array($this->provideCompilePathData()));
-
 
         $compiler = new RouteCompiler();
         $collection = new RouteCollection();
@@ -264,12 +256,9 @@ class SimpleRouteCompilerTest extends TestCase
             ['\A\z'],
             ['\A'],
             ['\z'],
-         ];
+        ];
     }
 
-    /**
-     * @return \Generator
-     */
     public function provideCompilePathData(): \Generator
     {
         yield 'Static route' => [
@@ -355,7 +344,7 @@ class SimpleRouteCompilerTest extends TestCase
             ['lang' => 'english'],
         ];
 
-        yield  'Route with a requirement, optional and required placeholder' => [
+        yield 'Route with a requirement, optional and required placeholder' => [
             '/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=0}]',
             ['en-us/foo', '/en-us/foo', 'foo', '/foo', 'en/foo', '/en/foo', 'en-us/foo/page-12', '/en-us/foo/page-12'],
             '\/?(?:(?P<lang>[a-z]{2})(?:-(?P<sublang>[^\/]+))?\/)?(?P<name>[^\/]+)(?:\/page-(?P<page>[^\/]+))?',
@@ -426,9 +415,6 @@ class SimpleRouteCompilerTest extends TestCase
         ];
     }
 
-    /**
-     * @return \Generator
-     */
     public function provideCompileHostData(): \Generator
     {
         yield 'Route domain with variable' => [

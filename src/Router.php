@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -50,19 +50,16 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     ];
 
     /** @var array<string,MiddlewareInterface[]> */
-    private $middlewares = [];
+    private array $middlewares = [];
 
-    /** @var \SplQueue */
-    private $pipeline;
+    private \SplQueue $pipeline;
 
     /** @var RouteCollection|callable|null */
     private $collection;
 
-    /** @var RouteCompilerInterface|null */
-    private $compiler;
+    private ?RouteCompilerInterface $compiler;
 
-    /** @var RouteMatcherInterface */
-    private $matcher;
+    private ?RouteMatcherInterface $matcher = null;
 
     /** @var CacheItemPoolInterface|string */
     private $cacheData;
@@ -84,7 +81,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      *
      * @return static
      */
-    public static function withCollection(?RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = '')
+    public static function withCollection(RouteCollection $collection = null, ?RouteCompilerInterface $compiler = null, $cache = '')
     {
         $new = new static($compiler, $cache);
         $new->collection = $collection ?? new RouteCollection();
@@ -147,7 +144,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Sets the RouteCollection instance associated with this Router.
      *
-     * @param callable $routeDefinitionCallback takes only one parameter of route collection.
+     * @param callable $routeDefinitionCallback takes only one parameter of route collection
      */
     public function setCollection(callable $routeDefinitionCallback): void
     {
@@ -180,9 +177,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         }
 
         if ($collection instanceof RouteCollection) {
-            $collection = static function () use ($collection): RouteCollection {
-                return $collection;
-            };
+            $collection = static fn (): RouteCollection => $collection;
         }
 
         if (!empty($this->cacheData)) {

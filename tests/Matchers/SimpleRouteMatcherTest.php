@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -27,7 +27,7 @@ use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 /**
- * SimpleRouteMatcherTest
+ * SimpleRouteMatcherTest.
  */
 class SimpleRouteMatcherTest extends TestCase
 {
@@ -41,8 +41,7 @@ class SimpleRouteMatcherTest extends TestCase
     /**
      * @dataProvider routeCompileData
      *
-     * @param string $path
-     * @param array<string,null|int|string> $variables
+     * @param array<string,int|string|null> $variables
      */
     public function testCompileRoute(string $path, array $variables): void
     {
@@ -50,7 +49,7 @@ class SimpleRouteMatcherTest extends TestCase
         $collection->add($route = new Route('http://[{lang:[a-z]{2}}.]example.com/{foo}', ['FOO', 'BAR']));
 
         $factory = new RouteMatcher($collection);
-        $route   = $factory->matchRequest(new ServerRequest($route->getMethods()[0], $path));
+        $route = $factory->matchRequest(new ServerRequest($route->getMethods()[0], $path));
 
         $this->assertInstanceOf(Route::class, $route);
         $this->assertEquals($variables, $route->getArguments());
@@ -65,8 +64,6 @@ class SimpleRouteMatcherTest extends TestCase
     /**
      * @dataProvider provideCompileData
      *
-     * @param string               $regex
-     * @param string               $match
      * @param array<string,string> $tokens
      */
     public function testGenerateUri(string $regex, string $match, array $tokens): void
@@ -142,9 +139,6 @@ class SimpleRouteMatcherTest extends TestCase
         ];
     }
 
-    /**
-     * @return \Generator
-     */
     public function provideCompileData(): \Generator
     {
         yield 'Build route with variable' => [

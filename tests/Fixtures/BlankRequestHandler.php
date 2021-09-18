@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -23,7 +23,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * BlankRequestHandler
+ * BlankRequestHandler.
  */
 class BlankRequestHandler implements RequestHandlerInterface
 {
@@ -42,9 +42,6 @@ class BlankRequestHandler implements RequestHandlerInterface
         $this->attributes = $attributes;
     }
 
-    /**
-     * @return bool
-     */
     public function isRunned(): bool
     {
         return $this->isRunned;
@@ -69,11 +66,11 @@ class BlankRequestHandler implements RequestHandlerInterface
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->isRunned   = true;
+        $this->isRunned = true;
         $this->attributes = $request->getAttributes();
 
         return (new Psr17Factory())->createResponse();

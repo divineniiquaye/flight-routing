@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -49,28 +49,28 @@ use Flight\Routing\Handlers\ResourceHandler;
 final class Route
 {
     /** @var string|null @Required */
-    public $path;
+    public ?string $path;
 
     /** @var string|null @Required */
-    public $name;
+    public ?string $name;
 
     /** @var string[] @Required */
-    public $methods;
+    public array $methods;
 
     /** @var string[] */
-    public $hosts;
+    public array $hosts;
 
     /** @var string[] */
-    public $schemes;
+    public array $schemes;
 
     /** @var array<string,string> */
-    public $patterns;
+    public array $patterns;
 
     /** @var array<string,mixed> */
-    public $defaults;
+    public array $defaults;
 
     /** @var string|null */
-    public $resource;
+    public ?string $resource;
 
     /**
      * @param string|string[] $methods

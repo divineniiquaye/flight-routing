@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -44,7 +44,7 @@ class DomainRoute extends FastRoute
      */
     public const URL_PATTERN = ['#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u', '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?(?:(\/.*))?$#u'];
 
-    protected static $getter = [
+    protected static array $getter = [
         'name' => 'name',
         'path' => 'path',
         'methods' => 'methods*',

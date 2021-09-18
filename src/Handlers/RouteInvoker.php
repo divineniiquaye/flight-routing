@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -30,8 +30,7 @@ use Psr\Container\ContainerInterface;
  */
 class RouteInvoker
 {
-    /** @var ContainerInterface|null */
-    private $container;
+    private ?ContainerInterface $container;
 
     public function __construct(ContainerInterface $container = null)
     {
@@ -94,7 +93,7 @@ class RouteInvoker
 
     /**
      * @param array<int,\ReflectionParameter> $refParameters
-     * @param array<string,mixed> $arguments
+     * @param array<string,mixed>             $arguments
      *
      * @return array<int,mixed>
      */

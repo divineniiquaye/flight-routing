@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -41,13 +41,11 @@ class GeneratedUri implements \Stringable
     ];
 
     /** @var string */
-    private $pathInfo;
+    private string $pathInfo;
 
-    /** @var string|null */
-    private $scheme;
+    private ?string $scheme = null;
 
-    /** @var string|null */
-    private $host;
+    private ?string $host = null;
 
     public function __construct(string $pathInfo)
     {

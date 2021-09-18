@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,7 +24,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * BlankMiddleware
+ * BlankMiddleware.
  */
 class BlankMiddleware implements MiddlewareInterface
 {
@@ -38,40 +38,28 @@ class BlankMiddleware implements MiddlewareInterface
      */
     private $isRunned = false;
 
-    /**
-     * @param bool $isBroken
-     */
     public function __construct(bool $isBroken = false)
     {
         $this->isBroken = $isBroken;
     }
 
-    /**
-     * @return string
-     */
     public function getHash(): string
     {
         return \spl_object_hash($this);
     }
 
-    /**
-     * @return bool
-     */
     public function isBroken(): bool
     {
         return $this->isBroken;
     }
 
-    /**
-     * @return bool
-     */
     public function isRunned(): bool
     {
         return $this->isRunned;
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

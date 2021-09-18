@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -27,14 +27,14 @@ class RouteWithPrefixController
     /**
      * @Route("/path", methods={"GET", "POST"}, name="action")
      */
-    public function action()
+    public function action(): void
     {
     }
 
     /**
      * @Route("/path_two", methods={"GET", "POST"}, name="action_two")
      */
-    public function actionTwo()
+    public function actionTwo(): void
     {
     }
 }

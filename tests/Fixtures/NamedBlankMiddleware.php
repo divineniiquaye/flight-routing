@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -23,7 +23,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * NamedBlankMiddleware
+ * NamedBlankMiddleware.
  */
 class NamedBlankMiddleware implements MiddlewareInterface
 {
@@ -32,24 +32,18 @@ class NamedBlankMiddleware implements MiddlewareInterface
      */
     private $name;
 
-    /**
-     * @param string $name
-     */
     public function __construct(string $name)
     {
         $this->name = $name;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

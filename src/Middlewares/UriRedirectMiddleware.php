@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -18,11 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Middlewares;
 
 use Flight\Routing\Handlers\RouteHandler;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
+use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
  * The importance of this middleware is to slowly migrate users from old routes
@@ -40,10 +37,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 class UriRedirectMiddleware implements MiddlewareInterface
 {
     /** @var array<string,string|UriInterface> */
-    protected $redirects;
+    protected array $redirects;
 
-    /** @var bool */
-    private $keepRequestMethod;
+    private bool $keepRequestMethod;
 
     /**
      * @param array<string,string|UriInterface> $redirects         [from previous => to new]
@@ -77,7 +73,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
             }
         }
 
-        if (is_string($redirectedUri) && '#' === $redirectedUri[0]) {
+        if (\is_string($redirectedUri) && '#' === $redirectedUri[0]) {
             $redirectedUri = $uri->withPath(\substr($redirectedUri, 1));
         }
 

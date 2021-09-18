@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -35,17 +35,16 @@ use Flight\Routing\Interfaces\RouteCompilerInterface;
  */
 class RegexGenerator
 {
-    /** @var string */
-    private $prefix;
+    private string $prefix;
 
     /** @var string[] */
-    private $staticPrefixes = [];
+    private array $staticPrefixes = [];
 
     /** @var string[] */
-    private $prefixes = [];
+    private array $prefixes = [];
 
     /** @var array[]|self[] */
-    private $items = [];
+    private array $items = [];
 
     public function __construct(string $prefix = '/')
     {
@@ -110,7 +109,7 @@ class RegexGenerator
                 continue;
             }
 
-            $code .= '|' . \substr($route[0], $prefixLen) . '(*:' . $route[1] . ')';
+            $code .= '|' . \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
             $variables[$route[1]] = $route[2];
         }
 

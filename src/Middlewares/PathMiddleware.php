@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -35,11 +35,9 @@ final class PathMiddleware implements MiddlewareInterface
 {
     public const SUB_FOLDER = __CLASS__ . '::subFolder';
 
-    /** @var bool */
-    private $permanent;
+    private bool $permanent;
 
-    /** @var bool */
-    private $keepRequestMethod;
+    private bool $keepRequestMethod;
 
     /**
      * @param bool $permanent         Whether the redirection is permanent

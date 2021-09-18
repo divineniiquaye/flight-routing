@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -24,7 +24,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * PhpInfoListener
+ * PhpInfoListener.
  */
 class PhpInfoListener implements MiddlewareInterface
 {
@@ -36,7 +36,7 @@ class PhpInfoListener implements MiddlewareInterface
         $route = $request->getAttribute(Route::class);
 
         if ($route instanceof Route && 'phpinfo' === $route->getHandler()) {
-            $request = $request->withAttribute(Route::class, $route->argument('what', INFO_ALL));
+            $request = $request->withAttribute(Route::class, $route->argument('what', \INFO_ALL));
         }
 
         return $handler->handle($request);

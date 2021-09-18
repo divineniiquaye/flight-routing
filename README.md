@@ -8,7 +8,7 @@
 [![Quality Score](https://img.shields.io/scrutinizer/g/divineniiquaye/flight-routing.svg?style=flat-square)](https://scrutinizer-ci.com/g/divineniiquaye/flight-routing)
 [![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://biurad.com/sponsor)
 
-**divineniiquaye/flight-routing** is a HTTP router for [PHP] 7.2+ based on [PSR-7] and [PSR-15] with support for annotations, created by [Divine Niiquaye][@divineniiquaye]. This library helps create a human friendly urls (also more cool & prettier) while allows you to use any current trends of **`PHP Http Router`** implementation and fully meets developers' desires.
+**divineniiquaye/flight-routing** is a HTTP router for [PHP] 7.4+ based on [PSR-7] and [PSR-15] with support for annotations, created by [Divine Niiquaye][@divineniiquaye]. This library helps create a human friendly urls (also more cool & prettier) while allows you to use any current trends of **`PHP Http Router`** implementation and fully meets developers' desires.
 
 [![Xcode](https://xscode.com/assets/promo-banner.svg)](https://xscode.com/divineniiquaye/flight-routing)
 
@@ -28,7 +28,7 @@
 
 ## 📦 Installation & Basic Usage
 
-This project requires [PHP] 7.2 or higher. The recommended way to install, is via [Composer]. Simply run:
+This project requires [PHP] 7.4 or higher. The recommended way to install, is via [Composer]. Simply run:
 
 ```bash
 $ composer require divineniiquaye/flight-routing

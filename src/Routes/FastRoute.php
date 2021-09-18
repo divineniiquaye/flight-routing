@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.1 and above required
+ * PHP version 7.4 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
@@ -48,11 +48,11 @@ use Psr\Http\Message\UriInterface;
  */
 class FastRoute
 {
-    /** Default methods for route. */
+    /** @var array<int,string> Default methods for route. */
     public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
 
     /** @var array<string,string> Getter methods supported by route */
-    protected static $getter = [
+    protected static array $getter = [
         'name' => 'name',
         'path' => 'path',
         'methods' => 'methods*',
@@ -63,13 +63,12 @@ class FastRoute
     ];
 
     /** @var array<string,mixed> */
-    protected $data = [];
+    protected array $data = [];
 
     /** @var array<int,string> */
-    protected $middlewares = [];
+    protected array $middlewares = [];
 
-    /** @var RouteCollection|null */
-    private $collection;
+    private ?RouteCollection $collection = null;
 
     /**
      * Create a new Route constructor.
