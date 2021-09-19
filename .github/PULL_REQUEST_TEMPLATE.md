@@ -1,27 +1,29 @@
-# Add a meaningful title for pull request.
-<!-- Each pull request should address a single issue and have a meaningful title -->
+<!--- Provide a general summary of your changes in the title above. -->
+<!--- Please Pull requests must be in English -->
 
 ## Description
+<!--- Describe your changes in detail. -->
 
-Explain what you have changed, and why.
+## Motivation and context
+<!--- Why is this change required? What problem does it solve? -->
+<!--- If it fixes an open issue, please link to the issue here. -->
 
-## Checklist:
+## How has this been tested?
+<!--- Please describe in detail how you tested your changes. -->
+<!--- Include details of your testing environment, and the tests you ran to -->
+<!--- see how your change affects other areas of the code, etc. -->
 
-- [ ] Securely signed commits
-- [ ] Component(s) with PHPdocs
-- [ ] Unit testing, with > 80% coverage
-- [ ] User guide updated
-- [ ] Conforms to style guide
-- [ ] Has Deprecations and/or Bug fixes
-- [ ] Added new feature with backward compatibility
+## Types of changes
+<!--- What types of changes does your code introduce? Put an `x` in all the boxes that apply: -->
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] Deprecation (un-wanted or renamed functionality that should be removed)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to change)
 
----------Remove from here down in your description----------
-
-**Notes**
-- Pull requests must be in English
-- If the PR solves an issue, reference it with a suitable verb and the issue number (e.g. fixes <hash>12345)
-- Always add tests and ensure they pass with at least 80% coverage.
-- Unsolicited pull requests will be considered, but there is no guarantee of acceptance
-- Never break backward compatibility in order to maintain project development.
-- Please update UPGRADE-*.md and CHANGELOG.md files for new features.
-- Pull requests should be from a feature branch in the contributor's fork of the repository to the master branch of the project repository
+## PR checklist
+<!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
+<!--- If you're unsure about any of these, don't hesitate to ask. We're here to help! -->
+- [ ] My change requires a change to the documentation.
+- [ ] I have updated the documentation accordingly.
+- [ ] I have read the **[CONTRIBUTING.md](./CONTRIBUTING.md)** document.
+- [ ] I have added tests to cover my changes.
