@@ -1,0 +1,20 @@
+name: 🙋 Question
+description: I have a question I can't find the answer to ❓
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for being bold enough, and taking the time to ask a question.
+  - type: textarea
+    attributes:
+      label: My question is!
+      description: The question should be concise and clear, and not out of context.
+      placeholder: |
+        1. If Discussions are enabled in this repository and your question leads to a discussion,
+           I recommend using the Discussions area.
+        2. If your question is about code that you've written, provide a short and clear
+           example of what you're trying to accomplish.
+        3. If available, provide any additional context that may help us answer your question.
+    validations:
+      required: true
