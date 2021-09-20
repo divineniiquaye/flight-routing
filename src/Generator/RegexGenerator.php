@@ -74,19 +74,19 @@ class RegexGenerator
     public static function beforeCaching(RouteCompilerInterface $compiler, array $routes): array
     {
         $tree = new static();
-        $indexedRoutes = [];
+        $variables = [];
 
         for ($i = 0; $i < \count($routes); ++$i) {
-            [$pathRegex, $hostsRegex, $variables] = $compiler->compile($route = $routes[$i]);
+            [$pathRegex, $hostsRegex, $regexVars] = $compiler->compile($routes[$i]);
             $pathRegex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $pathRegex);
 
-            $tree->addRoute($pathRegex, [$pathRegex, $i, [$route, $hostsRegex, $variables]]);
+            $tree->addRoute($pathRegex, [$pathRegex, $i, [$hostsRegex, $regexVars]]);
         }
 
-        $compiledRegex = '~^(?' . $tree->compile(0, $indexedRoutes) . ')$~u';
-        \ksort($indexedRoutes);
+        $compiledRegex = '~^(?' . $tree->compile(0, $variables) . ')$~u';
+        \ksort($variables);
 
-        return [$compiledRegex, $indexedRoutes, $compiler];
+        return [[$compiledRegex, $variables], $routes, $compiler];
     }
 
     /**
@@ -110,7 +110,7 @@ class RegexGenerator
             }
 
             $code .= '|' . \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
-            $variables[$route[1]] = $route[2];
+            $variables[$route[1]] = [$route[2]];
         }
 
         return $code;
