@@ -159,7 +159,7 @@ class SimpleRouteCompilerTest extends TestCase
         [$regexList,] = RegexGenerator::beforeCaching($compiler, $collection->getRoutes());
 
         foreach ($matches as $match) {
-            if (1 === \preg_match($regexList, '/' . \ltrim($match, '/'))) {
+            if (1 === \preg_match($regexList[0], '/' . \ltrim($match, '/'))) {
                 ++$actualCount;
             }
         }
