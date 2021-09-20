@@ -101,7 +101,7 @@ final class RouteMatcher implements RouteMatcherInterface
             foreach ($this->routes as $route) {
                 [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
 
-                if(\preg_match('{^' . $pathRegex . '$}u', $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                if (\preg_match('{^' . $pathRegex . '$}u', $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
                     return static::doMatch($method, $uri, [$hostsRegex, $variables, $route], $matches);
                 }
             }
