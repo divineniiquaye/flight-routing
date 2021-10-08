@@ -60,18 +60,12 @@ class GeneratedUri implements \Stringable
         $prefixed = $this->scheme ?? '';
 
         if (null !== $this->host) {
-            $prefixed .= !empty($prefixed) ? $this->host : \substr($this->host, 2);
-        }
-
-        if (empty($prefixed)) {
+            $prefixed .= !empty($prefixed) ? '//' . $this->host : $this->host;
+        } elseif (empty($prefixed)) {
             $prefixed .= '.'; // Append missing "." at the beginning of the $uri.
         }
 
-        if ('/' !== @$this->pathInfo[0]) {
-            $prefixed .= '/';
-        }
-
-        return $prefixed . $this->pathInfo;
+        return $prefixed . '/' . \ltrim($this->pathInfo, '/\\/');
     }
 
     /**
@@ -79,7 +73,7 @@ class GeneratedUri implements \Stringable
      */
     public function withHost(string $host): self
     {
-        $this->host = '' !== $host ? '//' . \ltrim($host, './') : null;
+        $this->host = \ltrim($host, './') ?: null;
 
         return $this;
     }
