@@ -99,7 +99,7 @@ class SimpleRouteMatcherTest extends TestCase
     {
         $collection = new RouteCollection();
         $routes = [new Route('/foo'), new Route('/bar'), new Route('baz')];
-        $collection->add(...$routes);
+        $collection->routes($routes);
 
         $matcher = new RouteMatcher($collection);
         $data = $matcher->getRoutes();
@@ -115,7 +115,7 @@ class SimpleRouteMatcherTest extends TestCase
     {
         $collection = new RouteCollection();
         $routes = [new Route('/foo'), new Route('/bar'), new Route('baz')];
-        $collection->add(...$routes);
+        $collection->routes($routes);
 
         $matcher = \serialize(new RouteMatcher($collection));
         $data = ($matcher = \unserialize($matcher))->getRoutes();

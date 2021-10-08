@@ -17,9 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Generator;
 
-use Flight\Routing\Routes\FastRoute;
-use Flight\Routing\Interfaces\RouteCompilerInterface;
-
 /**
  * A helper Prefix tree class to help help in the compilation of routes in
  * preserving routes order as a full regex excluding modifies.
@@ -65,52 +62,23 @@ class RegexGenerator
     }
 
     /**
-     * This method uses default routes compiler.
-     *
-     * @param array<int,FastRoute> $routes
-     *
-     * @return array<int,mixed>
-     */
-    public static function beforeCaching(RouteCompilerInterface $compiler, array $routes): array
-    {
-        $tree = new static();
-        $variables = [];
-
-        for ($i = 0; $i < \count($routes); ++$i) {
-            [$pathRegex, $hostsRegex, $regexVars] = $compiler->compile($routes[$i]);
-            $pathRegex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $pathRegex);
-
-            $tree->addRoute($pathRegex, [$pathRegex, $i, [$hostsRegex, $regexVars]]);
-        }
-
-        $compiledRegex = '~^(?' . $tree->compile(0, $variables) . ')$~u';
-        \ksort($variables);
-
-        return [[$compiledRegex, $variables], $routes, $compiler];
-    }
-
-    /**
      * Compiles a regexp tree of sub-patterns that matches nested same-prefix routes.
      *
-     * The route item should contain:
-     * - pathRegex
-     * - an id used for (*:MARK)
-     * - an array of additional/optional values if maybe required.
+     * The route item should contain a pathRegex and an id used for (*:MARK)
      */
-    public function compile(int $prefixLen, array &$variables = []): string
+    public function compile(int $prefixLen): string
     {
         $code = '';
 
         foreach ($this->items as $route) {
             if ($route instanceof self) {
                 $prefix = \substr($route->prefix, $prefixLen);
-                $code .= '|' . \ltrim($prefix, '?') . '(?' . $route->compile($prefixLen + \strlen($prefix), $variables) . ')';
+                $code .= '|' . \ltrim($prefix, '?') . '(?' . $route->compile($prefixLen + \strlen($prefix)) . ')';
 
                 continue;
             }
 
             $code .= '|' . \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
-            $variables[$route[1]] = [$route[2]];
         }
 
         return $code;

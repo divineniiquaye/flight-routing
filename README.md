@@ -810,12 +810,34 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri};
 use Flight\Routing\Routes\Route;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 class MyRouteCompiler implements RouteCompilerInterface
 {
+    /**
+     * {@inheritdoc}
+     */
+    public function build(iterable $routes): ?GeneratedRoute
+    {
+        $staticRoutes = $variables = [];
+        $regexList = null;
+
+        foreach ($routes as $i => $route) {
+            [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
+            $variables[$hostsRegex ?: 0][$i] =  $compiledVars;
+
+            if (\preg_match('/\\(\\?P\\<\w+\\>.*\\)/', $pathRegex)) {
+                // Your own implementation to build a regex list
+            }
+
+            $staticRoutes[\str_replace('\\', '', $pathRegex)] = $i;
+        }
+
+        return new GeneratedRoute($staticRoutes, $regexList, $variables);
+    }
+
     /**
      * {@inheritdoc}
      */

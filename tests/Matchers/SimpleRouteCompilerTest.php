@@ -20,7 +20,6 @@ namespace Flight\Routing\Tests\Matchers;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Generator\RegexGenerator;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
 use Flight\Routing\Routes\Route;
@@ -64,11 +63,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         // Match every pattern...
         foreach ($matches as $match) {
-            if (\PHP_VERSION_ID < 70300) {
-                $this->assertRegExp('/^' . $regex . '$/sDu', $match);
-            } else {
-                $this->assertMatchesRegularExpression('#^' . $regex . '$#sDu', $match);
-            }
+            $this->assertMatchesRegularExpression('#^' . $regex . '$#u', $match);
         }
     }
 
@@ -89,11 +84,7 @@ class SimpleRouteCompilerTest extends TestCase
 
         // Match every pattern...
         foreach ($matches as $match) {
-            if (\PHP_VERSION_ID < 70300) {
-                $this->assertRegExp('/^' . $regex . '$/sDu', $match);
-            } else {
-                $this->assertMatchesRegularExpression('#^' . $regex . '$#sDu', $match);
-            }
+            $this->assertMatchesRegularExpression('#^' . $regex . '$#u', $match);
         }
     }
 
@@ -123,14 +114,14 @@ class SimpleRouteCompilerTest extends TestCase
         }, \iterator_to_array($this->provideCompilePathData()));
 
         $collection = new RouteCollection();
-        $collection->add(...\array_values($routes));
+        $collection->routes(\array_values($routes));
 
         foreach ($collection->getRoutes() as $route) {
             $compiledRoute = $compiler->compile($route);
 
             if (isset($matches[$compiledRoute[0]])) {
                 foreach ($matches[$compiledRoute[0]] as $match) {
-                    if (1 === \preg_match('#' . $compiledRoute[0] . '#', $match)) {
+                    if (1 === \preg_match('#^' . $compiledRoute[0] . '$#', $match)) {
                         ++$actualCount;
                     }
                 }
@@ -154,12 +145,13 @@ class SimpleRouteCompilerTest extends TestCase
 
         $compiler = new RouteCompiler();
         $collection = new RouteCollection();
-        $collection->add(...\array_values($routes));
+        $collection->routes(\array_values($routes));
 
-        [$regexList,] = RegexGenerator::beforeCaching($compiler, $collection->getRoutes());
+        $buildData = $compiler->build($collection->getRoutes());
+        [, $regexList] = $buildData->getData();
 
         foreach ($matches as $match) {
-            if (1 === \preg_match($regexList[0], '/' . \ltrim($match, '/'))) {
+            if (1 === preg_match($regexList, '/' . \ltrim($match, '/'))) {
                 ++$actualCount;
             }
         }

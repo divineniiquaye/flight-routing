@@ -599,6 +599,7 @@ class RouterTest extends BaseTestCase
 
         if ('https://biurad.com/api/v1/hello/23' === $expectedUri) {
             $this->assertTrue($middleware->isRunned());
+            $this->assertEquals('test', $response->getHeaderLine('Middleware'));
         }
 
         $this->assertInstanceOf(ResponseInterface::class, $response);

@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
-use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri, RegexGenerator};
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 /**
@@ -42,6 +42,9 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     private const PATTERN_REPLACES = ['/' => '\\/', '/[' => '\/?(?:', '[' => '(?:', ']' => ')?', '.' => '\.'];
 
+    /**
+     * Using the strtr function is faster than the preg_quote function.
+     */
     private const SEGMENT_REPLACES = ['/' => '\\/', '.' => '\.'];
 
     /**
@@ -103,26 +106,49 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
+    public function build(iterable $routes): ?GeneratedRoute
+    {
+        $tree = new RegexGenerator();
+        $variables = $staticRegex = [];
+
+        foreach ($routes as $i => $route) {
+            [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
+            $variables[$hostsRegex ?: 0][$i] =  $compiledVars;
+
+            if (\preg_match('/\\(\\?P\\<\w+\\>.*\\)/', $pathRegex)) {
+                $pathRegex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $pathRegex);
+                $tree->addRoute($pathRegex, [$pathRegex, $i]);
+
+                continue;
+            }
+
+            $staticRegex[\str_replace('\\', '', $pathRegex)] = $i;
+        }
+
+        if (!empty($compiledRegex = $tree->compile(0))) {
+            $compiledRegex = '~^(?' . $compiledRegex . ')$~sDu';
+        }
+
+        return new GeneratedRoute($staticRegex, $compiledRegex ?: null, $variables);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function compile(Route $route): array
     {
-        $requirements = $route->get('patterns');
-        $routePath = \ltrim($route->get('path'), '/');
-        $variables = []; // The vars found in path and hosts regex.
+        $requirements = $route->getPatterns();
+        $routePath = $route->getPath();
 
         // Strip supported browser prefix of $routePath ...
-        if (isset(BaseRoute::URL_PREFIX_SLASHES[@$routePath[-1]])) {
-            $routePath = \substr($routePath, 0, -1);
+        if (\array_key_exists($routePath[-1], BaseRoute::URL_PREFIX_SLASHES)) {
+            $routePath = \substr($routePath, 0, -1) ?: '/';
         }
 
-        // A path containing {} is a Dynamic route.
-        if (\str_contains($routePath, '{')) {
-            [$pathRegex, $variables] = self::compilePattern('/' . $routePath, false, $requirements);
-        } else {
-            $pathRegex = \strtr('/' . $routePath, self::SEGMENT_REPLACES);
-        }
+        [$pathRegex, $variables] = self::compilePattern($routePath, false, $requirements);
 
         if ($route instanceof Routes\DomainRoute) {
-            $hosts = $route->get('hosts');
+            $hosts = $route->getHosts();
 
             if (!empty($hosts)) {
                 $hostsRegex = self::compileHosts($hosts, $requirements, $variables);
@@ -137,22 +163,22 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     public function generateUri(Route $route, array $parameters): GeneratedUri
     {
-        [$pathRegex, $pathVariables] = self::compilePattern('/' . \ltrim($route->get('path'), '/'), true);
+        [$pathRegex, $pathVariables] = self::compilePattern($route->getPath(), true);
 
-        $defaults = $route->get('defaults');
+        $defaults = $route->getDefaults();
         $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults + $pathVariables));
 
-        foreach ($route->get('hosts') as $host) {
-            $compiledHost = self::compilePattern($host, true);
-
-            if (!empty($compiledHost)) {
-                [$hostRegex, $hostVariables] = $compiledHost;
-
-                break;
-            }
+        if (!$route instanceof Routes\DomainRoute) {
+            return $createUri;
         }
 
-        if (!empty($schemes = $route->get('schemes'))) {
+        foreach ($route->getHosts() as $host) {
+            [$hostRegex, $hostVariables] = self::compilePattern($host, true);
+
+            break;
+        }
+
+        if (!empty($schemes = $route->getSchemes())) {
             $createUri->withScheme(\in_array('https', $schemes, true) ? 'https' : \end($schemes) ?? 'http');
 
             if (!isset($hostRegex)) {
@@ -238,6 +264,11 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     private static function compilePattern(string $uriPattern, bool $reversed = false, array $requirements = []): array
     {
+        // A path which doesn't contain {}, should be ignored.
+        if (!\str_contains($uriPattern, '{')) {
+            return [\strtr($uriPattern, $reversed ? ['?' => ''] : self::SEGMENT_REPLACES), []];
+        }
+
         $variables = []; // VarNames mapping to values use by route's handler.
         $replaces = $reversed ? ['?' => ''] : self::PATTERN_REPLACES;
 
@@ -289,7 +320,7 @@ final class RouteCompiler implements RouteCompilerInterface
     {
         // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
         // variable would not be usable as a Controller action argument.
-        if (1 === \preg_match('/^\d/', $varName)) {
+        if (1 === \preg_match('/\d/A', $varName)) {
             throw new UriHandlerException(\sprintf('Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.', $varName, $pattern));
         }
 
