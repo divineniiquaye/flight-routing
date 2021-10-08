@@ -28,9 +28,6 @@ use Psr\Http\Message\UriInterface;
  * - schemes binding
  * - domain and schemes casting from route pattern
  *
- * @method string[] getSchemes() Gets the route hosts schemes.
- * @method string[] getHosts()   Gets the route hosts.
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class DomainRoute extends FastRoute
@@ -43,18 +40,6 @@ class DomainRoute extends FastRoute
      * @var string[]
      */
     public const URL_PATTERN = ['#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u', '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?(?:(\/.*))?$#u'];
-
-    protected static array $getter = [
-        'name' => 'name',
-        'path' => 'path',
-        'methods' => 'methods*',
-        'schemes' => 'schemes*',
-        'hosts' => 'hosts*',
-        'handler' => 'handler',
-        'arguments' => 'arguments*',
-        'patterns' => 'patterns*',
-        'defaults' => 'defaults*',
-    ];
 
     public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
     {
@@ -74,7 +59,7 @@ class DomainRoute extends FastRoute
         $matched = parent::match($method, $uri);
 
         if (isset($this->data['schemes'])) {
-            if (\in_array($uri->getScheme(), $this->get('schemes'), true)) {
+            if (\array_key_exists($uri->getScheme(), $this->data['schemes'])) {
                 return $matched;
             }
 
@@ -105,11 +90,11 @@ class DomainRoute extends FastRoute
             \preg_match(self::URL_PATTERN[0], $host, $matches, \PREG_UNMATCHED_AS_NULL);
 
             if (isset($matches[1])) {
-                $this->data['schemes'][] = $matches[1];
+                $this->data['schemes'][$matches[1]] = true;
             }
 
             if (isset($matches[2])) {
-                $this->data['hosts'][] = $matches[2];
+                $this->data['hosts'][$matches[2]] = true;
             }
         }
 
@@ -126,30 +111,50 @@ class DomainRoute extends FastRoute
     public function scheme(string ...$schemes)
     {
         foreach ($schemes as $scheme) {
-            $this->data['schemes'][] = \strtolower($scheme);
+            $this->data['schemes'][$scheme] = true;
         }
 
         return $this;
     }
 
+    /**
+     * @return array<int,string>
+     */
+    public function getSchemes(): array
+    {
+        $schemes = $this->data['schemes'] ?? [];
+
+        return [] === $schemes ? $schemes : \array_keys($schemes);
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    public function getHosts(): array
+    {
+        $hosts = $this->data['hosts'] ?? [];
+
+        return [] === $hosts ? $hosts : \array_keys($hosts);
+    }
+
     protected function resolvePattern(string $pattern): string
     {
-        \preg_match(self::URL_PATTERN[1], $pattern, $matches, \PREG_UNMATCHED_AS_NULL);
-
-        if (!empty($matches)) {
-            if (isset($matches[1])) {
-                $this->data['schemes'][] = $matches[1];
+        if (1 === \preg_match(self::URL_PATTERN[1], $pattern, $matches, \PREG_UNMATCHED_AS_NULL)) {
+            if (null !== $matches[1]) {
+                $this->data['schemes'][$matches[1]] = true;
             }
 
-            if (isset($matches[2])) {
-                $this->data['hosts'][] = $matches[2];
+            if (null !== $matches[2]) {
+                $this->data['hosts'][$matches[2]] = true;
             }
 
-            if (!isset($matches[3])) {
+            if (empty($matches[3])) {
                 throw new UriHandlerException('A route path not could not be found, Did you forget include one.');
             }
+
+            return $matches[3];
         }
 
-        return $matches[3] ?? $pattern;
+        return $pattern;
     }
 }

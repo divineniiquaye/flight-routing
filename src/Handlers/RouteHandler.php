@@ -145,14 +145,14 @@ class RouteHandler implements RequestHandlerInterface
      */
     private function resolveHandler(ServerRequestInterface $request, Route $route)
     {
-        $handler = $route->get('handler');
+        $handler = $route->getHandler();
 
         if ($handler instanceof RequestHandlerInterface) {
             return $handler->handle($request);
         }
 
         if (!$handler instanceof ResponseInterface) {
-            $parameters = $route->get('arguments');
+            $parameters = $route->getArguments();
 
             foreach ([$request, $this->responseFactory] as $psr7) {
                 $parameters[\get_class($psr7)] = $psr7;

@@ -201,7 +201,7 @@ class ListenerTest extends TestCase
 
         $routes = \iterator_to_array($collection->getRoutes());
         \uasort($routes, static function (DomainRoute $a, DomainRoute $b): int {
-            return \strcmp($a->get('name'), $b->get('name'));
+            return \strcmp($a->getName(), $b->getName());
         });
 
         $routes = Fixtures\Helper::routesToArray($routes);
@@ -304,7 +304,7 @@ class ListenerTest extends TestCase
 
         $this->assertEquals([
             'name' => 'GET_HEAD_annotatedtesting_',
-            'path' => 'testing/',
+            'path' => '/testing/',
             'hosts' => [],
             'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler' => [Fixtures\Annotation\Route\Valid\MethodOnRoutePattern::class, 'handleSomething'],

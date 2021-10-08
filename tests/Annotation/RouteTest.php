@@ -19,6 +19,7 @@ namespace Flight\Routing\Tests\Annotation;
 
 use Flight\Routing\Annotation\Route;
 use Flight\Routing\Exceptions\UriHandlerException;
+use Flight\Routing\Tests\Fixtures\Helper;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -56,7 +57,7 @@ class RouteTest extends TestCase
         ];
 
         $route = new Route($params['path'], $params['name'], $params['methods']);
-        $routeData = $route->getRoute(null)->getData();
+        $routeData = Helper::routesToArray([$route->getRoute(null)], true);
 
         $this->assertEquals($params['name'], $routeData['name']);
         $this->assertEquals($params['path'], $routeData['path']);

@@ -17,10 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Routes;
 
-use Flight\Routing\Exceptions\{MethodNotAllowedException, InvalidControllerException};
-use Flight\Routing\{Router, RouteCollection};
+use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Handlers\ResourceHandler;
-use Psr\Http\Message\UriInterface;
 
 /**
  * Value object representing a single route.
@@ -36,139 +34,10 @@ use Psr\Http\Message\UriInterface;
  * - pattern placeholders assert binding
  * - add defaults binding
  *
- * @method string      getPath()      Gets the route path.
- * @method string|null getName()      Gets the route name.
- * @method string[]    getMethods()   Gets the route methods.
- * @method mixed       getHandler()   Gets the route handler.
- * @method array       getArguments() Gets the arguments passed to route handler as parameters.
- * @method array       getDefaults()  Gets the route default settings.
- * @method array       getPatterns()  Gets the route pattern placeholder assert.
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class FastRoute
+class FastRoute extends AbstractRoute
 {
-    /** @var array<int,string> Default methods for route. */
-    public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
-
-    /** @var array<string,string> Getter methods supported by route */
-    protected static array $getter = [
-        'name' => 'name',
-        'path' => 'path',
-        'methods' => 'methods*',
-        'handler' => 'handler',
-        'arguments' => 'arguments*',
-        'defaults' => 'defaults*',
-        'patterns' => 'patterns*',
-    ];
-
-    /** @var array<string,mixed> */
-    protected array $data = [];
-
-    /** @var array<int,string> */
-    protected array $middlewares = [];
-
-    private ?RouteCollection $collection = null;
-
-    /**
-     * Create a new Route constructor.
-     *
-     * @param string          $pattern The route pattern
-     * @param string|string[] $methods the route HTTP methods
-     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
-     */
-    public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
-    {
-        $this->data = [
-            'path' => $pattern,
-            'handler' => $handler,
-            'methods' => !empty($methods) ? \array_map('strtoupper', (array) $methods) : [],
-        ];
-    }
-
-    /**
-     * @param string[] $arguments
-     *
-     * @throws \BadMethodCallException
-     *
-     * @return mixed
-     */
-    public function __call(string $method, array $arguments)
-    {
-        if (\str_starts_with($method = \strtolower($method), 'get')) {
-            $method = \substr($method, 3);
-        }
-
-        if (!empty($arguments)) {
-            throw new \BadMethodCallException(\sprintf('Arguments passed into "%s::%s(...)" not supported, method invalid.', __CLASS__, $method));
-        }
-
-        return $this->get($method);
-    }
-
-    /**
-     * @internal
-     */
-    public function __serialize(): array
-    {
-        return $this->data;
-    }
-
-    /**
-     * @internal
-     *
-     * @param array<string,mixed> $data
-     */
-    public function __unserialize(array $data): void
-    {
-        $this->data = $data;
-    }
-
-    /**
-     * @internal
-     *
-     * @param array<string,mixed> $properties The route data properties
-     *
-     * @return static
-     */
-    public static function __set_state(array $properties)
-    {
-        $route = new static($properties['path'] ?? '', $properties['methods'] ?? [], $properties['handler'] ?? null);
-        $route->data += \array_diff_key($properties, ['path' => null, 'methods' => [], 'handler' => null]);
-
-        return $route;
-    }
-
-    /**
-     * Create a new Route statically.
-     *
-     * @param string          $pattern The route pattern
-     * @param string|string[] $methods the route HTTP methods
-     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
-     *
-     * @return static
-     */
-    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
-    {
-        return new static($pattern, $methods, $handler);
-    }
-
-    /**
-     * Asserts route.
-     *
-     * @throws MethodNotAllowedException
-     *
-     * @return static
-     */
-    public function match(string $method, UriInterface $uri)
-    {
-        if (!\in_array($method, $methods = $this->get('methods'), true)) {
-            throw new MethodNotAllowedException($methods, $uri->getPath(), $method);
-        }
-
-        return $this;
-    }
-
     /**
      * Sets the route path prefix.
      *
@@ -203,7 +72,7 @@ class FastRoute
     public function method(string ...$methods)
     {
         foreach ($methods as $method) {
-            $this->data['methods'][] = \strtoupper($method);
+            $this->data['methods'][\strtoupper($method)] = true;
         }
 
         return $this;
@@ -365,86 +234,6 @@ class FastRoute
         }
 
         return $this;
-    }
-
-    /**
-     * Sets the route belonging to a particular collection.
-     *
-     * This method is kinda internal, only used in RouteCollection class,
-     * and retrieved using this class end method.
-     *
-     * @internal used by RouteCollection class
-     */
-    public function belong(RouteCollection $to): void
-    {
-        $this->collection = $to;
-    }
-
-    /**
-     * End a group stack or return self.
-     */
-    public function end(): ?RouteCollection
-    {
-        if (null !== $stack = $this->collection) {
-            $this->collection = null; // Just remove it.
-        }
-
-        return $stack;
-    }
-
-    /**
-     * Get a return from any valid key name of this class $getter static property.
-     *
-     * @throws \InvalidArgumentException if $name does not exist as property
-     *
-     * @return mixed
-     */
-    public function get(string $name)
-    {
-        if (null === $key = static::$getter[$name] ?? null) {
-            throw new \InvalidArgumentException(\sprintf('Invalid call for "%s" in %s(\'%1$s\'), try any of [%s].', $name, __METHOD__, \implode(',', \array_keys(static::$getter))));
-        }
-
-        if ('*' === $key[-1]) {
-            return \array_unique($this->data[\substr($key, 0, -1)] ?? []);
-        }
-
-        return $this->data[$key] ?? null;
-    }
-
-    /**
-     * Return the list of attached grouped middlewares.
-     *
-     * @return array<int,string>
-     */
-    public function getPiped(): array
-    {
-        return $this->middlewares;
-    }
-
-    /**
-     * Get the route's data.
-     *
-     * @return array<string,mixed>
-     */
-    public function getData(): array
-    {
-        return \array_map(function (string $property) {
-            if ('*' === $property[-1]) {
-                $property = \substr($property, 0, -1);
-            }
-
-            return $this->get($property);
-        }, static::$getter);
-    }
-
-    public function generateRouteName(string $prefix): string
-    {
-        $routeName = \implode('_', $this->data['methods'] ?? []) . '_' . $prefix . $this->data['path'] ?? '';
-        $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
-        $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
-
-        return (string) \preg_replace(['/\_+/', '/\.+/'], ['_', '.'], $routeName);
     }
 
     /**

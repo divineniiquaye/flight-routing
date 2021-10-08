@@ -63,7 +63,7 @@ final class PathMiddleware implements MiddlewareInterface
             // Determine the response code should keep HTTP request method ...
             $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
 
-            $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->get('path')[-1]] ?? null;
+            $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->getPath()[-1]] ?? null;
             $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
 
             if ($routeEndTail === $requestEndTail) {

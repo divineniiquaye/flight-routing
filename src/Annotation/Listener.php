@@ -146,9 +146,9 @@ class Listener implements ListenerInterface
     /**
      * Resolve route naming.
      */
-    private function resolveRouteName(?string $prefix, DomainRoute $route, bool $force = false): ?string
+    private function resolveRouteName(?string $prefix, DomainRoute $route, bool $force = false): string
     {
-        $name = $route->get('name');
+        $name = $route->getName();
 
         if ((null !== $this->unNamedPrefix || $force) && empty($name)) {
             $name = $base = $prefix . $route->generateRouteName($this->unNamedPrefix ?? '');
@@ -162,6 +162,6 @@ class Listener implements ListenerInterface
             return $name;
         }
 
-        return $prefix . $name;
+        return (string) $prefix . $name;
     }
 }

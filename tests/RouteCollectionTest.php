@@ -69,7 +69,7 @@ class RouteCollectionTest extends TestCase
             'patterns' => [],
             'arguments' => [],
             'defaults' => [],
-        ], $route->getData());
+        ], Fixtures\Helper::routesToArray([$route], true));
 
         $collection->next();
         $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
@@ -83,7 +83,7 @@ class RouteCollectionTest extends TestCase
             'patterns' => [],
             'arguments' => [],
             'defaults' => [],
-        ], $route->getData());
+        ], Fixtures\Helper::routesToArray([$route], true));
 
         $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
@@ -97,7 +97,7 @@ class RouteCollectionTest extends TestCase
             'patterns' => [],
             'arguments' => [],
             'defaults' => [],
-        ], $route->getData());
+        ], Fixtures\Helper::routesToArray([$route], true));
 
         $this->assertCount(3, $collection);
     }
@@ -120,7 +120,7 @@ class RouteCollectionTest extends TestCase
             'patterns' => [],
             'arguments' => [],
             'defaults' => [],
-        ], $route->getData());
+        ], Fixtures\Helper::routesToArray([$route], true));
 
         $collection->next();
         $this->assertInstanceOf(FastRoute::class, $collection->current());
@@ -389,7 +389,7 @@ class RouteCollectionTest extends TestCase
             'defaults' => [],
             'patterns' => [],
             'arguments' => [],
-        ], $collector->getRoutes()[0]->getData());
+        ], Fixtures\Helper::routesToArray($collector->getRoutes(), true));
     }
 
     public function testDeepGrouping(): void
@@ -610,7 +610,7 @@ class RouteCollectionTest extends TestCase
 
         $this->assertCount(128, $routes = iterator_to_array($router->getMatcher()->getRoutes()));
         \uasort($routes, static function (FastRoute $a, FastRoute $b): int {
-            return \strcmp($a->get('name'), $b->get('name'));
+            return \strcmp($a->getName(), $b->getName());
         });
 
         $this->assertEquals([
@@ -756,7 +756,7 @@ class RouteCollectionTest extends TestCase
             'defaults' => ['_locale' => 'en'],
             'arguments' => ['_locale' => 'fr'],
             'patterns' => ['_locale' => 'en|fr'],
-        ], $route->getData());
+        ], Fixtures\Helper::routesToArray([$route], true));
 
         $this->assertEquals($cached, $router->isCached());
         $this->assertEquals('./hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));

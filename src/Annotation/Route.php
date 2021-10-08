@@ -109,7 +109,6 @@ final class Route
             'name' => $this->name,
             'path' => $this->path,
             'methods' => $this->methods,
-            'schemes' => $this->schemes,
             'patterns' => $this->patterns,
             'defaults' => $this->defaults,
         ];
@@ -122,6 +121,10 @@ final class Route
 
         if (!empty($this->hosts)) {
             $route->domain(...$this->hosts);
+        }
+
+        if (!empty($this->schemes)) {
+            $route->scheme(...$this->schemes);
         }
 
         return $route;

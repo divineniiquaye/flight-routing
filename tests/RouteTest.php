@@ -62,7 +62,7 @@ class RouteTest extends TestCase
     {
         $properties = [
             'name' => 'baz',
-            'path' => 'hello',
+            'path' => '/hello',
             'methods' => FastRoute::DEFAULT_METHODS,
             'handler' => 'phpinfo',
             'defaults' => ['foo' => 'bar'],
@@ -70,18 +70,18 @@ class RouteTest extends TestCase
 
         $this->assertEquals([
             'name' => 'baz',
-            'path' => 'hello',
+            'path' => '/hello',
             'methods' => FastRoute::DEFAULT_METHODS,
             'handler' => 'phpinfo',
             'arguments' => [],
             'defaults' => ['foo' => 'bar'],
             'patterns' => [],
-        ], FastRoute::__set_state($properties)->getData());
+        ], Fixtures\Helper::routesToArray([FastRoute::__set_state($properties)], true));
 
         $dRoute = DomainRoute::__set_state($properties);
         $this->assertEquals([
             'name' => 'baz',
-            'path' => 'hello',
+            'path' => '/hello',
             'methods' => FastRoute::DEFAULT_METHODS,
             'schemes' => [],
             'hosts' => [],
@@ -89,15 +89,15 @@ class RouteTest extends TestCase
             'arguments' => [],
             'defaults' => ['foo' => 'bar'],
             'patterns' => [],
-        ], $dRoute->getData());
+        ], $dRoutes = Fixtures\Helper::routesToArray([$dRoute], true));
 
         $testRoute = Route::__set_state($properties);
-        $this->assertEquals($dRoute->getData(), $testRoute->getData());
+        $this->assertEquals($dRoutes, Fixtures\Helper::routesToArray([$testRoute], true));
     }
 
     public function testSetStateMethodWihInvalidKey(): void
     {
-        $routeData = Route::__set_state(['path' => '/', 'foo' => 'bar'])->getData();
+        $routeData = Route::__set_state(['path' => '/', 'foo' => 'bar']);
 
         $this->assertEquals([
             'name' => null,
@@ -109,7 +109,7 @@ class RouteTest extends TestCase
             'arguments' => [],
             'patterns' => [],
             'defaults' => [],
-        ], $routeData);
+        ], Fixtures\Helper::routesToArray([$routeData], true));
     }
 
     public function testDomainRoute(): void
@@ -145,18 +145,18 @@ class RouteTest extends TestCase
         $testRoute = new Route('/foo');
         $testRoute->bind('foo');
 
-        $this->assertEquals('foo', $testRoute->get('name'));
+        $this->assertEquals('foo', $testRoute->getName());
     }
 
     public function testRouteMethods(): void
     {
         $testRoute1 = new Route('/foo');
-        $testRoute2 = new Route('foo', '');
+        $testRoute2 = new Route('foo', []);
         $testRoute3 = new Route('foo', []);
-        $testRoute4 = Route::to('foo', [])->method('connect', 'get', 'get');
+        $testRoute4 = Route::to('foo', [])->method(...['connect', 'get', 'get']);
 
         $this->assertEquals(Route::DEFAULT_METHODS, $testRoute1->getMethods());
-        $this->assertSame($testRoute2->getMethods(), $testRoute3->getMethods());
+        $this->assertEquals($testRoute2->getMethods(), $testRoute3->getMethods());
         $this->assertEquals(['CONNECT', 'GET'], $testRoute4->getMethods());
     }
 
@@ -233,16 +233,6 @@ class RouteTest extends TestCase
         $this->assertSame($expected, $testRoute->getPath());
     }
 
-    public function testMethodNotFoundInMagicCall(): void
-    {
-        $route = new Route('/foo');
-
-        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\Routes\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
-        $this->expectException(\InvalidArgumentException::class);
-
-        $route->exception();
-    }
-
     public function testNotAllowedEmptyPath(): void
     {
         $this->expectExceptionMessage('The route pattern "" is invalid as route path must be present in pattern.');
@@ -307,15 +297,15 @@ class RouteTest extends TestCase
         return [
             ['/foo', '/bar', '/bar/foo'],
             ['/foo', '/bar/', '/bar/foo'],
-            ['/foo', 'bar', 'bar/foo'],
+            ['/foo', 'bar', '/bar/foo'],
             ['foo', '/bar', '/bar/foo'],
-            ['foo', 'bar', 'bar/foo'],
-            ['@foo', 'bar', 'bar@foo'],
-            ['foo', '@bar', '@bar/foo'],
+            ['foo', 'bar', '/bar/foo'],
+            ['@foo', 'bar', '/bar@foo'],
+            ['foo', '@bar', '/@bar/foo'],
             ['~foo', '/bar~', '/bar~foo'],
             ['/foo', '', '/foo'],
-            ['foo', '', 'foo'],
-            ['/foo', 'bar_', 'bar_foo'],
+            ['foo', '', '/foo'],
+            ['/foo', 'bar_', '/bar_foo'],
         ];
     }
 }

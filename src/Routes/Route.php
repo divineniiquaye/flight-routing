@@ -65,29 +65,29 @@ class Route extends DomainRoute
      */
     protected function resolvePattern(string $pattern): string
     {
-        \preg_match(self::RCA_PATTERN, $pattern, $matches, \PREG_UNMATCHED_AS_NULL);
-
-        if (!empty($matches)) {
-            if (isset($matches[1])) {
-                $this->data['schemes'][] = $matches[1];
+        if (1 === \preg_match(self::RCA_PATTERN, $pattern, $matches, \PREG_UNMATCHED_AS_NULL)) {
+            if (null !== $matches[1]) {
+                $this->data['schemes'][$matches[1]] = true;
             }
 
-            if (isset($matches[2])) {
-                $this->data['hosts'][] = $matches[2];
+            if (null !== $matches[2]) {
+                $this->data['hosts'][$matches[2]] = true;
             }
 
-            if (isset($matches[5])) {
+            if (null !== $matches[5]) {
                 // Match controller from route pattern.
                 $handler = $matches[4] ?? $this->data['handler'] ?? null;
                 $this->data['handler'] = !empty($handler) ? [$handler, $matches[5]] : $matches[5];
             }
 
-            if (empty($matches[3] ?? '')) {
+            if (empty($matches[3])) {
                 throw new UriHandlerException(\sprintf('The route pattern "%s" is invalid as route path must be present in pattern.', $pattern));
             }
+
+            return $matches[3];
         }
 
-        return $matches[3] ?? $pattern ?: '/';
+        return $pattern;
     }
 
     /**
