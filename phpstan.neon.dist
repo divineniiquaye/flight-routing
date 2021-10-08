@@ -1,5 +1,5 @@
 parameters:
-    level: max
+    level: 5
     paths: [src]
     treatPhpDocTypesAsCertain: false
     checkMissingIterableValueType: false
@@ -11,20 +11,8 @@ parameters:
     ignoreErrors:
         - "#^Unsafe usage of new static\\(\\).$#"
         -
-            message: "#^Method Flight\\\\Routing\\\\Annotation\\\\Listener\\:\\:resolveRouteName\\(\\) never returns null so it can be removed from the return typehint.$#"
-            path: src/Annotation/Listener.php
-        -
             message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:addRoute\\(\\) should return Flight\\\\Routing\\\\Routes\\\\Route but returns Flight\\\\Routing\\\\Routes\\\\FastRoute.$#"
             path: src/RouteCollection.php
         -
-            message: "#^Cannot unset offset int<-1, max> on array<string, array>|Parameter \\#1 \\$function|\\$callback of function call_user_func_array expects callable\\(\\): mixed, array\\(Flight\\\\Routing\\\\(?|Routes\\\\FastRoute|RouteCollection), string\\) given.$#"
-            path: src/RouteCollection.php
-        -
-            message: "#^Parameter \\#1 \\$annotations|\\$classAnnotations of method Flight\\\\Routing\\\\Annotation\\\\Listener\\:\\:(?|getRoutes|addRoute)\\(\\) expects iterable<Flight\\\\Routing\\\\Annotation\\\\Route>, iterable<object> given.$#"
-            path: src/Annotation/Listener.php
-        -
-            message: "#^Parameter \\#1 \\$filename of function file_exists expects string, Psr\\\\Cache\\\\CacheItemPoolInterface\\|string given.$#"
-            path: src/Router.php
-        -
-            message: "#^Method Flight\\\\Routing\\\\RouteMatcher\\:\\:getRoutes\\(\\) should return array<Flight\\\\Routing\\\\Routes\\\\FastRoute> but returns array<int, array<int, mixed>\\|Flight\\\\Routing\\\\Routes\\\\FastRoute>.$#"
+            message: "#^Variable \\$matches might not be defined.$#"
             path: src/RouteMatcher.php

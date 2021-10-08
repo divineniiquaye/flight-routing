@@ -24,11 +24,11 @@ use Flight\Routing\Interfaces\ExceptionInterface;
  */
 class MethodNotAllowedException extends \RuntimeException implements ExceptionInterface
 {
-    /** @var string[] */
+    /** @var array<int,string> */
     private array $methods;
 
     /**
-     * @param string[] $methods
+     * @param array<int,string> $methods
      */
     public function __construct(array $methods, string $path, string $method)
     {
@@ -41,7 +41,7 @@ class MethodNotAllowedException extends \RuntimeException implements ExceptionIn
     /**
      * Gets allowed methods.
      *
-     * @return string[]
+     * @return array<int,string>
      */
     public function getAllowedMethods(): array
     {

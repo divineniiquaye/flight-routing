@@ -33,10 +33,30 @@
             </errorLevel>
         </InvalidReturnType>
 
+        <InvalidArgument>
+            <errorLevel type="suppress">
+                <file name="src/RouteCollection.php" />
+            </errorLevel>
+        </InvalidArgument>
+
         <InvalidReturnStatement>
             <errorLevel type="suppress">
                 <file name="src/RouteMatcher.php" />
+                <file name="src/RouteCollection.php" />
             </errorLevel>
         </InvalidReturnStatement>
+
+        <InvalidArrayAssignment>
+            <errorLevel type="suppress">
+                <file name="src/RouteCollection.php" />
+            </errorLevel>
+        </InvalidArrayAssignment>
+
+        <InvalidPropertyAssignmentValue>
+            <errorLevel type="suppress">
+                <file name="src/RouteMatcher.php" />
+                <file name="src/RouteCollection.php" />
+            </errorLevel>
+        </InvalidPropertyAssignmentValue>
     </issueHandlers>
 </psalm>
