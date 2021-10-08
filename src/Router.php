@@ -95,7 +95,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     public function addRoute(Route ...$routes): void
     {
         if ($this->collection instanceof RouteCollection) {
-            $this->collection->add(...$routes);
+            $this->collection->routes($routes);
         }
     }
 

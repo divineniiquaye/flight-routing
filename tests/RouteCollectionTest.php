@@ -46,7 +46,7 @@ class RouteCollectionTest extends TestCase
     public function testAdd(): void
     {
         $collection = new RouteCollection();
-        $collection->add(new FastRoute('/1'), new DomainRoute('/2'), new Route('/3'));
+        $collection->routes([new FastRoute('/1'), new DomainRoute('/2'), new Route('/3')]);
         $collection = $this->getIterable($collection);
 
         $this->assertInstanceOf(FastRoute::class, $route = $collection->current());
@@ -143,24 +143,6 @@ class RouteCollectionTest extends TestCase
         $this->assertCount(4, $collection);
     }
 
-    public function testCannotFindMethodInRoute(): void
-    {
-        $this->expectExceptionMessage('Invalid call for "exception" in Flight\Routing\Routes\FastRoute::get(\'exception\'), try any of [name,path,methods,schemes,hosts,handler,arguments,patterns,defaults].');
-        $this->expectException(\InvalidArgumentException::class);
-
-        $collection = new RouteCollection();
-        $collection->add(new Route('/foo', Router::METHOD_GET))->exception();
-    }
-
-    public function testCannotFindMethodInCollection(): void
-    {
-        $this->expectExceptionMessage('Arguments passed into "Flight\Routing\Routes\FastRoute::exceptions(...)" not supported, method invalid.');
-        $this->expectException(\BadMethodCallException::class);
-
-        $collection = new RouteCollection();
-        $collection->add(new Route('/foo', Router::METHOD_GET))->exceptions(['nothing']);
-    }
-
     public function testRoutesSerialization(): void
     {
         $collection = new RouteCollection();
@@ -174,7 +156,6 @@ class RouteCollectionTest extends TestCase
 
         $this->assertCount(100, $collection->getRoutes());
         $this->assertCount(100, ($collection = \unserialize($serialized))->getRoutes());
-        $this->assertTrue($collection->isLocked());
     }
 
     /**
@@ -201,7 +182,7 @@ class RouteCollectionTest extends TestCase
                 static function (FastRoute $route): ?string {
                     return $route->getName();
                 },
-                $routes
+                \iterator_to_array($routes)
             )
         );
     }
@@ -217,11 +198,11 @@ class RouteCollectionTest extends TestCase
         $rootB->addRoute('/leaf_a', []);
 
         $this->assertCount(2, $routes = $controllers->getRoutes());
-        $this->assertEquals(['_leaf_a', '_leaf_a_1'], \array_map(
+        $this->assertEquals(['_leaf_a_1', '_leaf_a'], \array_map(
             static function (FastRoute $route): string {
                 return $route->getName();
             },
-            $routes
+            \iterator_to_array($routes)
         ));
     }
 
@@ -230,18 +211,20 @@ class RouteCollectionTest extends TestCase
         $collector = new RouteCollection();
         $collector->getRoutes();
 
-        $this->expectExceptionObject(new \RuntimeException('Grouping cannot be added on runtime, do add all routes before runtime.'));
+        $this->expectExceptionObject(new \RuntimeException('Grouping index invalid or out of range, add group before calling the getRoutes() method.'));
         $collector->group('');
     }
 
-    public function testLockedRoutesCollection(): void
+    public function testPopulatingAsGroupCollection(): void
     {
         $collector = new RouteCollection();
-        $collector->getRoutes();
-        $this->assertEmpty($collector->getRoutes());
+        $this->assertCount(0, $collector->getRoutes());
 
-        $this->expectExceptionObject(new \RuntimeException('Routes cannot be added on runtime, do add all routes before runtime.'));
-        $collector->addRoute('/foo', [Router::METHOD_GET]);
+        $collection = new RouteCollection();
+        $collection->add(new Route('/foo', Router::METHOD_GET));
+
+        $this->expectExceptionObject(new \RuntimeException('Populating a route collection as group must be done before calling the getRoutes() method.'));
+        $collector->populate($collection, true);
     }
 
     public function testEmptyPrototype(): void
@@ -253,6 +236,9 @@ class RouteCollectionTest extends TestCase
         $collector->get('/foo');
 
         $this->assertEquals('/foo', $collector->getRoutes()[0]->getPath());
+
+        $this->expectExceptionObject(new \RuntimeException('Routes method prototyping must be done before calling the getRoutes() method.'));
+        $collector->prototype();
     }
 
     public function testRequestMethodAsCollectionMethod(): void
@@ -439,7 +425,7 @@ class RouteCollectionTest extends TestCase
             return \strcmp($a->getName(), $b->getName());
         });
 
-        $this->assertEquals(['web'], $routes[4]->getPiped());
+        $this->assertEquals(['web'], $routes[2]->getPiped());
         $routes = Fixtures\Helper::routesToArray($routes);
 
         $this->assertEquals([
@@ -611,7 +597,7 @@ class RouteCollectionTest extends TestCase
             $mergedCollection->group('', $groupOptimisedCollection);
         });
 
-        $this->assertCount(128, $routes = $router->getMatcher()->getRoutes());
+        $this->assertCount(128, $routes = iterator_to_array($router->getMatcher()->getRoutes()));
         \uasort($routes, static function (FastRoute $a, FastRoute $b): int {
             return \strcmp($a->get('name'), $b->get('name'));
         });
@@ -798,6 +784,6 @@ class RouteCollectionTest extends TestCase
         $routes = $collection->getRoutes();
         $this->assertTrue($collection->isLocked());
 
-        return new \ArrayIterator($routes);
+        return new \ArrayIterator(\iterator_to_array($routes));
     }
 }

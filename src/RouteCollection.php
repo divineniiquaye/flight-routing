@@ -62,17 +62,14 @@ final class RouteCollection
     private array $prototyped = [];
 
     /** @var Routes\FastRoute[] */
-    private array $routes = [];
+    private iterable $routes = [];
 
     /** @var self[] */
     private array $groups = [];
 
-    private string $uniqueId;
+    private ?string $uniqueId;
 
     private string $namedPrefix;
-
-    /** @var bool Prevent adding routes once already used or serialized */
-    private bool $locked = false;
 
     /**
      * @param string $namedPrefix The unqiue name for this group
@@ -120,66 +117,59 @@ final class RouteCollection
     }
 
     /**
-     * If true, new routes cannot be added.
+     * @return iterable<Routes\FastRoute>
      */
-    public function isLocked(): bool
+    public function getRoutes(): iterable
     {
-        return $this->locked;
-    }
+        $routes = $this->routes;
 
-    /**
-     * @return array<int,Routes\FastRoute>
-     */
-    public function getRoutes(): array
-    {
-        if ($this->locked) {
-            return $this->routes;
+        if ($routes instanceof \SplFixedArray) {
+            return $routes;
         }
-
-        $this->locked = true; // Freeze the routes to avoid slow down on runtime.
 
         if (!empty($this->groups)) {
-            $this->injectGroups('', $this);
-            $this->groups = []; // Unset grouping ...
+            $this->injectGroups('', $routes);
         }
 
-        return self::sortRoutes($this->routes);
+        $this->uniqueId = null; // Lock grouping and prototyping
+
+        return $this->routes = self::sortRoutes($routes);
     }
 
     /**
      * Merge a collection into base.
+     *
+     * @throws \RuntimeException if locked
      */
     public function populate(self $collection, bool $asGroup = false): void
     {
         if ($asGroup) {
-            $this->groups[] = $collection;
-        } else {
-            if (!empty($collection->groups)) {
-                $collection->injectGroups($collection->namedPrefix, $collection);
+            if (null === $this->uniqueId) {
+                throw new \RuntimeException('Populating a route collection as group must be done before calling the getRoutes() method.');
             }
 
-            foreach ($collection->routes as $route) {
+            $this->groups[] = $collection;
+        } else {
+            $routes = $collection->routes;
+
+            if (!empty($collection->groups)) {
+                $collection->injectGroups($collection->namedPrefix, $routes);
+            }
+
+            foreach ($routes as $route) {
                 $this->routes[] = $this->injectRoute($route);
             }
 
-            $collection->groups = $collection->routes = $collection->prototypes = [];
+            $collection->routes = $collection->prototypes = [];
         }
     }
 
     /**
-     * Add route(s) to the collection.
-     *
-     * This method unset all setting from default route and use new settings
-     * from new the route(s). If you want the default settings to be merged
-     * into routes, use `addRoute` method instead.
-     *
-     * @param Routes\FastRoute ...$routes
+     * Add route to the collection.
      */
-    public function add(Routes\FastRoute ...$routes): self
+    public function add(Routes\FastRoute $route): self
     {
-        foreach ($routes as $route) {
-            $this->routes[] = $this->injectRoute($route);
-        }
+        $this->routes[] = $this->injectRoute($route);
 
         return $this;
     }
@@ -211,6 +201,23 @@ final class RouteCollection
     }
 
     /**
+     * Add routes to the collection.
+     *
+     * @param Routes\FastRoute[] $routes
+     *
+     * @throws \TypeError if $routes doesn't contain a fast route instance
+     * @throws \RuntimeException if locked
+     */
+    public function routes(array $routes): self
+    {
+        foreach ($routes as $route) {
+            $this->routes[] = $this->injectRoute($route);
+        }
+
+        return $this;
+    }
+
+    /**
      * Mounts controllers under the given route prefix.
      *
      * @param string                   $name        The route group prefixed name
@@ -221,8 +228,8 @@ final class RouteCollection
      */
     public function group(string $name, $controllers = null): self
     {
-        if ($this->locked) {
-            throw new \RuntimeException('Grouping cannot be added on runtime, do add all routes before runtime.');
+        if (null === $this->uniqueId) {
+            throw new \RuntimeException('Grouping index invalid or out of range, add group before calling the getRoutes() method.');
         }
 
         if (\is_callable($controllers)) {
@@ -238,11 +245,17 @@ final class RouteCollection
 
     /**
      * Allows a proxied method call to route's.
+     *
+     * @throws \RuntimeException if locked
      */
     public function prototype(): self
     {
+        if (null === $uniqueId = $this->uniqueId) {
+            throw new \RuntimeException('Routes method prototyping must be done before calling the getRoutes() method.');
+        }
+
         $this->prototypes = (null !== $this->parent) ? ($this->parent->prototypes ?? []) : [];
-        $this->prototyped[$this->uniqueId] = true; // Prototyping calls to routes ...
+        $this->prototyped[$uniqueId] = true; // Prototyping calls to routes ...
 
         return $this;
     }
@@ -395,10 +408,6 @@ final class RouteCollection
      */
     private function injectRoute(Routes\FastRoute $route): Routes\FastRoute
     {
-        if ($this->locked) {
-            throw new \RuntimeException('Routes cannot be added on runtime, do add all routes before runtime.');
-        }
-
         foreach ($this->prototypes ?? [] as $routeMethod => $arguments) {
             if (empty($arguments)) {
                 continue;
@@ -426,13 +435,16 @@ final class RouteCollection
         return $controllers;
     }
 
-    private function injectGroups(string $prefix, self $collection): void
+    /**
+     * @param iterable<int,Routes\FastRoute> $collection
+     */
+    private function injectGroups(string $prefix, iterable &$collection): void
     {
         $unnamedRoutes = [];
 
         foreach ($this->groups as $group) {
             foreach ($group->routes as $route) {
-                if (empty($name = $route->get('name'))) {
+                if (empty($name = $route->getName())) {
                     $name = $route->generateRouteName('');
 
                     if (isset($unnamedRoutes[$name])) {
@@ -442,12 +454,14 @@ final class RouteCollection
                     }
                 }
 
-                $collection->routes[] = $route->bind($prefix . $group->namedPrefix . $name);
+                $collection[] = $route->bind($prefix . $group->namedPrefix . $name);
             }
 
             if (!empty($group->groups)) {
                 $group->injectGroups($prefix . $group->namedPrefix, $collection);
             }
         }
+
+        $this->groups = [];
     }
 }

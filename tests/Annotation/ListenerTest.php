@@ -199,7 +199,7 @@ class ListenerTest extends TestCase
 
         $loader->build();
 
-        $routes = $collection->getRoutes();
+        $routes = \iterator_to_array($collection->getRoutes());
         \uasort($routes, static function (DomainRoute $a, DomainRoute $b): int {
             return \strcmp($a->get('name'), $b->get('name'));
         });

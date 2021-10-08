@@ -66,7 +66,7 @@ class Listener implements ListenerInterface
             $this->getRoutes($annotation->getAnnotation(), (string) $annotation, $foundAnnotations, $annotation instanceof Class_);
         }
 
-        return $this->collector->add(...$foundAnnotations);
+        return $this->collector->routes($foundAnnotations);
     }
 
     /**
