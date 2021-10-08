@@ -1,0 +1,15 @@
+{
+    "runner.bootstrap": "vendor/autoload.php",
+    "runner.path": "tests/Benchmarks",
+    "runner.output_mode": "time",
+    "runner.retry_threshold": 5,
+
+    "report.generators": {
+        "default": {
+            "extends": "expression",
+            "break": [ "benchmark" ],
+            "include_baseline": true,
+            "cols": [ "benchmark", "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
+        }
+   }
+}
