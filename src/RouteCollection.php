@@ -387,20 +387,20 @@ final class RouteCollection
      *
      * @param Routes\FastRoute[] $routes
      *
-     * @return Routes\FastRoute[]
+     * @return \SplFixedArray<Routes\FastRoute>
      */
-    private static function sortRoutes(array $routes): array
+    private static function sortRoutes(array $routes): \SplFixedArray
     {
-        $sortRegex = '#^[\w+' . \implode('\\', Routes\Route::URL_PREFIX_SLASHES) . ']+$#';
+        $sortRegex = '#^\\/[\\/\\w]+$#';
 
         \usort($routes, static function (Routes\FastRoute $a, Routes\FastRoute $b) use ($sortRegex): int {
-            $aRegex = \preg_match($sortRegex, $a->get('path'));
-            $bRegex = \preg_match($sortRegex, $b->get('path'));
+            $aB = \preg_match($sortRegex, $aP = $a->getPath());
+            $bB = \preg_match($sortRegex, $bP = $b->getPath());
 
-            return $aRegex == $bRegex ? 0 : ($aRegex < $bRegex ? +1 : -1);
+            return $aB && $bB ? 0 : ($aB < $bB ? +1 : ($aB > $bB ? -1 : \strcmp($aP, $bP)));
         });
 
-        return $routes;
+        return \SplFixedArray::fromArray($routes);
     }
 
     /**

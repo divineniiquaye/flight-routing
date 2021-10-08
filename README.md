@@ -700,9 +700,9 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 ---
 
-Flight Routing is supports **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect), the **MRM** feature is to serve static routes first, making other routes declared reachable.
+Flight Routing supports **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect), the **MRM** feature is to serve static routes first, making other routes declared reachable.
 
-> Router will match all routes in the order they were registered. Make sure to avoid situations where previous route matches the conditions of the following routes, as the MRM feature is not yet implemented.
+This feature was not fully implemented due to performance reasons, Route collection will return a list of routes starting with static routes eg: '/hello/world'. Make sure to avoid situations where dynamic route `/hello/{world}` matches a condition such as `/[{foo}/{bar}]` or `/[{foo}/{bar}]`.
 
 ```php
 use Flight\Routing\Route;

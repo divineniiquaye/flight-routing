@@ -43,6 +43,17 @@ class RouteCollectionTest extends TestCase
         }
     }
 
+    public function testCollection(): void
+    {
+        $collection = new RouteCollection();
+        $this->assertInstanceOf(\SplFixedArray::class, $collection->getRoutes());
+
+        $this->expectExceptionMessage('Index invalid or out of range');
+        $this->expectException(\RuntimeException::class);
+
+        $collection->addRoute('/hello', ['GET']);
+    }
+
     public function testAdd(): void
     {
         $collection = new RouteCollection();
@@ -782,7 +793,7 @@ class RouteCollectionTest extends TestCase
     private function getIterable(RouteCollection $collection): \ArrayIterator
     {
         $routes = $collection->getRoutes();
-        $this->assertTrue($collection->isLocked());
+        $this->assertInstanceOf(\SplFixedArray::class, $routes);
 
         return new \ArrayIterator(\iterator_to_array($routes));
     }
