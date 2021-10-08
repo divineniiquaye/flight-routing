@@ -86,4 +86,4 @@ jobs:
 
       - name: "Benchmark Router for Performance"
         if: matrix.operating-system != 'macos-latest'
-        run: composer require phpbench/phpbench -W && vendor/bin/phpbench run --report default --revs 1000
+        run: composer require phpbench/phpbench -W && vendor/bin/phpbench run --report default
