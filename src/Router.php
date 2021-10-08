@@ -224,13 +224,13 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMatcherInterface) {
-            $cachedData = new RouteMatcher($loader(), $this->compiler);
+            $dumpData = "<<<'SERIALIZED'\n" . \serialize($cachedData = new RouteMatcher($loader(), $this->compiler)) . "\nSERIALIZED";
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
             }
 
-            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize('" . \serialize($cachedData) . "');\n");
+            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize(" . $dumpData . ");\n");
         }
 
         return $cachedData;
