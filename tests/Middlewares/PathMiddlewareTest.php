@@ -167,10 +167,12 @@ class PathMiddlewareTest extends BaseTestCase
             'root-without-prefix-tail_2' => ['/foo', '/foo', '', 200],
             'root-without-prefix-tail_3' => ['/foo', '/foo/', '/foo', 301],
             'root-without-prefix-tail_4' => ['/foo', '/foo/', '/foo', 301],
+            'root-without-prefix-tail_5' => ['/[{bar}]', '/', '', 200],
             'root-with-prefix-tail_1' => ['/foo/', '/foo/', '', 200],
             'root-with-prefix-tail_2' => ['/foo/', '/foo/', '', 200],
             'root-with-prefix-tail_3' => ['/foo/', '/foo', '/foo/', 301],
             'root-with-prefix-tail_4' => ['/foo/', '/foo', '/foo/', 301],
+            'root-with-prefix-tail_5' => ['/[{bar}]/', '/', '', 200],
         ];
     }
 }

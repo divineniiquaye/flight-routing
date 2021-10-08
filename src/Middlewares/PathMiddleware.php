@@ -22,8 +22,8 @@ use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
 /**
- * Resolved route path against request uri paths and match a valid response status
- * code, including resolving sub-directory paths.
+ * This middleware increases SEO (search engine optimization) by preventing duplication
+ * of content at different URLs including resolving sub-directory paths.
  *
  * The response status code is 302 if the permanent parameter is false (default),
  * and 301 if the redirection is permanent on redirection. If keep request method
@@ -66,7 +66,7 @@ final class PathMiddleware implements MiddlewareInterface
             $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->getPath()[-1]] ?? null;
             $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
 
-            if ($routeEndTail === $requestEndTail) {
+            if ($requestEndTail === $requestPath || $routeEndTail === $requestEndTail) {
                 return $response;
             }
 
@@ -74,7 +74,7 @@ final class PathMiddleware implements MiddlewareInterface
             if (null === $requestEndTail && null !== $routeEndTail) {
                 $requestPath .= $routeEndTail;
             } elseif (null === $routeEndTail && null !== $requestEndTail) {
-                $requestPath = \substr($requestPath, 0, -1);
+                $requestPath = \substr($requestPath, 0, -1) ?: $requestEndTail;
             }
 
             // Allow Redirection if exists and avoid static request.
