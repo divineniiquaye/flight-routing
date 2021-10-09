@@ -17,20 +17,18 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Generator;
 
+use Flight\Routing\RouteMatcher;
+use Psr\Http\Message\UriInterface;
+
 /**
  * @internal
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class GeneratedRoute
-{
-    /** @var array<string,int> */
-    private array $staticPaths;
-
-    private ?string $dynamicRegex;
-
-    /** @var array<int,mixed[]> */
-    private array $variables;
+{    
+    /** @var array<int,mixed> */
+    private array $compiledData;
 
     /**
      * @param array<string,int> $staticPaths
@@ -38,31 +36,44 @@ final class GeneratedRoute
      */
     public function __construct(array $staticPaths, ?string $dynamicRegex, array $variables)
     {
-        $this->dynamicRegex = $dynamicRegex;
-        $this->staticPaths = $staticPaths;
-        $this->variables = $variables;
-    }
-
-    /**
-     * @internal
-     */
-    public function __serialize(): array
-    {
-        return [$this->staticPaths, $this->dynamicRegex, $this->variables];
-    }
-
-    /**
-     * @internal
-     *
-     * @param array<int,mixed> $data
-     */
-    public function __unserialize(array $data): void
-    {
-        [$this->staticPaths, $this->dynamicRegex, $this->variables] = $data;
+        $this->compiledData = [$staticPaths, $dynamicRegex, $variables];
     }
 
     public function getData(): array
     {
-        return [$this->staticPaths, $this->dynamicRegex, $this->variables];
+        return $this->compiledData;
+    }
+
+    /**
+     * @return array<int,mixed>|null
+     */
+    public function matchRoute(string $requestPath, UriInterface $uri): ?array
+    {
+        [$staticRoutes, $regexList, $variables] = $this->compiledData;
+
+        if (null === $matchedId = $staticRoutes[$requestPath] ?? null) {
+            if (null === $regexList || !\preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                return null;
+            }
+
+            $matchedId = (int) $matches['MARK'];
+        }
+
+        foreach ($variables as $domain => $routeVar) {
+            if (!\is_null($matchVar = $routeVar[$matchedId] ?? null)) {
+                if (!empty($matchVar)) {
+                    $matchInt = 0;
+                    $hostsVar = 0 === $domain ? [] : RouteMatcher::matchHost($domain, $uri);
+
+                    foreach ($matchVar as $key => $value) {
+                        $matchVar[$key] = $matches[++$matchInt] ?? $matches[$key] ?? $hostsVar[$key] ?? $value;
+                    }
+                }
+
+                return [$matchedId, $matchVar];
+            }
+        }
+
+        return null;
     }
 }
