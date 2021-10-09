@@ -405,7 +405,7 @@ final class RouteCollection implements \IteratorAggregate
             $aB = \preg_match($sortRegex, $aP = $a->getPath());
             $bB = \preg_match($sortRegex, $bP = $b->getPath());
 
-            return $aB && $bB ? 0 : ($aB < $bB ? +1 : ($aB > $bB ? -1 : \strcmp($aP, $bP)));
+            return $aB && $bB ? strnatcmp($aP, $bP) : ($aB < $bB ? +1 : ($aB > $bB ? -1 : \strnatcmp($aP, $bP)));
         });
 
         return \SplFixedArray::fromArray($routes);
