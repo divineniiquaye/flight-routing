@@ -31,8 +31,8 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  */
 final class RouteMatcher implements RouteMatcherInterface
 {
-    /** @var Route[] */
-    private iterable $routes;
+    /** @var \Traversable<Route> */
+    private \Traversable $routes;
 
     private RouteCompilerInterface $compiler;
 
@@ -41,7 +41,7 @@ final class RouteMatcher implements RouteMatcherInterface
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
-        $this->routes = $collection->getRoutes();
+        $this->routes = $collection;
     }
 
     /**
@@ -51,7 +51,7 @@ final class RouteMatcher implements RouteMatcherInterface
     {
         $routes = $this->getRoutes();
 
-        return [$this->compiler->build($routes), $routes, $this->compiler];
+        return [$this->compiler->build($routes), $routes->getRoutes(), $this->compiler];
     }
 
     /**
@@ -97,7 +97,7 @@ final class RouteMatcher implements RouteMatcherInterface
                 if (\preg_match('{^' . $pathRegex . '$}u', $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
                     if (empty($variables)) {
                         return $route->match($method, $uri);
-                    }
+            }
 
                     return static::doMatch($method, $uri, [$hostsRegex, $variables, $route], $matches);
                 }
@@ -114,7 +114,7 @@ final class RouteMatcher implements RouteMatcherInterface
             }
 
             $matchedId = (int) $matches['MARK'];
-        }
+                    }
 
         foreach ($variables as $domain => $routeVar) {
             if (\array_key_exists($matchedId, $routeVar)) {
@@ -155,9 +155,9 @@ final class RouteMatcher implements RouteMatcherInterface
     /**
      * Get the routes associated with this class.
      *
-     * @return iterable<int,Route>
+     * @return RouteCollection|\SplFixedArray<Route>
      */
-    public function getRoutes(): iterable
+    public function getRoutes(): \Traversable
     {
         return $this->routes;
     }

@@ -147,7 +147,7 @@ class SimpleRouteCompilerTest extends TestCase
         $collection = new RouteCollection();
         $collection->routes(\array_values($routes));
 
-        $buildData = $compiler->build($collection->getRoutes());
+        $buildData = $compiler->build($collection);
         [, $regexList] = $buildData->getData();
 
         foreach ($matches as $match) {
