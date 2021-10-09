@@ -16,6 +16,7 @@
     <projectFiles>
         <directory name="src"/>
         <ignoreFiles>
+            <file name="src/Handlers/RouteInvoker.php" />
             <directory name="vendor"/>
         </ignoreFiles>
     </projectFiles>

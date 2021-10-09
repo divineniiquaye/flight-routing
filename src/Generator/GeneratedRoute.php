@@ -26,7 +26,7 @@ use Psr\Http\Message\UriInterface;
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class GeneratedRoute
-{    
+{
     /** @var array<int,mixed> */
     private array $compiledData;
 

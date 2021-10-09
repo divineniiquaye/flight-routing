@@ -188,7 +188,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             $matcher = new RouteMatcher($collection(), $this->compiler);
         }
 
-        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData, $collection);;
+        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData, $collection);
     }
 
     /**
