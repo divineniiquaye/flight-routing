@@ -97,7 +97,7 @@ final class RouteMatcher implements RouteMatcherInterface
                 if (\preg_match('{^' . $pathRegex . '$}u', $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
                     if (empty($variables)) {
                         return $route->match($method, $uri);
-            }
+                    }
 
                     return static::doMatch($method, $uri, [$hostsRegex, $variables, $route], $matches);
                 }
@@ -114,7 +114,7 @@ final class RouteMatcher implements RouteMatcherInterface
             }
 
             $matchedId = (int) $matches['MARK'];
-                    }
+        }
 
         foreach ($variables as $domain => $routeVar) {
             if (\array_key_exists($matchedId, $routeVar)) {
