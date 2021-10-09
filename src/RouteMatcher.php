@@ -31,7 +31,7 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  */
 final class RouteMatcher implements RouteMatcherInterface
 {
-    /** @var \Traversable<Route> */
+    /** @var RouteCollection|\SplFixedArray<Route> */
     private \Traversable $routes;
 
     private RouteCompilerInterface $compiler;
