@@ -61,13 +61,13 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
     private ?RouteMatcherInterface $matcher = null;
 
-    /** @var CacheItemPoolInterface|string */
+    /** @var CacheItemPoolInterface|string|null */
     private $cacheData;
 
     /**
-     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
+     * @param CacheItemPoolInterface|string|null $cache use file path or PSR-6 cache
      */
-    public function __construct(RouteCompilerInterface $compiler = null, $cache = '')
+    public function __construct(RouteCompilerInterface $compiler = null, $cache = null)
     {
         $this->compiler = $compiler;
         $this->pipeline = new \SplQueue();
@@ -77,11 +77,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Set a route collection instance into Router in order to use addRoute method.
      *
-     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
+     * @param CacheItemPoolInterface|string|null $cache use file path or PSR-6 cache
      *
      * @return static
      */
-    public static function withCollection(RouteCollection $collection = null, ?RouteCompilerInterface $compiler = null, $cache = '')
+    public static function withCollection(RouteCollection $collection = null, ?RouteCompilerInterface $compiler = null, $cache = null)
     {
         $new = new static($compiler, $cache);
         $new->collection = $collection ?? new RouteCollection();
@@ -160,7 +160,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function isCached(): bool
     {
-        return ($this->cacheData instanceof CacheItemPoolInterface && $this->cacheData->hasItem(__FILE__)) || \file_exists($this->cacheData);
+        if (null === $cache = $this->cacheData) {
+            return false;
+        }
+
+        return ($cache instanceof CacheItemPoolInterface && $cache->hasItem(__FILE__)) || \file_exists($cache);
     }
 
     /**
@@ -180,11 +184,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             $collection = static fn (): RouteCollection => $collection;
         }
 
-        if (!empty($this->cacheData)) {
-            $matcher = $this->getCachedData($this->cacheData, $collection);
+        if (null === $this->cacheData) {
+            $matcher = new RouteMatcher($collection(), $this->compiler);
         }
 
-        return $this->matcher = $matcher ?? new RouteMatcher($collection(), $this->compiler);
+        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData, $collection);;
     }
 
     /**
