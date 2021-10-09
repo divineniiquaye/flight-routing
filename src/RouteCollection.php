@@ -51,7 +51,7 @@ namespace Flight\Routing;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection
+final class RouteCollection implements \IteratorAggregate
 {
     private ?self $parent = null;
 
@@ -117,9 +117,9 @@ final class RouteCollection
     }
 
     /**
-     * @return iterable<Routes\FastRoute>
+     * {@inheritdoc}
      */
-    public function getRoutes(): iterable
+    public function getIterator(): \Traversable
     {
         $routes = $this->routes;
 
@@ -134,6 +134,14 @@ final class RouteCollection
         $this->uniqueId = null; // Lock grouping and prototyping
 
         return $this->routes = self::sortRoutes($routes);
+    }
+
+    /**
+     * @return iterable<Routes\FastRoute>
+     */
+    public function getRoutes(): iterable
+    {
+        return $this->getIterator();
     }
 
     /**

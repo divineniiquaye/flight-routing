@@ -19,6 +19,7 @@ namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri};
+use Flight\Routing\RouteCollection;
 use Flight\Routing\Routes\FastRoute as Route;
 
 /**
@@ -33,10 +34,8 @@ interface RouteCompilerInterface
      * If compiler doesn't support this functionality, return null instead.
      *
      * @see Flight\Routing\RouteMatcher implementation of this method
-     *
-     * @param iterable<int,Route> $routes
      */
-    public function build(iterable $routes): ?GeneratedRoute;
+    public function build(RouteCollection $routes): ?GeneratedRoute;
 
     /**
      * Match the Route instance and compiles the current route instance.
