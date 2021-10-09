@@ -109,6 +109,10 @@ class RouteCollectionTest extends TestCase
         $collection->fastRoute('/bar', [Router::METHOD_GET]);
         $collection = $this->getIterable($collection);
 
+        $this->assertInstanceOf(FastRoute::class, $collection->current());
+        $this->assertCount(2, $collection);
+
+        $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertEquals([
             'handler' => null,
@@ -121,11 +125,6 @@ class RouteCollectionTest extends TestCase
             'arguments' => [],
             'defaults' => [],
         ], Fixtures\Helper::routesToArray([$route], true));
-
-        $collection->next();
-        $this->assertInstanceOf(FastRoute::class, $collection->current());
-
-        $this->assertCount(2, $collection);
     }
 
     public function testCannotOverriddenRoute(): void
@@ -140,12 +139,12 @@ class RouteCollectionTest extends TestCase
         $this->assertNull($route->getName());
 
         $collection->next();
-        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
-        $this->assertNull($route->getName());
-
-        $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertEquals('not_sameGET_foo', $route->getName());
+
+        $collection->next();
+        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertNull($route->getName());
 
         $collection->next();
         $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
@@ -436,7 +435,7 @@ class RouteCollectionTest extends TestCase
             return \strcmp($a->getName(), $b->getName());
         });
 
-        $this->assertEquals(['web'], $routes[2]->getPiped());
+        $this->assertEquals(['web'], $routes[1]->getPiped());
         $routes = Fixtures\Helper::routesToArray($routes);
 
         $this->assertEquals([

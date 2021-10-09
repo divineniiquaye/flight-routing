@@ -106,7 +106,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function build(iterable $routes): ?GeneratedRoute
+    public function build(RouteCollection $routes): ?GeneratedRoute
     {
         $tree = new RegexGenerator();
         $variables = $staticRegex = [];
