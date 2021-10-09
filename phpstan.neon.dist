@@ -13,3 +13,6 @@ parameters:
         -
             message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:addRoute\\(\\) should return Flight\\\\Routing\\\\Routes\\\\Route but returns Flight\\\\Routing\\\\Routes\\\\FastRoute.$#"
             path: src/RouteCollection.php
+        -
+            message: "#^Variable \\$matches might not be defined.$#"
+            path: src/RouteMatcher.php
