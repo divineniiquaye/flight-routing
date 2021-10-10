@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Routes;
+namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\UriHandlerException;
 
@@ -28,7 +28,7 @@ use Flight\Routing\Exceptions\UriHandlerException;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Route extends DomainRoute
+class Route
 {
     /**
      * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
