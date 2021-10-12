@@ -156,6 +156,18 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     }
 
     /**
+     *  Get the RouteCollection instance associated with this Router.
+     */
+    public function getCollection(): RouteCollection
+    {
+        if (null === $collection = $this->collection) {
+            throw new \RuntimeException(\sprintf('Did you forget to set add the route collection with the "%s".', __CLASS__ . '::setCollection'));
+        }
+
+        return \is_callable($collection) ? $collection() : $collection;
+    }
+
+    /**
      * If RouteCollection's data has been cached.
      */
     public function isCached(): bool
@@ -176,19 +188,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             return $this->matcher;
         }
 
-        if (null === $collection = $this->collection) {
-            throw new \RuntimeException(\sprintf('Did you forget to set add the route collection with the "%s".', __CLASS__ . '::setCollection'));
-        }
-
-        if ($collection instanceof RouteCollection) {
-            $collection = static fn (): RouteCollection => $collection;
-        }
-
         if (null === $this->cacheData) {
-            $matcher = new RouteMatcher($collection(), $this->compiler);
+            $matcher = new RouteMatcher($this->getCollection(), $this->compiler);
         }
 
-        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData, $collection);
+        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData);
     }
 
     /**
@@ -212,14 +216,14 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * @param CacheItemPoolInterface|string $cache
      */
-    protected function getCachedData($cache, callable $loader): RouteMatcherInterface
+    protected function getCachedData($cache): RouteMatcherInterface
     {
         if ($cache instanceof CacheItemPoolInterface) {
             $cachedData = $cache->getItem(__FILE__)->get();
 
             if (!$cachedData instanceof RouteMatcherInterface) {
                 $cache->deleteItem(__FILE__);
-                $cache->save($cache->getItem(__FILE__)->set($cachedData = new RouteMatcher($loader(), $this->compiler)));
+                $cache->save($cache->getItem(__FILE__)->set($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)));
             }
 
             return $cachedData;
@@ -228,7 +232,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMatcherInterface) {
-            $dumpData = "<<<'SERIALIZED'\n" . \serialize($cachedData = new RouteMatcher($loader(), $this->compiler)) . "\nSERIALIZED";
+            $dumpData = "<<<'SERIALIZED'\n" . \serialize($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
