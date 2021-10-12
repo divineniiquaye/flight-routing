@@ -24,13 +24,8 @@ namespace Flight\Routing\Generator;
  */
 final class GeneratedRoute
 {
-    /** @var array<string,int> */
-    private array $staticPaths;
-
-    private ?string $dynamicRegex;
-
-    /** @var array<int,mixed[]> */
-    private array $variables;
+    /** @var array<int,mixed> */
+    private array $compiledData;
 
     /**
      * @param array<string,int> $staticPaths
@@ -38,9 +33,7 @@ final class GeneratedRoute
      */
     public function __construct(array $staticPaths, ?string $dynamicRegex, array $variables)
     {
-        $this->dynamicRegex = $dynamicRegex;
-        $this->staticPaths = $staticPaths;
-        $this->variables = $variables;
+        $this->compiledData = [$staticPaths, $dynamicRegex, $variables];
     }
 
     /**
@@ -48,7 +41,7 @@ final class GeneratedRoute
      */
     public function __serialize(): array
     {
-        return [$this->staticPaths, $this->dynamicRegex, $this->variables];
+        return $this->compiledData;
     }
 
     /**
@@ -58,11 +51,11 @@ final class GeneratedRoute
      */
     public function __unserialize(array $data): void
     {
-        [$this->staticPaths, $this->dynamicRegex, $this->variables] = $data;
+        $this->compiledData = $data;
     }
 
     public function getData(): array
     {
-        return [$this->staticPaths, $this->dynamicRegex, $this->variables];
+        return $this->compiledData;
     }
 }
