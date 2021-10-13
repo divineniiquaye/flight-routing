@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Flight\Routing\Routes\{DomainRoute, FastRoute, Route};
+use Flight\Routing\Route;
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Handlers\ResourceHandler;
@@ -30,32 +30,13 @@ class RouteTest extends TestCase
 {
     public function testConstructor(): void
     {
-        $fRoute = new FastRoute('/hello');
-        $this->assertInstanceOf(FastRoute::class, $fRoute);
-
-        $dRoute = new DomainRoute('/hello');
-        $this->assertInstanceOf(DomainRoute::class, $dRoute);
-        $this->assertInstanceOf(FastRoute::class, $dRoute);
-
         $testRoute = new Route('/hello');
         $this->assertInstanceOf(Route::class, $testRoute);
-        $this->assertInstanceOf(FastRoute::class, $testRoute);
-        $this->assertInstanceOf(DomainRoute::class, $testRoute);
-    }
+        $this->assertSame('/hello', $testRoute->getPath());
 
-    public function testStaticToMethod(): void
-    {
-        $fRoute = FastRoute::to('/hello');
-        $this->assertInstanceOf(FastRoute::class, $fRoute);
-
-        $dRoute = DomainRoute::to('/hello');
-        $this->assertInstanceOf(DomainRoute::class, $dRoute);
-        $this->assertInstanceOf(FastRoute::class, $dRoute);
-
-        $testRoute = Route::to('/hello');
+        $testRoute = Route::to('@/hello');
         $this->assertInstanceOf(Route::class, $testRoute);
-        $this->assertInstanceOf(FastRoute::class, $testRoute);
-        $this->assertInstanceOf(DomainRoute::class, $testRoute);
+        $this->assertSame('/hello', $testRoute->getPath());
     }
 
     public function testSetStateMethod(): void
@@ -63,36 +44,23 @@ class RouteTest extends TestCase
         $properties = [
             'name' => 'baz',
             'path' => '/hello',
-            'methods' => FastRoute::DEFAULT_METHODS,
+            'methods' => Route::DEFAULT_METHODS,
             'handler' => 'phpinfo',
             'defaults' => ['foo' => 'bar'],
         ];
 
+        $testRoute = Route::__set_state($properties);
         $this->assertEquals([
             'name' => 'baz',
             'path' => '/hello',
-            'methods' => FastRoute::DEFAULT_METHODS,
-            'handler' => 'phpinfo',
-            'arguments' => [],
-            'defaults' => ['foo' => 'bar'],
-            'patterns' => [],
-        ], Fixtures\Helper::routesToArray([FastRoute::__set_state($properties)], true));
-
-        $dRoute = DomainRoute::__set_state($properties);
-        $this->assertEquals([
-            'name' => 'baz',
-            'path' => '/hello',
-            'methods' => FastRoute::DEFAULT_METHODS,
+            'methods' => Route::DEFAULT_METHODS,
             'schemes' => [],
             'hosts' => [],
             'handler' => 'phpinfo',
             'arguments' => [],
             'defaults' => ['foo' => 'bar'],
             'patterns' => [],
-        ], $dRoutes = Fixtures\Helper::routesToArray([$dRoute], true));
-
-        $testRoute = Route::__set_state($properties);
-        $this->assertEquals($dRoutes, Fixtures\Helper::routesToArray([$testRoute], true));
+        ], Fixtures\Helper::routesToArray([$testRoute], true));
     }
 
     public function testSetStateMethodWihInvalidKey(): void
@@ -114,26 +82,26 @@ class RouteTest extends TestCase
 
     public function testDomainRoute(): void
     {
-        $dRoute1 = new DomainRoute('https://biurad.com/hi');
+        $dRoute1 = new Route('https://biurad.com/hi');
         $this->assertEquals('/hi', $dRoute1->getPath());
         $this->assertEquals(['https'], $dRoute1->getSchemes());
         $this->assertEquals(['biurad.com'], $dRoute1->getHosts());
 
-        $dRoute2 = new DomainRoute('//biurad.com/hi');
+        $dRoute2 = new Route('//biurad.com/hi');
         $this->assertEquals('/hi', $dRoute2->getPath());
         $this->assertEmpty($dRoute2->getSchemes());
         $this->assertEquals(['biurad.com'], $dRoute2->getHosts());
 
-        $dRoute3 = new DomainRoute('/hi');
+        $dRoute3 = new Route('/hi');
         $this->assertEquals('/hi', $dRoute3->getPath());
         $this->assertEmpty($dRoute3->getSchemes());
         $this->assertEmpty($dRoute3->getHosts());
 
-        $dRoute4 = DomainRoute::to('//biurad.com/')->path('//localhost/foo');
+        $dRoute4 = Route::to('//biurad.com/')->path('//localhost/foo');
         $this->assertEquals('/foo', $dRoute4->getPath());
         $this->assertEquals(['biurad.com', 'localhost'], $dRoute4->getHosts());
 
-        $dRoute = DomainRoute::to('https://biurad.com/hi');
+        $dRoute = Route::to('https://biurad.com/hi');
         $dRoute->scheme('https')->domain('https://greet.biurad.com', 'biurad.com');
 
         $this->assertEquals(['https'], $dRoute->getSchemes());
@@ -200,7 +168,7 @@ class RouteTest extends TestCase
 
     public function testRouteArguments(): void
     {
-        $route = FastRoute::to('/foo')->argument('number', '345')->arguments(['hello' => 'world']);
+        $route = Route::to('/foo')->argument('number', '345')->arguments(['hello' => 'world']);
 
         $this->assertEquals(['number' => 345, 'hello' => 'world'], $route->getArguments());
     }
@@ -233,12 +201,10 @@ class RouteTest extends TestCase
         $this->assertSame($expected, $testRoute->getPath());
     }
 
-    public function testNotAllowedEmptyPath(): void
+    public function testAllowedEmptyPath(): void
     {
-        $this->expectExceptionMessage('The route pattern "" is invalid as route path must be present in pattern.');
-        $this->expectException(UriHandlerException::class);
-
         $route = new Route('');
+        $this->assertEquals('/', $route->getPath());
     }
 
     public function testNotAllowedEmptyPathInHost(): void

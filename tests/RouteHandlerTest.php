@@ -21,8 +21,7 @@ use Flight\Routing\Exceptions\InvalidControllerException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Handlers\CallbackHandler;
 use Flight\Routing\Handlers\RouteHandler;
-use Flight\Routing\Routes\FastRoute;
-use Flight\Routing\Routes\Route;
+use Flight\Routing\Route;
 use Laminas\Stratigility\MiddlewarePipe;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
@@ -88,7 +87,7 @@ class RouteHandlerTest extends TestCase
 
         $route = new Route('/bar', Route::DEFAULT_METHODS, $handler);
         $factory = new RouteHandler(new Psr17Factory());
-        $factory->handle($this->serverCreator()->withAttribute(FastRoute::class, $route));
+        $factory->handle($this->serverCreator()->withAttribute(Route::class, $route));
     }
 
     /**
@@ -118,7 +117,7 @@ class RouteHandlerTest extends TestCase
 
         $route = new Route('/bar', Route::DEFAULT_METHODS, $call);
         $response = (new RouteHandler(new Psr17Factory()))
-             ->handle($this->serverCreator()->withAttribute(FastRoute::class, $route));
+             ->handle($this->serverCreator()->withAttribute(Route::class, $route));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals('Hello World To Flight Routing', (string) $response->getBody());
@@ -130,7 +129,7 @@ class RouteHandlerTest extends TestCase
         $this->expectException(InvalidControllerException::class);
 
         $route = new Route('/bar', Route::DEFAULT_METHODS);
-        (new RouteHandler(new Psr17Factory()))->handle($this->serverCreator()->withAttribute(FastRoute::class, $route));
+        (new RouteHandler(new Psr17Factory()))->handle($this->serverCreator()->withAttribute(Route::class, $route));
     }
 
     public function testInvalidHandlerResponse(): void
@@ -142,7 +141,7 @@ class RouteHandlerTest extends TestCase
             return false;
         };
         $route = new Route('/bar', Route::DEFAULT_METHODS, $call);
-        (new RouteHandler(new Psr17Factory()))->handle($this->serverCreator()->withAttribute(FastRoute::class, $route));
+        (new RouteHandler(new Psr17Factory()))->handle($this->serverCreator()->withAttribute(Route::class, $route));
     }
 
     public function implicitHandle(): \Generator
@@ -197,7 +196,7 @@ class RouteHandlerTest extends TestCase
         if ($hasResponse) {
             $call = static function (ServerRequestInterface $request) use ($call): ResponseInterface {
                 return (new RouteHandler(new Psr17Factory()))
-                    ->handle($request->withAttribute(FastRoute::class, new Route('/bar', Route::DEFAULT_METHODS, $call)));
+                    ->handle($request->withAttribute(Route::class, new Route('/bar', Route::DEFAULT_METHODS, $call)));
             };
         }
 

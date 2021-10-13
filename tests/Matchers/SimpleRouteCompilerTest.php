@@ -22,7 +22,7 @@ use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
-use Flight\Routing\Routes\Route;
+use Flight\Routing\Route;
 use PHPUnit\Framework\TestCase;
 
 /**

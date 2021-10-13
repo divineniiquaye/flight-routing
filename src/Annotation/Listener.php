@@ -19,8 +19,13 @@ namespace Flight\Routing\Annotation;
 
 use Biurad\Annotations\{InvalidAnnotationException, ListenerInterface};
 use Biurad\Annotations\Locate\Class_;
-use Flight\Routing\{Routes\DomainRoute, RouteCollection};
+use Flight\Routing\{Route as BaseRoute, RouteCollection};
 
+/**
+ * The Biurad Annotation's Listener bridge.
+ *
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
 class Listener implements ListenerInterface
 {
     private RouteCollection $collector;
@@ -80,9 +85,9 @@ class Listener implements ListenerInterface
     /**
      * Add a route from class annotated methods.
      *
-     * @param iterable<Route> $classAnnotations
-     * @param DomainRoute[]   $methodAnnotations
-     * @param DomainRoute[]   $foundAnnotations
+     * @param iterable<Route>  $classAnnotations
+     * @param array<int,BaseRoute> $methodAnnotations
+     * @param array<int,BaseRoute> $foundAnnotations
      */
     protected function addRoute(iterable $classAnnotations, array $methodAnnotations, array &$foundAnnotations): void
     {
@@ -124,7 +129,7 @@ class Listener implements ListenerInterface
     /**
      * @param iterable<Route> $annotations
      * @param mixed           $handler
-     * @param DomainRoute[]   $foundAnnotations
+     * @param Route[]         $foundAnnotations
      */
     protected function getRoutes(iterable $annotations, $handler, array &$foundAnnotations, bool $single = false): void
     {
@@ -146,7 +151,7 @@ class Listener implements ListenerInterface
     /**
      * Resolve route naming.
      */
-    private function resolveRouteName(?string $prefix, DomainRoute $route, bool $force = false): string
+    private function resolveRouteName(?string $prefix, BaseRoute $route, bool $force = false): string
     {
         $name = $route->getName();
 

@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
 use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri, RegexGenerator};
 use Flight\Routing\Interfaces\RouteCompilerInterface;

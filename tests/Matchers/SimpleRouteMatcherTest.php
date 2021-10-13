@@ -20,7 +20,7 @@ namespace Flight\Routing\Tests\Matchers;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
-use Flight\Routing\Routes\Route;
+use Flight\Routing\Route;
 use Flight\Routing\RouteMatcher;
 use Flight\Routing\RouteCollection;
 use Nyholm\Psr7\ServerRequest;

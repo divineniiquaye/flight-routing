@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Fixtures;
 
-use Flight\Routing\Routes\{DomainRoute, FastRoute as Route};
+use Flight\Routing\Route;
 
 /**
  * Helper.
@@ -38,11 +38,8 @@ class Helper
             $item['name'] = $route->getName();
             $item['path'] = $route->getPath();
             $item['methods'] = $route->getMethods();
-
-            if ($route instanceof DomainRoute) {
-                $item['schemes'] = $route->getSchemes();
-                $item['hosts'] = $route->getHosts();
-            }
+            $item['schemes'] = $route->getSchemes();
+            $item['hosts'] = $route->getHosts();
 
             if (\is_object($handler = $route->getHandler())) {
                 $handler = \get_class($handler);

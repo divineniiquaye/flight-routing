@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Flight\Routing\Routes\{DomainRoute, Route as BaseRoute};
+use Flight\Routing\Route as BaseRoute;
 use Flight\Routing\Handlers\ResourceHandler;
 
 /**
@@ -102,7 +102,7 @@ final class Route
     /**
      * @param mixed $handler
      */
-    public function getRoute($handler): DomainRoute
+    public function getRoute($handler): BaseRoute
     {
         $routeData = [
             'handler' => !empty($this->resource) ? new ResourceHandler($handler, $this->resource) : $handler,
@@ -113,11 +113,7 @@ final class Route
             'defaults' => $this->defaults,
         ];
 
-        if (null !== $this->path && 1 === \preg_match('/\*\<[\w@]+\>/', $this->path)) {
-            $route = BaseRoute::__set_state($routeData);
-        } else {
-            $route = DomainRoute::__set_state($routeData);
-        }
+        $route = BaseRoute::__set_state($routeData);
 
         if (!empty($this->hosts)) {
             $route->domain(...$this->hosts);

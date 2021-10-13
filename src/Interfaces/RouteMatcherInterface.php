@@ -19,7 +19,7 @@ namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Route;
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**

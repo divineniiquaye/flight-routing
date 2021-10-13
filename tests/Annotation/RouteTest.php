@@ -63,12 +63,4 @@ class RouteTest extends TestCase
         $this->assertEquals($params['path'], $routeData['path']);
         $this->assertEquals($params['methods'], $routeData['methods']);
     }
-
-    public function testInvalidPath(): void
-    {
-        $this->expectExceptionObject(new UriHandlerException('A route path not could not be found, Did you forget include one.'));
-
-        $route = new Route();
-        $route->getRoute(null);
-    }
 }

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Middlewares;
 
-use Flight\Routing\Routes\{FastRoute as Route, Route as BaseRoute};
+use Flight\Routing\Route;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
 
@@ -63,8 +63,8 @@ final class PathMiddleware implements MiddlewareInterface
             // Determine the response code should keep HTTP request method ...
             $statusCode = $this->keepRequestMethod ? ($this->permanent ? 308 : 307) : ($this->permanent ? 301 : 302);
 
-            $routeEndTail = BaseRoute::URL_PREFIX_SLASHES[$route->getPath()[-1]] ?? null;
-            $requestEndTail = BaseRoute::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
+            $routeEndTail = Route::URL_PREFIX_SLASHES[$route->getPath()[-1]] ?? null;
+            $requestEndTail = Route::URL_PREFIX_SLASHES[$requestPath[-1]] ?? null;
 
             if ($requestEndTail === $requestPath || $routeEndTail === $requestEndTail) {
                 return $response;

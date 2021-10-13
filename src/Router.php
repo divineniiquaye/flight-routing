@@ -19,7 +19,6 @@ namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Routes\FastRoute as Route;
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
 use Laminas\Stratigility\Next;
 use Psr\Cache\CacheItemPoolInterface;

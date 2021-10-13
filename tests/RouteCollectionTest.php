@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests;
 
-use Flight\Routing\Routes\{DomainRoute, FastRoute, Route};
+use Flight\Routing\Route;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
@@ -57,13 +57,15 @@ class RouteCollectionTest extends TestCase
     public function testAdd(): void
     {
         $collection = new RouteCollection();
-        $collection->routes([new FastRoute('/1'), new DomainRoute('/2'), new Route('/3')]);
+        $collection->routes([new Route('/1'), new Route('/2'), new Route('/3')]);
         $collection = $this->getIterable($collection);
 
-        $this->assertInstanceOf(FastRoute::class, $route = $collection->current());
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertEquals([
             'handler' => null,
             'methods' => Route::DEFAULT_METHODS,
+            'schemes' => [],
+            'hosts' => [],
             'name' => null,
             'path' => '/1',
             'patterns' => [],
@@ -72,7 +74,7 @@ class RouteCollectionTest extends TestCase
         ], Fixtures\Helper::routesToArray([$route], true));
 
         $collection->next();
-        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertEquals([
             'handler' => null,
             'methods' => Route::DEFAULT_METHODS,
@@ -106,10 +108,10 @@ class RouteCollectionTest extends TestCase
     {
         $collection = new RouteCollection();
         $collection->addRoute('/foo', [Router::METHOD_GET])->bind('foo');
-        $collection->fastRoute('/bar', [Router::METHOD_GET]);
+        $collection->addRoute('/bar', [Router::METHOD_GET]);
         $collection = $this->getIterable($collection);
 
-        $this->assertInstanceOf(FastRoute::class, $collection->current());
+        $this->assertInstanceOf(Route::class, $collection->current());
         $this->assertCount(2, $collection);
 
         $collection->next();
@@ -131,7 +133,7 @@ class RouteCollectionTest extends TestCase
     {
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET));
-        $collection->add(new DomainRoute('/foo1', Router::METHOD_GET));
+        $collection->add(new Route('/foo1', Router::METHOD_GET));
         $collection->group('not_same', clone $collection);
         $collection = $this->getIterable($collection);
 
@@ -143,11 +145,11 @@ class RouteCollectionTest extends TestCase
         $this->assertEquals('not_sameGET_foo', $route->getName());
 
         $collection->next();
-        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertNull($route->getName());
 
         $collection->next();
-        $this->assertInstanceOf(DomainRoute::class, $route = $collection->current());
+        $this->assertInstanceOf(Route::class, $route = $collection->current());
         $this->assertEquals('not_sameGET_foo1', $route->getName());
 
         $this->assertCount(4, $collection);
@@ -189,7 +191,7 @@ class RouteCollectionTest extends TestCase
         $this->assertEquals(
             $expected,
             \array_map(
-                static function (FastRoute $route): ?string {
+                static function (Route $route): ?string {
                     return $route->getName();
                 },
                 \iterator_to_array($routes)
@@ -209,7 +211,7 @@ class RouteCollectionTest extends TestCase
 
         $this->assertCount(2, $routes = $controllers->getRoutes());
         $this->assertEquals(['_leaf_a_1', '_leaf_a'], \array_map(
-            static function (FastRoute $route): string {
+            static function (Route $route): string {
                 return $route->getName();
             },
             \iterator_to_array($routes)
@@ -241,7 +243,7 @@ class RouteCollectionTest extends TestCase
     {
         $collector = new RouteCollection();
         $collector->prototype()
-            ->prefix()
+            ->prefix('')
         ->end();
         $collector->get('/foo');
 
@@ -264,7 +266,7 @@ class RouteCollectionTest extends TestCase
         $collector->resource('/resource', Fixtures\BlankRestful::class, 'user');
 
         $routes = $this->getIterable($collector);
-        $routes->uasort(function (FastRoute $a, FastRoute $b): int {
+        $routes->uasort(function (Route $a, Route $b): int {
             return \strcmp($a->getPath(), $b->getPath());
         });
 
@@ -431,7 +433,7 @@ class RouteCollectionTest extends TestCase
             ->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us')->end();
 
         $this->assertCount(9, $routes = $this->getIterable($collector));
-        $routes->uasort(static function (FastRoute $a, FastRoute $b): int {
+        $routes->uasort(static function (Route $a, Route $b): int {
             return \strcmp($a->getName(), $b->getName());
         });
 
@@ -608,7 +610,7 @@ class RouteCollectionTest extends TestCase
         });
 
         $this->assertCount(128, $routes = iterator_to_array($router->getMatcher()->getRoutes()));
-        \uasort($routes, static function (FastRoute $a, FastRoute $b): int {
+        \uasort($routes, static function (Route $a, Route $b): int {
             return \strcmp($a->getName(), $b->getName());
         });
 
@@ -787,7 +789,7 @@ class RouteCollectionTest extends TestCase
     /**
      * Return Collections Routes as iterator.
      *
-     * @return \ArrayIterator<FastRoute>
+     * @return \ArrayIterator<Route>
      */
     private function getIterable(RouteCollection $collection): \ArrayIterator
     {

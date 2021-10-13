@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Benchmarks;
 
-use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
 use Nyholm\Psr7\Uri;
@@ -60,8 +60,8 @@ class RouteBench
         $router = new Router();
         $router->setCollection(static function (RouteCollection $routes): void {
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $routes->fastRoute("/route/{$i}", ['GET']);
-                $routes->fastRoute("/route/{$i}/{foo}", ['GET']);
+                $routes->addRoute("/route/{$i}", ['GET']);
+                $routes->addRoute("/route/{$i}/{foo}", ['GET']);
             }
         });
 
@@ -73,8 +73,8 @@ class RouteBench
         $router = new Router(null, __DIR__ . '/compiled_test.php');
         $router->setCollection(static function (RouteCollection $routes): void {
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $routes->fastRoute("/route/{$i}", ['GET'])->bind('static_' . $i);
-                $routes->fastRoute("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
+                $routes->addRoute("/route/{$i}", ['GET'])->bind('static_' . $i);
+                $routes->addRoute("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
         });
 

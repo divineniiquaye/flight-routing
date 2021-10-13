@@ -25,10 +25,9 @@ use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Handlers\RouteHandler;
-use Flight\Routing\Routes\Route;
+use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
-use Flight\Routing\Routes\FastRoute;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
@@ -359,7 +358,7 @@ class RouterTest extends BaseTestCase
         $route2 = Route::to('/bar', Router::METHOD_PURGE)->bind('test')->piped('ping');
         $handler = function (ServerRequestInterface $request, ResponseFactoryInterface $factory): ResponseInterface {
             $this->assertArrayHasKey('Broken', $request->getServerParams());
-            $this->assertInstanceOf(Route::class, $request->getAttribute(FastRoute::class));
+            $this->assertInstanceOf(Route::class, $request->getAttribute(Route::class));
 
             ($response = $factory->createResponse())->getBody()->write(\sprintf('I am a %s method', \strtoupper($request->getMethod())));
 
@@ -515,7 +514,7 @@ class RouterTest extends BaseTestCase
 
         $response = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/namespace'));
 
-        $this->assertInstanceOf(FastRoute::class, $response);
+        $this->assertInstanceOf(Route::class, $response);
         $this->assertSame($route, $response);
     }
 

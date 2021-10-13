@@ -20,9 +20,9 @@ namespace Flight\Routing\Tests\Annotation;
 use Biurad\Annotations\AnnotationLoader;
 use Biurad\Annotations\InvalidAnnotationException;
 use Flight\Routing\Annotation;
-use Flight\Routing\Routes\DomainRoute;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Handlers\ResourceHandler;
+use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
 use Spiral\Attributes\AnnotationReader;
@@ -200,7 +200,7 @@ class ListenerTest extends TestCase
         $loader->build();
 
         $routes = \iterator_to_array($collection->getRoutes());
-        \uasort($routes, static function (DomainRoute $a, DomainRoute $b): int {
+        \uasort($routes, static function (Route $a, Route $b): int {
             return \strcmp($a->getName(), $b->getName());
         });
 
@@ -303,7 +303,7 @@ class ListenerTest extends TestCase
         ], $routes[9]);
 
         $this->assertEquals([
-            'name' => 'GET_HEAD_annotatedtesting_',
+            'name' => 'GET_HEAD_annotated_testing_',
             'path' => '/testing/',
             'hosts' => [],
             'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
@@ -539,7 +539,7 @@ class ListenerTest extends TestCase
         $loader->listener(new Annotation\Listener());
         $loader->resource(Fixtures\Annotation\Route\Invalid\PathEmpty::class);
 
-        $this->expectExceptionObject(new UriHandlerException('A route path not could not be found, Did you forget include one.'));
+        $this->expectExceptionObject(new UriHandlerException('The route pattern "//localhost" is invalid as route path must be present in pattern.'));
         $loader->build();
     }
 

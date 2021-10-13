@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Route;
 use Flight\Routing\Exceptions\{InvalidControllerException, RouteNotFoundException};
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\RequestHandlerInterface;
@@ -139,11 +139,9 @@ class RouteHandler implements RequestHandlerInterface
     }
 
     /**
-     * @internal
-     *
      * @return mixed
      */
-    private function resolveHandler(ServerRequestInterface $request, Route $route)
+    protected function resolveHandler(ServerRequestInterface $request, Route $route)
     {
         $handler = $route->getHandler();
 
@@ -152,15 +150,7 @@ class RouteHandler implements RequestHandlerInterface
         }
 
         if (!$handler instanceof ResponseInterface) {
-            $parameters = $route->getArguments();
-
-            foreach ([$request, $this->responseFactory] as $psr7) {
-                $parameters[\get_class($psr7)] = $psr7;
-
-                foreach ((@\class_implements($psr7) ?: []) as $psr7Interface) {
-                    $parameters[$psr7Interface] = $psr7;
-                }
-            }
+            $parameters = $this->resolveArguments($request, $route);
 
             if ($handler instanceof ResourceHandler) {
                 $handler = $handler($request->getMethod());
@@ -174,5 +164,23 @@ class RouteHandler implements RequestHandlerInterface
         }
 
         return true === $handler ? null : $handler;
+    }
+
+    /**
+     * @return array<int|string,mixed>
+     */
+    protected function resolveArguments(ServerRequestInterface $request, Route $route): array
+    {
+        $parameters = $route->getArguments();
+
+        foreach ([$request, $this->responseFactory] as $psr7) {
+            $parameters[\get_class($psr7)] = $psr7;
+
+            foreach ((@\class_implements($psr7) ?: []) as $psr7Interface) {
+                $parameters[$psr7Interface] = $psr7;
+            }
+        }
+
+        return $parameters;
     }
 }
