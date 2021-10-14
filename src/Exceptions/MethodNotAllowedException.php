@@ -32,8 +32,8 @@ class MethodNotAllowedException extends \RuntimeException implements ExceptionIn
      */
     public function __construct(array $methods, string $path, string $method)
     {
-        $this->methods = $methods;
-        $message = 'Unfortunately current uri "%s" is allowed on [%s] request methods, "%s" is invalid.';
+        $this->methods = array_map('strtoupper', $methods);
+        $message = 'Route with "%s" path is allowed on request method(s) [%s], "%s" is invalid.';
 
         parent::__construct(\sprintf($message, $path, \implode(',', $methods), $method), 405);
     }
