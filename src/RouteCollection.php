@@ -36,40 +36,18 @@ namespace Flight\Routing;
  * A general `addRoute()` method allows specifying multiple request methods and/or
  * arbitrary request methods when creating a path-based route.
  *
- * @method RouteCollection assert(string $variable, string|string[] $regexp)
- * @method RouteCollection default(string $variable, mixed $default)
- * @method RouteCollection argument(string $variable, mixed $value)
- * @method RouteCollection method(string ...$methods)
- * @method RouteCollection scheme(string ...$schemes)
- * @method RouteCollection domain(string ...$hosts)
- * @method RouteCollection prefix(string $path)
- * @method RouteCollection defaults(array $values)
- * @method RouteCollection asserts(array $patterns)
- * @method RouteCollection arguments(array $parameters)
- * @method RouteCollection namespace(string $namespace)
- * @method RouteCollection piped(string ...$to)
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class RouteCollection implements \IteratorAggregate
 {
+    use Traits\PrototypeTrait;
+
+    use Traits\GroupingTrait;
+
     private ?self $parent = null;
 
-    /** @var array<string,mixed[]>|null */
-    private ?array $prototypes = [];
-
-    /** @var array<string,bool> */
-    private array $prototyped = [];
-
-    /** @var Routes\FastRoute[] */
+    /** @var Route[] */
     private iterable $routes = [];
-
-    /** @var self[] */
-    private array $groups = [];
-
-    private ?string $uniqueId;
-
-    private string $namedPrefix;
 
     /**
      * @param string $namedPrefix The unqiue name for this group
@@ -88,32 +66,6 @@ final class RouteCollection implements \IteratorAggregate
         foreach ($this->routes as $offset => $route) {
             $this->routes[$offset] = clone $route;
         }
-    }
-
-    /**
-     * @param string[] $arguments
-     */
-    public function __call(string $routeMethod, array $arguments): self
-    {
-        $routeMethod = \strtolower($routeMethod);
-
-        if (isset($this->prototyped[$this->uniqueId])) {
-            $this->prototypes[$routeMethod] = \array_merge($this->prototypes[$routeMethod] ?? [], $arguments);
-        } else {
-            foreach ($this->routes as $route) {
-                \call_user_func_array([$route, $routeMethod], $arguments);
-            }
-
-            if (\array_key_exists($routeMethod, $this->prototypes ?? [])) {
-                unset($this->prototypes[$routeMethod]);
-            }
-
-            foreach ($this->groups as $group) {
-                \call_user_func_array([$group, $routeMethod], $arguments);
-            }
-        }
-
-        return $this;
     }
 
     /**
@@ -137,7 +89,7 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * @return iterable<Routes\FastRoute>
+     * @return iterable<Route>
      */
     public function getRoutes(): iterable
     {
@@ -145,37 +97,9 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * Merge a collection into base.
-     *
-     * @throws \RuntimeException if locked
-     */
-    public function populate(self $collection, bool $asGroup = false): void
-    {
-        if ($asGroup) {
-            if (null === $this->uniqueId) {
-                throw new \RuntimeException('Populating a route collection as group must be done before calling the getRoutes() method.');
-            }
-
-            $this->groups[] = $collection;
-        } else {
-            $routes = $collection->routes;
-
-            if (!empty($collection->groups)) {
-                $collection->injectGroups($collection->namedPrefix, $routes);
-            }
-
-            foreach ($routes as $route) {
-                $this->routes[] = $this->injectRoute($route);
-            }
-
-            $collection->routes = $collection->prototypes = [];
-        }
-    }
-
-    /**
      * Add route to the collection.
      */
-    public function add(Routes\FastRoute $route): self
+    public function add(Route $route): self
     {
         $this->routes[] = $this->injectRoute($route);
 
@@ -191,27 +115,15 @@ final class RouteCollection implements \IteratorAggregate
      * @param string[] $methods Matched HTTP methods
      * @param mixed    $handler Handler that returns the response when matched
      */
-    public function addRoute(string $pattern, array $methods, $handler = null): Routes\Route
+    public function addRoute(string $pattern, array $methods, $handler = null): Route
     {
-        return $this->routes[] = $this->injectRoute(new Routes\Route($pattern, $methods, $handler));
-    }
-
-    /**
-     * Same as addRoute method, except uses Routes\FastRoute class.
-     *
-     * @param string   $pattern Matched route pattern
-     * @param string[] $methods Matched HTTP methods
-     * @param mixed    $handler Handler that returns the response when matched
-     */
-    public function fastRoute(string $pattern, array $methods, $handler = null): Routes\FastRoute
-    {
-        return $this->routes[] = $this->injectRoute(new Routes\FastRoute($pattern, $methods, $handler));
+        return $this->routes[] = $this->injectRoute(new Route($pattern, $methods, $handler));
     }
 
     /**
      * Add routes to the collection.
      *
-     * @param Routes\FastRoute[] $routes
+     * @param Route[] $routes
      *
      * @throws \TypeError if $routes doesn't contain a fast route instance
      * @throws \RuntimeException if locked
@@ -226,74 +138,12 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * Mounts controllers under the given route prefix.
-     *
-     * @param string                   $name        The route group prefixed name
-     * @param callable|RouteCollection $controllers A RouteCollection instance or a callable for defining routes
-     *
-     * @throws \TypeError        if $controllers not instance of route collection's class
-     * @throws \RuntimeException if locked
-     */
-    public function group(string $name, $controllers = null): self
-    {
-        if (null === $this->uniqueId) {
-            throw new \RuntimeException('Grouping index invalid or out of range, add group before calling the getRoutes() method.');
-        }
-
-        if (\is_callable($controllers)) {
-            $routes = new static($name);
-            $routes->prototypes = $this->prototypes ?? [];
-            $controllers($routes);
-
-            return $this->groups[] = $routes;
-        }
-
-        return $this->groups[] = $this->injectGroup($name, $controllers ?? new static($name));
-    }
-
-    /**
-     * Allows a proxied method call to route's.
-     *
-     * @throws \RuntimeException if locked
-     */
-    public function prototype(): self
-    {
-        if (null === $uniqueId = $this->uniqueId) {
-            throw new \RuntimeException('Routes method prototyping must be done before calling the getRoutes() method.');
-        }
-
-        $this->prototypes = (null !== $this->parent) ? ($this->parent->prototypes ?? []) : [];
-        $this->prototyped[$uniqueId] = true; // Prototyping calls to routes ...
-
-        return $this;
-    }
-
-    /**
-     * Unmounts a group collection to continue routes stalk.
-     */
-    public function end(): self
-    {
-        if (isset($this->prototyped[$this->uniqueId])) {
-            unset($this->prototyped[$this->uniqueId]);
-
-            // Remove last element from stack.
-            if (null !== $stack = $this->prototypes) {
-                \array_pop($stack);
-            }
-
-            return $this;
-        }
-
-        return $this->parent ?? $this;
-    }
-
-    /**
      * Maps a HEAD request to a handler.
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function head(string $pattern, $handler = null): Routes\Route
+    public function head(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_HEAD], $handler);
     }
@@ -304,7 +154,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function get(string $pattern, $handler = null): Routes\Route
+    public function get(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_GET, Router::METHOD_HEAD], $handler);
     }
@@ -315,7 +165,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function post(string $pattern, $handler = null): Routes\Route
+    public function post(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_POST], $handler);
     }
@@ -326,7 +176,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function put(string $pattern, $handler = null): Routes\Route
+    public function put(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_PUT], $handler);
     }
@@ -337,7 +187,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function patch(string $pattern, $handler = null): Routes\Route
+    public function patch(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_PATCH], $handler);
     }
@@ -348,7 +198,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function delete(string $pattern, $handler = null): Routes\Route
+    public function delete(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_DELETE], $handler);
     }
@@ -359,7 +209,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function options(string $pattern, $handler = null): Routes\Route
+    public function options(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, [Router::METHOD_OPTIONS], $handler);
     }
@@ -370,7 +220,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
      */
-    public function any(string $pattern, $handler = null): Routes\Route
+    public function any(string $pattern, $handler = null): Route
     {
         return $this->addRoute($pattern, Router::HTTP_METHODS_STANDARD, $handler);
     }
@@ -385,7 +235,7 @@ final class RouteCollection implements \IteratorAggregate
      * @param string              $pattern  matched path where request should be sent to
      * @param class-string|object $resource Handler that returns the response
      */
-    public function resource(string $pattern, $resource, string $action = 'action'): Routes\Route
+    public function resource(string $pattern, $resource, string $action = 'action'): Route
     {
         return $this->any($pattern, new Handlers\ResourceHandler($resource, $action));
     }
@@ -414,14 +264,12 @@ final class RouteCollection implements \IteratorAggregate
     /**
      * @throws \RuntimeException if locked
      */
-    private function injectRoute(Routes\FastRoute $route): Routes\FastRoute
+    protected function injectRoute(Route $route): Route
     {
-        foreach ($this->prototypes ?? [] as $routeMethod => $arguments) {
-            if (empty($arguments)) {
-                continue;
+        foreach ($this->prototypes as $routeMethod => $arguments) {
+            if (!empty($arguments)) {
+                \call_user_func_array([$route, $routeMethod], 'prefix' === $routeMethod ? [\implode('', $arguments)] : $arguments);
             }
-
-            \call_user_func_array([$route, $routeMethod], 'prefix' === $routeMethod ? [\implode('', $arguments)] : $arguments);
         }
 
         if (null !== $this->parent) {
@@ -429,47 +277,5 @@ final class RouteCollection implements \IteratorAggregate
         }
 
         return $route;
-    }
-
-    private function injectGroup(string $prefix, self $controllers): self
-    {
-        $controllers->prototypes = $this->prototypes ?? [];
-        $controllers->parent = $this;
-
-        if (empty($controllers->namedPrefix)) {
-            $controllers->namedPrefix = $prefix;
-        }
-
-        return $controllers;
-    }
-
-    /**
-     * @param iterable<int,Routes\FastRoute> $collection
-     */
-    private function injectGroups(string $prefix, iterable &$collection): void
-    {
-        $unnamedRoutes = [];
-
-        foreach ($this->groups as $group) {
-            foreach ($group->routes as $route) {
-                if (empty($name = $route->getName())) {
-                    $name = $route->generateRouteName('');
-
-                    if (isset($unnamedRoutes[$name])) {
-                        $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
-                    } else {
-                        $unnamedRoutes[$name] = 0;
-                    }
-                }
-
-                $collection[] = $route->bind($prefix . $group->namedPrefix . $name);
-            }
-
-            if (!empty($group->groups)) {
-                $group->injectGroups($prefix . $group->namedPrefix, $collection);
-            }
-        }
-
-        $this->groups = [];
     }
 }
