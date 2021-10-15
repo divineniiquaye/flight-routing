@@ -17,101 +17,122 @@ declare(strict_types=1);
 
 namespace Flight\Routing;
 
-use Flight\Routing\Exceptions\UriHandlerException;
-
 /**
  * Value object representing a single route.
- *
- * The default support for this route class includes DomainRoute support:
- * - domain and schemes and handler casting from route pattern
- * - resolves route pattern prefixing
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class Route
 {
+    use Traits\DataTrait;
+
     /**
      * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
      * Pattern route:   `pattern/*<controller@action>`
      * Default route: `*<controller@action>`
      * Only action:   `pattern/*<action>`.
-     *
-     * @var string
      */
     public const RCA_PATTERN = '#^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?([^*]*)(?:\*\<(?:([\w+\\\\]+)\@)?(\w+)\>)?$#u';
 
     /**
-     * Slashes supported on browser when used.
+     * A Pattern to match protocol, host and port from a url.
      *
-     * @var string[]
+     * Examples of urls that can be matched: http://en.example.domain, {sub}.example.domain, https://example.com:34, example.com, etc.
+     */
+    public const URL_PATTERN = '#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u';
+
+     *
+    /**
+     * Slashes supported on browser when used.
      */
     public const URL_PREFIX_SLASHES = ['/' => '/', ':' => ':', '-' => '-', '_' => '_', '~' => '~', '@' => '@'];
 
-    /**
-     * {@inheritdoc}
-     */
-    public function prefix(string $path)
-    {
-        $this->data['path'] = self::resolvePrefix($this->data['path'], $path);
+    /** @var array<int,string> Default methods for route. */
+    public const DEFAULT_METHODS = [Router::METHOD_GET, Router::METHOD_HEAD];
 
-        return $this;
+    /**
+     * Create a new Route constructor.
+     *
+     * @param string          $pattern The route pattern
+     * @param string|string[] $methods the route HTTP methods
+     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
+     */
+    public function __construct(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
+    {
+        $this->data = ['handler' => $handler];
+
+        foreach ((array) $methods as $method) {
+            $this->data['methods'][\strtoupper($method)] = true;
+        }
+
+        if (!empty($pattern)) {
+            $this->path($pattern);
+        }
     }
 
     /**
-     * Locates appropriate route by name. Support dynamic route allocation using following pattern:
-     * Pattern route:   `pattern/*<controller@action>`
-     * Default route: `*<controller@action>`
-     * Only action:   `pattern/*<action>`.
+     * @internal
      */
-    protected function resolvePattern(string $pattern): string
+    public function __serialize(): array
     {
-        if (1 === \preg_match(self::RCA_PATTERN, $pattern, $matches, \PREG_UNMATCHED_AS_NULL)) {
-            if (null !== $matches[1]) {
-                $this->data['schemes'][$matches[1]] = true;
-            }
-
-            if (null !== $matches[2]) {
-                $this->data['hosts'][$matches[2]] = true;
-            }
-
-            if (null !== $matches[5]) {
-                // Match controller from route pattern.
-                $handler = $matches[4] ?? $this->data['handler'] ?? null;
-                $this->data['handler'] = !empty($handler) ? [$handler, $matches[5]] : $matches[5];
-            }
-
-            if (empty($matches[3])) {
-                throw new UriHandlerException(\sprintf('The route pattern "%s" is invalid as route path must be present in pattern.', $pattern));
-            }
-
-            return $matches[3];
-        }
-
-        return $pattern;
+        return $this->data;
     }
 
     /**
-     * Ensures that the right-most slash is trimmed for prefixes of more than
-     * one character, and that the prefix begins with a slash.
+     * @internal
+     *
+     * @param array<string,mixed> $data
      */
-    private static function resolvePrefix(string $uri, string $prefix): string
+    public function __unserialize(array $data): void
     {
-        // This is not accepted, but we're just avoiding throwing an exception ...
-        if (empty($prefix)) {
-            return $uri;
-        }
+        $this->data = $data;
+    }
 
-        if (isset(self::URL_PREFIX_SLASHES[$prefix[-1]], self::URL_PREFIX_SLASHES[$uri[0]])) {
-            return $prefix . \ltrim($uri, \implode('', self::URL_PREFIX_SLASHES));
-        }
+    /**
+     * @internal
+     *
+     * @param array<string,mixed> $properties The route data properties
+     *
+     * @return static
+     */
+    public static function __set_state(array $properties)
+    {
+        $route = new static($properties['path'] ?? '', $properties['methods'] ?? [], $properties['handler'] ?? null);
+        $route->data += \array_diff_key($properties, ['path' => null, 'methods' => [], 'handler' => null]);
 
-        // browser supported slashes ...
-        $slashExist = self::URL_PREFIX_SLASHES[$prefix[-1]] ?? self::URL_PREFIX_SLASHES[$uri[0]] ?? null;
+        return $route;
+    }
 
-        if (null === $slashExist) {
-            $prefix .= '/';
-        }
+    /**
+     * Create a new Route statically.
+     *
+     * @param string          $pattern The route pattern
+     * @param string|string[] $methods the route HTTP methods
+     * @param mixed           $handler The PHP class, object or callable that returns the response when matched
+     *
+     * @return static
+     */
+    public static function to(string $pattern, $methods = self::DEFAULT_METHODS, $handler = null)
+    {
+        return new static($pattern, $methods, $handler);
+    }
 
-        return $prefix . $uri;
+    /**
+     * Get the route's data.
+     *
+     * @return array<string,mixed>
+     */
+    public function getData(): array
+    {
+        return $this->data;
+    }
+
+    public function generateRouteName(string $prefix): string
+    {
+        $routeName = \implode('_', $this->getMethods()) . '_' . $prefix . $this->data['path'] ?? '';
+        $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
+        $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
+
+        return (string) \preg_replace(['/\_+/', '/\.+/'], ['_', '.'], $routeName);
     }
 }
