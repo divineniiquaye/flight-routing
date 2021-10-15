@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Traits;
 
+use Flight\Routing\{Route, RouteCollection};
+
 /**
  * A trait providing route collection grouping functionality.
  *
@@ -98,9 +100,9 @@ trait GroupingTrait
     }
 
     /**
-     * @param iterable<int,Routes\FastRoute> $collection
+     * @param array<int,Route> $collection
      */
-    private function injectGroups(string $prefix, iterable &$collection): void
+    private function injectGroups(string $prefix, array &$collection): void
     {
         $unnamedRoutes = [];
 

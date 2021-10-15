@@ -38,16 +38,15 @@ namespace Flight\Routing;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteCollection implements \IteratorAggregate
+class RouteCollection
 {
     use Traits\PrototypeTrait;
-
     use Traits\GroupingTrait;
 
     private ?self $parent = null;
 
-    /** @var Route[] */
-    private iterable $routes = [];
+    /** @var array<int,Route> */
+    private array $routes = [];
 
     /**
      * @param string $namedPrefix The unqiue name for this group
@@ -69,13 +68,15 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * {@inheritdoc}
+     * Get all the routes.
+     *
+     * @return array<int,Route>
      */
-    public function getIterator(): \Traversable
+    public function getRoutes(): array
     {
         $routes = $this->routes;
 
-        if ($routes instanceof \SplFixedArray) {
+        if (!$this->uniqueId) {
             return $routes;
         }
 
@@ -84,16 +85,11 @@ final class RouteCollection implements \IteratorAggregate
         }
 
         $this->uniqueId = null; // Lock grouping and prototyping
+        \usort($routes, static function (Route $a, Route $b): int {
+            return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
+        });
 
-        return $this->routes = self::sortRoutes($routes);
-    }
-
-    /**
-     * @return iterable<Route>
-     */
-    public function getRoutes(): iterable
-    {
-        return $this->getIterator();
+        return $this->routes = $routes;
     }
 
     /**
@@ -125,7 +121,7 @@ final class RouteCollection implements \IteratorAggregate
      *
      * @param Route[] $routes
      *
-     * @throws \TypeError if $routes doesn't contain a fast route instance
+     * @throws \TypeError        if $routes doesn't contain a route instance
      * @throws \RuntimeException if locked
      */
     public function routes(array $routes): self
@@ -241,34 +237,21 @@ final class RouteCollection implements \IteratorAggregate
     }
 
     /**
-     * Rearranges routes, sorting static paths before dynamic paths.
-     *
-     * @param Routes\FastRoute[] $routes
-     *
-     * @return \SplFixedArray<Routes\FastRoute>
-     */
-    private static function sortRoutes(array $routes): \SplFixedArray
-    {
-        $sortRegex = '#^\\/[\\/\\w]+$#';
-
-        \usort($routes, static function (Routes\FastRoute $a, Routes\FastRoute $b) use ($sortRegex): int {
-            $aB = \preg_match($sortRegex, $aP = $a->getPath());
-            $bB = \preg_match($sortRegex, $bP = $b->getPath());
-
-            return $aB && $bB ? strnatcmp($aP, $bP) : ($aB < $bB ? +1 : ($aB > $bB ? -1 : \strnatcmp($aP, $bP)));
-        });
-
-        return \SplFixedArray::fromArray($routes);
-    }
-
-    /**
      * @throws \RuntimeException if locked
      */
     protected function injectRoute(Route $route): Route
     {
+        if (null === $this->uniqueId) {
+            throw new \RuntimeException('Adding routes must be done before calling the getRoutes() method.');
+        }
+
         foreach ($this->prototypes as $routeMethod => $arguments) {
             if (!empty($arguments)) {
-                \call_user_func_array([$route, $routeMethod], 'prefix' === $routeMethod ? [\implode('', $arguments)] : $arguments);
+                if ('prefix' === $routeMethod) {
+                    $arguments = [\implode('', $arguments)];
+                }
+
+                $route->{$routeMethod}(...$arguments);
             }
         }
 

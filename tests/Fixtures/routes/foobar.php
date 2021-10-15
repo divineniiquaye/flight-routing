@@ -15,9 +15,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-use Flight\Routing\Interfaces\RouteCollectorInterface;
+use Flight\Routing\RouteCollection;
 
-// @var RouteCollectorInterface $this
+/** @var RouteCollection $this */
 $this->get('foobar', '/foobar', function () {
     return 'Hello World';
 });

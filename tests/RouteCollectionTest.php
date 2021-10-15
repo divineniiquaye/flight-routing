@@ -46,9 +46,9 @@ class RouteCollectionTest extends TestCase
     public function testCollection(): void
     {
         $collection = new RouteCollection();
-        $this->assertInstanceOf(\SplFixedArray::class, $collection->getRoutes());
+        $this->assertNotInstanceOf(\Traversable::class, $collection->getRoutes());
 
-        $this->expectExceptionMessage('Index invalid or out of range');
+        $this->expectExceptionMessage('Adding routes must be done before calling the getRoutes() method.');
         $this->expectException(\RuntimeException::class);
 
         $collection->addRoute('/hello', ['GET']);
@@ -194,7 +194,7 @@ class RouteCollectionTest extends TestCase
                 static function (Route $route): ?string {
                     return $route->getName();
                 },
-                \iterator_to_array($routes)
+                $routes
             )
         );
     }
@@ -210,11 +210,11 @@ class RouteCollectionTest extends TestCase
         $rootB->addRoute('/leaf_a', []);
 
         $this->assertCount(2, $routes = $controllers->getRoutes());
-        $this->assertEquals(['_leaf_a_1', '_leaf_a'], \array_map(
+        $this->assertEquals(['_leaf_a', '_leaf_a_1'], \array_map(
             static function (Route $route): string {
                 return $route->getName();
             },
-            \iterator_to_array($routes)
+            $routes
         ));
     }
 
@@ -437,7 +437,7 @@ class RouteCollectionTest extends TestCase
             return \strcmp($a->getName(), $b->getName());
         });
 
-        $this->assertEquals(['web'], $routes[1]->getPiped());
+        $this->assertEquals(['web'], $routes[2]->getPiped());
         $routes = Fixtures\Helper::routesToArray($routes);
 
         $this->assertEquals([
@@ -609,7 +609,7 @@ class RouteCollectionTest extends TestCase
             $mergedCollection->group('', $groupOptimisedCollection);
         });
 
-        $this->assertCount(128, $routes = iterator_to_array($router->getMatcher()->getRoutes()));
+        $this->assertCount(128, $routes = $router->getMatcher()->getRoutes());
         \uasort($routes, static function (Route $a, Route $b): int {
             return \strcmp($a->getName(), $b->getName());
         });
@@ -794,8 +794,7 @@ class RouteCollectionTest extends TestCase
     private function getIterable(RouteCollection $collection): \ArrayIterator
     {
         $routes = $collection->getRoutes();
-        $this->assertInstanceOf(\SplFixedArray::class, $routes);
 
-        return new \ArrayIterator(\iterator_to_array($routes));
+        return new \ArrayIterator($routes);
     }
 }

@@ -41,7 +41,13 @@ class Route
      */
     public const URL_PATTERN = '#^(?:([a-z]+)\:\/{2})?([^\/]+)?$#u';
 
+    /**
+     * A Pattern to match the route's priority.
      *
+     * If route path matches, 1 is expected return else 0 should be return as priority index.
+     */
+    public const PRIORITY_REGEX = '#^\\/?[\\/\\w+]+\\b#';
+
     /**
      * Slashes supported on browser when used.
      */

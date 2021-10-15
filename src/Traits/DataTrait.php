@@ -38,7 +38,7 @@ trait DataTrait
         if (!empty($path)) {
             $uri = $this->data['path'] ?? '/';
 
-            if (\strlen($uri) > 1 &&isset(Route::URL_PREFIX_SLASHES[$uri[1]])) {
+            if (\strlen($uri) > 1 && isset(Route::URL_PREFIX_SLASHES[$uri[1]])) {
                 $uri = \substr($uri, 1);
             }
 
@@ -46,7 +46,8 @@ trait DataTrait
                 $uri = \substr($uri, 1);
             }
 
-            $this->data['path'] = '/' . \ltrim($path . $uri, '/');
+            \preg_match(Route::PRIORITY_REGEX, $this->data['path'] = '/' . \ltrim($path . $uri, '/'), $matches);
+            $this->data['prefix'] = $matches[0] ?? null;
         }
 
         return $this;
@@ -76,6 +77,8 @@ trait DataTrait
             if (empty($matches[3])) {
                 throw new UriHandlerException(\sprintf('The route pattern "%s" is invalid as route path must be present in pattern.', $pattern));
             }
+
+            \preg_match(Route::PRIORITY_REGEX, $matches[3], $static) && $this->data['prefix'] = $static[0];
         }
 
         $this->data['path'] = '/' . \ltrim($matches[3] ?? $pattern, '/');
@@ -396,6 +399,16 @@ trait DataTrait
     public function getPiped(): array
     {
         return \array_keys($this->data['middlewares'] ?? []);
+    }
+
+    /**
+     * Return's the static prefixed portion of the route path else null.
+     *
+     * @see Flight\Routing\RouteCollection::getRoutes()
+     */
+    public function getStaticPrefix(): ?string
+    {
+        return $this->data['prefix'] ?? null;
     }
 
     /**
