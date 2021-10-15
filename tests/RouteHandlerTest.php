@@ -98,10 +98,10 @@ class RouteHandlerTest extends TestCase
     public function testHandleResponse(string $contentType, $body): void
     {
         if (\is_array($body)) {
-            $body = \json_encode($body);
+            $body = \json_encode($json = $body);
         }
 
-        $handler = $this->getHandler(new Response(200, [], $body), true);
+        $handler = $this->getHandler($json ?? new Response(200, [], $body), true);
         $response = $handler->handle($this->serverCreator());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
@@ -187,10 +187,10 @@ class RouteHandlerTest extends TestCase
         $call = static function (ServerRequestInterface $request) use ($response, $output) {
             if ('resmsg' === $output) {
                 $response->getBody()->write(\sprintf('I am a [%s] method', $request->getMethod()));
-                $output = 'res';
+                $output = null;
             }
 
-            return 'res' === $output ? $response : $output;
+            return $output ?? $response;
         };
 
         if ($hasResponse) {

@@ -39,7 +39,7 @@ class RouteHandler implements RequestHandlerInterface
 
     protected const CONTENT_TYPE = 'Content-Type';
 
-    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
+    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\["[\w\"\,]+\]|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
 
     protected ResponseFactoryInterface $responseFactory;
 
@@ -101,8 +101,8 @@ class RouteHandler implements RequestHandlerInterface
                 return $response;
             }
 
-            if (\is_array($response) || \is_iterable($response) || $response instanceof \JsonSerializable) {
-                $response = \json_encode($response, \PHP_VERSION_ID >= 70300 ? \JSON_THROW_ON_ERROR : 0);
+            if ($response instanceof \JsonSerializable || \is_iterable($response) || \is_array($response)) {
+                return \json_encode($response, \JSON_THROW_ON_ERROR);
             }
         } catch (\Throwable $e) {
             \ob_get_clean();
