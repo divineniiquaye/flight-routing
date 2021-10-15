@@ -34,7 +34,7 @@ class RouteTest extends TestCase
         $this->assertInstanceOf(Route::class, $testRoute);
         $this->assertSame('/hello', $testRoute->getPath());
 
-        $testRoute = Route::to('@/hello');
+        $testRoute = Route::to('hello');
         $this->assertInstanceOf(Route::class, $testRoute);
         $this->assertSame('/hello', $testRoute->getPath());
     }
