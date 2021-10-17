@@ -53,7 +53,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
     private \SplQueue $pipeline;
 
-    /** @var RouteCollection|callable|null */
+    /** @var RouteCollection|(callable(RouteCollection): void)|null */
     private $collection;
 
     private ?RouteCompilerInterface $compiler;
@@ -80,7 +80,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      *
      * @return static
      */
-    public static function withCollection(RouteCollection $collection = null, ?RouteCompilerInterface $compiler = null, $cache = null)
+    public static function withCollection(RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = null)
     {
         $new = new static($compiler, $cache);
         $new->collection = $collection ?? new RouteCollection();
@@ -143,15 +143,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Sets the RouteCollection instance associated with this Router.
      *
-     * @param callable $routeDefinitionCallback takes only one parameter of route collection
+     * @param (callable(RouteCollection): void) $routeDefinitionCallback takes only one parameter of route collection
      */
     public function setCollection(callable $routeDefinitionCallback): void
     {
-        $this->collection = static function () use ($routeDefinitionCallback): RouteCollection {
-            $routeDefinitionCallback($routeCollector = new RouteCollection());
-
-            return $routeCollector;
-        };
+        $this->collection = $routeDefinitionCallback;
     }
 
     /**
@@ -159,11 +155,13 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function getCollection(): RouteCollection
     {
-        if (null === $collection = $this->collection) {
+        if (\is_callable($collection = $this->collection)) {
+            $collection($collection = new RouteCollection());
+        } elseif (null === $collection) {
             throw new \RuntimeException(\sprintf('Did you forget to set add the route collection with the "%s".', __CLASS__ . '::setCollection'));
         }
 
-        return \is_callable($collection) ? $collection() : $collection;
+        return $this->collection = $collection;
     }
 
     /**
@@ -183,15 +181,12 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function getMatcher(): RouteMatcherInterface
     {
-        if (null !== $this->matcher) {
-            return $this->matcher;
-        }
-
-        if (null === $this->cacheData) {
-            $matcher = new RouteMatcher($this->getCollection(), $this->compiler);
-        }
-
-        return $this->matcher = $matcher ?? $this->getCachedData($this->cacheData);
+        return $this->matcher
+            ?? $this->matcher = (
+                $this->cacheData
+                    ? $this->getCachedData($this->cacheData)
+                    : new RouteMatcher($this->getCollection(), $this->compiler)
+            );
     }
 
     /**
