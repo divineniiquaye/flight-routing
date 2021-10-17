@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
 use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri, RegexGenerator};
-use Flight\Routing\Interfaces\RouteCompilerInterface;
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface};
 
 /**
  * RouteCompiler compiles Route instances to regex.
@@ -105,7 +105,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function build(RouteCollection $routes): ?GeneratedRoute
+    public function build(RouteCollection $routes): ?RouteGeneratorInterface
     {
         $tree = new RegexGenerator();
         $variables = $staticRegex = [];

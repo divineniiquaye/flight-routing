@@ -18,9 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri};
-use Flight\Routing\RouteCollection;
-use Flight\Routing\Routes\FastRoute as Route;
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\{RouteCollection, Route};
 
 /**
  * This is the interface that all custom compilers for routes will depend on or implement.
@@ -35,17 +34,15 @@ interface RouteCompilerInterface
      *
      * @see Flight\Routing\RouteMatcher implementation of this method
      */
-    public function build(RouteCollection $routes): ?GeneratedRoute;
+    public function build(RouteCollection $routes): ?RouteGeneratorInterface;
 
     /**
      * Match the Route instance and compiles the current route instance.
      *
      * This method should strictly return an indexed array of three parts.
      *
-     * - path regex, which starting and ending modifiers stripped off.
-     *     Eg: #^\/hello\/world\/(?P<var>[^\/]+)$#sDu -----> \/hello\/world\/(?P<var>[^\/]+).
-     * - hosts regex, modifies stripped of as path regex. But if more than one hosts,
-     *     hosts must be imploded with a | inside a (?|...)
+     * - path regex, with starting and ending modifiers. Eg #^\/hello\/world\/(?P<var>[^\/]+)$#sDu
+     * - hosts regex, modifies same as path regex. Implode hosts with a | inside a (?|...) if more than once
      * - variables, which is an unique array of path vars merged into hosts vars (if available).
      *
      * @see Flight\Routing\RouteMatcher::match() implementation

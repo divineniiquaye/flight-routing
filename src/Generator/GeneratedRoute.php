@@ -17,12 +17,14 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Generator;
 
+use Flight\Routing\Interfaces\RouteGeneratorInterface;
+
 /**
- * @internal
+ * The default compiled routes match for route compiler class.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class GeneratedRoute
+final class GeneratedRoute implements RouteGeneratorInterface
 {
     /** @var array<int,mixed> */
     private array $compiledData;
