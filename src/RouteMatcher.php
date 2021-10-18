@@ -29,7 +29,7 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-final class RouteMatcher implements RouteMatcherInterface
+class RouteMatcher implements RouteMatcherInterface
 {
     /** @var RouteCollection|\SplFixedArray<Route> */
     private \Traversable $routes;
