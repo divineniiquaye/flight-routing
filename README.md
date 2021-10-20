@@ -726,11 +726,13 @@ $collector->get(
 ))
 ```
 
-### Subdomain Routing
+### Domain Routing
 
 ---
 
-Route groups may also be used to handle sub-domain routing. The sub-domain may be specified using the `domain` key on the group attribute array:
+Routes can be set to be used on domains or sub-domains. Example, you can point multiple domains or subdomain to the directory your project lives in or use `CNAME` rule. Flight routing will take care of the rest.
+
+Instead of a domain not found exception, except a null return using route matcher class and a route not found exception using router class.
 
 ```php
 use Flight\Routing\Interfaces\RouteCollection;
