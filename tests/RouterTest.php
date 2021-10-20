@@ -465,7 +465,7 @@ class RouterTest extends BaseTestCase
         $router = Router::withCollection();
         $router->addRoute(...$routes);
 
-        $this->expectExceptionMessage('Unfortunately current scheme "http" is not allowed on requested uri [/foo]');
+        $this->expectExceptionMessage('Route with "/foo" path is not allowed on requested uri "http://localost/foo" with invalid scheme, supported scheme(s): [ftp].');
         $this->expectException(UriHandlerException::class);
 
         $router->process(new ServerRequest($routes[0]->getMethods()[0], 'http://localost/foo'), new RouteHandler(new Psr17Factory()));
@@ -493,7 +493,7 @@ class RouterTest extends BaseTestCase
         $router = Router::withCollection();
         $router->addRoute($route);
 
-        $this->expectExceptionMessage('Unfortunately current host "localhost.com" is not allowed on requested path [/foo].');
+        $this->expectExceptionMessage('Route with "/foo" path is not allowed on requested uri "http://localhost.com/foo" as uri host is invalid.');
         $this->expectException(UriHandlerException::class);
 
         $requestPath = 'http://localhost.com' . $route->getPath();
@@ -549,8 +549,8 @@ class RouterTest extends BaseTestCase
             $this->assertEquals(\strtolower($method) . ' 23', (string) $response->getBody());
         } catch (MethodNotAllowedException $e) {
             $this->assertEquals(
-                'Unfortunately current uri "/user/23" is allowed on [HEAD,GET,POST,PUT,PATCH,' .
-                'DELETE,PURGE,OPTIONS,TRACE,CONNECT] request methods, "NONE" is invalid.',
+                'Route with "/user/23" path is allowed on request method(s) ' .
+                '[GET,POST,PUT,PATCH,DELETE,PURGE,OPTIONS,TRACE,CONNECT], "NONE" is invalid.',
                 $e->getMessage()
             );
         } catch (InvalidControllerException $e) {

@@ -26,8 +26,6 @@ use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface};
  *
  * provides ability to match and generate uris based on given parameters.
  *
- * @final This class is final and recommended not to be extended unless special cases
- *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 final class RouteCompiler implements RouteCompilerInterface
@@ -64,6 +62,11 @@ final class RouteCompiler implements RouteCompilerInterface
      * This regex is used to reverse a pattern path, matching required and options vars.
      */
     private const REVERSED_REGEX = '#(?|\<(\w+)\>|(\[(.*)]))#';
+
+    /**
+     * This regex is used to strip off a name attached to a group in a regex pattern.
+     */
+    private const STRIP_REGEX = '#\?(?|P<\w+>|<\w+>|\'\w+\')#';
 
     /**
      * A matching requirement helper, to ease matching route pattern when found.
@@ -108,27 +111,42 @@ final class RouteCompiler implements RouteCompilerInterface
     public function build(RouteCollection $routes): ?RouteGeneratorInterface
     {
         $tree = new RegexGenerator();
-        $variables = $staticRegex = [];
+        $variables = $staticRegex = $hasSlashes = [];
 
-        foreach ($routes as $i => $route) {
+        foreach ($routes->getRoutes() as $i => $route) {
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
-            $variables[$hostsRegex ?: 0][$i] =  $compiledVars;
+            $pathRegex = self::resolvePathRegex($pathRegex);
 
-            if (\preg_match('/\\(\\?P\\<\w+\\>.*\\)/', $pathRegex)) {
-                $pathRegex = \preg_replace('/\?(?|P<\w+>|<\w+>|\'\w+\')/', '', $pathRegex);
+            foreach ($route->getMethods() as $method) {
+                $variables[$method][$i][$hostsRegex ?: 0] = $compiledVars;
+            }
+
+            if ('?' === $pos = $pathRegex[-1]) {
+                if (!isset(Route::URL_PREFIX_SLASHES[$pathRegex[-2]])) {
+                    $pathRegex = \substr($pathRegex, 0, -1);
+                }
+
                 $tree->addRoute($pathRegex, [$pathRegex, $i]);
 
                 continue;
             }
 
-            $staticRegex[\str_replace('\\', '', $pathRegex)] = $i;
+            if (isset(Route::URL_PREFIX_SLASHES[$pos])) {
+                $hasSlashes[$pathRegex][] = $i;
+
+                if (\array_key_exists($pathRegex = \substr($pathRegex, 0, -1), $staticRegex)) {
+                    continue;
+                }
+            }
+
+            $staticRegex[$pathRegex][] = $i;
         }
 
         if (!empty($compiledRegex = $tree->compile(0))) {
-            $compiledRegex = '~^(?' . $compiledRegex . ')$~sDu';
+            $compiledRegex = '~^' . \substr($compiledRegex, 1) . '$~sDu';
         }
 
-        return new GeneratedRoute($staticRegex, $compiledRegex ?: null, $variables);
+        return new GeneratedRoute($staticRegex + ['*' => $hasSlashes], $compiledRegex ?: null, $variables);
     }
 
     /**
@@ -136,25 +154,25 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     public function compile(Route $route): array
     {
-        $requirements = $route->getPatterns();
-        $routePath = $route->getPath();
+        [$pathRegex, $variables] = self::compilePattern($route->getPath(), false, $route->getPatterns());
 
-        // Strip supported browser prefix of $routePath ...
-        if (\array_key_exists($routePath[-1], BaseRoute::URL_PREFIX_SLASHES)) {
-            $routePath = \substr($routePath, 0, -1) ?: '/';
-        }
+        if ($hosts = $route->getHosts()) {
+            $hostsRegex = [];
 
-        [$pathRegex, $variables] = self::compilePattern($routePath, false, $requirements);
-
-        if ($route instanceof Routes\DomainRoute) {
-            $hosts = $route->getHosts();
-
-            if (!empty($hosts)) {
-                $hostsRegex = self::compileHosts($hosts, $requirements, $variables);
+            foreach ($hosts as $host) {
+                [$hostRegex, $hostVars] = self::compilePattern($host, false, $route->getPatterns());
+                $variables += $hostVars;
+                $hostsRegex[] = $hostRegex;
             }
+
+            $hostsRegex = '{^' . \implode('|', $hostsRegex) . '$}ui';
         }
 
-        return [$pathRegex, $hostsRegex ?? null, $variables];
+        if ('?' !== $pathRegex[-1]) {
+            $pathRegex .= '?';
+        }
+
+        return ['{^' . $pathRegex . '$}u', $hostsRegex ?? null, $variables];
     }
 
     /**
@@ -166,10 +184,6 @@ final class RouteCompiler implements RouteCompilerInterface
 
         $defaults = $route->getDefaults();
         $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults + $pathVariables));
-
-        if (!$route instanceof Routes\DomainRoute) {
-            return $createUri;
-        }
 
         foreach ($route->getHosts() as $host) {
             [$hostRegex, $hostVariables] = self::compilePattern($host, true);
@@ -295,24 +309,6 @@ final class RouteCompiler implements RouteCompilerInterface
     }
 
     /**
-     * @param string[]                      $hosts
-     * @param array<string,string|string[]> $requirements
-     */
-    private static function compileHosts(array $hosts, array $requirements, array &$variables): string
-    {
-        $hostsRegex = [];
-
-        foreach ($hosts as $host) {
-            [$hostRegex, $hostVars] = self::compilePattern($host, false, $requirements);
-
-            $variables += $hostVars;
-            $hostsRegex[] = $hostRegex;
-        }
-
-        return 1 === \count($hostsRegex) ? $hostsRegex[0] : '(?|' . \implode('|', $hostsRegex) . ')';
-    }
-
-    /**
      * Filter variable name to meet requirements.
      */
     private static function filterVariableName(string $varName, string $pattern): void
@@ -342,7 +338,7 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     private static function prepareSegment(string $name, array $requirements): string
     {
-        if (!isset($requirements[$name])) {
+        if (!\array_key_exists($name, $requirements)) {
             return self::DEFAULT_SEGMENT;
         }
 
@@ -350,11 +346,21 @@ final class RouteCompiler implements RouteCompilerInterface
             return self::sanitizeRequirement($name, $segment);
         }
 
-        return \implode('|', \array_map(
-            static function (string $segment) use ($name): string {
-                return self::sanitizeRequirement($name, $segment);
-            },
-            $segment
-        ));
+        return \implode('|', $segment);
+    }
+
+    /**
+     * Strips starting and ending modifiers from a path regex.
+     */
+    private static function resolvePathRegex(string $pathRegex): string
+    {
+        $pos = (int) \strrpos($pathRegex, '$');
+        $pathRegex = \substr($pathRegex, 1 + \strpos($pathRegex, '^'), -(\strlen($pathRegex) - $pos));
+
+        if (\preg_match('/\\(\\?P\\<\w+\\>.*\\)/', $pathRegex)) {
+            return \preg_replace(self::STRIP_REGEX, '', $pathRegex);
+        }
+
+        return \str_replace(['\\', '?'], '', $pathRegex);
     }
 }

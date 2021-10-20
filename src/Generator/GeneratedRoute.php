@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Generator;
 
 use Flight\Routing\Interfaces\RouteGeneratorInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * The default compiled routes match for route compiler class.
@@ -56,8 +57,62 @@ final class GeneratedRoute implements RouteGeneratorInterface
         $this->compiledData = $data;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getData(): array
     {
         return $this->compiledData;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function match(string $method, UriInterface $uri, callable $routes)
+    {
+        [$staticRoutes, $regexList, $variables] = $this->compiledData;
+        $requestPath = $uri->getPath();
+        $matches = [];
+
+        if (empty($matchedIds = $staticRoutes[$requestPath] ?? [])) {
+            if (null === $regexList || !\preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                if (isset($staticRoutes['*'][$requestPath])) {
+                    $matchedIds = $staticRoutes['*'][$requestPath];
+                    goto found_a_route_match;
+                }
+
+                return null;
+            }
+
+            $matchedIds = [(int) $matches['MARK']];
+        }
+
+        found_a_route_match:
+        foreach ($matchedIds as $matchedId) {
+            foreach ($variables[$method][$matchedId] ?? [] as $domain => $routeVar) {
+                [$matchedRoute, $hostsVar] = $routes($matchedId, $domain ?: null, $uri);
+                $requiredSchemes = $matchedRoute->getSchemes();
+
+                if (null === $hostsVar) {
+                    continue;
+                }
+
+                if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes)) {
+                    continue;
+                }
+
+                if (!empty($routeVar)) {
+                    $matchInt = 0;
+
+                    foreach ($routeVar as $key => $value) {
+                        $matchedRoute->argument($key, $matches[++$matchInt] ?? $matches[$key] ?? $hostsVar[$key] ?? $value);
+                    }
+                }
+
+                return $matchedRoute;
+            }
+        }
+
+        return $matchedIds;
     }
 }

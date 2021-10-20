@@ -18,9 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
-use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
-use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri};
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface, RouteMatcherInterface};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -31,12 +30,12 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  */
 class RouteMatcher implements RouteMatcherInterface
 {
-    /** @var RouteCollection|\SplFixedArray<Route> */
-    private \Traversable $routes;
+    /** @var RouteCollection|array<int,Route> */
+    private $routes;
 
     private RouteCompilerInterface $compiler;
 
-    private ?GeneratedRoute $compiledData = null;
+    private ?RouteGeneratorInterface $compiledData = null;
 
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
     {
@@ -49,9 +48,7 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function __serialize(): array
     {
-        $routes = $this->getRoutes();
-
-        return [$this->compiler->build($routes), $routes->getRoutes(), $this->compiler];
+        return [$this->compiler->build($this->routes), $this->getRoutes(), $this->compiler];
     }
 
     /**
@@ -84,50 +81,23 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        $requestPath = $uri->getPath();
-
-        if (\array_key_exists($requestPath[-1], BaseRoute::URL_PREFIX_SLASHES)) {
-            $requestPath = \substr($requestPath, 0, -1) ?: '/';
-        }
-
         if (null === $nextHandler = $this->compiledData) {
-            foreach ($this->routes as $route) {
-                [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
-
-                if (\preg_match('{^' . $pathRegex . '$}u', $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
-                    if (empty($variables)) {
-                        return $route->match($method, $uri);
-                    }
-
-                    return static::doMatch($method, $uri, [$hostsRegex, $variables, $route], $matches);
-                }
-            }
-
-            goto route_not_found;
+            return $this->matchCollection($method, $uri, $this->routes);
         }
 
-        [$staticRoutes, $regexList, $variables] = $nextHandler->getData();
+        if (\is_array($matchedRoute = $nextHandler->match($method, $uri, \Closure::fromCallable([$this, 'doMatch'])))) {
+            $requirements = [[], [], []];
 
-        if (null === $matchedId = $staticRoutes[$requestPath] ?? null) {
-            if (null === $regexList || !\preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
-                goto route_not_found;
+            foreach ($matchedRoute as $matchedId) {
+                $requirements[0] = \array_merge($requirements[0], $this->routes[$matchedId]->getMethods());
+                $requirements[1][] = \key($nextHandler->getData()[2][$method][$matchedId] ?? []);
+                $requirements[2] = \array_merge($requirements[2], $this->routes[$matchedId]->getSchemes());
             }
 
-            $matchedId = (int) $matches['MARK'];
+            return $this->assertMatch($method, $uri, $requirements);
         }
 
-        foreach ($variables as $domain => $routeVar) {
-            if (\array_key_exists($matchedId, $routeVar)) {
-                if (empty($routeVar)) {
-                    return $this->routes[$matchedId]->match($method, $uri);
-                }
-
-                return static::doMatch($method, $uri, [$domain, $routeVar[$matchedId], $this->routes[$matchedId]], $matches ?? []);
-            }
-        }
-
-        route_not_found:
-        return null;
+        return $matchedRoute;
     }
 
     /**
@@ -135,7 +105,7 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function generateUri(string $routeName, array $parameters = []): GeneratedUri
     {
-        foreach ($this->routes as $route) {
+        foreach ($this->getRoutes() as $route) {
             if ($routeName === $route->getName()) {
                 return $this->compiler->generateUri($route, $parameters);
             }
@@ -155,36 +125,182 @@ class RouteMatcher implements RouteMatcherInterface
     /**
      * Get the routes associated with this class.
      *
-     * @return RouteCollection|\SplFixedArray<Route>
+     * @return array<int,Route>
      */
-    public function getRoutes(): \Traversable
+    public function getRoutes(): array
     {
-        return $this->routes;
+        $routes = $this->routes;
+
+        if ($routes instanceof RouteCollection) {
+            return $routes->getRoutes();
+        }
+
+        return $routes;
     }
 
     /**
-     * @param array<int,mixed> $routeData
-     * @param array<int|string,mixed> $matches
+     * Tries to match a route from a set of routes.
      */
-    private static function doMatch(string $method, UriInterface $uri, array $routeData, array $matches): Route
+    protected function matchCollection(string $method, UriInterface $uri, RouteCollection $routes): ?Route
     {
-        /** @var Route $matchedRoute */
-        [$hostsRegex, $variables, $matchedRoute] = $routeData;
-        $matchVar = 0;
+        $requirements = [[], [], []];
+        $requestPath = $uri->getPath();
+
+        foreach ($routes->getRoutes() as $route) {
+            if (!empty($staticPrefix = $route->getStaticPrefix()) && !\str_starts_with($requestPath, $staticPrefix)) {
+                continue;
+            }
+
+            [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
+
+            if (!\preg_match($pathRegex, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                continue;
+            }
+
+            $hostsVar = [];
+            $routeData = $route->getData();
+
+            if (!empty($hostsRegex) && !$this->matchHost($hostsRegex, $uri, $hostsVar)) {
+                $requirements[1][] = $hostsRegex;
+
+                continue;
+            }
+
+            if (!\array_key_exists($method, $routeData['methods'] ?? [])) {
+                $requirements[0] = \array_merge($requirements[0], $route->getMethods());
+
+                continue;
+            }
+
+            if (isset($routeData['schemes']) && !\array_key_exists($uri->getScheme(), $routeData['schemes'])) {
+                $requirements[2] = \array_merge($requirements[2], $route->getSchemes());
+
+                continue;
+            }
+
+            if (!empty($variables)) {
+                $matchInt = 0;
+
+                foreach ($variables as $key => $value) {
+                    $route->argument($key, $matches[++$matchInt] ?? $matches[$key] ?? $hostsVar[$key] ?? $value);
+                }
+            }
+
+            return $route;
+        }
+
+        return $this->assertMatch($method, $uri, $requirements);
+    }
+
+    protected function matchHost(string $hostsRegex, UriInterface $uri, array &$hostsVar): bool
+    {
+        $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
+
+        return (bool) \preg_match($hostsRegex, $hostAndPost, $hostsVar, \PREG_UNMATCHED_AS_NULL);
+    }
+
+    /**
+     * @return array<int,mixed>
+     */
+    protected function doMatch(int $matchedId, ?string $domain, UriInterface $uri): array
+    {
         $hostsVar = [];
 
-        if (!empty($hostsRegex)) {
-            $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
+        if (!empty($domain) && !$this->matchHost($domain, $uri, $hostsVar)) {
+            $hostsVar = null;
+        }
 
-            if (!\preg_match('{^' . $hostsRegex . '$}i', $hostAndPost, $hostsVar, \PREG_UNMATCHED_AS_NULL)) {
-                throw new UriHandlerException(\sprintf('Unfortunately current host "%s" is not allowed on requested path [%s].', $hostAndPost, $uri->getPath()), 400);
+        return [$this->routes[$matchedId], $hostsVar];
+    }
+
+    /**
+     * @param array<int,mixed> $requirements
+     */
+    protected function assertMatch(string $method, UriInterface $uri, array $requirements)
+    {
+        [$requiredMethods, $requiredHosts, $requiredSchemes] = $requirements;
+
+        if (!empty($requiredMethods)) {
+            $this->assertMethods($method, $uri->getPath(), $requiredMethods);
+        }
+
+        if (!empty($requiredSchemes)) {
+            $this->assertSchemes($uri, $requiredSchemes);
+        }
+
+        if (!empty($requiredHosts)) {
+            $this->assertHosts($uri, $requiredHosts);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int,string> $requiredMethods
+     */
+    protected function assertMethods(string $method, string $uriPath, array $requiredMethods): void
+    {
+        $allowedMethods = [];
+
+        foreach (\array_unique($requiredMethods) as $requiredMethod) {
+            if ($method === $requiredMethod || 'HEAD' === $requiredMethod) {
+                continue;
+            }
+
+            $allowedMethods[] = $requiredMethod;
+        }
+
+        if (!empty($allowedMethods)) {
+            throw new MethodNotAllowedException($allowedMethods, $uriPath, $method);
+        }
+    }
+
+    /**
+     * @param array<int,string> $requiredSchemes
+     */
+    protected function assertSchemes(UriInterface $uri, array $requiredSchemes): void
+    {
+        $allowedSchemes = [];
+
+        foreach (\array_unique($requiredSchemes) as $requiredScheme) {
+            if ($uri->getScheme() !== $requiredScheme) {
+                $allowedSchemes[] = $requiredScheme;
             }
         }
 
-        foreach ($variables as $key => $value) {
-            $matchedRoute->argument($key, $matches[++$matchVar] ?? $matches[$key] ?? $hostsVar[$key] ?? $value);
+        if (!empty($allowedSchemes)) {
+            throw new UriHandlerException(
+                \sprintf(
+                    'Route with "%s" path is not allowed on requested uri "%s" with invalid scheme, supported scheme(s): [%s].',
+                    $uri->getPath(),
+                    (string) $uri,
+                    \implode(', ', $allowedSchemes)
+                ),
+                400
+            );
+        }
+    }
+
+    /**
+     * @param array<int,string> $requiredHosts
+     */
+    protected function assertHosts(UriInterface $uri, array $requiredHosts): void
+    {
+        $allowedHosts = 0;
+
+        foreach ($requiredHosts as $requiredHost) {
+            $hostsVar = [];
+
+            if (!empty($requiredHosts) && !$this->matchHost($requiredHost, $uri, $hostsVar)) {
+                ++$allowedHosts;
+            }
         }
 
-        return $matchedRoute->match($method, $uri);
+        if ($allowedHosts > 0) {
+            throw new UriHandlerException(
+                \sprintf('Route with "%s" path is not allowed on requested uri "%s" as uri host is invalid.', $uri->getPath(), (string) $uri),
+                400
+            );
+        }
     }
 }
