@@ -72,13 +72,21 @@ class RegexGenerator
 
         foreach ($this->items as $route) {
             if ($route instanceof self) {
-                $prefix = \substr($route->prefix, $prefixLen);
-                $code .= '|' . \ltrim($prefix, '?') . '(?' . $route->compile($prefixLen + \strlen($prefix)) . ')';
+                $nested = '(?' . $route->compile($prefixLen + \strlen($prefix = \substr($route->prefix, $prefixLen))) . ')';
 
-                continue;
+                if (\str_starts_with($nested, '(?|?(*')) {
+                    $nested = \substr_replace($nested, '', 0, 3);
+
+                    if (\preg_match('#[^a-zA-Z0-9)]+$#', $prefix, $matches)) {
+                        $prefix = \substr_replace($prefix, $matches[0] . '?(?|', -(\strlen($matches[0])));
+                        $nested = \substr($nested, 1);
+                    }
+                }
+
+                $grouped = \ltrim($prefix, '?') . $nested;
             }
 
-            $code .= '|' . \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
+            $code .= '|' . ($grouped ?? \substr($route[0], $prefixLen) . '(*:' . $route[1] . ')');
         }
 
         return $code;
