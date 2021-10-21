@@ -122,6 +122,8 @@ composer require biurad/http-galaxy
 
 Route supports adding a scheme, host, pattern and handler all in one. a scheme must end with **:**, while a domain must begin with **//** e.g. `http://biurad.com/blog/{slug}*<App\Controller\BlogController@indexAction>`. Incase a class name or class object is passed into route's handler parameter, you can specify and callable method as `*<indexAction>` or  just route to a function using same syntax as callable method.
 
+The default routes matchers behaves the same way as [Symfony Routing Component][] default's routes matchers. Two main differences are, Flight Routing is [PSR](http://www.php-fig.org/psr/) complaint and faster.
+
 For dispatching a route handler response to the browser, use an instance of `Laminas\HttpHandlerRunner\Emitter\EmitterInterface` to dispatch the router.
 
 >run this in command line if the package has not be added.
@@ -133,7 +135,7 @@ composer require laminas/laminas-httphandlerrunner
 ```php
 use App\Controller\BlogController;
 use Biurad\Http\Factory\NyholmPsr7Factory as Psr17Factory;
-use Flight\Routing\{RouteCollection, RouteMatch};
+use Flight\Routing\{Route, RouteCollection, RouteMatch};
 
 $routes = new RouteCollection();
 $routes->add(new Route('/blog/{slug}*<indexAction>', handler: BlogController::class))->bind('blog_show');
@@ -812,32 +814,25 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
 ```php
-use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri};
-use Flight\Routing\Routes\Route;
-use Flight\Routing\Interfaces\RouteCompilerInterface;
+use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\Route;
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface};
 
 class MyRouteCompiler implements RouteCompilerInterface
 {
     /**
      * {@inheritdoc}
      */
-    public function build(iterable $routes): ?GeneratedRoute
+    public function build(iterable $routes): ?RouteGeneratorInterface
     {
-        $staticRoutes = $variables = [];
-        $regexList = null;
+        // Create your own variables here ...
 
         foreach ($routes as $i => $route) {
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
-            $variables[$hostsRegex ?: 0][$i] =  $compiledVars;
-
-            if (\preg_match('/\\(\\?P\\<\w+\\>.*\\)/', $pathRegex)) {
-                // Your own implementation to build a regex list
-            }
-
-            $staticRoutes[\str_replace('\\', '', $pathRegex)] = $i;
+            // Write your own implementation ...
         }
 
-        return new GeneratedRoute($staticRoutes, $regexList, $variables);
+        // return your own implementation of the route generator interface ...
     }
 
     /**
