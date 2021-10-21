@@ -31,8 +31,8 @@ final class GeneratedRoute implements RouteGeneratorInterface
     private array $compiledData;
 
     /**
-     * @param array<string,int> $staticPaths
-     * @param array<int,mixed[]> $variables
+     * @param array<string,array<int|string,array<int,int>|int>> $staticPaths
+     * @param array<string,array<int,mixed[]>> $variables
      */
     public function __construct(array $staticPaths, ?string $dynamicRegex, array $variables)
     {

@@ -54,7 +54,7 @@ class RouteCollection
     public function __construct(string $namedPrefix = '')
     {
         $this->namedPrefix = $namedPrefix;
-        $this->uniqueId = (string) \uniqid($namedPrefix);
+        $this->uniqueId = \uniqid($namedPrefix);
     }
 
     /**

@@ -85,7 +85,7 @@ class Listener implements ListenerInterface
     /**
      * Add a route from class annotated methods.
      *
-     * @param iterable<Route>  $classAnnotations
+     * @param iterable<Route>      $classAnnotations
      * @param array<int,BaseRoute> $methodAnnotations
      * @param array<int,BaseRoute> $foundAnnotations
      */
@@ -129,7 +129,7 @@ class Listener implements ListenerInterface
     /**
      * @param iterable<Route> $annotations
      * @param mixed           $handler
-     * @param Route[]         $foundAnnotations
+     * @param BaseRoute[]     $foundAnnotations
      */
     protected function getRoutes(iterable $annotations, $handler, array &$foundAnnotations, bool $single = false): void
     {

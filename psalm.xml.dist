@@ -3,7 +3,7 @@
        xmlns="https://getpsalm.org/schema/config"
        name="Psalm for Flight Routing"
        useDocblockTypes="true"
-       errorLevel="5"
+       errorLevel="4"
        strictBinaryOperands="false"
        rememberPropertyAssignmentsAfterCall="true"
        checkForThrowsDocblock="false"
@@ -22,42 +22,11 @@
     </projectFiles>
 
     <issueHandlers>
-        <MethodSignatureMismatch>
+        <UndefinedMethod>
             <errorLevel type="suppress">
-                <directory name="src/Routes" />
+                <referencedMethod name="Flight\Routing\Generator\RegexGenerator::offsetGet" />
+                <referencedMethod name="Flight\Routing\RouteCollection::offsetGet" />
             </errorLevel>
-        </MethodSignatureMismatch>
-
-        <InvalidReturnType>
-            <errorLevel type="suppress">
-                <file name="src/RouteMatcher.php" />
-            </errorLevel>
-        </InvalidReturnType>
-
-        <InvalidArgument>
-            <errorLevel type="suppress">
-                <file name="src/RouteCollection.php" />
-            </errorLevel>
-        </InvalidArgument>
-
-        <InvalidReturnStatement>
-            <errorLevel type="suppress">
-                <file name="src/RouteMatcher.php" />
-                <file name="src/RouteCollection.php" />
-            </errorLevel>
-        </InvalidReturnStatement>
-
-        <InvalidArrayAssignment>
-            <errorLevel type="suppress">
-                <file name="src/RouteCollection.php" />
-            </errorLevel>
-        </InvalidArrayAssignment>
-
-        <InvalidPropertyAssignmentValue>
-            <errorLevel type="suppress">
-                <file name="src/RouteMatcher.php" />
-                <file name="src/RouteCollection.php" />
-            </errorLevel>
-        </InvalidPropertyAssignmentValue>
+        </UndefinedMethod>
     </issueHandlers>
 </psalm>

@@ -11,8 +11,5 @@ parameters:
     ignoreErrors:
         - "#^Unsafe usage of new static\\(\\).$#"
         -
-            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:addRoute\\(\\) should return Flight\\\\Routing\\\\Routes\\\\Route but returns Flight\\\\Routing\\\\Routes\\\\FastRoute.$#"
-            path: src/RouteCollection.php
-        -
-            message: "#^Variable \\$matches might not be defined.$#"
-            path: src/RouteMatcher.php
+            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:group\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection|static\\(Flight\\\\Routing\\\\RouteCollection\\).$#"
+            path: src/Traits/GroupingTrait.php

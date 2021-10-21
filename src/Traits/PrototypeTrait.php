@@ -54,7 +54,7 @@ trait PrototypeTrait
     /**
      * Unmounts a group collection to continue routes stalk.
      *
-     * @return $this
+     * @return \Flight\Routing\RouteCollection
      */
     public function end()
     {
@@ -75,7 +75,7 @@ trait PrototypeTrait
     /**
      * Prototype the optional default value which maybe required by routes.
      *
-     * @param mixed $value The default value
+     * @param mixed $default The default value
      *
      * @see Route::default() for more information
      *
