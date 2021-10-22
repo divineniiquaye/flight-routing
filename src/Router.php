@@ -233,6 +233,10 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             }
 
             \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize(" . $dumpData . ");\n");
+
+            if (\function_exists('opcache_invalidate') && \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)) {
+                @\opcache_invalidate($cache, true);
+            }
         }
 
         return $cachedData;
