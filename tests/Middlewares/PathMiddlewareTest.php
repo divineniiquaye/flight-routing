@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Middlewares;
 
+use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Middlewares\PathMiddleware;
 use Flight\Routing\Route;
 use Flight\Routing\Router;
@@ -66,14 +67,15 @@ class PathMiddlewareTest extends BaseTestCase
 
         $pipeline = Router::withCollection();
         $pipeline->pipe(new PathMiddleware());
-        $pipeline->addRoute(new Route('/foo', Route::DEFAULT_METHODS, $handler));
+        $pipeline->addRoute(new Route('/foo/', Route::DEFAULT_METHODS, $handler));
 
-        $request = new ServerRequest(Router::METHOD_GET, '/build/foo/', [], null, '1.1', ['PATH_INFO' => '/foo/']);
+        $request = new ServerRequest(Router::METHOD_GET, '/build/foo', [], null, '1.1', ['PATH_INFO' => '/foo']);
         $response = $pipeline->process($request, $this->getRequestHandler());
+
 
         $this->assertEquals('/build', $subFolder);
         $this->assertEquals(302, $response->getStatusCode());
-        $this->assertEquals('/foo', $response->getHeaderLine('Location'));
+        $this->assertEquals('/foo/', $response->getHeaderLine('Location'));
     }
 
     /**
@@ -85,7 +87,13 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->pipe(new PathMiddleware(true));
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        try {
+            $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        } catch (RouteNotFoundException $e) {
+            $this->assertEquals($expectsStatus, $e->getCode());
+
+            return;
+        }
 
         $this->assertEquals($expectsStatus, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
@@ -100,7 +108,13 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->pipe(new PathMiddleware());
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        try {
+            $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        } catch (RouteNotFoundException $e) {
+            $this->assertEquals($expectsStatus, $e->getCode());
+
+            return;
+        }
 
         $this->assertEquals(301 === $expectsStatus ? 302 : $expectsStatus, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
@@ -115,7 +129,14 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->pipe(new PathMiddleware(true, true));
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        try {
+            $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        } catch (RouteNotFoundException $e) {
+            $this->assertEquals($expectsStatus, $e->getCode());
+
+            return;
+        }
+
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301 === $expectsStatus ? 308 : $expectsStatus, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
@@ -130,7 +151,14 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->pipe(new PathMiddleware(false, false));
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        try {
+            $response = $pipeline->process(new ServerRequest(Router::METHOD_POST, $requestPath), $this->getRequestHandler());
+        } catch (RouteNotFoundException $e) {
+            $this->assertEquals($expectsStatus, $e->getCode());
+
+            return;
+        }
+
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301 === $expectsStatus ? 302 : $expectsStatus, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
@@ -145,7 +173,14 @@ class PathMiddlewareTest extends BaseTestCase
         $pipeline->pipe(new PathMiddleware(false, true));
         $pipeline->addRoute(new Route($uriPath, [Router::METHOD_GET, Router::METHOD_POST], [$this, 'handlePath']));
 
-        $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        try {
+            $response = $pipeline->process(new ServerRequest(Router::METHOD_GET, $requestPath), $this->getRequestHandler());
+        } catch (RouteNotFoundException $e) {
+            $this->assertEquals($expectsStatus, $e->getCode());
+
+            return;
+        }
+
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertEquals(301 === $expectsStatus ? 307 : $expectsStatus, $response->getStatusCode());
         $this->assertEquals($expectedPath, $response->getHeaderLine('Location'));
@@ -164,15 +199,12 @@ class PathMiddlewareTest extends BaseTestCase
         return [
             // name => [$uriPath, $requestPath, $expectedPath, $permanent ]
             'root-without-prefix-tail_1' => ['/foo', '/foo', '', 200],
-            'root-without-prefix-tail_2' => ['/foo', '/foo', '', 200],
-            'root-without-prefix-tail_3' => ['/foo', '/foo/', '/foo', 301],
-            'root-without-prefix-tail_4' => ['/foo', '/foo/', '/foo', 301],
-            'root-without-prefix-tail_5' => ['/[{bar}]', '/', '', 200],
+            'root-without-prefix-tail_2' => ['/foo', '/foo/', '/foo', 404],
+            'root-without-prefix-tail_3' => ['/[{bar}]', '/', '', 200],
             'root-with-prefix-tail_1' => ['/foo/', '/foo/', '', 200],
-            'root-with-prefix-tail_2' => ['/foo/', '/foo/', '', 200],
+            'root-with-prefix-tail_2' => ['/foo/', '/foo@', '', 404],
             'root-with-prefix-tail_3' => ['/foo/', '/foo', '/foo/', 301],
-            'root-with-prefix-tail_4' => ['/foo/', '/foo', '/foo/', 301],
-            'root-with-prefix-tail_5' => ['/[{bar}]/', '/', '', 200],
+            'root-with-prefix-tail_4' => ['/[{bar}]/', '/', '', 200],
         ];
     }
 }

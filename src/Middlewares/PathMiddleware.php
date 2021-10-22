@@ -73,8 +73,6 @@ final class PathMiddleware implements MiddlewareInterface
             // Resolve request tail end to avoid conflicts and infinite redirection looping ...
             if (null === $requestEndTail && null !== $routeEndTail) {
                 $requestPath .= $routeEndTail;
-            } elseif (null === $routeEndTail && null !== $requestEndTail) {
-                $requestPath = \substr($requestPath, 0, -1) ?: $requestEndTail;
             }
 
             // Allow Redirection if exists and avoid static request.
