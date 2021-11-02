@@ -68,28 +68,38 @@ class RouteCollection
     }
 
     /**
+     * Inject Groups and sort routes in a natural order.
+     *
+     * @return $this
+     */
+    final public function buildRoutes(): void
+    {
+        $routes = $this->routes;
+
+        if (!empty($this->groups)) {
+            $this->injectGroups('', $routes);
+        }
+
+        \usort($routes, static function (Route $a, Route $b): int {
+            return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
+        });
+
+        $this->uniqueId = null; // Lock grouping and prototyping
+        $this->routes = $routes;
+    }
+
+    /**
      * Get all the routes.
      *
      * @return array<int,Route>
      */
     public function getRoutes(): array
     {
-        $routes = $this->routes;
-
-        if (!$this->uniqueId) {
-            return $routes;
+        if ($this->uniqueId) {
+            $this->buildRoutes();
         }
 
-        if (!empty($this->groups)) {
-            $this->injectGroups('', $routes);
-        }
-
-        $this->uniqueId = null; // Lock grouping and prototyping
-        \usort($routes, static function (Route $a, Route $b): int {
-            return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
-        });
-
-        return $this->routes = $routes;
+        return $this->routes;
     }
 
     /**

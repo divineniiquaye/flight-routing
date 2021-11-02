@@ -40,7 +40,7 @@ class RouteMatcher implements RouteMatcherInterface
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
-        $this->routes = $collection;
+        ($this->routes = $collection)->buildRoutes();
     }
 
     /**
