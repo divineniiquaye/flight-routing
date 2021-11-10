@@ -165,6 +165,18 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     }
 
     /**
+     * Set where cached data will be stored.
+     *
+     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
+     *
+     * @return void
+     */
+    public function setCache($cache): void
+    {
+        $this->cacheData = $cache;
+    }
+
+    /**
      * If RouteCollection's data has been cached.
      */
     public function isCached(): bool
