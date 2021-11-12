@@ -20,6 +20,7 @@ namespace Flight\Routing\Tests\Benchmarks;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
+use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Uri;
 
 /**
@@ -59,10 +60,14 @@ class RouteBench
     {
         $router = new Router();
         $router->setCollection(static function (RouteCollection $routes): void {
+            $collection = [];
+
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $routes->addRoute("/route/{$i}", ['GET']);
-                $routes->addRoute("/route/{$i}/{foo}", ['GET']);
+                $collection[] = Route::to("/route/{$i}", ['GET']);
+                $collection[] = Route::to("/route/{$i}/{foo}", ['GET']);
             }
+
+            $routes->routes($collection);
         });
 
         $this->router = $router;
@@ -72,10 +77,14 @@ class RouteBench
     {
         $router = new Router(null, __DIR__ . '/compiled_test.php');
         $router->setCollection(static function (RouteCollection $routes): void {
+            $collection = [];
+
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $routes->addRoute("/route/{$i}", ['GET'])->bind('static_' . $i);
-                $routes->addRoute("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
+                $collection[] = Route::to("/route/{$i}", ['GET'])->bind('static_' . $i);
+                $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
+
+            $routes->routes($collection);
         });
 
         $this->router = $router;
@@ -94,6 +103,18 @@ class RouteBench
     }
 
     /**
+     * @Groups(value={"static_routes"})
+     * @BeforeMethods({"initUnoptimized"}, extend=true)
+     * @ParamProviders({"init"})
+     */
+    public function benchStaticRoutesWithRequest(array $params): void
+    {
+        $result = $this->router->matchRequest(new ServerRequest('GET', $params[0]));
+
+        $this->runScope($params[0], $result);
+    }
+
+    /**
      * @Groups(value={"dynamic_routes"})
      * @BeforeMethods({"initUnoptimized"}, extend=true)
      * @ParamProviders({"init"})
@@ -101,6 +122,18 @@ class RouteBench
     public function benchDynamicRoutes(array $params): void
     {
         $result = $this->router->match('GET', new Uri($params[0] . '/bar'));
+
+        $this->runScope($params[0], $result);
+    }
+
+    /**
+     * @Groups(value={"dynamic_routes"})
+     * @BeforeMethods({"initUnoptimized"}, extend=true)
+     * @ParamProviders({"init"})
+     */
+    public function benchDynamicRoutesWithRequest(array $params): void
+    {
+        $result = $this->router->matchRequest(new ServerRequest('GET', $params[0] . '/bar'));
 
         $this->runScope($params[0], $result);
     }
