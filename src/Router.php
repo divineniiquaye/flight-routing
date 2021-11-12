@@ -51,6 +51,9 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /** @var array<string,MiddlewareInterface[]> */
     private array $middlewares = [];
 
+    /** @var array<string,Route|null> Match once, use later */
+    private array $optimized = [];
+
     private \SplQueue $pipeline;
 
     /** @var RouteCollection|(callable(RouteCollection): void)|null */
@@ -103,7 +106,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        return $this->getMatcher()->match($method, $uri);
+        return $this->optimized[$method . (string) $uri] ??= $this->getMatcher()->match($method, $uri);
     }
 
     /**
@@ -111,7 +114,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function matchRequest(ServerRequestInterface $request): ?Route
     {
-        return $this->getMatcher()->matchRequest($request);
+        return $this->optimized[$request->getMethod() . (string) $request->getUri()] ??= $this->getMatcher()->matchRequest($request);
     }
 
     /**
