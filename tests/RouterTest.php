@@ -583,7 +583,7 @@ class RouterTest extends BaseTestCase
             $group->get('/ping', new Fixtures\BlankRequestHandler());
 
             $group->group('', function (RouteCollection $group): void {
-                $group->prototype()->prefix('/v1')->domain('https://biurad.com')->end();
+                $group->prefix('/v1')->domain('https://biurad.com')->end();
 
                 $group->head('/hello/{me}', new Fixtures\BlankRequestHandler())->piped('hello');
 

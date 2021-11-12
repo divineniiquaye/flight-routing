@@ -26,32 +26,28 @@ use Flight\Routing\{Route, RouteCollection};
  */
 trait GroupingTrait
 {
+    private ?self $parent = null;
+
     /** @var self[] */
     private array $groups = [];
 
-    private string $namedPrefix;
+    private ?string $namedPrefix;
 
     /**
      * Mounts controllers under the given route prefix.
      *
-     * @param string                   $name        The route group prefixed name
-     * @param callable|RouteCollection $controllers A RouteCollection instance or a callable for defining routes
+     * @param string|null                   $name        The route group prefixed name
+     * @param callable|RouteCollection|null $controllers A RouteCollection instance or a callable for defining routes
      *
      * @throws \TypeError        if $controllers not instance of route collection's class
      * @throws \RuntimeException if locked
      *
      * @return $this
      */
-    public function group(string $name, $controllers = null)
+    public function group(string $name = null, $controllers = null)
     {
-        if (null === $this->uniqueId) {
-            throw new \RuntimeException('Grouping index invalid or out of range, add group before calling the getRoutes() method.');
-        }
-
         if (\is_callable($controllers)) {
-            $routes = new static($name);
-            $routes->prototypes = $this->prototypes ?? [];
-            $controllers($routes);
+            $controllers($routes = $this->injectGroup($name, new static($name)));
 
             return $this->groups[] = $routes;
         }
@@ -67,30 +63,33 @@ trait GroupingTrait
     public function populate(self $collection, bool $asGroup = false): void
     {
         if ($asGroup) {
-            if (null === $this->uniqueId) {
-                throw new \RuntimeException('Populating a route collection as group must be done before calling the getRoutes() method.');
-            }
-
-            $this->groups[] = $collection;
+            $this->groups[] = $this->injectGroup($collection->namedPrefix, $collection);
         } else {
+            $this->includeRoute($collection); // Incase of missing end method call on route.
+
             $routes = $collection->routes;
+            $collection->routes = $collection->prototypes = [];
 
             if (!empty($collection->groups)) {
-                $collection->injectGroups($collection->namedPrefix, $routes);
+                $collection->injectGroups($collection->namedPrefix ?? '', $routes);
             }
 
             foreach ($routes as $route) {
                 $this->routes[] = $this->injectRoute($route);
             }
-
-            $collection->routes = $collection->prototypes = [];
         }
     }
 
-    protected function injectGroup(string $prefix, self $controllers): self
+    /**
+     * @return $this
+     */
+    protected function injectGroup(?string $prefix, self $controllers)
     {
-        $controllers->prototypes = $this->prototypes ?? [];
-        $controllers->parent = $this;
+        if ($this->locked) {
+            throw new \RuntimeException('Cannot add a nested routes collection to a frozen routes collection.');
+        }
+
+        $this->includeRoute($controllers); // Incase of missing end method call on route.
 
         if (empty($controllers->namedPrefix)) {
             $controllers->namedPrefix = $prefix;
@@ -107,6 +106,8 @@ trait GroupingTrait
         $unnamedRoutes = [];
 
         foreach ($this->groups as $group) {
+            $group->includeRoute(); // Incase of missing end method call on route.
+
             foreach ($group->routes as $route) {
                 if (empty($name = $route->getName())) {
                     $name = $route->generateRouteName('');

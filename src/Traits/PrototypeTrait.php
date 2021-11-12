@@ -24,13 +24,10 @@ namespace Flight\Routing\Traits;
  */
 trait PrototypeTrait
 {
-    private ?string $uniqueId;
+    private int $defaultIndex = 0;
 
-    /** @var array<string,mixed[]>|null */
-    private ?array $prototypes = [];
-
-    /** @var array<string,bool> */
-    private array $prototyped = [];
+    /** @var array<string,mixed[]> */
+    private array $prototypes = [];
 
     /**
      * Allows a proxied method call to route's.
@@ -39,37 +36,87 @@ trait PrototypeTrait
      *
      * @return $this
      */
-    public function prototype()
+    public function prototype(array $routeData)
     {
-        if (null === $uniqueId = $this->uniqueId) {
-            throw new \RuntimeException('Routes method prototyping must be done before calling the getRoutes() method.');
-        }
+        foreach ($routeData as $routeMethod => $arguments) {
+            $arguments = \is_array($arguments) ? $arguments : [$arguments];
 
-        $this->prototypes = (null !== $this->parent) ? $this->parent->prototypes : [];
-        $this->prototyped[$uniqueId] = true; // Prototyping calls to routes ...
+            if (null !== $this->route) {
+                $this->route->{$routeMethod}(...$arguments);
+
+                continue;
+            }
+
+            if ('bind' === $routeMethod) {
+                throw new \UnexpectedValueException(\sprintf('Binding the name "%s" is only supported on routes.', $arguments[0]));
+            }
+
+            $this->doPrototype($routeMethod, $arguments);
+        }
 
         return $this;
     }
 
     /**
-     * Unmounts a group collection to continue routes stalk.
+     * This method performs two functions.
      *
-     * @return \Flight\Routing\RouteCollection
+     * - Unmounts a group collection to continue routes stalk.
+     * - Adds a route into collection's stack.
+     *
+     * @return $this
      */
     public function end()
     {
-        if (isset($this->prototyped[$this->uniqueId])) {
-            unset($this->prototyped[$this->uniqueId]);
+        if (null !== $this->route) {
+            $this->routes[] = $this->route;
+            $this->route = null;
 
-            // Remove last element from stack.
-            if (null !== $stack = $this->prototypes) {
-                \array_pop($stack);
+            $defaultIndex = $this->defaultIndex;
+            $this->defaultIndex = 0;
+
+            if ($defaultIndex >= 0) {
+                return $this;
             }
-
-            return $this;
         }
 
         return $this->parent ?? $this;
+    }
+
+    /**
+     * Prototype a name to a route, which is required for generating
+     * url from named routes.
+     *
+     * @see Route::bind() for more information
+     *
+     * @return $this
+     */
+    public function bind(string $routeName)
+    {
+        if (null === $this->route) {
+            throw new \UnderflowException(\sprintf('Binding the name "%s" is only supported on routes.', $routeName));
+        }
+
+        $this->route->bind($routeName);
+
+        return $this;
+    }
+
+    /**
+     * Prototype the route's handler executed when matched.
+     *
+     * @param mixed $to PHP class, object or callable that returns the response when matched
+     *
+     * @return $this
+     */
+    public function run($to)
+    {
+        if (null === $this->route) {
+            throw new \UnderflowException(sprintf('Binding a handler with type of "%s", is only supported on routes.', \get_debug_type($to)));
+        }
+
+        $this->route->run($to);
+
+        return $this;
     }
 
     /**
@@ -83,7 +130,13 @@ trait PrototypeTrait
      */
     public function default(string $variable, $default)
     {
-        return $this->doPrototype('default', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->default($variable, $default);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -97,7 +150,13 @@ trait PrototypeTrait
      */
     public function defaults(array $values)
     {
-        return $this->doPrototype('defaults', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->defaults($values);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -111,7 +170,13 @@ trait PrototypeTrait
      */
     public function assert(string $variable, $regexp)
     {
-        return $this->doPrototype('assert', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->assert($variable, $regexp);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -125,7 +190,13 @@ trait PrototypeTrait
      */
     public function asserts(array $regexps)
     {
-        return $this->doPrototype('asserts', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->asserts($regexps);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -139,7 +210,13 @@ trait PrototypeTrait
      */
     public function argument(string $parameter, $value)
     {
-        return $this->doPrototype('argument', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->argument($parameter, $value);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -153,7 +230,13 @@ trait PrototypeTrait
      */
     public function arguments(array $parameters)
     {
-        return $this->doPrototype('arguments', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->arguments($parameters);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -165,7 +248,13 @@ trait PrototypeTrait
      */
     public function namespace(string $namespace)
     {
-        return $this->doPrototype('namespace', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->namespace($namespace);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -177,7 +266,13 @@ trait PrototypeTrait
      */
     public function method(string ...$methods)
     {
-        return $this->doPrototype('method', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->method(...$methods);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -189,7 +284,13 @@ trait PrototypeTrait
      */
     public function scheme(string ...$schemes)
     {
-        return $this->doPrototype('scheme', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->scheme(...$schemes);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -201,7 +302,13 @@ trait PrototypeTrait
      */
     public function domain(string ...$hosts)
     {
-        return $this->doPrototype('domain', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->domain(...$hosts);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -213,7 +320,13 @@ trait PrototypeTrait
      */
     public function prefix(string $path)
     {
-        return $this->doPrototype('prefix', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->prefix($path);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -225,7 +338,13 @@ trait PrototypeTrait
      */
     public function piped(string ...$to)
     {
-        return $this->doPrototype('piped', \func_get_args());
+        if (null !== $this->route) {
+            $this->route->piped(...$to);
+
+            return $this;
+        }
+
+        return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
     /**
@@ -235,19 +354,19 @@ trait PrototypeTrait
      */
     protected function doPrototype(string $routeMethod, array $arguments)
     {
-        if (isset($this->prototyped[$this->uniqueId])) {
-            $this->prototypes[$routeMethod] = \array_merge($this->prototypes[$routeMethod] ?? [], $arguments);
+        if ($this->locked) {
+            throw new \RuntimeException(\sprintf('Prototyping "%s" route method failed as routes collection is frozen.', $routeMethod));
+        }
+
+        if ($this->defaultIndex > 0 || \count($routes = $this->routes) < 1) {
+            $this->prototypes[$routeMethod][] = $arguments;
         } else {
-            foreach ($this->routes as $route) {
+            foreach ($routes as $route) {
                 \call_user_func_array([$route, $routeMethod], $arguments);
             }
 
             foreach ($this->groups as $group) {
                 \call_user_func_array([$group, $routeMethod], $arguments);
-            }
-
-            if (\array_key_exists($routeMethod, $this->prototypes ?? [])) {
-                unset($this->prototypes[$routeMethod]);
             }
         }
 

@@ -295,7 +295,7 @@ class RouteMatcher implements RouteMatcherInterface
         foreach ($requiredHosts as $requiredHost) {
             $hostsVar = [];
 
-            if (!empty($requiredHosts) && !$this->matchHost($requiredHost, $uri, $hostsVar)) {
+            if (!empty($requiredHost) && !$this->matchHost($requiredHost, $uri, $hostsVar)) {
                 ++$allowedHosts;
             }
         }

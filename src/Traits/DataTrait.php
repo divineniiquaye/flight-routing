@@ -18,15 +18,13 @@ declare(strict_types=1);
 namespace Flight\Routing\Traits;
 
 use Flight\Routing\Exceptions\{InvalidControllerException, UriHandlerException};
-use Flight\Routing\{Route, RouteCollection};
+use Flight\Routing\Route;
 use Flight\Routing\Handlers\ResourceHandler;
 
 trait DataTrait
 {
     /** @var array<string,mixed> */
     protected array $data;
-
-    private ?RouteCollection $collection = null;
 
     /**
      * Sets the route path prefix.
@@ -305,31 +303,6 @@ trait DataTrait
         }
 
         return $this;
-    }
-
-    /**
-     * Sets the route belonging to a particular collection.
-     *
-     * This method is kinda internal, only used in RouteCollection class,
-     * and retrieved using this class end method.
-     *
-     * @internal used by RouteCollection class
-     */
-    public function belong(RouteCollection $to): void
-    {
-        $this->collection = $to;
-    }
-
-    /**
-     * End a group stack or return self.
-     */
-    public function end(): ?RouteCollection
-    {
-        if (null !== $stack = $this->collection) {
-            $this->collection = null; // Just remove it.
-        }
-
-        return $stack;
     }
 
     public function getName(): ?string
