@@ -81,23 +81,27 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        if (null === $nextHandler = $this->compiledData) {
-            return $this->matchCollection($method, $uri, $this->routes);
-        }
+        $optimizedRoute = $this->compiledData ?? $this->matchCollection($method, $uri, $this->routes);
 
-        if (\is_array($matchedRoute = $nextHandler->match($method, $uri, \Closure::fromCallable([$this, 'doMatch'])))) {
-            $requirements = [[], [], []];
+        if ($optimizedRoute instanceof RouteGeneratorInterface) {
+            $matchedRoute = $optimizedRoute->match($method, $uri, \Closure::fromCallable([$this, 'doMatch']));
 
-            foreach ($matchedRoute as $matchedId) {
-                $requirements[0] = \array_merge($requirements[0], $this->routes[$matchedId]->getMethods());
-                $requirements[1][] = \key($nextHandler->getData()[2][$method][$matchedId] ?? []);
-                $requirements[2] = \array_merge($requirements[2], $this->routes[$matchedId]->getSchemes());
+            if (\is_array($matchedRoute)) {
+                $requirements = [[], [], []];
+
+                foreach ($matchedRoute as $matchedId) {
+                    $requirements[0] = \array_merge($requirements[0], $this->routes[$matchedId]->getMethods());
+                    $requirements[1][] = \key($optimizedRoute->getData()[2][$method][$matchedId] ?? []);
+                    $requirements[2] = \array_merge($requirements[2], $this->routes[$matchedId]->getSchemes());
+                }
+
+                return $this->assertMatch($method, $uri, $requirements);
             }
 
-            return $this->assertMatch($method, $uri, $requirements);
+            return $matchedRoute;
         }
 
-        return $matchedRoute;
+        return $optimizedRoute;
     }
 
     /**
