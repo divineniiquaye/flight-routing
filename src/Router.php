@@ -48,7 +48,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
-    /** @var array<string,MiddlewareInterface[]> */
+    /** @var array<string,array<int,MiddlewareInterface>> */
     private array $middlewares = [];
 
     /** @var array<string,Route|null> Match once, use later */

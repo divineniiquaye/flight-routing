@@ -97,7 +97,7 @@ final class GeneratedRoute implements RouteGeneratorInterface
                     continue;
                 }
 
-                if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes)) {
+                if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes, true)) {
                     continue;
                 }
 
