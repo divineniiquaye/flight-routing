@@ -199,6 +199,11 @@ trait DataTrait
      */
     public function run($to)
     {
+        if (isset($this->data['namespace'])) {
+            $to = $this->resolveNamespace($this->data['namespace'], $to);
+            unset($this->data['namespace']); // No longer needed.
+        }
+
         $this->data['handler'] = $to;
 
         return $this;
@@ -220,6 +225,8 @@ trait DataTrait
 
             if (isset($this->data['handler'])) {
                 $this->data['handler'] = $this->resolveNamespace($namespace, $this->data['handler']);
+            } else {
+                $this->data['namespace'] = ($this->data['namespace'] ?? '') . $namespace;
             }
         }
 
@@ -426,7 +433,7 @@ trait DataTrait
 
         if (\is_string($controller) && '\\' === $controller[0]) {
             $controller = $namespace . $controller;
-        } elseif ((\is_array($controller) && \array_keys($controller) === [0, 1]) && \is_string($controller[0])) {
+        } elseif ((\is_array($controller) && 2 == \count($controller, \COUNT_RECURSIVE)) && \is_string($controller[0])) {
             $controller[0] = $this->resolveNamespace($namespace, $controller[0]);
         }
 

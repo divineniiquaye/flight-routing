@@ -179,9 +179,13 @@ class RouteTest extends TestCase
         $testRoute2 = Route::to('/foo')->run('\\Fixtures\BlankController')->namespace('Flight\Routing\Tests');
         $testRoute3 = Route::to('/foo')->run('Fixtures\BlankController')->namespace('Flight\Routing\Tests');
         $testRoute4 = Route::to('/foo')->run(new ResourceHandler('\\Fixtures\BlankRestful', 'user'))->namespace('Flight\Routing\Tests');
+        $testRoute5 = Route::to('/foo')->namespace('Flight\Routing\Tests')->run('\\Fixtures\BlankController');
+        $testRoute6 = Route::to('/foo')->namespace('Flight\Routing\Tests')->run('Fixtures\BlankController');
 
         $this->assertSame($testRoute1->getHandler(), $testRoute2->getHandler());
+        $this->assertSame($testRoute2->getHandler(), $testRoute5->getHandler());
         $this->assertEquals('Fixtures\BlankController', $testRoute3->getHandler());
+        $this->assertEquals($testRoute3->getHandler(), $testRoute6->getHandler());
         $this->assertEquals([Fixtures\BlankRestful::class, 'getUser'], $testRoute4->getHandler()('GET'));
 
         $this->expectExceptionMessage('Namespace "Flight\Routing\Tests\" provided for routes must not end with a "\".');
