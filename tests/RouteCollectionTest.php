@@ -506,8 +506,8 @@ class RouteCollectionTest extends TestCase
                 ->prefix('/api')
 
                 ->routes([
-                    Route::to('/', handler: new Fixtures\BlankRequestHandler())->bind('home'),
-                    Route::to('/ping', handler: new Fixtures\BlankRequestHandler())->bind('ping'),
+                    Route::to('/', Route::DEFAULT_METHODS, new Fixtures\BlankRequestHandler())->bind('home'),
+                    Route::to('/ping', Route::DEFAULT_METHODS, new Fixtures\BlankRequestHandler())->bind('ping'),
                 ])
 
                 ->group()
