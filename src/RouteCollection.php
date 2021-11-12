@@ -43,18 +43,19 @@ class RouteCollection
     use Traits\PrototypeTrait;
     use Traits\GroupingTrait;
 
-    private ?self $parent = null;
-
     /** @var array<int,Route> */
     private array $routes = [];
+
+    private ?Route $route = null;
+
+    private bool $locked = false;
 
     /**
      * @param string $namedPrefix The unqiue name for this group
      */
-    public function __construct(string $namedPrefix = '')
+    public function __construct(string $namedPrefix = null)
     {
         $this->namedPrefix = $namedPrefix;
-        $this->uniqueId = \uniqid($namedPrefix);
     }
 
     /**
@@ -62,6 +63,8 @@ class RouteCollection
      */
     public function __clone()
     {
+        $this->includeRoute(); // Incase of missing end method call on route.
+
         foreach ($this->routes as $offset => $route) {
             $this->routes[$offset] = clone $route;
         }
@@ -69,11 +72,10 @@ class RouteCollection
 
     /**
      * Inject Groups and sort routes in a natural order.
-     *
-     * @return $this
      */
     final public function buildRoutes(): void
     {
+        $this->includeRoute(); // Incase of missing end method call on route.
         $routes = $this->routes;
 
         if (!empty($this->groups)) {
@@ -84,7 +86,7 @@ class RouteCollection
             return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
         });
 
-        $this->uniqueId = null; // Lock grouping and prototyping
+        $this->locked = true; // Lock grouping and prototyping
         $this->routes = $routes;
     }
 
@@ -95,7 +97,7 @@ class RouteCollection
      */
     public function getRoutes(): array
     {
-        if ($this->uniqueId) {
+        if (!$this->locked) {
             $this->buildRoutes();
         }
 
@@ -103,11 +105,21 @@ class RouteCollection
     }
 
     /**
-     * Add route to the collection.
+     * Get the current route in stack.
      */
-    public function add(Route $route): self
+    public function getRoute(): ?Route
     {
-        $this->routes[] = $this->injectRoute($route);
+        return $this->route;
+    }
+
+    /**
+     * Add route to the collection.
+     *
+     * @return $this
+     */
+    public function add(Route $route)
+    {
+        $this->route = $this->injectRoute($route);
 
         return $this;
     }
@@ -120,10 +132,14 @@ class RouteCollection
      * @param string   $pattern Matched route pattern
      * @param string[] $methods Matched HTTP methods
      * @param mixed    $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function addRoute(string $pattern, array $methods, $handler = null): Route
+    public function addRoute(string $pattern, array $methods, $handler = null)
     {
-        return $this->routes[] = $this->injectRoute(new Route($pattern, $methods, $handler));
+        $this->route = $this->injectRoute(new Route($pattern, $methods, $handler));
+
+        return $this;
     }
 
     /**
@@ -133,8 +149,10 @@ class RouteCollection
      *
      * @throws \TypeError        if $routes doesn't contain a route instance
      * @throws \RuntimeException if locked
+     *
+     * @return $this
      */
-    public function routes(array $routes): self
+    public function routes(array $routes)
     {
         foreach ($routes as $route) {
             $this->routes[] = $this->injectRoute($route);
@@ -148,8 +166,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function head(string $pattern, $handler = null): Route
+    public function head(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_HEAD], $handler);
     }
@@ -159,8 +179,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function get(string $pattern, $handler = null): Route
+    public function get(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_GET, Router::METHOD_HEAD], $handler);
     }
@@ -170,8 +192,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function post(string $pattern, $handler = null): Route
+    public function post(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_POST], $handler);
     }
@@ -181,8 +205,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function put(string $pattern, $handler = null): Route
+    public function put(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_PUT], $handler);
     }
@@ -192,8 +218,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function patch(string $pattern, $handler = null): Route
+    public function patch(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_PATCH], $handler);
     }
@@ -203,8 +231,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function delete(string $pattern, $handler = null): Route
+    public function delete(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_DELETE], $handler);
     }
@@ -214,8 +244,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function options(string $pattern, $handler = null): Route
+    public function options(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, [Router::METHOD_OPTIONS], $handler);
     }
@@ -225,8 +257,10 @@ class RouteCollection
      *
      * @param string $pattern Matched route pattern
      * @param mixed  $handler Handler that returns the response when matched
+     *
+     * @return $this
      */
-    public function any(string $pattern, $handler = null): Route
+    public function any(string $pattern, $handler = null)
     {
         return $this->addRoute($pattern, Router::HTTP_METHODS_STANDARD, $handler);
     }
@@ -240,8 +274,10 @@ class RouteCollection
      * @param string              $action   The prefixed name attached to request method
      * @param string              $pattern  matched path where request should be sent to
      * @param class-string|object $resource Handler that returns the response
+     *
+     * @return $this
      */
-    public function resource(string $pattern, $resource, string $action = 'action'): Route
+    public function resource(string $pattern, $resource, string $action = 'action')
     {
         return $this->any($pattern, new Handlers\ResourceHandler($resource, $action));
     }
@@ -251,24 +287,56 @@ class RouteCollection
      */
     protected function injectRoute(Route $route): Route
     {
-        if (null === $this->uniqueId) {
-            throw new \RuntimeException('Adding routes must be done before calling the getRoutes() method.');
+        if ($this->locked) {
+            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
         }
 
-        foreach ($this->prototypes as $routeMethod => $arguments) {
-            if (!empty($arguments)) {
+        $this->includeRoute(); // Incase of missing end method call on route.
+
+        if (!empty($defaultsStack = $this->prototypes)) {
+            foreach ($defaultsStack as $routeMethod => $arguments) {
                 if ('prefix' === $routeMethod) {
-                    $arguments = [\implode('', $arguments)];
+                    $route->prefix(\implode('', \array_merge(...$arguments)));
+
+                    continue;
                 }
 
-                $route->{$routeMethod}(...$arguments);
+                if (\count($arguments) > 1) {
+                    foreach ($arguments as $argument) {
+                        $route->{$routeMethod}(...$argument);
+                    }
+
+                    continue;
+                }
+
+                $route->{$routeMethod}(...$arguments[0]);
             }
         }
 
-        if (null !== $this->parent) {
-            $route->belong($this); // Attach grouping to route.
+        return $route;
+    }
+
+    /**
+     * Include route to stack if not done.
+     */
+    protected function includeRoute(self $collection = null): void
+    {
+        if (null !== $this->route) {
+            $this->defaultIndex = -1;
+
+            $this->routes[] = $this->route; // Incase an end method is missing at the end of a route call.
+            $this->route = null;
         }
 
-        return $route;
+        if (null !== $collection) {
+            $collection->includeRoute();
+
+            if (empty($collection->routes)) {
+                $collection->defaultIndex = 1;
+            }
+
+            $collection->prototypes = \array_merge($this->prototypes, $collection->prototypes);
+            $collection->parent = $this;
+        }
     }
 }

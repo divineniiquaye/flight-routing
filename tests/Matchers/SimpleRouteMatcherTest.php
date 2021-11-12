@@ -67,10 +67,10 @@ class SimpleRouteMatcherTest extends TestCase
     public function testSamePathOnMethodMatch(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS);
-        $route2 = $collection->addRoute('/foo', ['POST']);
-        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS);
-        $route4 = $collection->addRoute('/bar/{var}', ['POST']);
+        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->getRoute();
+        $route2 = $collection->addRoute('/foo', ['POST'])->getRoute();
+        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->getRoute();
+        $route4 = $collection->addRoute('/bar/{var}', ['POST'])->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('/foo')));
@@ -84,7 +84,6 @@ class SimpleRouteMatcherTest extends TestCase
         $this->assertEquals($route1->getData(), $serializedMatcher->match('GET', new Uri('/foo'))->getData());
         $this->assertEquals($route2->getData(), $serializedMatcher->match('POST', new Uri('/foo'))->getData());
         $this->assertEquals($route3->getData(), $serializedMatcher->match('GET', new Uri('/bar/foo'))->getData());
-
 
         $this->expectExceptionMessage('Route with "/bar/foo" path is allowed on request method(s) [GET], "POST" is invalid.');
         $this->expectException(MethodNotAllowedException::class);
@@ -118,10 +117,10 @@ class SimpleRouteMatcherTest extends TestCase
     public function testSamePathOnDomainMatch(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->domain('localhost');
-        $route2 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->domain('biurad.com');
-        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->domain('localhost');
-        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->domain('biurad.com');
+        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->domain('localhost')->getRoute();
+        $route2 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->domain('biurad.com')->getRoute();
+        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->domain('localhost')->getRoute();
+        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->domain('biurad.com')->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('//localhost/foo')));
@@ -168,10 +167,10 @@ class SimpleRouteMatcherTest extends TestCase
     public function testSamePathOnSchemeMatch(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->scheme('https');
-        $route2 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->scheme('http');
-        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->scheme('https');
-        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->scheme('http');
+        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->scheme('https')->getRoute();
+        $route2 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->scheme('http')->getRoute();
+        $route3 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->scheme('https')->getRoute();
+        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->scheme('http')->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('https://localhost/foo')));
@@ -218,10 +217,10 @@ class SimpleRouteMatcherTest extends TestCase
     public function testMatchingRouteWithEndingSlash(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo/', Route::DEFAULT_METHODS);
-        $route2 = $collection->addRoute('/bar@', Route::DEFAULT_METHODS);
-        $route3 = $collection->addRoute('/foo/{var}/', Route::DEFAULT_METHODS);
-        $route4 = $collection->addRoute('/bar/{var:[a-z]{3}}@', Route::DEFAULT_METHODS);
+        $route1 = $collection->addRoute('/foo/', Route::DEFAULT_METHODS)->getRoute();
+        $route2 = $collection->addRoute('/bar@', Route::DEFAULT_METHODS)->getRoute();
+        $route3 = $collection->addRoute('/foo/{var}/', Route::DEFAULT_METHODS)->getRoute();
+        $route4 = $collection->addRoute('/bar/{var:[a-z]{3}}@', Route::DEFAULT_METHODS)->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('/foo')));
@@ -249,11 +248,11 @@ class SimpleRouteMatcherTest extends TestCase
     public function testMatchingEndingSlashConflict(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS);
-        $route2 = $collection->addRoute('/foo/', Route::DEFAULT_METHODS);
-        $route3 = $collection->addRoute('/foo/', ['POST']);
-        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS);
-        $route5 = $collection->addRoute('/bar/{var}/', Route::DEFAULT_METHODS);
+        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->getRoute();
+        $route2 = $collection->addRoute('/foo/', Route::DEFAULT_METHODS)->getRoute();
+        $route3 = $collection->addRoute('/foo/', ['POST'])->getRoute();
+        $route4 = $collection->addRoute('/bar/{var}', Route::DEFAULT_METHODS)->getRoute();
+        $route5 = $collection->addRoute('/bar/{var}/', Route::DEFAULT_METHODS)->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('/foo')));
@@ -275,8 +274,8 @@ class SimpleRouteMatcherTest extends TestCase
     public function testRouteMatchingError(): void
     {
         $collection = new RouteCollection();
-        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS);
-        $route2 = $collection->addRoute('/bar/{var:[a-z]+}', Route::DEFAULT_METHODS);
+        $route1 = $collection->addRoute('/foo', Route::DEFAULT_METHODS)->getRoute();
+        $route2 = $collection->addRoute('/bar/{var:[a-z]+}', Route::DEFAULT_METHODS)->getRoute();
 
         $matcher = new RouteMatcher($collection);
         $this->assertSame($route1, $matcher->match('GET', new Uri('/foo')));

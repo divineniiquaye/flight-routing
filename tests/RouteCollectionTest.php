@@ -48,7 +48,7 @@ class RouteCollectionTest extends TestCase
         $collection = new RouteCollection();
         $this->assertNotInstanceOf(\Traversable::class, $collection->getRoutes());
 
-        $this->expectExceptionMessage('Adding routes must be done before calling the getRoutes() method.');
+        $this->expectExceptionMessage('Cannot add a route to a frozen routes collection.');
         $this->expectException(\RuntimeException::class);
 
         $collection->addRoute('/hello', ['GET']);
@@ -206,7 +206,7 @@ class RouteCollectionTest extends TestCase
         $controllers->group('', $rootA = new RouteCollection());
         $controllers->group('', $rootB = new RouteCollection());
 
-        $rootA->addRoute('/leaf-a', []);
+        $rootA->addRoute('/leaf-a', [])->end();
         $rootB->addRoute('/leaf_a', []);
 
         $this->assertCount(2, $routes = $controllers->getRoutes());
@@ -223,7 +223,7 @@ class RouteCollectionTest extends TestCase
         $collector = new RouteCollection();
         $collector->getRoutes();
 
-        $this->expectExceptionObject(new \RuntimeException('Grouping index invalid or out of range, add group before calling the getRoutes() method.'));
+        $this->expectExceptionObject(new \RuntimeException('Cannot add a nested routes collection to a frozen routes collection.'));
         $collector->group('');
     }
 
@@ -235,22 +235,122 @@ class RouteCollectionTest extends TestCase
         $collection = new RouteCollection();
         $collection->add(new Route('/foo', Router::METHOD_GET));
 
-        $this->expectExceptionObject(new \RuntimeException('Populating a route collection as group must be done before calling the getRoutes() method.'));
+        $this->expectExceptionObject(new \RuntimeException('Cannot add a nested routes collection to a frozen routes collection'));
         $collector->populate($collection, true);
+    }
+
+    public function testPrototypingOnRouteAndGroup(): void
+    {
+        $collection = new RouteCollection();
+        $collection->add(Route::to('/hello'))->prototype([
+            'bind' => 'greeting',
+            'method' => 'OPTIONS',
+            'scheme' => ['http'],
+        ]);
+
+        $group = $collection->group()->prototype([
+            'domain' => 'biurad.com',
+            'method' => ['OPTIONS'],
+        ]);
+        $group->addRoute('/foo', ['GET']);
+        $group->end();
+
+        $this->assertEquals([
+            [
+                'name' => 'GET_OPTIONS_foo',
+                'path' => '/foo',
+                'hosts' => ['biurad.com'],
+                'methods' => [Router::METHOD_GET, Router::METHOD_OPTIONS],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => 'greeting',
+                'path' => '/hello',
+                'hosts' => [],
+                'methods' => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_OPTIONS],
+                'handler' => null,
+                'schemes' => ['http'],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+        ], Fixtures\Helper::routesToArray($collection->getRoutes()));
+    }
+
+    public function testProxiedMethodsPrototyping(): void
+    {
+        $collection = new RouteCollection();
+        $collection
+            ->namespace('App')
+            ->defaults(['hello' => 'world'])
+            ->asserts(['locale' => 'en|fr'])
+            ->arguments(['yes' => 'okay'])
+                ->group()
+                    ->namespace('\\Controllers')
+                    ->argument('foo', 'bar')
+
+                    ->get('/hello/{name}')
+                        ->namespace('\\Greet')
+                        ->prefix('/{locale}')
+                        ->method('OPTIONS')
+                        ->arguments(['name' => 'Divine'])
+                        ->defaults(['data' => \stdClass::class])
+                        ->asserts(['name' => '\w+'])
+                        ->run('\\phpinfo')
+                    ->end()
+                ->end()
+            ->end();
+
+        $this->assertEquals([
+            'name' => 'GET_HEAD_OPTIONS_locale_hello_name',
+            'path' => '/{locale}/hello/{name}',
+            'hosts' => [],
+            'methods' => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_OPTIONS],
+            'handler' => 'App\Controllers\Greet\phpinfo',
+            'schemes' => [],
+            'defaults' => ['hello' => 'world', 'data' => \stdClass::class],
+            'patterns' => ['locale' => 'en|fr', 'name' => '\w+'],
+            'arguments' => ['yes' => 'okay', 'foo' => 'bar', 'name' => 'Divine'],
+        ], Fixtures\Helper::routesToArray($collection->getRoutes(), true));
+
+        try {
+            $collection->prototype(['bind' => 'foo']);
+            $this->fail('->prototype() method with an array key of bind is expected to throw an UnexpectedValueException error.');
+        } catch (\UnexpectedValueException $e) {
+            $this->assertEquals('Binding the name "foo" is only supported on routes.', $e->getMessage());
+        }
+
+        try {
+            $collection->bind('foo');
+            $this->fail('->bind() method called on non route is expected to throw an UnderflowException error.');
+        } catch (\UnderflowException $e) {
+            $this->assertEquals('Binding the name "foo" is only supported on routes.', $e->getMessage());
+        }
+
+        try {
+            $collection->run(new Fixtures\InvokeController());
+            $this->fail('->run() method called on non route is expected to throw an UnderflowException error.');
+        } catch (\UnderflowException $e) {
+            $this->assertEquals('Binding a handler with type of "Flight\Routing\Tests\Fixtures\InvokeController", is only supported on routes.', $e->getMessage());
+        }
     }
 
     public function testEmptyPrototype(): void
     {
         $collector = new RouteCollection();
-        $collector->prototype()
+        $collector
             ->prefix('')
         ->end();
         $collector->get('/foo');
 
         $this->assertEquals('/foo', $collector->getRoutes()[0]->getPath());
 
-        $this->expectExceptionObject(new \RuntimeException('Routes method prototyping must be done before calling the getRoutes() method.'));
-        $collector->prototype();
+        $this->expectExceptionObject(new \RuntimeException('Prototyping "domain" route method failed as routes collection is frozen.'));
+        $collector->prototype(['domain' => 'biurad.com']);
     }
 
     public function testRequestMethodAsCollectionMethod(): void
@@ -370,23 +470,26 @@ class RouteCollectionTest extends TestCase
         $collector->group('invalid', new Fixtures\BlankController());
     }
 
-    public function testEmptyGroupPrototype(): void
+    public function testMultipleSamePrototypeCallGroupPrototype(): void
     {
         $collector = new RouteCollection();
-        $collector->prototype()
+        $collector
             ->prefix('/foo')
-        ->end()
-        ->prefix('/bar');
+            ->prefix('/bar');
+
+        $collector
+            ->scheme('http')
+            ->scheme('https');
 
         $collector->get('/', Fixtures\BlankRequestHandler::class)->bind('home');
 
         $this->assertEquals([
             'name' => 'home',
-            'path' => '/',
+            'path' => '/foo/bar/',
             'hosts' => [],
             'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
             'handler' => Fixtures\BlankRequestHandler::class,
-            'schemes' => [],
+            'schemes' => ['http', 'https'],
             'defaults' => [],
             'patterns' => [],
             'arguments' => [],
@@ -398,39 +501,42 @@ class RouteCollectionTest extends TestCase
         $collector = new RouteCollection();
         $collector->get('/', new Fixtures\BlankRequestHandler())->bind('home');
 
-        $collector->group('api.')
-            ->prototype()
+        $collector
+            ->group('api.')
                 ->prefix('/api')
-                ->get('/', new Fixtures\BlankRequestHandler())->bind('home')->end()
-                ->get('/ping', new Fixtures\BlankRequestHandler())->bind('ping')->end()
-                ->group('')
-                    ->prototype()
-                        ->scheme('https', 'http')->method(Router::METHOD_CONNECT)->default('hello', 'world')
-                        ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument('foo', 'hello')->end()
-                    ->end()
+
+                ->routes([
+                    Route::to('/', handler: new Fixtures\BlankRequestHandler())->bind('home'),
+                    Route::to('/ping', handler: new Fixtures\BlankRequestHandler())->bind('ping'),
+                ])
+
+                ->group()
+                    ->scheme('https', 'http')
+                    ->method(Router::METHOD_CONNECT)
+                    ->default('hello', 'world')
+
+                    ->head('hello', new Fixtures\BlankRequestHandler())->bind('hello')->argument('foo', 'hello')->end()
+
                     ->method(Router::METHOD_OPTIONS)->piped('web')
                 ->end()
-                ->group('')
-                    ->prototype()
-                        ->prefix('/v1')->domain('https://youtube.com')
-                        ->group('')
-                            ->prototype()->prefix('/section')
-                                ->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create')->end()
-                                ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update')->end()
-                            ->end()
-                        ->end()
+                ->group()
+                    ->prototype(['prefix' => '/v1', 'domain' => 'https://youtube.com'])
+
+                    ->group()
+                        ->prefix('/section')
+
+                        ->post('/create', new Fixtures\BlankRequestHandler())->bind('section.create')
+                        ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('section.update')
                     ->end()
-                    ->group('')
-                        ->prototype()
-                            ->prefix('/product')
-                            ->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create')->end()
-                            ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update')->end()
-                        ->end()
+                    ->group()
+                        ->prefix('/product')
+
+                        ->post('/create', new Fixtures\BlankRequestHandler())->bind('product.create')->end()
+                        ->patch('/update/{id}', new Fixtures\BlankRequestHandler())->bind('product.update')->end()
                     ->end()
                 ->end()
             ->end()
-        ->end()
-            ->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us')->end();
+        ->get('/about-us', new Fixtures\BlankRequestHandler())->bind('about-us')->end();
 
         $this->assertCount(9, $routes = $this->getIterable($collector));
         $routes->uasort(static function (Route $a, Route $b): int {
@@ -572,20 +678,18 @@ class RouteCollectionTest extends TestCase
             $demoCollection->add(new Route('/blog/search', Router::METHOD_GET));
             $demoCollection->add(new Route('/login', Router::METHOD_POST));
             $demoCollection->add(new Route('/logout', Router::METHOD_POST));
-            $demoCollection->add(new Route('/', Router::METHOD_GET));
+            $demoCollection->add(new Route('/', Router::METHOD_GET))->end();
             $demoCollection->prefix('/{_locale}');
             $demoCollection->method(Router::METHOD_CONNECT);
             $mergedCollection->group('demo.', $demoCollection)->default('_locale', 'en')->assert('_locale', 'en|fr');
 
             $chunkedCollection = new RouteCollection();
-            $chunkedCollection->prototype()
+            $chunkedCollection
                 ->domain('http://localhost')
-                ->scheme('https', 'http')
-            ->end();
+                ->scheme('https', 'http');
 
             for ($i = 0; $i < 100; ++$i) {
-                $h = \substr(\md5((string) $i), 0, 6);
-                $chunkedCollection->get('/' . $h . '/{a}/{b}/{c}/' . $h)->bind('_' . $i);
+                $chunkedCollection->get('/chuck' . $i . '/{a}/{b}/{c}/')->bind('_' . $i);
             }
             $mergedCollection->group('chuck_', $chunkedCollection);
 
@@ -745,19 +849,33 @@ class RouteCollectionTest extends TestCase
             127 => 'slashed_c',
         ], Fixtures\Helper::routesToNames($routes));
 
-        $route = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/fr/blog'));
+        $route1 = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/fr/blog'));
+        $route2 = $router->matchRequest(new ServerRequest(Router::METHOD_GET, 'http://localhost/chuck12/hello/1/2/'));
 
         $this->assertEquals([
-            'name' => 'demo.GET_CONNECT_locale_blog_',
-            'path' => '/{_locale}/blog/',
-            'hosts' => [],
-            'methods' => [Router::METHOD_GET, Router::METHOD_CONNECT],
-            'handler' => null,
-            'schemes' => [],
-            'defaults' => ['_locale' => 'en'],
-            'arguments' => ['_locale' => 'fr'],
-            'patterns' => ['_locale' => 'en|fr'],
-        ], Fixtures\Helper::routesToArray([$route], true));
+            [
+                'name' => 'demo.GET_CONNECT_locale_blog_',
+                'path' => '/{_locale}/blog/',
+                'hosts' => [],
+                'methods' => [Router::METHOD_GET, Router::METHOD_CONNECT],
+                'handler' => null,
+                'schemes' => [],
+                'defaults' => ['_locale' => 'en'],
+                'arguments' => ['_locale' => 'fr'],
+                'patterns' => ['_locale' => 'en|fr'],
+            ],
+            [
+                'name' => 'chuck__12',
+                'path' => '/chuck12/{a}/{b}/{c}/',
+                'hosts' => ['localhost'],
+                'methods' => [Router::METHOD_GET, Router::METHOD_HEAD],
+                'handler' => null,
+                'schemes' => ['http', 'https'],
+                'defaults' => [],
+                'arguments' => ['a' => 'hello', 'b' => 1, 'c' => 2],
+                'patterns' => [],
+            ],
+        ], Fixtures\Helper::routesToArray([$route1, $route2]));
 
         $this->assertEquals($cached, $router->isCached());
         $this->assertEquals('./hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));
