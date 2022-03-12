@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface, RouteMatcherInterface};
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -30,17 +30,19 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  */
 class RouteMatcher implements RouteMatcherInterface
 {
-    /** @var RouteCollection|array<int,Route> */
-    private $routes;
-
+    private RouteCollection $routes;
     private RouteCompilerInterface $compiler;
 
-    private ?RouteGeneratorInterface $compiledData = null;
+    /** @var array<int,mixed> */
+    private ?array $compiledData = null;
+
+    /** @var array<string,mixed> */
+    private array $optimized = [];
 
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
     {
         $this->compiler = $compiler ?? new RouteCompiler();
-        ($this->routes = $collection)->buildRoutes();
+        $this->routes = $collection;
     }
 
     /**
@@ -58,7 +60,8 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function __unserialize(array $data): void
     {
-        [$this->compiledData, $this->routes, $this->compiler] = $data;
+        [$this->compiledData, $routes, $this->compiler] = $data;
+        $this->routes = RouteCollection::create($routes);
     }
 
     /**
@@ -81,27 +84,7 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        $optimizedRoute = $this->compiledData ?? $this->matchCollection($method, $uri, $this->routes);
-
-        if ($optimizedRoute instanceof RouteGeneratorInterface) {
-            $matchedRoute = $optimizedRoute->match($method, $uri, \Closure::fromCallable([$this, 'doMatch']));
-
-            if (\is_array($matchedRoute)) {
-                $requirements = [[], [], []];
-
-                foreach ($matchedRoute as $matchedId) {
-                    $requirements[0] = \array_merge($requirements[0], $this->routes[$matchedId]->getMethods());
-                    $requirements[1][] = \key($optimizedRoute->getData()[2][$method][$matchedId] ?? []);
-                    $requirements[2] = \array_merge($requirements[2], $this->routes[$matchedId]->getSchemes());
-                }
-
-                return $this->assertMatch($method, $uri, $requirements);
-            }
-
-            return $matchedRoute;
-        }
-
-        return $optimizedRoute;
+        return $this->optimized[$method . $uri] ??= $this->{($c = $this->compiledData) ? 'matchCached' : 'matchCollection'}($method, $uri, $c ?? $this->routes);
     }
 
     /**
@@ -109,13 +92,19 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function generateUri(string $routeName, array $parameters = []): GeneratedUri
     {
-        foreach ($this->getRoutes() as $route) {
-            if ($routeName === $route->getName()) {
-                return $this->compiler->generateUri($route, $parameters);
+        if (null === $optimized = &$this->optimized[$routeName] ?? null) {
+            foreach ($this->routes->getRoutes() as $offset => $route) {
+                if ($routeName === $route->getName()) {
+                    $optimized = $offset;
+                    goto generate_uri;
+                }
             }
+
+            throw new UrlGenerationException(\sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
         }
 
-        throw new UrlGenerationException(\sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
+        generate_uri:
+        return $this->compiler->generateUri($this->routes->getRoutes()[$optimized], $parameters);
     }
 
     /**
@@ -133,13 +122,7 @@ class RouteMatcher implements RouteMatcherInterface
      */
     public function getRoutes(): array
     {
-        $routes = $this->routes;
-
-        if ($routes instanceof RouteCollection) {
-            return $routes->getRoutes();
-        }
-
-        return $routes;
+        return $this->routes->getRoutes();
     }
 
     /**
@@ -162,7 +145,7 @@ class RouteMatcher implements RouteMatcherInterface
             }
 
             $hostsVar = [];
-            $routeData = $route->getData();
+            $requiredSchemes = $route->getSchemes();
 
             if (!empty($hostsRegex) && !$this->matchHost($hostsRegex, $uri, $hostsVar)) {
                 $requirements[1][] = $hostsRegex;
@@ -170,13 +153,13 @@ class RouteMatcher implements RouteMatcherInterface
                 continue;
             }
 
-            if (!\array_key_exists($method, $routeData['methods'] ?? [])) {
+            if (!\in_array($method, $route->getMethods(), true)) {
                 $requirements[0] = \array_merge($requirements[0], $route->getMethods());
 
                 continue;
             }
 
-            if (isset($routeData['schemes']) && !\array_key_exists($uri->getScheme(), $routeData['schemes'])) {
+            if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes, true)) {
                 $requirements[2] = \array_merge($requirements[2], $route->getSchemes());
 
                 continue;
@@ -196,25 +179,84 @@ class RouteMatcher implements RouteMatcherInterface
         return $this->assertMatch($method, $uri, $requirements);
     }
 
+    /**
+     * Tries matching routes from cache.
+     */
+    public function matchCached(string $method, UriInterface $uri, array $optimized): ?Route
+    {
+        [$requestPath, $matches, $requirements] = [$uri->getPath(), [], [[], [], []]];
+
+        if (null !== $handler = $optimized['handler'] ?? null) {
+            $matchedIds = $handler($method, $uri, $optimized, fn (int $id) => $this->routes->getRoutes()[$id] ?? null);
+
+            if (\is_array($matchedIds)) {
+                goto found_a_route_match;
+            }
+
+            return $matchedIds;
+        }
+
+        [$staticRoutes, $regexList, $variables] = $optimized;
+
+        if (empty($matchedIds = $staticRoutes[$requestPath] ?? [])) {
+            if (null === $regexList || !\preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                if (isset($staticRoutes['*'][$requestPath])) {
+                    $matchedIds = $staticRoutes['*'][$requestPath];
+                    goto found_a_route_match;
+                }
+
+                return null;
+            }
+
+            $matchedIds = [(int) $matches['MARK']];
+        }
+
+        found_a_route_match:
+        foreach ($matchedIds as $matchedId) {
+            $requiredSchemes = ($route = $this->routes->getRoutes()[$matchedId])->getSchemes();
+
+            if (!\in_array($method, $route->getMethods(), true)) {
+                $requirements[0] = \array_merge($requirements[0], $route->getMethods());
+
+                continue;
+            }
+
+            if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes, true)) {
+                $requirements[2] = \array_merge($requirements[2], $route->getSchemes());
+
+                continue;
+            }
+
+            if (\array_key_exists($matchedId, $variables)) {
+                [$hostsRegex, $routeVar] = $variables[$matchedId];
+                $hostsVar = [];
+
+                if ($hostsRegex && !$this->matchHost($hostsRegex, $uri, $hostsVar)) {
+                    $requirements[1][] = $hostsRegex;
+
+                    continue;
+                }
+
+                if (!empty($routeVar)) {
+                    $matchInt = 0;
+
+                    foreach ($routeVar as $key => $value) {
+                        $route->argument($key, $matches[++$matchInt] ?? $matches[$key] ?? $hostsVar[$key] ?? $value);
+                    }
+                }
+            }
+
+            return $route;
+        }
+
+        return $this->assertMatch($method, $uri, $requirements);
+    }
+
     protected function matchHost(string $hostsRegex, UriInterface $uri, array &$hostsVar): bool
     {
         $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
 
         return (bool) \preg_match($hostsRegex, $hostAndPost, $hostsVar, \PREG_UNMATCHED_AS_NULL);
-    }
-
-    /**
-     * @return array<int,mixed>
-     */
-    protected function doMatch(int $matchedId, ?string $domain, UriInterface $uri): array
-    {
-        $hostsVar = [];
-
-        if (!empty($domain) && !$this->matchHost($domain, $uri, $hostsVar)) {
-            $hostsVar = null;
-        }
-
-        return [$this->routes[$matchedId], $hostsVar];
     }
 
     /**
