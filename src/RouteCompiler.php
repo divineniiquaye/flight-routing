@@ -154,13 +154,13 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     public function compile(Route $route): array
     {
-        [$pathRegex, $variables] = self::compilePattern($route->getPath(), false, $route->getPatterns());
+        [$pathRegex, $variables] = self::compilePattern($route->getPath(), false, $rPs = $route->getPatterns());
 
         if ($hosts = $route->getHosts()) {
             $hostsRegex = [];
 
             foreach ($hosts as $host) {
-                [$hostRegex, $hostVars] = self::compilePattern($host, false, $route->getPatterns());
+                [$hostRegex, $hostVars] = self::compilePattern($host, false, $rPs);
                 $variables += $hostVars;
                 $hostsRegex[] = $hostRegex;
             }

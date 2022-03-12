@@ -35,10 +35,7 @@ class RegexGenerator
     private string $prefix;
 
     /** @var string[] */
-    private array $staticPrefixes = [];
-
-    /** @var string[] */
-    private array $prefixes = [];
+    private array $staticPrefixes = [], $prefixes = [];
 
     /** @var array[]|self[] */
     private array $items = [];
