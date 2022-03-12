@@ -34,8 +34,6 @@
 
 ## 📦 Installation & Basic Usage
 
----
-
 This project requires [PHP] 7.4 or higher. The recommended way to install, is via [Composer]. Simply run:
 
 ```bash
@@ -111,8 +109,6 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
 ```
 
 ## Getting Started
-
----
 
 This library uses any [PSR-7] implementation, for the purpose of this tutorial, we wil use [biurad-http-galaxy] library to provide [PSR-7] complaint request, stream and response objects to your controllers and middleware.
 
@@ -203,8 +199,6 @@ $response = $router->process($psr17Factory->fromGlobalRequest(), $handler);
 
 ### Loading Annotated Routes
 
----
-
 This library is shipped with annotations support, check **Annotation** directory to find out more about collecting annotations into the routes collection's class.
 
 I suggests using [biurad-annotations] to use doctrine annotations and PHP 8 attributes on route classes. You can also create your own implementation to use load annotations using the `Flight\Routing\Annotation\Route` class.
@@ -244,8 +238,6 @@ $router->setCollection(static function (RouteCollection $routes) use ($loader): 
 ```
 
 ### Basic Routing
-
----
 
 This documentation for route pattern is based on [DefaultCompiler] class. Route pattern are path string with curly brace placeholders. Possible placeholder format are:
 
@@ -296,8 +288,6 @@ $routes->addRoute('/[{lang:[a-z]{2}}[-{sublang}]/]{name}[/page-{page=0}]');
 
 ## Route Collection
 
----
-
 The route collection class contains all available routes, in the route collection class, there are 7 http request methods: [head, get, post, patch, put, options, delete].
 
 Below is a basic example of how the route collection class can be used:
@@ -332,8 +322,6 @@ $routes->any('foo', fn () => '<b>Hello World</b>');
 
 ## Generating URLs From Named Routes
 
----
-
 URL generator tries to keep the URL as short as possible (while unique), so what can be omitted is not used. The behavior of generating urls from route depends on the respective parameters sequence given.
 
 Once you have assigned a name to a given route, you may use the route's name, its parameters and maybe add query, when generating URLs:
@@ -356,8 +344,6 @@ $url = $router->generateUri('profile', [1]); // will produce "user/1/profile"
 ```
 
 ## Route Middlewares
-
----
 
 Router supports middleware, you can use it for different purposes like authentication, authorization, throttles and so forth. Middleware run before controllers and it can check and manipulate http requests and response.:
 
@@ -430,8 +416,6 @@ This route will trigger Unauthorized exception on `/forbidden`.
 
 ## Multiple Routes
 
----
-
 Flight Routing supports **MRM (Multiple Routes Match)**. This increases SEO (search engine optimization) as it prevents multiple URLs to link to different content (without a proper redirect), the **MRM** feature is to serve static routes first, making other routes declared reachable.
 
 This feature was not fully implemented due to performance reasons, Route collection will return a list of routes starting with static routes eg: '/hello/world'. Make sure to avoid situations where dynamic route `/hello/{world}` matches a condition such as `/[{foo}/{bar}]` or `/[{foo}/{bar}]`.
@@ -460,8 +444,6 @@ $collector->get(
 
 ## Domain Routing
 
----
-
 Routes can be set to be used on domains or sub-domains. Example, you can point multiple domains or subdomain to the directory your project lives in or use `CNAME` rule. Flight routing will take care of the rest.
 
 Instead of a domain not found exception, except a null return using route matcher class and a route not found exception using router class.
@@ -486,8 +468,6 @@ $collector->group(function (RouteCollection $route) {
 ```
 
 ## RESTful Routing
-
----
 
 All of `Flight\Routing\Route` has a restful implementation, which specifies the method selection behavior. use `Flight\Routing\Handlers\ResourceHandler` class receiving the real handler, or use `Flight\Routing\RouteCollection::resource` method to automatically prefix all the methods in `Flight\Routing\Router::HTTP_METHODS_STANDARD` with HTTP verb.
 
@@ -538,8 +518,6 @@ $collector->resource('/user/{id:\d+}', UserController::class, 'user');
 > to specify the action name.
 
 ## Custom Route Compiler
-
----
 
 If these offered route pattern do not fit your needs, you may create your own route compiler. Route matching is nothing more than an implementation of [RouteCompilerInterface](https://github.com/divineniiquaye/flight-routing/blob/master/src/Interfaces/RouteCompilerInterface.php). Your custom compiler must fit in the rules of the [DefaultCompiler]:
 
