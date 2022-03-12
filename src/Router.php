@@ -48,20 +48,16 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
+    private \SplQueue $pipeline;
+    private ?RouteCompilerInterface $compiler;
+    private ?RouteMatcherInterface $matcher = null;
+
     /** @var array<string,array<int,MiddlewareInterface>> */
     private array $middlewares = [];
-
-    /** @var array<string,Route|null> Match once, use later */
-    private array $optimized = [];
-
-    private \SplQueue $pipeline;
 
     /** @var RouteCollection|(callable(RouteCollection): void)|null */
     private $collection;
 
-    private ?RouteCompilerInterface $compiler;
-
-    private ?RouteMatcherInterface $matcher = null;
 
     /** @var CacheItemPoolInterface|string|null */
     private $cacheData;
@@ -106,7 +102,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function match(string $method, UriInterface $uri): ?Route
     {
-        return $this->optimized[$method . (string) $uri] ??= $this->getMatcher()->match($method, $uri);
+        return $this->getMatcher()->match($method, $uri);
     }
 
     /**
@@ -114,7 +110,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function matchRequest(ServerRequestInterface $request): ?Route
     {
-        return $this->optimized[$request->getMethod() . (string) $request->getUri()] ??= $this->getMatcher()->matchRequest($request);
+        return $this->getMatcher()->matchRequest($request);
     }
 
     /**
@@ -196,12 +192,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function getMatcher(): RouteMatcherInterface
     {
-        return $this->matcher
-            ?? $this->matcher = (
-                $this->cacheData
-                    ? $this->getCachedData($this->cacheData)
-                    : new RouteMatcher($this->getCollection(), $this->compiler)
-            );
+        return $this->matcher ??= $this->cacheData ? $this->getCachedData($this->cacheData) : new RouteMatcher($this->getCollection(), $this->compiler);
     }
 
     /**
@@ -228,20 +219,20 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     protected function getCachedData($cache): RouteMatcherInterface
     {
         if ($cache instanceof CacheItemPoolInterface) {
-            $cachedData = $cache->getItem(__FILE__)->get();
+            $cachedData = ($cacheItem = $cache->getItem(__FILE__))->get();
 
             if (!$cachedData instanceof RouteMatcherInterface) {
                 $cache->deleteItem(__FILE__);
-                $cache->save($cache->getItem(__FILE__)->set($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)));
+                $cache->save($cacheItem->set($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)));
             }
 
-            return $cachedData;
+            return $cacheItem->get();
         }
 
         $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMatcherInterface) {
-            $dumpData = "<<<'SERIALIZED'\n" . \serialize($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
+            $dumpData = "<<<'SERIALIZED'\n" . \serialize(new RouteMatcher($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
@@ -252,6 +243,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
             if (\function_exists('opcache_invalidate') && \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)) {
                 @\opcache_invalidate($cache, true);
             }
+            $cachedData = require $cache;
         }
 
         return $cachedData;
