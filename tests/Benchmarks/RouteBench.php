@@ -17,10 +17,11 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Benchmarks;
 
+use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\Router;
-use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Uri;
 
 /**
@@ -49,9 +50,11 @@ class RouteBench
 
         yield 'Average Case' => ['/route/199'];
 
-        yield 'Real Case' => [\sprintf('/route/%d', \rand(0, 399))];
+        yield 'Real Case' => ['/route/' . \rand(0, self::$maxRoutes)];
 
         yield 'Worst Case' => ['/route/399'];
+
+        yield 'Domain Case' => ['//localhost.com/route/401'];
 
         yield 'Non-Existent Case' => ['/none'];
     }
@@ -63,9 +66,12 @@ class RouteBench
             $collection = [];
 
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $collection[] = Route::to("/route/{$i}", ['GET']);
-                $collection[] = Route::to("/route/{$i}/{foo}", ['GET']);
+                $collection[] = Route::to("/route/{$i}", ['GET'])->bind('static_' . $i);
+                $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
+
+            $collection[] = Route::to("//localhost.com/route/401", ['GET'])->bind('static_' . 401);
+            $collection[] = Route::to("//{host}/route/{foo}", ['GET'])->bind('no_static_' . 401);
 
             $routes->routes($collection);
         });
@@ -84,6 +90,9 @@ class RouteBench
                 $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
 
+            $collection[] = Route::to("//localhost.com/route/400", ['GET'])->bind('static_' . 401);
+            $collection[] = Route::to("//{host}/route/{foo}", ['GET'])->bind('no_static_' . 401);
+
             $routes->routes($collection);
         });
 
@@ -99,19 +108,7 @@ class RouteBench
     {
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
-    }
-
-    /**
-     * @Groups(value={"static_routes"})
-     * @BeforeMethods({"initUnoptimized"}, extend=true)
-     * @ParamProviders({"init"})
-     */
-    public function benchStaticRoutesWithRequest(array $params): void
-    {
-        $result = $this->router->matchRequest(new ServerRequest('GET', $params[0]));
-
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -123,7 +120,26 @@ class RouteBench
     {
         $result = $this->router->match('GET', new Uri($params[0] . '/bar'));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
+    }
+
+    /**
+     * @Groups(value={"static_routes"})
+     * @BeforeMethods({"initUnoptimized"}, extend=true)
+     * @ParamProviders({"init"})
+     */
+    public function benchStaticRouteUri(array $params): void
+    {
+        $value = \substr($params[0], \stripos($params[0], '/') ?: -1);
+
+        try {
+            $result = $this->router->generateUri('static_' . $value);
+            $result = $result instanceof GeneratedUri;
+        } catch (\Throwable $e) {
+            $result = '/none' === $params[0] ? $e instanceof UrlGenerationException : false;
+        }
+
+        \assert($result, new \RuntimeException(\sprintf('Route uri generation failed, for route name "%s" request path.', $value)));
     }
 
     /**
@@ -131,11 +147,18 @@ class RouteBench
      * @BeforeMethods({"initUnoptimized"}, extend=true)
      * @ParamProviders({"init"})
      */
-    public function benchDynamicRoutesWithRequest(array $params): void
+    public function benchDynamicRouteUri(array $params): void
     {
-        $result = $this->router->matchRequest(new ServerRequest('GET', $params[0] . '/bar'));
+        $value = \substr($params[0], \stripos($params[0], '/') ?: -1);
 
-        $this->runScope($params[0], $result);
+        try {
+            $result = $this->router->generateUri('no_static_' . $value, ['foo' => 'bar', 'host' => 'biurad.com']);
+            $result = $result instanceof GeneratedUri;
+        } catch (\Throwable $e) {
+            $result = '/none' === $params[0] ? $e instanceof UrlGenerationException : false;
+        }
+
+        \assert($result, new \RuntimeException(\sprintf('Route uri generation failed, for route name "%s" request path.', $value)));
     }
 
     /**
@@ -147,7 +170,7 @@ class RouteBench
     {
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -159,7 +182,7 @@ class RouteBench
     {
         $result = $this->router->match('GET', new Uri($params[0] . '/bar'));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -171,7 +194,7 @@ class RouteBench
         $this->initOptimized();
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -183,7 +206,7 @@ class RouteBench
         $this->initOptimized();
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -195,7 +218,7 @@ class RouteBench
         $this->initUnoptimized();
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
     /**
@@ -207,17 +230,17 @@ class RouteBench
         $this->initUnoptimized();
         $result = $this->router->match('GET', new Uri($params[0]));
 
-        $this->runScope($params[0], $result);
+        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
     }
 
-    private function runScope(string $requestPath, ?Route $route): void
+    private function runScope(string $requestPath, ?Route $route): bool
     {
         if ($route instanceof Route) {
-            \assert('GET' === $route->getMethods()[0]);
+            return 'GET' === $route->getMethods()[0];
         } elseif ('/none' === $requestPath) {
-            \assert(null === $route);
-        } else {
-            throw new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $requestPath));
+            return null === $route;
         }
+
+        return false;
     }
 }

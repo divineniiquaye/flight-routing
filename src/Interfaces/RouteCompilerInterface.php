@@ -33,8 +33,10 @@ interface RouteCompilerInterface
      * If compiler doesn't support this functionality, return null instead.
      *
      * @see Flight\Routing\RouteMatcher implementation of this method
+     *
+     * @return array<int,mixed>|null
      */
-    public function build(RouteCollection $routes): ?RouteGeneratorInterface;
+    public function build(RouteCollection $routes): ?array;
 
     /**
      * Match the Route instance and compiles the current route instance.

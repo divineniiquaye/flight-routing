@@ -5,7 +5,7 @@ parameters:
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
 
-    excludes_analyse:
+    excludePaths:
         - %currentWorkingDirectory%/src/Handlers/RouteInvoker.php
 
     ignoreErrors:

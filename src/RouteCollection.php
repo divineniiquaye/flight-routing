@@ -71,9 +71,23 @@ class RouteCollection
     }
 
     /**
+     * Create an instance of resolved routes.
+     *
+     * @return static
+     */
+    final public static function create(array $routes, bool $locked = true)
+    {
+        $collection = new static();
+        $collection->routes = $routes;
+        $collection->locked = $locked;
+
+        return $collection;
+    }
+
+    /**
      * Inject Groups and sort routes in a natural order.
      */
-    final public function buildRoutes(): void
+    final public function buildRoutes(bool $lock = true): void
     {
         $this->includeRoute(); // Incase of missing end method call on route.
         $routes = $this->routes;
@@ -86,7 +100,7 @@ class RouteCollection
             return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
         });
 
-        $this->locked = true; // Lock grouping and prototyping
+        $this->locked = $lock; // Lock grouping and prototyping
         $this->routes = $routes;
     }
 

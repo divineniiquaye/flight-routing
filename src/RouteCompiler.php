@@ -18,8 +18,8 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{UriHandlerException, UrlGenerationException};
-use Flight\Routing\Generator\{GeneratedRoute, GeneratedUri, RegexGenerator};
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteGeneratorInterface};
+use Flight\Routing\Generator\{GeneratedUri, RegexGenerator};
+use Flight\Routing\Interfaces\RouteCompilerInterface;
 
 /**
  * RouteCompiler compiles Route instances to regex.
@@ -108,7 +108,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function build(RouteCollection $routes): ?RouteGeneratorInterface
+    public function build(RouteCollection $routes): array
     {
         $tree = new RegexGenerator();
         $variables = $staticRegex = $hasSlashes = [];
@@ -117,8 +117,12 @@ final class RouteCompiler implements RouteCompilerInterface
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
             $pathRegex = self::resolvePathRegex($pathRegex);
 
-            foreach ($route->getMethods() as $method) {
-                $variables[$method][$i][$hostsRegex ?: 0] = $compiledVars;
+            if (!empty($hostsRegex)) {
+                $variables[$i] = [$hostsRegex, []];
+            }
+
+            if (!empty($compiledVars)) {
+                $variables[$i] = [$variables[$i][0] ?? [], $compiledVars];
             }
 
             if ('?' === $pos = $pathRegex[-1]) {
@@ -146,7 +150,7 @@ final class RouteCompiler implements RouteCompilerInterface
             $compiledRegex = '~^' . \substr($compiledRegex, 1) . '$~sDu';
         }
 
-        return new GeneratedRoute($staticRegex + ['*' => $hasSlashes], $compiledRegex ?: null, $variables);
+        return [$staticRegex + ['*' => $hasSlashes], $compiledRegex ?: null, $variables];
     }
 
     /**
@@ -154,13 +158,13 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     public function compile(Route $route): array
     {
-        [$pathRegex, $variables] = self::compilePattern($route->getPath(), false, $route->getPatterns());
+        [$pathRegex, $variables] = self::compilePattern($route->getPath(), false, $rPs = $route->getPatterns());
 
         if ($hosts = $route->getHosts()) {
             $hostsRegex = [];
 
             foreach ($hosts as $host) {
-                [$hostRegex, $hostVars] = self::compilePattern($host, false, $route->getPatterns());
+                [$hostRegex, $hostVars] = self::compilePattern($host, false, $rPs);
                 $variables += $hostVars;
                 $hostsRegex[] = $hostRegex;
             }

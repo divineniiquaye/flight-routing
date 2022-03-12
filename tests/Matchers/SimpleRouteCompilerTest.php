@@ -144,11 +144,9 @@ class SimpleRouteCompilerTest extends TestCase
         }, \iterator_to_array($this->provideCompilePathData()));
 
         $compiler = new RouteCompiler();
-        $collection = new RouteCollection();
-        $collection->routes(\array_values($routes));
+        $collection = RouteCollection::create($routes);
 
-        $buildData = $compiler->build($collection);
-        [$staticList, $regexList] = $buildData->getData();
+        [$staticList, $regexList] = $compiler->build($collection);
 
         foreach ($matches as $match) {
             $match = '/' . \ltrim($match, '/');
