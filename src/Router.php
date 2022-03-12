@@ -51,6 +51,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     private \SplQueue $pipeline;
     private ?RouteCompilerInterface $compiler;
     private ?RouteMatcherInterface $matcher = null;
+    private string $matcherClass = RouteMatcher::class;
 
     /** @var array<string,array<int,MiddlewareInterface>> */
     private array $middlewares = [];
@@ -188,11 +189,22 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     }
 
     /**
+     * Set a matcher class associated with this Router.
+     */
+    public function setMatcher(string $matcherClass): void
+    {
+        if (!\is_subclass_of($matcherClass, RouteMatcherInterface::class)) {
+            throw new \InvalidArgumentException(\sprintf('"%s" must be a subclass of "%s".', $matcherClass, RouteMatcherInterface::class));
+        }
+        $this->matcherClass = $matcherClass;
+    }
+
+    /**
      * Gets the Route matcher instance associated with this Router.
      */
     public function getMatcher(): RouteMatcherInterface
     {
-        return $this->matcher ??= $this->cacheData ? $this->getCachedData($this->cacheData) : new RouteMatcher($this->getCollection(), $this->compiler);
+        return $this->matcher ??= $this->cacheData ? $this->getCachedData($this->cacheData) : new $this->matcherClass($this->getCollection(), $this->compiler);
     }
 
     /**
@@ -223,7 +235,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
             if (!$cachedData instanceof RouteMatcherInterface) {
                 $cache->deleteItem(__FILE__);
-                $cache->save($cacheItem->set($cachedData = new RouteMatcher($this->getCollection(), $this->compiler)));
+                $cache->save($cacheItem->set($cachedData = new $this->matcherClass($this->getCollection(), $this->compiler)));
             }
 
             return $cacheItem->get();
@@ -232,7 +244,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMatcherInterface) {
-            $dumpData = "<<<'SERIALIZED'\n" . \serialize(new RouteMatcher($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
+            $dumpData = "<<<'SERIALIZED'\n" . \serialize(new $this->matcherClass($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
