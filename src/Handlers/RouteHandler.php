@@ -38,7 +38,6 @@ class RouteHandler implements RequestHandlerInterface
     public const OVERRIDE_HTTP_RESPONSE = ResponseInterface::class;
 
     protected const CONTENT_TYPE = 'Content-Type';
-
     protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\["[\w\"\,]+\]|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
 
     protected ResponseFactoryInterface $responseFactory;
@@ -59,9 +58,7 @@ class RouteHandler implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $route = $request->getAttribute(Route::class);
-
-        if (!$route instanceof Route) {
+        if (null === $route = $request->getAttribute(Route::class)) {
             if (true === $notFoundResponse = $request->getAttribute(static::OVERRIDE_HTTP_RESPONSE)) {
                 return $this->responseFactory->createResponse();
             }
@@ -95,7 +92,17 @@ class RouteHandler implements RequestHandlerInterface
 
         try {
             // The route handler to resolve ...
-            $response = $this->resolveHandler($request, $route);
+            $handler = $route->getHandler();
+
+            if ($handler instanceof ResourceHandler) {
+                $handler = $handler($request->getMethod());
+            }
+
+            $response = ($this->handlerResolver)($handler, $this->resolveArguments($request, $route));
+
+            if ($response instanceof RequestHandlerInterface) {
+                return $response->handle($request);
+            }
 
             if ($response instanceof ResponseInterface || \is_string($response)) {
                 return $response;
@@ -136,34 +143,6 @@ class RouteHandler implements RequestHandlerInterface
         }
 
         return $response->withHeader(self::CONTENT_TYPE, $contentType);
-    }
-
-    /**
-     * @return mixed
-     */
-    protected function resolveHandler(ServerRequestInterface $request, Route $route)
-    {
-        $handler = $route->getHandler();
-
-        if ($handler instanceof RequestHandlerInterface) {
-            return $handler->handle($request);
-        }
-
-        if (!$handler instanceof ResponseInterface) {
-            $parameters = $this->resolveArguments($request, $route);
-
-            if ($handler instanceof ResourceHandler) {
-                $handler = $handler($request->getMethod());
-            }
-
-            $handler = ($this->handlerResolver)($handler, $parameters);
-
-            if ($handler instanceof RequestHandlerInterface) {
-                return $handler->handle($request);
-            }
-        }
-
-        return true === $handler ? null : $handler;
     }
 
     /**

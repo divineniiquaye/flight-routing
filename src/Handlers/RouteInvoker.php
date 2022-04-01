@@ -52,43 +52,34 @@ class RouteInvoker
                 $handler = $this->container->get($handler);
             } elseif (\str_contains($handler, '@')) {
                 $handler = \explode('@', $handler, 2);
-
                 goto maybe_callable;
             } elseif (\class_exists($handler)) {
-                $handlerRef = new \ReflectionClass($handler);
-
-                if ($handlerRef->hasMethod('__invoke')) {
-                    $handler = [$handler, '__invoke'];
-
-                    goto maybe_callable;
-                }
-
-                if (null === $constructor = $handlerRef->getConstructor()) {
-                    return $handlerRef->newInstanceWithoutConstructor();
-                }
-
-                return $handlerRef->newInstanceArgs($this->resolveParameters($constructor->getParameters(), $arguments));
+                $handler = new $handler();
             }
-        }
-
-        if ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
+        } elseif ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
             maybe_callable:
             if (null !== $this->container && $this->container->has($handler[0])) {
                 $handler[0] = $this->container->get($handler[0]);
             } elseif (\class_exists($handler[0])) {
-                $handler[0] = (new \ReflectionClass($handler[0]))->newInstanceArgs([]);
+                $handler[0] = new $handler[0]();
             }
         }
 
-        if (\is_callable($handler)) {
-            $handlerRef = new \ReflectionFunction(\Closure::fromCallable($handler));
-        } elseif (\is_object($handler)) {
+        if (!\is_callable($handler)) {
+            if (!\is_object($handler)) {
+                throw new InvalidControllerException(\sprintf('Route has an invalid handler type of "%s".', \gettype($handler)));
+            }
+
             return $handler;
-        } else {
-            throw new InvalidControllerException(\sprintf('Route has an invalid handler type of "%s".', \gettype($handler)));
         }
 
-        return $handlerRef->invokeArgs($this->resolveParameters($handlerRef->getParameters(), $arguments));
+        $handlerRef = new \ReflectionFunction(\Closure::fromCallable($handler));
+
+        if ($handlerRef->getNumberOfParameters() > 0) {
+            $resolvedParameters = $this->resolveParameters($handlerRef->getParameters(), $arguments);
+        }
+
+        return $handlerRef->invokeArgs($resolvedParameters ?? []);
     }
 
     /**

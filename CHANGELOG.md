@@ -12,6 +12,7 @@ CHANGELOG
 * Updated PHP minimum version to 7.4 and added PHP 8.1 support
 * Updated README file with documentation of new changes
 * Improved PSR-15 middleware performance
+* Improved route's handler class code complexity and performance
 * Improved overall performance of adding and matching routes
 
 1.0
