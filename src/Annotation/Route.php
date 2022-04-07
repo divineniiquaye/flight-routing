@@ -66,6 +66,7 @@ final class Route
         $hosts = [],
         array $where = [],
         array $defaults = [],
+        array $attributes = [],
         string $resource = null
     ) {
         $this->path = $path;
@@ -76,6 +77,7 @@ final class Route
         $this->hosts = (array) $hosts;
         $this->patterns = $where;
         $this->defaults = $defaults;
+        $this->arguments = $attributes;
     }
 
     /**
@@ -90,6 +92,7 @@ final class Route
             'methods' => $this->methods,
             'patterns' => $this->patterns,
             'defaults' => $this->defaults,
+            'arguments' => $this->arguments,
         ];
 
         $route = BaseRoute::__set_state($routeData);

@@ -8,6 +8,7 @@ CHANGELOG
 * [BC Break] Updated and Renamed `RouteCollector` class to `RouteCollection`
 * Added benchmark to compare performance over time
 * Added custom route matcher support to the router class
+* Added attributes parameter to the route's annotation class
 * Updated routes cache from serialization to var_export
 * Updated PHP minimum version to 7.4 and added PHP 8.1 support
 * Updated README file with documentation of new changes

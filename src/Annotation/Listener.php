@@ -101,6 +101,7 @@ class Listener implements ListenerInterface
                         ->scheme(...$classAnnotation->schemes)
                         ->domain(...$classAnnotation->hosts)
                         ->defaults($classAnnotation->defaults)
+                        ->arguments($classAnnotation->arguments)
                         ->asserts($classAnnotation->patterns);
 
                     if (null !== $classAnnotation->path) {
