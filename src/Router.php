@@ -48,9 +48,9 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
-    private \SplQueue $pipeline;
     private ?RouteCompilerInterface $compiler;
     private ?RouteMatcherInterface $matcher = null;
+    private ?\SplQueue $pipeline = null;
     private string $matcherClass = RouteMatcher::class;
 
     /** @var array<string,array<int,MiddlewareInterface>> */
@@ -69,7 +69,6 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     public function __construct(RouteCompilerInterface $compiler = null, $cache = null)
     {
         $this->compiler = $compiler;
-        $this->pipeline = new \SplQueue();
         $this->cacheData = $cache;
     }
 
@@ -127,6 +126,10 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function pipe(MiddlewareInterface ...$middlewares): void
     {
+        if (null === $this->pipeline) {
+            $this->pipeline = new \SplQueue();
+        }
+
         foreach ($middlewares as $middleware) {
             $this->pipeline->enqueue($middleware);
         }
@@ -216,13 +219,17 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
 
         if (null !== $route) {
             foreach ($route->getPiped() as $middleware) {
-                foreach ($this->middlewares[$middleware] ?? [] as $pipedMiddleware) {
-                    $this->pipeline->enqueue($pipedMiddleware);
+                if (isset($this->middlewares[$middleware])) {
+                    $this->pipe(...$this->middlewares[$middleware]);
                 }
             }
         }
 
-        return (new Next($this->pipeline, $handler))->handle($request->withAttribute(Route::class, $route));
+        if (null !== $this->pipeline) {
+            $handler = new Next($this->pipeline, $handler);
+        }
+
+        return $handler->handle($request->withAttribute(Route::class, $route));
     }
 
     /**
