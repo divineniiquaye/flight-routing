@@ -3,7 +3,13 @@
     "runner.path": "tests/Benchmarks",
     "runner.output_mode": "time",
     "runner.retry_threshold": 5,
-
+    "runner.php_config": {
+        "max_execution_time": 60,
+        "opcache.enable": true,
+        "opcache.enable_cli": true,
+        "opcache.jit": 1235,
+        "xdebug.mode": "off"
+    },
     "report.generators": {
         "default": {
             "extends": "expression",
