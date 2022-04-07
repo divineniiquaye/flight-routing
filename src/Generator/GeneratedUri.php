@@ -40,12 +40,8 @@ class GeneratedUri implements \Stringable
         '%2A' => '*',
     ];
 
-    /** @var string */
     private string $pathInfo;
-
-    private ?string $scheme = null;
-
-    private ?string $host = null;
+    private ?string $scheme = null, $host = null;
 
     public function __construct(string $pathInfo)
     {

@@ -48,29 +48,8 @@ use Flight\Routing\Handlers\ResourceHandler;
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
 final class Route
 {
-    /** @var string|null @Required */
-    public ?string $path;
-
-    /** @var string|null @Required */
-    public ?string $name;
-
-    /** @var string[] @Required */
-    public array $methods;
-
-    /** @var string[] */
-    public array $hosts;
-
-    /** @var string[] */
-    public array $schemes;
-
-    /** @var array<string,string> */
-    public array $patterns;
-
-    /** @var array<string,mixed> */
-    public array $defaults;
-
-    /** @var string|null */
-    public ?string $resource;
+    public ?string $path, $name, $resource;
+    public array $methods, $hosts, $schemes, $patterns, $defaults, $arguments;
 
     /**
      * @param string|string[] $methods

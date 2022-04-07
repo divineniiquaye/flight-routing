@@ -29,7 +29,6 @@ use Flight\Routing\{Route as BaseRoute, RouteCollection};
 class Listener implements ListenerInterface
 {
     private RouteCollection $collector;
-
     private ?string $unNamedPrefix;
 
     /** @var array<string,int> */

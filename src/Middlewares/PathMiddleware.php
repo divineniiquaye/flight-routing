@@ -35,9 +35,7 @@ final class PathMiddleware implements MiddlewareInterface
 {
     public const SUB_FOLDER = __CLASS__ . '::subFolder';
 
-    private bool $permanent;
-
-    private bool $keepRequestMethod;
+    private bool $permanent, $keepRequestMethod;
 
     /**
      * @param bool $permanent         Whether the redirection is permanent

@@ -47,7 +47,6 @@ class RouteCollection
     private array $routes = [];
 
     private ?Route $route = null;
-
     private bool $locked = false;
 
     /**
