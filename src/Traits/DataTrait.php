@@ -44,8 +44,8 @@ trait DataTrait
                 $uri = \substr($uri, 1);
             }
 
-            \preg_match(Route::PRIORITY_REGEX, $this->data['path'] = '/' . \ltrim($path . $uri, '/'), $matches);
-            $this->data['prefix'] = $matches[0] ?? null;
+            \preg_match(Route::PRIORITY_REGEX, $this->data['path'] = ('/' . \ltrim($path, '/')) . $uri, $pM);
+            $this->data['prefix'] = !empty($pM[1] ?? null) ? $pM[1] : null;
         }
 
         return $this;
@@ -76,10 +76,9 @@ trait DataTrait
                 throw new UriHandlerException(\sprintf('The route pattern "%s" is invalid as route path must be present in pattern.', $pattern));
             }
 
-            \preg_match(Route::PRIORITY_REGEX, $matches[3], $static) && $this->data['prefix'] = $static[0];
+            \preg_match(Route::PRIORITY_REGEX, $this->data['path'] = '/' . \ltrim($matches[3], '/'), $pM);
+            $this->data['prefix'] = !empty($pM[1] ?? null) ? $pM[1] : null;
         }
-
-        $this->data['path'] = '/' . \ltrim($matches[3] ?? $pattern, '/');
 
         return $this;
     }
