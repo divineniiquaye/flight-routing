@@ -36,7 +36,7 @@ class RouteMatcher implements RouteMatcherInterface
     /** @var array<int,mixed> */
     private ?array $compiledData = null;
 
-    /** @var array<string,mixed> */
+    /** @var array<int|string,mixed> */
     private array $optimized = [];
 
     public function __construct(RouteCollection $collection, RouteCompilerInterface $compiler = null)
@@ -133,12 +133,12 @@ class RouteMatcher implements RouteMatcherInterface
         $requirements = [[], [], []];
         $requestPath = $uri->getPath();
 
-        foreach ($routes->getRoutes() as $route) {
+        foreach ($routes->getRoutes() as $offset => $route) {
             if (!empty($staticPrefix = $route->getStaticPrefix()) && !\str_starts_with($requestPath, $staticPrefix)) {
                 continue;
             }
 
-            [$pathRegex, $hostsRegex, $variables] = $this->compiler->compile($route);
+            [$pathRegex, $hostsRegex, $variables] = $this->optimized[$offset] ??= $this->compiler->compile($route);
 
             if (!\preg_match($pathRegex, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
                 continue;
@@ -149,19 +149,16 @@ class RouteMatcher implements RouteMatcherInterface
 
             if (!empty($hostsRegex) && !$this->matchHost($hostsRegex, $uri, $hostsVar)) {
                 $requirements[1][] = $hostsRegex;
-
                 continue;
             }
 
             if (!\in_array($method, $route->getMethods(), true)) {
                 $requirements[0] = \array_merge($requirements[0], $route->getMethods());
-
                 continue;
             }
 
             if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes, true)) {
                 $requirements[2] = \array_merge($requirements[2], $route->getSchemes());
-
                 continue;
             }
 
@@ -212,13 +209,11 @@ class RouteMatcher implements RouteMatcherInterface
 
             if (!\in_array($method, $route->getMethods(), true)) {
                 $requirements[0] = \array_merge($requirements[0], $route->getMethods());
-
                 continue;
             }
 
             if ($requiredSchemes && !\in_array($uri->getScheme(), $requiredSchemes, true)) {
                 $requirements[2] = \array_merge($requirements[2], $route->getSchemes());
-
                 continue;
             }
 
@@ -228,7 +223,6 @@ class RouteMatcher implements RouteMatcherInterface
 
                 if ($hostsRegex && !$this->matchHost($hostsRegex, $uri, $hostsVar)) {
                     $requirements[1][] = $hostsRegex;
-
                     continue;
                 }
 

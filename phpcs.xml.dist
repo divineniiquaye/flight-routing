@@ -19,9 +19,7 @@
     <file>tests/</file>
 
     <!-- Include full PSR-12 Coding Standard -->
-    <rule ref="PSR12" />
-
-    <rule ref="PSR2.Classes.PropertyDeclaration.Multiple">
-        <exclude-pattern>*/src/Generator/RegexGenerator.php</exclude-pattern>
+    <rule ref="PSR12">
+        <exclude name="PSR2.Classes.PropertyDeclaration.Multiple"/>
     </rule>
 </ruleset>

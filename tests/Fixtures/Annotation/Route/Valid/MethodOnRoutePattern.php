@@ -33,6 +33,7 @@ class MethodOnRoutePattern implements JsonSerializable
     /**
      * {@inheritdoc}
      */
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return ['Hello' => 'World to Flight Routing'];

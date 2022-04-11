@@ -132,7 +132,6 @@ final class RouteCompiler implements RouteCompilerInterface
                 }
 
                 $tree->addRoute($pathRegex, [$pathRegex, $i]);
-
                 continue;
             }
 

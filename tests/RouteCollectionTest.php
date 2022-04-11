@@ -661,7 +661,6 @@ class RouteCollectionTest extends TestCase
     public function testCollectionGroupingAndWithCache(bool $cached): void
     {
         $router = new Router(null, $cached ? self::$cacheFile : null);
-
         $router->setCollection(static function (RouteCollection $mergedCollection): void {
             // Collection without names
             $demoCollection = new RouteCollection();
