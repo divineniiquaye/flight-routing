@@ -13,8 +13,6 @@
     "report.generators": {
         "default": {
             "extends": "expression",
-            "break": [ "benchmark" ],
-            "include_baseline": true,
             "cols": [ "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
         }
    }
