@@ -24,7 +24,7 @@
         "symfony/polyfill-php80": "^1.22"
     },
     "require-dev": {
-        "biurad/annotations": "^0.3",
+        "biurad/annotations": "^1.0",
         "divineniiquaye/php-invoker": "^0.9",
         "doctrine/annotations": "^1.11",
         "nyholm/psr7": "^1.4",
