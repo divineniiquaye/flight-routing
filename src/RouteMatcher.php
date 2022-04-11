@@ -200,11 +200,6 @@ class RouteMatcher implements RouteMatcherInterface
 
         if (empty($matchedIds = $staticRoutes[$requestPath] ?? [])) {
             if (null === $regexList || !\preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
-                if (isset($staticRoutes['*'][$requestPath])) {
-                    $matchedIds = $staticRoutes['*'][$requestPath];
-                    goto found_a_route_match;
-                }
-
                 return null;
             }
 

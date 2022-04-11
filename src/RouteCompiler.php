@@ -111,7 +111,8 @@ final class RouteCompiler implements RouteCompilerInterface
     public function build(RouteCollection $routes): array
     {
         $tree = new RegexGenerator();
-        $variables = $staticRegex = $hasSlashes = [];
+        $uriPrefixRegex = '#[^a-zA-Z0-9]+$#';
+        $variables = $staticRegex = [];
 
         foreach ($routes->getRoutes() as $i => $route) {
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
@@ -126,7 +127,7 @@ final class RouteCompiler implements RouteCompilerInterface
             }
 
             if ('?' === $pos = $pathRegex[-1]) {
-                if (!isset(Route::URL_PREFIX_SLASHES[$pathRegex[-2]])) {
+                if (!\preg_match($uriPrefixRegex, $pathRegex[-2])) {
                     $pathRegex = \substr($pathRegex, 0, -1);
                 }
 
@@ -135,12 +136,8 @@ final class RouteCompiler implements RouteCompilerInterface
                 continue;
             }
 
-            if (isset(Route::URL_PREFIX_SLASHES[$pos])) {
-                $hasSlashes[$pathRegex][] = $i;
-
-                if (\array_key_exists($pathRegex = \substr($pathRegex, 0, -1), $staticRegex)) {
-                    continue;
-                }
+            if (\preg_match($uriPrefixRegex, $pos)) {
+                $staticRegex[\substr($pathRegex, 0, -1)][] = $i;
             }
 
             $staticRegex[$pathRegex][] = $i;
@@ -150,7 +147,7 @@ final class RouteCompiler implements RouteCompilerInterface
             $compiledRegex = '~^' . \substr($compiledRegex, 1) . '$~sDu';
         }
 
-        return [$staticRegex + ['*' => $hasSlashes], $compiledRegex ?: null, $variables];
+        return [$staticRegex, $compiledRegex ?: null, $variables];
     }
 
     /**
