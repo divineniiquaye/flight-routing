@@ -36,24 +36,16 @@ use PHPUnit\Framework\TestCase;
  */
 class ListenerTest extends TestCase
 {
-    protected AnnotationLoader $loader;
-
-    protected function setUp(): void
-    {
-        $loader = new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
-        $this->loader = $loader;
-    }
-
     /**
      * @runInSeparateProcess
      */
     public function testDefaultLoadWithListener(): void
     {
-        $loader = $this->loader;
-        $loader->listener(new Annotation\Listener());
+        $loader = $this->createLoader();
+        $loader->listener(new Annotation\Listener(), 'test');
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
-        $collection = $loader->load(Annotation\Route::class);
+        $collection = $loader->load('test');
         $this->assertInstanceOf(RouteCollection::class, $collection);
 
         $names = Fixtures\Helper::routesToNames($collection->getRoutes());
@@ -92,7 +84,7 @@ class ListenerTest extends TestCase
      */
     public function testDefaultLoadWithoutListener(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
         $this->assertIsArray($collection = $loader->load(Annotation\Route::class));
 
@@ -135,11 +127,11 @@ class ListenerTest extends TestCase
      */
     public function testDefaultLoadWithNullPrefix(): void
     {
-        $loader = $this->loader;
-        $loader->listener(new Annotation\Listener(null, null));
+        $loader = $this->createLoader();
+        $loader->listener(new Annotation\Listener(null, null), 'test');
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
-        $collection = $loader->load(Annotation\Route::class);
+        $collection = $loader->load('test');
         $this->assertInstanceOf(RouteCollection::class, $collection);
 
         $names = Fixtures\Helper::routesToNames($collection->getRoutes());
@@ -172,7 +164,7 @@ class ListenerTest extends TestCase
      */
     public function testResourceCount(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->listener(new Annotation\Listener());
         $loader->resource(...[
             __DIR__ . '/../Fixtures/Annotation/Route/Valid',
@@ -182,7 +174,7 @@ class ListenerTest extends TestCase
         ]);
 
         $collection = new RouteCollection();
-        $collection->populate($loader->load(Annotation\Route::class));
+        $collection->populate($loader->load(Annotation\Listener::class));
 
         $this->assertCount(26, $collection->getRoutes());
     }
@@ -193,11 +185,11 @@ class ListenerTest extends TestCase
      */
     public function testLoadingWithAnnotationBuildWithPrefix(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->listener(new Annotation\Listener($collection = new RouteCollection(), 'annotated'));
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Valid');
 
-        $loader->build();
+        $loader->load();
 
         $routes = $collection->getRoutes();
         \uasort($routes, static function (Route $a, Route $b): int {
@@ -271,7 +263,7 @@ class ListenerTest extends TestCase
             'path' => '/get',
             'hosts' => [],
             'methods' => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_CONNECT],
-            'handler' => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'handler' => [Fixtures\Annotation\Route\Valid\ClassGroupWithoutPath::class, 'default'],
             'schemes' => [],
             'defaults' => [],
             'patterns' => [],
@@ -283,7 +275,7 @@ class ListenerTest extends TestCase
             'path' => '/post',
             'hosts' => [],
             'methods' => [Router::METHOD_POST, Router::METHOD_CONNECT],
-            'handler' => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'handler' => [Fixtures\Annotation\Route\Valid\ClassGroupWithoutPath::class, 'default'],
             'schemes' => [],
             'defaults' => [],
             'patterns' => [],
@@ -295,7 +287,7 @@ class ListenerTest extends TestCase
             'path' => '/put',
             'hosts' => [],
             'methods' => [Router::METHOD_PUT, Router::METHOD_CONNECT],
-            'handler' => [Fixtures\Annotation\Route\Valid\MultipleMethodRouteController::class, 'default'],
+            'handler' => [Fixtures\Annotation\Route\Valid\ClassGroupWithoutPath::class, 'default'],
             'schemes' => [],
             'defaults' => [],
             'patterns' => [],
@@ -398,7 +390,7 @@ class ListenerTest extends TestCase
             'schemes' => ['https'],
             'defaults' => [],
             'patterns' => [],
-            'arguments' => [],
+            'arguments' => ['hello' => 'world'],
         ], $routes[17]);
 
         $this->assertEquals([
@@ -504,7 +496,7 @@ class ListenerTest extends TestCase
         $loader->listener(new Annotation\Listener());
         $loader->resource(__DIR__ . '/../Fixtures/Annotation/Route/Attribute');
 
-        $router = Router::withCollection($loader->load(Annotation\Route::class));
+        $router = Router::withCollection($loader->load(Annotation\Listener::class));
         $routes = $router->getMatcher()->getRoutes();
 
         $this->assertEquals([
@@ -535,31 +527,36 @@ class ListenerTest extends TestCase
 
     public function testInvalidPath(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->listener(new Annotation\Listener());
         $loader->resource(Fixtures\Annotation\Route\Invalid\PathEmpty::class);
 
         $this->expectExceptionObject(new UriHandlerException('The route pattern "//localhost" is invalid as route path must be present in pattern.'));
-        $loader->build();
+        $loader->load();
     }
 
     public function testClassGroupWithResource(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->listener(new Annotation\Listener());
         $loader->resource(Fixtures\Annotation\Route\Invalid\ClassGroupWithResource::class);
 
         $this->expectExceptionObject(new InvalidAnnotationException('Restful annotated class cannot contain annotated method(s).'));
-        $loader->build();
+        $loader->load();
     }
 
     public function testMethodWithResource(): void
     {
-        $loader = $this->loader;
+        $loader = $this->createLoader();
         $loader->listener(new Annotation\Listener());
         $loader->resource(Fixtures\Annotation\Route\Invalid\MethodWithResource::class);
 
         $this->expectExceptionObject(new InvalidAnnotationException('Restful annotation is only supported on classes.'));
-        $loader->build();
+        $loader->load();
+    }
+
+    protected function createLoader(): AnnotationLoader
+    {
+        return new AnnotationLoader(new MergeReader([new AnnotationReader(), new AttributeReader()]));
     }
 }

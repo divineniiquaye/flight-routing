@@ -24,14 +24,14 @@
         "symfony/polyfill-php80": "^1.22"
     },
     "require-dev": {
-        "biurad/annotations": "^0.3",
+        "biurad/annotations": "^1.0",
         "divineniiquaye/php-invoker": "^0.9",
         "doctrine/annotations": "^1.11",
         "nyholm/psr7": "^1.4",
         "nyholm/psr7-server": "^1.0",
         "phpstan/phpstan": "^1.0",
         "phpunit/phpunit": "^9.5",
-        "spiral/attributes": "dev-master",
+        "spiral/attributes": "^2.9",
         "squizlabs/php_codesniffer": "^3.6",
         "vimeo/psalm": "^4.13"
     },

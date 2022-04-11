@@ -18,7 +18,6 @@ declare(strict_types=1);
 namespace Flight\Routing\Annotation;
 
 use Biurad\Annotations\{InvalidAnnotationException, ListenerInterface};
-use Biurad\Annotations\Locate\Class_;
 use Flight\Routing\{Route as BaseRoute, RouteCollection};
 
 /**
@@ -52,57 +51,40 @@ class Listener implements ListenerInterface
         $foundAnnotations = [];
 
         foreach ($annotations as $annotation) {
-            if ($annotation instanceof Class_) {
-                $methodAnnotations = [];
+            $reflection = $annotation['type'];
+            $methodAnnotations = [];
 
-                foreach ($annotation->methods as $method) {
-                    $controller = [$method->getReflection()->class, (string) $method];
-                    $this->getRoutes($method->getAnnotation(), $controller, $methodAnnotations);
-                }
-
-                if (!empty($methodAnnotations)) {
-                    $this->addRoute($annotation->getAnnotation(), $methodAnnotations, $foundAnnotations);
-
-                    continue;
-                }
+            if (empty($methods = $annotation['methods'] ?? [])) {
+                $this->getRoutes($annotation['attributes'], $reflection->name, $foundAnnotations, $reflection instanceof \ReflectionClass);
+                continue;
             }
 
-            $this->getRoutes($annotation->getAnnotation(), (string) $annotation, $foundAnnotations, $annotation instanceof Class_);
-        }
+            foreach ($methods as $method) {
+                $controller = ($m = $method['type'])->isStatic() ? $reflection->name . '::' . $m->name : [$reflection->name, $m->name];
+                $this->getRoutes($method['attributes'], $controller, $methodAnnotations);
+            }
 
-        return $this->collector->routes($foundAnnotations);
-    }
+            foreach ($methodAnnotations as $methodAnnotation) {
+                if (empty($annotation['attributes'])) {
+                    if (!empty($routeName = $this->resolveRouteName(null, $methodAnnotation))) {
+                        $methodAnnotation->bind($routeName);
+                    }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getAnnotation(): string
-    {
-        return 'Flight\Routing\Annotation\Route';
-    }
+                    $foundAnnotations[] = $methodAnnotation;
+                    continue;
+                }
 
-    /**
-     * Add a route from class annotated methods.
-     *
-     * @param iterable<Route>      $classAnnotations
-     * @param array<int,BaseRoute> $methodAnnotations
-     * @param array<int,BaseRoute> $foundAnnotations
-     */
-    protected function addRoute(iterable $classAnnotations, array $methodAnnotations, array &$foundAnnotations): void
-    {
-        foreach ($methodAnnotations as $methodAnnotation) {
-            if (!empty($classAnnotations)) {
-                foreach ($classAnnotations as $classAnnotation) {
+                foreach ($annotation['attributes'] as $classAnnotation) {
                     if (null !== $classAnnotation->resource) {
                         throw new InvalidAnnotationException('Restful annotated class cannot contain annotated method(s).');
                     }
 
                     $annotatedMethod = clone $methodAnnotation->method(...$classAnnotation->methods)
-                        ->scheme(...$classAnnotation->schemes)
-                        ->domain(...$classAnnotation->hosts)
-                        ->defaults($classAnnotation->defaults)
-                        ->arguments($classAnnotation->arguments)
-                        ->asserts($classAnnotation->patterns);
+                            ->scheme(...$classAnnotation->schemes)
+                            ->domain(...$classAnnotation->hosts)
+                            ->defaults($classAnnotation->defaults)
+                            ->arguments($classAnnotation->arguments)
+                            ->asserts($classAnnotation->patterns);
 
                     if (null !== $classAnnotation->path) {
                         $annotatedMethod->prefix($classAnnotation->path);
@@ -114,24 +96,26 @@ class Listener implements ListenerInterface
 
                     $foundAnnotations[] = $annotatedMethod;
                 }
-
-                continue;
             }
-
-            if (!empty($routeName = $this->resolveRouteName(null, $methodAnnotation))) {
-                $methodAnnotation->bind($routeName);
-            }
-
-            $foundAnnotations[] = $methodAnnotation;
         }
+
+        return $this->collector->routes($foundAnnotations);
     }
 
     /**
-     * @param iterable<Route> $annotations
-     * @param mixed           $handler
-     * @param BaseRoute[]     $foundAnnotations
+     * {@inheritdoc}
      */
-    protected function getRoutes(iterable $annotations, $handler, array &$foundAnnotations, bool $single = false): void
+    public function getAnnotations(): array
+    {
+        return ['Flight\Routing\Annotation\Route'];
+    }
+
+    /**
+     * @param array<int,Route> $annotations
+     * @param mixed            $handler
+     * @param BaseRoute[]      $foundAnnotations
+     */
+    protected function getRoutes(array $annotations, $handler, array &$foundAnnotations, bool $single = false): void
     {
         foreach ($annotations as $annotation) {
             if (!$single && null !== $annotation->resource) {

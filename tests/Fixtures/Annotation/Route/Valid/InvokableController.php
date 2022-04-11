@@ -20,7 +20,7 @@ namespace Flight\Routing\Tests\Fixtures\Annotation\Route\Valid;
 use Flight\Routing\Annotation\Route;
 
 /**
- * @Route("/here", "lol", methods={"GET", "POST"}, schemes={"https"})
+ * @Route("/here", "lol", methods={"GET", "POST"}, schemes={"https"}, attributes={"hello": "world"})
  */
 class InvokableController
 {
