@@ -15,7 +15,7 @@
             "extends": "expression",
             "break": [ "benchmark" ],
             "include_baseline": true,
-            "cols": [ "benchmark", "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
+            "cols": [ "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
         }
    }
 }
