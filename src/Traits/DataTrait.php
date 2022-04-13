@@ -304,6 +304,16 @@ trait DataTrait
         return $this;
     }
 
+    public function hasMethod(string $method): bool
+    {
+        return isset($this->data['methods'][$method]);
+    }
+
+    public function hasScheme(string $scheme): bool
+    {
+        return empty($s = $this->data['schemes'] ?? []) || isset($s[$scheme]);
+    }
+
     public function getName(): ?string
     {
         return $this->data['name'] ?? null;
