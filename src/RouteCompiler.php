@@ -116,10 +116,10 @@ final class RouteCompiler implements RouteCompilerInterface
 
         foreach ($routes->getRoutes() as $i => $route) {
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
-            $pathRegex = self::resolvePathRegex($pathRegex);
+            $pathRegex = self::resolveRegex($pathRegex);
 
             if (!empty($hostsRegex)) {
-                $variables[$i] = [$hostsRegex, []];
+                $variables[$i] = [self::resolveRegex($hostsRegex), []];
             }
 
             if (!empty($compiledVars)) {
@@ -294,8 +294,14 @@ final class RouteCompiler implements RouteCompilerInterface
         \preg_match_all(self::COMPILER_REGEX, $uriPattern, $matches, \PREG_SET_ORDER | \PREG_UNMATCHED_AS_NULL);
 
         foreach ($matches as [$placeholder, $varName, $segment, $default]) {
-            // Filter variable name to meet requirement
-            self::filterVariableName($varName, $uriPattern);
+            // A PCRE subpattern name must start with a non-digit.
+            if (1 === \preg_match('/\d/A', $varName)) {
+                throw new UriHandlerException(\sprintf('Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.', $varName, $uriPattern));
+            }
+
+            if (\strlen($varName) > self::VARIABLE_MAXIMUM_LENGTH) {
+                throw new UriHandlerException(\sprintf('Variable name "%s" cannot be longer than %s characters in route pattern "%s".', $varName, self::VARIABLE_MAXIMUM_LENGTH, $uriPattern));
+            }
 
             if (\array_key_exists($varName, $variables)) {
                 throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $uriPattern, $varName));
@@ -306,29 +312,6 @@ final class RouteCompiler implements RouteCompilerInterface
         }
 
         return [\strtr($uriPattern, $replaces), $variables];
-    }
-
-    /**
-     * Filter variable name to meet requirements.
-     */
-    private static function filterVariableName(string $varName, string $pattern): void
-    {
-        // A PCRE subpattern name must start with a non-digit. Also a PHP variable cannot start with a digit so the
-        // variable would not be usable as a Controller action argument.
-        if (1 === \preg_match('/\d/A', $varName)) {
-            throw new UriHandlerException(\sprintf('Variable name "%s" cannot start with a digit in route pattern "%s". Use a different name.', $varName, $pattern));
-        }
-
-        if (\strlen($varName) > self::VARIABLE_MAXIMUM_LENGTH) {
-            throw new UriHandlerException(
-                \sprintf(
-                    'Variable name "%s" cannot be longer than %s characters in route pattern "%s".',
-                    $varName,
-                    self::VARIABLE_MAXIMUM_LENGTH,
-                    $pattern
-                )
-            );
-        }
     }
 
     /**
@@ -352,7 +335,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * Strips starting and ending modifiers from a path regex.
      */
-    private static function resolvePathRegex(string $pathRegex): string
+    private static function resolveRegex(string $pathRegex): string
     {
         $pos = (int) \strrpos($pathRegex, '$');
         $pathRegex = \substr($pathRegex, 1 + \strpos($pathRegex, '^'), -(\strlen($pathRegex) - $pos));
