@@ -144,6 +144,13 @@ class RouteMatcher implements RouteMatcherInterface
                 continue;
             }
 
+            [$pathRegex, $hostsRegex, $variables] = $this->optimized[$offset] ??= $this->compiler->compile($route);
+            $hostsVar = [];
+
+            if (!\preg_match($pathRegex, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
+                continue;
+            }
+
             if (!$route->hasMethod($method)) {
                 $requirements[0] = \array_merge($requirements[0] ?? [], $route->getMethods());
                 continue;
@@ -151,13 +158,6 @@ class RouteMatcher implements RouteMatcherInterface
 
             if (!$route->hasScheme($requestScheme)) {
                 $requirements[1] = \array_merge($requirements[1] ?? [], $route->getSchemes());
-                continue;
-            }
-
-            [$pathRegex, $hostsRegex, $variables] = $this->optimized[$offset] ??= $this->compiler->compile($route);
-            $hostsVar = [];
-
-            if (!\preg_match($pathRegex, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL)) {
                 continue;
             }
 
