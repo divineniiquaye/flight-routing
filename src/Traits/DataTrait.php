@@ -76,9 +76,11 @@ trait DataTrait
                 throw new UriHandlerException(\sprintf('The route pattern "%s" is invalid as route path must be present in pattern.', $pattern));
             }
 
-            \preg_match(Route::PRIORITY_REGEX, $this->data['path'] = '/' . \ltrim($matches[3], '/'), $pM);
+            \preg_match(Route::PRIORITY_REGEX, $resolved = '/' . \ltrim($matches[3], '/'), $pM);
             $this->data['prefix'] = !empty($pM[1] ?? null) ? $pM[1] : null;
         }
+
+        $this->data['path'] = $resolved ?? '/' . \ltrim($pattern, '/');
 
         return $this;
     }
