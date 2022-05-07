@@ -124,6 +124,18 @@ class Route
     }
 
     /**
+     * Sets a custom key and value into route
+     *
+     * @return $this
+     */
+    public function setData(string $key, $value)
+    {
+        $this->data[$key] = $value;
+
+        return $this;
+    }
+
+    /**
      * Get the route's data.
      *
      * @return array<string,mixed>

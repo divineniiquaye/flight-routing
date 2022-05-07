@@ -80,9 +80,7 @@ trait DataTrait
             $this->data['prefix'] = !empty($pM[1] ?? null) ? $pM[1] : null;
         }
 
-        $this->data['path'] = $resolved ?? '/' . \ltrim($pattern, '/');
-
-        return $this;
+        return $this->setData('path', $resolved ?? '/' . \ltrim($pattern, '/'));
     }
 
     /**
