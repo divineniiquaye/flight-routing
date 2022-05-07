@@ -18,8 +18,9 @@ declare(strict_types=1);
 namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
+use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface, UrlGeneratorInterface};
 use Laminas\Stratigility\Next;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
@@ -116,9 +117,17 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * {@inheritdoc}
      */
-    public function generateUri(string $routeName, array $parameters = []): GeneratedUri
+    public function generateUri(string $routeName, array $parameters = [], int $referenceType = GeneratedUri::ABSOLUTE_PATH): GeneratedUri
     {
-        return $this->getMatcher()->generateUri($routeName, $parameters);
+        $matcher = $this->getMatcher();
+
+        //@codeCoverageIgnoreStart
+        if (!$matcher instanceof UrlGeneratorInterface) {
+            throw new UrlGenerationException(\sprintf('The route matcher does not support using the %s implementation', UrlGeneratorInterface::class));
+        }
+        //@codeCoverageIgnoreEnd
+
+        return $matcher->generateUri($routeName, $parameters, $referenceType);
     }
 
     /**

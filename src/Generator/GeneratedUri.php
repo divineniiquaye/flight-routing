@@ -25,6 +25,18 @@ namespace Flight\Routing\Generator;
  */
 class GeneratedUri implements \Stringable
 {
+    /** Generates an absolute URL, e.g. "http://example.com/dir/file". */
+    public const ABSOLUTE_URL = 0;
+
+    /** Generates an absolute path, e.g. "/dir/file". */
+    public const ABSOLUTE_PATH = 1;
+
+    /** Generates a path with beginning with a single dot, e.g. "./file". */
+    public const RELATIVE_PATH = 2;
+
+    /** Generates a network path, e.g. "//example.com/dir/file". */
+    public const NETWORK_PATH = 3;
+
     /** Adopted from symfony's routing component: Symfony\Component\Routing\Generator::QUERY_FRAGMENT_DECODED */
     private const QUERY_DECODED = [
         // RFC 3986 explicitly allows those in the query to reference other URIs unencoded
@@ -41,11 +53,13 @@ class GeneratedUri implements \Stringable
     ];
 
     private string $pathInfo;
-    private ?string $scheme = null, $host = null;
+    private int $referenceType;
+    private ?string $scheme = null, $host = null, $port = null;
 
-    public function __construct(string $pathInfo)
+    public function __construct(string $pathInfo, int $referenceType)
     {
         $this->pathInfo = $pathInfo;
+        $this->referenceType = $referenceType;
     }
 
     /**
@@ -53,15 +67,24 @@ class GeneratedUri implements \Stringable
      */
     public function __toString()
     {
-        $prefixed = $this->scheme ?? '';
+        $prefixed = '/';
+        $type = $this->referenceType;
 
-        if (null !== $this->host) {
-            $prefixed .= !empty($prefixed) ? '//' . $this->host : $this->host;
-        } elseif (empty($prefixed)) {
-            $prefixed .= '.'; // Append missing "." at the beginning of the $uri.
+        if ($this->scheme) {
+            $prefixed = $this->scheme . '://';
         }
 
-        return $prefixed . '/' . \ltrim($this->pathInfo, '/\\/');
+        if ($this->host) {
+            if ('/' === $prefixed) {
+                $prefixed = \in_array($type, [self::ABSOLUTE_URL, self::NETWORK_PATH], true) ? '//' : '';
+            }
+
+            $prefixed .= \ltrim($this->host, './') . $this->port . '/';
+        } elseif ('/' === $prefixed && self::RELATIVE_PATH === $type) {
+            $prefixed = '.' . $prefixed;
+        }
+
+        return $prefixed . \ltrim($this->pathInfo, '/');
     }
 
     /**
@@ -69,7 +92,7 @@ class GeneratedUri implements \Stringable
      */
     public function withHost(string $host): self
     {
-        $this->host = \ltrim($host, './') ?: null;
+        $this->host = $host;
 
         return $this;
     }
@@ -79,7 +102,17 @@ class GeneratedUri implements \Stringable
      */
     public function withScheme(string $scheme): self
     {
-        $this->scheme = '' !== $scheme ? $scheme . ':' : null;
+        $this->scheme = $scheme;
+
+        return $this;
+    }
+
+    /**
+     * Sets the port component of the URI.
+     */
+    public function withPort(string $port): self
+    {
+        $this->port = \in_array($port, ['', 80, 443], true) ? null : ':' . $port;
 
         return $this;
     }

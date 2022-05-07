@@ -178,12 +178,12 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * {@inheritdoc}
      */
-    public function generateUri(Route $route, array $parameters): GeneratedUri
+    public function generateUri(Route $route, array $parameters, int $referenceType = GeneratedUri::ABSOLUTE_PATH): GeneratedUri
     {
         [$pathRegex, $pathVariables] = self::compilePattern($route->getPath(), true);
 
         $defaults = $route->getDefaults();
-        $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults + $pathVariables));
+        $createUri = new GeneratedUri(self::interpolate($pathRegex, $parameters, $defaults + $pathVariables), $referenceType);
 
         foreach ($route->getHosts() as $host) {
             [$hostRegex, $hostVariables] = self::compilePattern($host, true);

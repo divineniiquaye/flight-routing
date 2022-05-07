@@ -20,6 +20,7 @@ namespace Flight\Routing\Tests\Matchers;
 use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Interfaces\RouteCompilerInterface;
 use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Flight\Routing\Route;
@@ -297,14 +298,14 @@ class SimpleRouteMatcherTest extends TestCase
      *
      * @param array<string,string> $tokens
      */
-    public function testGenerateUri(string $regex, string $match, array $tokens): void
+    public function testGenerateUri(string $regex, string $match, array $tokens, int $referenceType): void
     {
         $collection = new RouteCollection();
         $collection->addRoute($regex, ['FOO', 'BAR'])->bind('test');
 
         $factory = new RouteMatcher($collection);
 
-        $this->assertEquals($match, (string) $factory->generateUri('test', $tokens));
+        $this->assertEquals($match, (string) $factory->generateUri('test', $tokens, $referenceType));
     }
 
     public function testGenerateUriNotFound(): void
@@ -323,7 +324,7 @@ class SimpleRouteMatcherTest extends TestCase
 
         $factory = new RouteMatcher($collection);
 
-        $this->assertEquals('./fifty', $factory->generateUri('test', []));
+        $this->assertEquals('/fifty', $factory->generateUri('test', [], GeneratedUri::NETWORK_PATH));
     }
 
     public function testRoutesData(): void
@@ -376,24 +377,56 @@ class SimpleRouteMatcherTest extends TestCase
             '/{foo}',
             './two',
             ['foo' => 'two'],
+            GeneratedUri::RELATIVE_PATH,
         ];
 
         yield 'Build route with variable and domain' => [
             'http://[{lang:[a-z]{2}}.]example.com/{foo}',
             'http://example.com/cool',
             ['foo' => 'cool'],
+            GeneratedUri::RELATIVE_PATH,
         ];
 
         yield 'Build route with variable and default' => [
             '/{foo=cool}',
             './cool',
             [],
+            GeneratedUri::RELATIVE_PATH,
         ];
 
         yield 'Build route with variable and override default' => [
             '/{foo=cool}',
             './yeah',
             ['foo' => 'yeah'],
+            GeneratedUri::RELATIVE_PATH,
+        ];
+
+        yield 'Build route with absolute path reference type' => [
+            '/world',
+            '/world',
+            [],
+            GeneratedUri::ABSOLUTE_PATH,
+        ];
+
+        yield 'Build route with domain and network reference type' => [
+            '//hello.com/world',
+            '//hello.com/world',
+            [],
+            GeneratedUri::NETWORK_PATH,
+        ];
+
+        yield 'Build route with domain, port 8080 and absolute url reference type' => [
+            '//hello.com:8080/world',
+            '//hello.com:8080/world',
+            [],
+            GeneratedUri::ABSOLUTE_URL,
+        ];
+
+        yield 'Build route with domain, port 88 and absolute path reference type' => [
+            '//hello.com:88/world',
+            '//hello.com:88/world',
+            [],
+            GeneratedUri::ABSOLUTE_URL,
         ];
     }
 }

@@ -19,7 +19,7 @@ namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\{MethodNotAllowedException, UriHandlerException, UrlGenerationException};
 use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface};
+use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface, UrlGeneratorInterface};
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -28,7 +28,7 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteMatcher implements RouteMatcherInterface
+class RouteMatcher implements RouteMatcherInterface, UrlGeneratorInterface
 {
     private RouteCompilerInterface $compiler;
 
@@ -91,21 +91,25 @@ class RouteMatcher implements RouteMatcherInterface
     /**
      * {@inheritdoc}
      */
-    public function generateUri(string $routeName, array $parameters = []): GeneratedUri
+    public function generateUri(string $routeName, array $parameters = [], int $referenceType = GeneratedUri::ABSOLUTE_PATH): GeneratedUri
     {
-        if (null === $optimized = &$this->optimized[$routeName] ?? null) {
+        if (!$optimized = &$this->optimized[$routeName] ?? null) {
             foreach ($this->getRoutes() as $offset => $route) {
                 if ($routeName === $route->getName()) {
-                    $optimized = $offset;
+                    if (null === $matched = $this->compiler->generateUri($route, $parameters, $referenceType)) {
+                        throw new UrlGenerationException(\sprintf('The route compiler class does not support generating uri for named route: %s', $routeName));
+                    }
 
-                    return $this->compiler->generateUri($route, $parameters);
+                    $optimized = $offset; // Cache the route index ...
+
+                    return $matched;
                 }
             }
 
             throw new UrlGenerationException(\sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $routeName), 404);
         }
 
-        return $this->compiler->generateUri($this->getRoutes()[$optimized], $parameters);
+        return $this->compiler->generateUri($this->getRoutes()[$optimized], $parameters, $referenceType);
     }
 
     /**

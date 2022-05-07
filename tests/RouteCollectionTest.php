@@ -57,7 +57,7 @@ class RouteCollectionTest extends TestCase
     public function testAdd(): void
     {
         $collection = new RouteCollection();
-        $collection->routes([new Route('/1'), new Route('/2'), new Route('/3')]);
+        $collection->routes([new Route('/1'), new Route('/2'), new Route('/3')], true);
         $collection = $this->getIterable($collection);
 
         $this->assertInstanceOf(Route::class, $route = $collection->current());
@@ -877,7 +877,7 @@ class RouteCollectionTest extends TestCase
         ], Fixtures\Helper::routesToArray([$route1, $route2]));
 
         $this->assertEquals($cached, $router->isCached());
-        $this->assertEquals('./hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));
+        $this->assertEquals('/hello', (string) $router->generateUri('a_wildcard', ['param' => 'hello']));
         $this->assertInstanceOf(RouteCompiler::class, $router->getMatcher()->getCompiler());
     }
 

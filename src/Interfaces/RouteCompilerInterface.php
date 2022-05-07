@@ -60,7 +60,9 @@ interface RouteCompilerInterface
      *
      * @param array<int|string,int|string> $parameters
      *
-     * @throws UrlGenerationException
+     * @throws UrlGenerationException if mandatory parameters are missing
+     *
+     * @return GeneratedUri|null should return null if this is not implemented
      */
-    public function generateUri(Route $route, array $parameters): GeneratedUri;
+    public function generateUri(Route $route, array $parameters, int $referenceType = GeneratedUri::ABSOLUTE_PATH): ?GeneratedUri;
 }

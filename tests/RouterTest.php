@@ -23,6 +23,7 @@ use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
+use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\Route;
@@ -118,9 +119,10 @@ class RouterTest extends BaseTestCase
         $path = '.' . $route->getPath();
 
         $router = Router::withCollection();
-        $router->addRoute($route->bind('hello'));
+        $router->addRoute($route->bind('hello'), Route::to('https://example.com/foo')->bind('world'));
 
-        $this->assertSame($path, (string) $router->generateUri($route->getName()));
+        $this->assertSame($path, (string) $router->generateUri($route->getName(), [], GeneratedUri::RELATIVE_PATH));
+        $this->assertSame('https://example.com:8080/foo', (string) $router->generateUri('world', [], GeneratedUri::ABSOLUTE_URL)->withPort('8080'));
     }
 
     public function testGenerateUriWithDomain(): void
@@ -137,7 +139,7 @@ class RouterTest extends BaseTestCase
     public function testGenerateUriWithQuery(): void
     {
         $route = new Route('/foo');
-        $path = '.' . $route->getPath() . '?hello=world&first=1';
+        $path = $route->getPath() . '?hello=world&first=1';
 
         $router = Router::withCollection();
         $router->addRoute($route->bind('hello'));

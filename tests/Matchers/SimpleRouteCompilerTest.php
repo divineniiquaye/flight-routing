@@ -144,7 +144,8 @@ class SimpleRouteCompilerTest extends TestCase
         }, \iterator_to_array($this->provideCompilePathData()));
 
         $compiler = new RouteCompiler();
-        $collection = RouteCollection::create($routes);
+        $collection = new RouteCollection();
+        $collection->routes($routes, true);
 
         [$staticList, $regexList] = $compiler->build($collection);
 
@@ -197,9 +198,9 @@ class SimpleRouteCompilerTest extends TestCase
         $route2 = new Route('/[{bar}]');
         $compiler = new RouteCompiler();
 
-        $this->assertEquals('./hello', (string) $compiler->generateUri($route1, ['foo' => 'hello']));
-        $this->assertEquals('./', (string) $compiler->generateUri($route2, []));
-        $this->assertEquals('./hello', new GeneratedUri('hello'));
+        $this->assertEquals('/hello', (string) $compiler->generateUri($route1, ['foo' => 'hello']));
+        $this->assertEquals('./', (string) $compiler->generateUri($route2, [], GeneratedUri::RELATIVE_PATH));
+        $this->assertEquals('./hello', new GeneratedUri('hello', GeneratedUri::RELATIVE_PATH));
     }
 
     public function testGeneratedUriInstanceWithHostAndScheme(): void
