@@ -238,9 +238,13 @@ class RouteMatcher implements RouteMatcherInterface, UrlGeneratorInterface
 
     protected function matchHost(string $hostsRegex, UriInterface $uri, array &$hostsVar): bool
     {
-        $hostAndPost = $uri->getHost() . (null !== $uri->getPort() ? ':' . $uri->getPort() : '');
+        $hostAndPort = $uri->getHost();
 
-        if ($hostsRegex === $hostAndPost) {
+        if ($uri->getPort()) {
+            $hostAndPort .= ':' . $uri->getPort();
+        }
+
+        if ($hostsRegex === $hostAndPort) {
             return true;
         }
 
@@ -248,7 +252,7 @@ class RouteMatcher implements RouteMatcherInterface, UrlGeneratorInterface
             $hostsRegex = '#^' . $hostsRegex . '$#ui';
         }
 
-        return 1 === \preg_match($hostsRegex, $hostAndPost, $hostsVar, \PREG_UNMATCHED_AS_NULL);
+        return 1 === \preg_match($hostsRegex, $hostAndPort, $hostsVar, \PREG_UNMATCHED_AS_NULL);
     }
 
     /**
