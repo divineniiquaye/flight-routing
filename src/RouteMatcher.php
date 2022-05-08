@@ -194,7 +194,7 @@ class RouteMatcher implements RouteMatcherInterface, UrlGeneratorInterface
         $requirements = $matches = [];
         $index = 0;
 
-        if (null === $matchedIds = $staticRoutes[$requestPath] ?? ($regexList && \preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL) ? [(int) $matches['MARK']] : null)) {
+        if (null === $matchedIds = $staticRoutes[$requestPath] ?? (!$regexList || 1 !== \preg_match($regexList, $requestPath, $matches, \PREG_UNMATCHED_AS_NULL) ? null : [(int) $matches['MARK']])) {
             return null;
         }
 
