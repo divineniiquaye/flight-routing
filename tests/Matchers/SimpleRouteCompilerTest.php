@@ -409,7 +409,7 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route with more complex matches' => [
             '/hello/{foo:\w{3}}{bar=bar1}/world/[{name:[A-Za-z]+}[/{page:int=1}[/{baz:year}]]]/abs.{format:html|php}',
             ['/hello/foo1/world/abs.html', '/hello/bar1/world/divine/abs.php', '/hello/foo1/world/abs.php', '/hello/bar1/world/divine/11/abs.html', '/hello/foo1/world/divine/11/2021/abs.html'],
-            '{^\/hello\/(?P<foo>\w{3})(?P<bar>[^\/]+)\/world\/?(?:(?P<name>[A-Za-z]+)(?:\/(?P<page>\d+)(?:\/(?P<baz>[12][0-9]{3}))?)?)?\/abs\.(?P<format>html|php)?$}u',
+            '{^\/hello\/(?P<foo>\w{3})(?P<bar>[^\/]+)\/world\/?(?:(?P<name>[A-Za-z]+)(?:\/(?P<page>[0-9]+)(?:\/(?P<baz>[0-9]{4}))?)?)?\/abs\.(?P<format>html|php)?$}u',
             ['foo' => null, 'bar' => 'bar1', 'name' => null, 'page' => '1', 'baz' => null, 'format' => null],
         ];
     }
@@ -447,7 +447,7 @@ class SimpleRouteCompilerTest extends TestCase
         yield 'Route domain with a default requirement on variable and path variable' => [
             '//{id:int}.example.com/',
             ['23.example.com'],
-            '{^(?P<id>\d+)\.example\.com$}ui',
+            '{^(?P<id>[0-9]+)\.example\.com$}ui',
             ['id' => 0],
         ];
     }

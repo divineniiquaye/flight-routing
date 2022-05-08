@@ -72,15 +72,25 @@ final class RouteCompiler implements RouteCompilerInterface
      * A matching requirement helper, to ease matching route pattern when found.
      */
     private const SEGMENT_TYPES = [
-        'int' => '\d+',
+        'int' => '[0-9]+',
         'lower' => '[a-z]+',
         'upper' => '[A-Z]+',
         'alpha' => '[A-Za-z]+',
-        'alnum' => '[A-Za-z0-9]+',
-        'year' => '[12][0-9]{3}',
+        'year' => '[0-9]{4}',
         'month' => '0[1-9]|1[012]+',
         'day' => '0[1-9]|[12][0-9]|3[01]+',
-        'uuid' => '0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
+        'date' => '[0-9]{4}-(?:0[1-9]|1[012])-(?:0[1-9]|[12][0-9]|(?<!02-)3[01])', // YYYY-MM-DD
+        'slug' => '[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*',
+        'UID_BASE32' => '[0-9A-HJKMNP-TV-Z]{26}',
+        'UID_BASE58' => '[1-9A-HJ-NP-Za-km-z]{22}',
+        'UID_RFC4122' => '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',
+        'ULID' => '[0-7][0-9A-HJKMNP-TV-Z]{25}',
+        'UUID' => '[0-9a-f]{8}-[0-9a-f]{4}-[1-6][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
+        'UUID_V1' => '[0-9a-f]{8}-[0-9a-f]{4}-1[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
+        'UUID_V3' => '[0-9a-f]{8}-[0-9a-f]{4}-3[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
+        'UUID_V4' => '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
+        'UUID_V5' => '[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
+        'UUID_V6' => '[0-9a-f]{8}-[0-9a-f]{4}-6[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',
     ];
 
     /**
