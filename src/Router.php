@@ -22,9 +22,9 @@ use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface, UrlGeneratorInterface};
 use Laminas\Stratigility\Next;
-use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
+use Symfony\Component\VarExporter\VarExporter;
 
 /**
  * Aggregate routes for matching and Dispatching.
@@ -53,6 +53,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     private ?RouteMatcherInterface $matcher = null;
     private ?\SplQueue $pipeline = null;
     private string $matcherClass = RouteMatcher::class;
+    private ?string $cacheData;
 
     /** @var array<string,array<int,MiddlewareInterface>> */
     private array $middlewares = [];
@@ -60,14 +61,10 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /** @var RouteCollection|(callable(RouteCollection): void)|null */
     private $collection;
 
-
-    /** @var CacheItemPoolInterface|string|null */
-    private $cacheData;
-
     /**
-     * @param CacheItemPoolInterface|string|null $cache use file path or PSR-6 cache
+     * @param string|null $cache file path to store compiled routes
      */
-    public function __construct(RouteCompilerInterface $compiler = null, $cache = null)
+    public function __construct(RouteCompilerInterface $compiler = null, string $cache = null)
     {
         $this->compiler = $compiler;
         $this->cacheData = $cache;
@@ -76,11 +73,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Set a route collection instance into Router in order to use addRoute method.
      *
-     * @param CacheItemPoolInterface|string|null $cache use file path or PSR-6 cache
+     * @param string|null $cache file path to store compiled routes
      *
      * @return static
      */
-    public static function withCollection(RouteCollection $collection = null, RouteCompilerInterface $compiler = null, $cache = null)
+    public static function withCollection(RouteCollection $collection = null, RouteCompilerInterface $compiler = null, string $cache = null)
     {
         $new = new static($compiler, $cache);
         $new->collection = $collection ?? new RouteCollection();
@@ -179,11 +176,9 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Set where cached data will be stored.
      *
-     * @param CacheItemPoolInterface|string $cache use file path or PSR-6 cache
-     *
-     * @return void
+     * @param string $cache file path to store compiled routes
      */
-    public function setCache($cache): void
+    public function setCache(string $cache): void
     {
         $this->cacheData = $cache;
     }
@@ -193,11 +188,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function isCached(): bool
     {
-        if (null === $cache = $this->cacheData) {
-            return false;
-        }
-
-        return ($cache instanceof CacheItemPoolInterface && $cache->hasItem(__FILE__)) || \file_exists($cache);
+        return ($cache = $this->cacheData) && \file_exists($cache);
     }
 
     /**
@@ -241,32 +232,19 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         return $handler->handle($request->withAttribute(Route::class, $route));
     }
 
-    /**
-     * @param CacheItemPoolInterface|string $cache
-     */
-    protected function getCachedData($cache): RouteMatcherInterface
+    protected function getCachedData(string $cache): RouteMatcherInterface
     {
-        if ($cache instanceof CacheItemPoolInterface) {
-            $cachedData = ($cacheItem = $cache->getItem(__FILE__))->get();
-
-            if (!$cachedData instanceof RouteMatcherInterface) {
-                $cache->deleteItem(__FILE__);
-                $cache->save($cacheItem->set($cachedData = new $this->matcherClass($this->getCollection(), $this->compiler)));
-            }
-
-            return $cacheItem->get();
-        }
-
         $cachedData = @include $cache;
 
         if (!$cachedData instanceof RouteMatcherInterface) {
-            $dumpData = "<<<'SERIALIZED'\n" . \serialize(new $this->matcherClass($this->getCollection(), $this->compiler)) . "\nSERIALIZED";
+            $cachedData = new $this->matcherClass($this->getCollection(), $this->compiler);
+            $dumpData = \class_exists(VarExporter::class) ? VarExporter::export($cachedData) : "\unserialize(<<<'SERIALIZED'\n" . \serialize($cachedData) . "\nSERIALIZED)";
 
             if (!\is_dir($directory = \dirname($cache))) {
                 @\mkdir($directory, 0775, true);
             }
 
-            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn \unserialize(" . $dumpData . ");\n");
+            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn " . $dumpData . ";\n");
 
             if (\function_exists('opcache_invalidate') && \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)) {
                 @\opcache_invalidate($cache, true);

@@ -33,6 +33,7 @@
         "phpunit/phpunit": "^9.5",
         "spiral/attributes": "^2.9",
         "squizlabs/php_codesniffer": "^3.6",
+        "symfony/var-exporter": "^5.4 || ^6.0",
         "vimeo/psalm": "^4.13"
     },
     "suggest": {
@@ -40,7 +41,8 @@
         "biurad/http-galaxy": "For handling router, an alternative is nyholm/psr7, slim/psr7 or laminas/laminas-diactoros",
         "divineniiquaye/php-invoker": "For auto-configuring route handler parameters as needed with or without PSR-11 support",
         "divineniiquaye/rade-di": "For full support of PSR-11 and autowiring capabilities on routes (recommended for install).",
-        "laminas/laminas-httphandlerrunner": "For emitting response headers and body contents to browser"
+        "laminas/laminas-httphandlerrunner": "For emitting response headers and body contents to browser",
+        "symfony/var-exporter": "For handling cached routes with better performance (recommended for install)."
     },
     "autoload": {
         "psr-4": {
