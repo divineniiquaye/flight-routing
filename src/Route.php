@@ -104,7 +104,7 @@ class Route
     public static function __set_state(array $properties)
     {
         $route = new static($properties['path'] ?? '', $properties['methods'] ?? [], $properties['handler'] ?? null);
-        $route->data += \array_diff_key($properties, ['path' => null, 'methods' => [], 'handler' => null]);
+        $route->data += $properties['data'] ?? \array_diff_key($properties, ['path' => null, 'methods' => [], 'handler' => null]);
 
         return $route;
     }
