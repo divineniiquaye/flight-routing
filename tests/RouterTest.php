@@ -207,7 +207,7 @@ class RouterTest extends BaseTestCase
     {
         $router = new Router();
         $router->setCollection(static function (RouteCollection $collection): void {
-            $collection->add(new Route('/foo'), new Route('/bar'), new Route('/baz'));
+            $collection->routes([new Route('/foo'), new Route('/bar'), new Route('/baz')]);
         });
 
         $this->expectExceptionMessage('Unable to find the controller for path "/". The route is wrongly configured.');
@@ -585,7 +585,7 @@ class RouterTest extends BaseTestCase
             $group->get('/ping', new Fixtures\BlankRequestHandler());
 
             $group->group('', function (RouteCollection $group): void {
-                $group->prefix('/v1')->domain('https://biurad.com')->end();
+                $group->prefix('/v1')->domain('https://biurad.com');
 
                 $group->head('/hello/{me}', new Fixtures\BlankRequestHandler())->piped('hello');
 

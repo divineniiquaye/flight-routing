@@ -56,9 +56,10 @@ class RouteCollection
     /**
      * @param string $namedPrefix The unqiue name for this group
      */
-    public function __construct(string $namedPrefix = null)
+    public function __construct(string $namedPrefix = null, bool $sortRoutes = false)
     {
         $this->namedPrefix = $namedPrefix;
+        $this->sortRoutes = $sortRoutes;
     }
 
     /**
@@ -74,23 +75,9 @@ class RouteCollection
     }
 
     /**
-     * Create an instance of resolved routes.
-     *
-     * @return static
-     */
-    final public static function create(array $routes, bool $locked = true)
-    {
-        $collection = new static();
-        $collection->routes = $routes;
-        $collection->locked = $locked;
-
-        return $collection;
-    }
-
-    /**
      * Inject Groups and sort routes in a natural order.
      */
-    final public function buildRoutes(bool $lock = true): void
+    final public function buildRoutes(): void
     {
         $this->includeRoute(); // Incase of missing end method call on route.
         $routes = $this->routes;
@@ -99,11 +86,12 @@ class RouteCollection
             $this->injectGroups('', $routes);
         }
 
-        \usort($routes, static function (Route $a, Route $b): int {
-            return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
-        });
+        if ($this->sortRoutes) {
+            \usort($routes, static function (Route $a, Route $b): int {
+                return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
+            });
+        }
 
-        $this->locked = $lock; // Lock grouping and prototyping
         $this->routes = $routes;
     }
 
@@ -116,6 +104,7 @@ class RouteCollection
     {
         if (!$this->locked) {
             $this->buildRoutes();
+            $this->locked = true; // Lock grouping and prototyping
         }
 
         return $this->routes;
@@ -132,11 +121,18 @@ class RouteCollection
     /**
      * Add route to the collection.
      *
+     * @param bool $inject Whether to call injectRoute() on route
+     *
      * @return $this
      */
-    public function add(Route $route)
+    public function add(Route $route, bool $inject = true)
     {
-        $this->route = $this->injectRoute($route);
+        if ($this->locked) {
+            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
+        }
+
+        $this->includeRoute(); // Incase of missing end method call on route.
+        $this->route = $inject ? $this->injectRoute($route) : $route;
 
         return $this;
     }
@@ -154,25 +150,30 @@ class RouteCollection
      */
     public function addRoute(string $pattern, array $methods, $handler = null)
     {
-        $this->route = $this->injectRoute(new Route($pattern, $methods, $handler));
-
-        return $this;
+        return $this->add(new Route($pattern, $methods, $handler));
     }
 
     /**
      * Add routes to the collection.
      *
-     * @param Route[] $routes
+     * @param array<int,Route> $routes
+     * @param bool             $inject Whether to call injectRoute() on each route
      *
      * @throws \TypeError        if $routes doesn't contain a route instance
      * @throws \RuntimeException if locked
      *
      * @return $this
      */
-    public function routes(array $routes)
+    public function routes(array $routes, bool $inject = true)
     {
+        if ($this->locked) {
+            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
+        }
+
+        $this->includeRoute(); // Incase of missing end method call on route.
+
         foreach ($routes as $route) {
-            $this->routes[] = $this->injectRoute($route);
+            $this->routes[] = $inject ? $this->injectRoute($route) : $route;
         }
 
         return $this;
@@ -191,6 +192,8 @@ class RouteCollection
      */
     public function group(string $name = null, $controllers = null)
     {
+        $this->includeRoute(); // Incase of missing end method call on route.
+
         if (\is_callable($controllers)) {
             $controllers($routes = $this->injectGroup($name, new static($name)));
         }
@@ -205,10 +208,12 @@ class RouteCollection
      */
     public function populate(self $collection, bool $asGroup = false): void
     {
+        $this->includeRoute();
+
         if ($asGroup) {
             $this->groups[] = $this->injectGroup($collection->namedPrefix, $collection);
         } else {
-            $this->includeRoute($collection); // Incase of missing end method call on route.
+            $collection->includeRoute(); // Incase of missing end method call on route.
             $routes = $collection->routes;
 
             if (!empty($collection->groups)) {
@@ -347,12 +352,6 @@ class RouteCollection
      */
     protected function injectRoute(Route $route): Route
     {
-        if ($this->locked) {
-            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
-        }
-
-        $this->includeRoute(); // Incase of missing end method call on route.
-
         if (!empty($defaultsStack = $this->prototypes)) {
             foreach ($defaultsStack as $routeMethod => $arguments) {
                 if ('prefix' === $routeMethod) {
@@ -379,24 +378,13 @@ class RouteCollection
     /**
      * Include route to stack if not done.
      */
-    protected function includeRoute(self $collection = null): void
+    protected function includeRoute(): void
     {
         if (null !== $this->route) {
             $this->defaultIndex = -1;
 
             $this->routes[] = $this->route; // Incase an end method is missing at the end of a route call.
             $this->route = null;
-        }
-
-        if (null !== $collection) {
-            $collection->includeRoute();
-
-            if (empty($collection->routes)) {
-                $collection->defaultIndex = 1;
-            }
-
-            $collection->prototypes = \array_merge($this->prototypes, $collection->prototypes);
-            $collection->parent = $this;
         }
     }
 
@@ -413,7 +401,14 @@ class RouteCollection
             throw new \RuntimeException('Cannot sort routes in a nested collection.');
         }
 
-        $this->includeRoute($controllers); // Incase of missing end method call on route.
+        $controllers->includeRoute(); // Incase of missing end method call on route.
+
+        if (empty($controllers->routes)) {
+            $controllers->defaultIndex = 1;
+        }
+
+        $controllers->prototypes = \array_merge($this->prototypes, $controllers->prototypes);
+        $controllers->parent = $this;
 
         if (empty($controllers->namedPrefix)) {
             $controllers->namedPrefix = $prefix;

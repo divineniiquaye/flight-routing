@@ -106,10 +106,10 @@ class RouteCollectionTest extends TestCase
 
     public function testAddRoute(): void
     {
-        $collection = new RouteCollection();
+        $collection = new RouteCollection(null, true);
         $collection->addRoute('/foo', [Router::METHOD_GET])->bind('foo');
         $collection->addRoute('/bar', [Router::METHOD_GET]);
-        $collection = $this->getIterable($collection);
+        $collection = $this->getIterable($c = $collection);
 
         $this->assertInstanceOf(Route::class, $collection->current());
         $this->assertCount(2, $collection);
@@ -142,11 +142,11 @@ class RouteCollectionTest extends TestCase
 
         $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
-        $this->assertEquals('not_sameGET_foo', $route->getName());
+        $this->assertNull($route->getName());
 
         $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
-        $this->assertNull($route->getName());
+        $this->assertEquals('not_sameGET_foo', $route->getName());
 
         $collection->next();
         $this->assertInstanceOf(Route::class, $route = $collection->current());
@@ -218,6 +218,14 @@ class RouteCollectionTest extends TestCase
         ));
     }
 
+    public function testSortingNestedGroupCollection(): void
+    {
+        $collection = new RouteCollection();
+
+        $this->expectExceptionObject(new \RuntimeException('Cannot sort routes in a nested collection.'));
+        $collection->group(null, new RouteCollection(null, true));
+    }
+
     public function testLockedGroupCollection(): void
     {
         $collector = new RouteCollection();
@@ -257,23 +265,23 @@ class RouteCollectionTest extends TestCase
 
         $this->assertEquals([
             [
-                'name' => 'GET_OPTIONS_foo',
-                'path' => '/foo',
-                'hosts' => ['biurad.com'],
-                'methods' => [Router::METHOD_GET, Router::METHOD_OPTIONS],
-                'handler' => null,
-                'schemes' => [],
-                'defaults' => [],
-                'patterns' => [],
-                'arguments' => [],
-            ],
-            [
                 'name' => 'greeting',
                 'path' => '/hello',
                 'hosts' => [],
                 'methods' => [Router::METHOD_GET, Router::METHOD_HEAD, Router::METHOD_OPTIONS],
                 'handler' => null,
                 'schemes' => ['http'],
+                'defaults' => [],
+                'patterns' => [],
+                'arguments' => [],
+            ],
+            [
+                'name' => 'GET_OPTIONS_foo',
+                'path' => '/foo',
+                'hosts' => ['biurad.com'],
+                'methods' => [Router::METHOD_GET, Router::METHOD_OPTIONS],
+                'handler' => null,
+                'schemes' => [],
                 'defaults' => [],
                 'patterns' => [],
                 'arguments' => [],
@@ -543,7 +551,7 @@ class RouteCollectionTest extends TestCase
             return \strcmp($a->getName(), $b->getName());
         });
 
-        $this->assertEquals(['web'], $routes[2]->getPiped());
+        $this->assertEquals(['web'], $routes[4]->getPiped());
         $routes = Fixtures\Helper::routesToArray($routes);
 
         $this->assertEquals([

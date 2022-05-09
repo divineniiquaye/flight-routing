@@ -130,12 +130,6 @@ trait PrototypeTrait
      */
     public function default(string $variable, $default)
     {
-        if (null !== $this->route) {
-            $this->route->default($variable, $default);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -150,12 +144,6 @@ trait PrototypeTrait
      */
     public function defaults(array $values)
     {
-        if (null !== $this->route) {
-            $this->route->defaults($values);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -170,12 +158,6 @@ trait PrototypeTrait
      */
     public function assert(string $variable, $regexp)
     {
-        if (null !== $this->route) {
-            $this->route->assert($variable, $regexp);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -190,12 +172,6 @@ trait PrototypeTrait
      */
     public function asserts(array $regexps)
     {
-        if (null !== $this->route) {
-            $this->route->asserts($regexps);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -210,12 +186,6 @@ trait PrototypeTrait
      */
     public function argument(string $parameter, $value)
     {
-        if (null !== $this->route) {
-            $this->route->argument($parameter, $value);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -230,12 +200,6 @@ trait PrototypeTrait
      */
     public function arguments(array $parameters)
     {
-        if (null !== $this->route) {
-            $this->route->arguments($parameters);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -248,12 +212,6 @@ trait PrototypeTrait
      */
     public function namespace(string $namespace)
     {
-        if (null !== $this->route) {
-            $this->route->namespace($namespace);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -266,12 +224,6 @@ trait PrototypeTrait
      */
     public function method(string ...$methods)
     {
-        if (null !== $this->route) {
-            $this->route->method(...$methods);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -284,12 +236,6 @@ trait PrototypeTrait
      */
     public function scheme(string ...$schemes)
     {
-        if (null !== $this->route) {
-            $this->route->scheme(...$schemes);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -302,12 +248,6 @@ trait PrototypeTrait
      */
     public function domain(string ...$hosts)
     {
-        if (null !== $this->route) {
-            $this->route->domain(...$hosts);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -320,12 +260,6 @@ trait PrototypeTrait
      */
     public function prefix(string $path)
     {
-        if (null !== $this->route) {
-            $this->route->prefix($path);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -338,12 +272,6 @@ trait PrototypeTrait
      */
     public function piped(string ...$to)
     {
-        if (null !== $this->route) {
-            $this->route->piped(...$to);
-
-            return $this;
-        }
-
         return $this->doPrototype(__FUNCTION__, \func_get_args());
     }
 
@@ -358,7 +286,9 @@ trait PrototypeTrait
             throw new \RuntimeException(\sprintf('Prototyping "%s" route method failed as routes collection is frozen.', $routeMethod));
         }
 
-        if ($this->defaultIndex > 0 || \count($routes = $this->routes) < 1) {
+        if (null !== $this->route) {
+            \call_user_func_array([$this->route, $routeMethod], $arguments);
+        } elseif ($this->defaultIndex > 0 || \count($routes = $this->routes) < 1) {
             $this->prototypes[$routeMethod][] = $arguments;
         } else {
             foreach ($routes as $route) {
