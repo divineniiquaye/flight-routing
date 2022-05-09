@@ -1,6 +1,22 @@
 CHANGELOG
 =========
 
+1.6
+===
+
+* Added four public constants to modify the returned value of the `Flight\Routing\Generator\GeneratedUri` class
+* Added a third parameter to the router matcher and route's compiler interface `generateUri` method
+* Added `symfony/var-exporter` support in providing better performance for cached routes
+* Added a `setData` method to the default route class for custom setting of additional data
+* Added new sets of requirements to the `Flight\Routing\RouteCompiler::SEGMENT_TYPES` constant
+* Improved the default's route class `__set_state` method to work properly with the `var_export` function
+* Improved the `Flight\Routing\Generator\GeneratedUri` class in generating reversed route path
+* [BR Break] Replaced the `RouteGeneratorInterface` interface with a `UrlGeneratorInterface` implementation
+* [BC Break] Updated the MRM feature on non-cached routes as optional as it affects performance
+* Removed the group trait from the route collection class and merge method into the route's collection class
+* Removed `PSR-6` cache support from the default router class
+* Removed travis CI build support, GitHub Action is the preferred CI
+
 1.5
 ===
 
