@@ -66,14 +66,14 @@ class RouteBench
             $collection = [];
 
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $collection[] = Route::to("/route/{$i}", ['GET'])->bind('static_' . $i);
+                $collection[] = Route::to("/route/$i", ['GET'])->bind('static_' . $i);
                 $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
 
             $collection[] = Route::to("//localhost.com/route/401", ['GET'])->bind('static_' . 401);
-            $collection[] = Route::to("//{host}/route/{foo}", ['GET'])->bind('no_static_' . 401);
+            $collection[] = Route::to("//{host}/route/401/{foo}", ['GET'])->bind('no_static_' . 401);
 
-            $routes->routes($collection);
+            $routes->routes($collection, false);
         });
 
         $this->router = $router;
@@ -86,14 +86,14 @@ class RouteBench
             $collection = [];
 
             for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $collection[] = Route::to("/route/{$i}", ['GET'])->bind('static_' . $i);
+                $collection[] = Route::to("/route/$i", ['GET'])->bind('static_' . $i);
                 $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
             }
 
-            $collection[] = Route::to("//localhost.com/route/400", ['GET'])->bind('static_' . 401);
-            $collection[] = Route::to("//{host}/route/{foo}", ['GET'])->bind('no_static_' . 401);
+            $collection[] = Route::to("//localhost.com/route/401", ['GET'])->bind('static_' . 401);
+            $collection[] = Route::to("//{host}/route/401/{foo}", ['GET'])->bind('no_static_' . 401);
 
-            $routes->routes($collection);
+            $routes->routes($collection, false);
         });
 
         $this->router = $router;
@@ -210,6 +210,31 @@ class RouteBench
     }
 
     /**
+     * @Groups(value={"optimized"})
+     * @Revs(4)
+     */
+    public function benchOptimized(): void
+    {
+        $this->initOptimized();
+        $s = $d = 0;
+
+        for (;;) {
+            if ($s <= self::$maxRoutes) {
+                $path = '/route/' . $s;
+                $s++;
+            } elseif ($d <= self::$maxRoutes) {
+                $path = '/route' . $d . '/foo';
+                $d++;
+            } else {
+                break;
+            }
+
+            $result = $this->router->match('GET', new Uri($path));
+            assert($this->runScope($path, $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $path)));
+        }
+    }
+
+    /**
      * @Groups(value={"unoptimized:static"})
      * @ParamProviders({"init"})
      */
@@ -231,6 +256,31 @@ class RouteBench
         $result = $this->router->match('GET', new Uri($params[0]));
 
         assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
+    }
+
+    /**
+     * @Groups(value={"unoptimized"})
+     * @Revs(4)
+     */
+    public function benchUnoptimized(): void
+    {
+        $this->initUnoptimized();
+        $s = $d = 0;
+
+        for (;;) {
+            if ($s <= self::$maxRoutes) {
+                $path = '/route/' . $s;
+                $s++;
+            } elseif ($d <= self::$maxRoutes) {
+                $path = '/route' . $d . '/foo';
+                $d++;
+            } else {
+                break;
+            }
+
+            $result = $this->router->match('GET', new Uri($path));
+            assert($this->runScope($path, $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $path)));
+        }
     }
 
     private function runScope(string $requestPath, ?Route $route): bool
