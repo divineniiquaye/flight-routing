@@ -11,8 +11,8 @@ parameters:
     ignoreErrors:
         - "#^Unsafe usage of new static\\(\\)|Expression on left side of \\?\\? is not nullable.$#"
         -
-            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:injectGroup\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection.$#"
-            path: src/Traits/GroupingTrait.php
+            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:group\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection.$#"
+            path: src/RouteCollection.php
         -
             message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:end\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection.$#"
             path: src/Traits/PrototypeTrait.php
