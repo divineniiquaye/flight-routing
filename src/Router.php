@@ -31,7 +31,7 @@ use Symfony\Component\VarExporter\VarExporter;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class Router implements RouteMatcherInterface, RequestMethodInterface, MiddlewareInterface
+class Router implements RouteMatcherInterface, RequestMethodInterface, MiddlewareInterface, UrlGeneratorInterface
 {
     /**
      * Standard HTTP methods for browser requests.
@@ -90,9 +90,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function addRoute(Route ...$routes): void
     {
-        if ($this->collection instanceof RouteCollection) {
-            $this->collection->routes($routes);
-        }
+        $this->getCollection()->routes($routes, false);
     }
 
     /**
@@ -118,11 +116,9 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     {
         $matcher = $this->getMatcher();
 
-        //@codeCoverageIgnoreStart
         if (!$matcher instanceof UrlGeneratorInterface) {
             throw new UrlGenerationException(\sprintf('The route matcher does not support using the %s implementation', UrlGeneratorInterface::class));
         }
-        //@codeCoverageIgnoreEnd
 
         return $matcher->generateUri($routeName, $parameters, $referenceType);
     }
@@ -166,11 +162,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     {
         if (\is_callable($collection = $this->collection)) {
             $collection($collection = new RouteCollection());
-        } elseif (null === $collection) {
-            throw new \RuntimeException(\sprintf('Did you forget to set add the route collection with the "%s".', __CLASS__ . '::setCollection'));
+        } elseif (null !== $collection) {
+            return $this->collection;
         }
 
-        return $this->collection = $collection;
+        return $this->collection = $collection ?? new RouteCollection();
     }
 
     /**

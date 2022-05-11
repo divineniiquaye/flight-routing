@@ -26,8 +26,11 @@ use Flight\Routing\Exceptions\UrlGenerationException;
 use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Handlers\RouteHandler;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
+use Flight\Routing\Interfaces\UrlGeneratorInterface;
 use Flight\Routing\Route;
 use Flight\Routing\RouteCollection;
+use Flight\Routing\RouteMatcher;
 use Flight\Routing\Router;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
@@ -49,11 +52,10 @@ class RouterTest extends BaseTestCase
     {
         $router = new Router();
         $this->assertInstanceOf(MiddlewareInterface::class, $router);
+        $this->assertInstanceOf(UrlGeneratorInterface::class, $router);
+        $this->assertInstanceOf(RouteMatcherInterface::class, $router);
 
-        $this->expectExceptionMessage('Did you forget to set add the route collection with the "Flight\Routing\Router::setCollection".');
-        $this->expectException(\RuntimeException::class);
-
-        $router->getMatcher();
+        $this->assertInstanceOf(RouteMatcher::class, $router->getMatcher());
     }
 
     public function testAddRoute(): void
@@ -419,7 +421,7 @@ class RouterTest extends BaseTestCase
         $route = new Route('/foo');
         $route->run(new Response(200, ['Response' => 'Controller']));
 
-        $router = Router::withCollection();
+        $router = new Router();
         $router->addRoute($route);
         $response = $router->process(new ServerRequest($route->getMethods()[0], $route->getPath()), new RouteHandler(new Psr17Factory()));
 
