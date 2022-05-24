@@ -356,19 +356,12 @@ class RouteCollection
             foreach ($defaultsStack as $routeMethod => $arguments) {
                 if ('prefix' === $routeMethod) {
                     $route->prefix(\implode('', \array_merge(...$arguments)));
-
                     continue;
                 }
 
-                if (\count($arguments) > 1) {
-                    foreach ($arguments as $argument) {
-                        $route->{$routeMethod}(...$argument);
-                    }
-
-                    continue;
+                foreach ($arguments as $parameters) {
+                    \call_user_func_array([$route, $routeMethod], $parameters);
                 }
-
-                $route->{$routeMethod}(...$arguments[0]);
             }
         }
 

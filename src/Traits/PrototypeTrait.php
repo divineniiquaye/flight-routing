@@ -30,9 +30,10 @@ trait PrototypeTrait
     private array $prototypes = [];
 
     /**
-     * Allows a proxied method call to route's.
+     * Allows a proxied method call to route(s).
      *
      * @throws \RuntimeException if locked
+     * @throws \UnexpectedValueException if bind method is called used for route
      *
      * @return $this
      */
@@ -41,14 +42,12 @@ trait PrototypeTrait
         foreach ($routeData as $routeMethod => $arguments) {
             $arguments = \is_array($arguments) ? $arguments : [$arguments];
 
-            if (null !== $this->route) {
-                $this->route->{$routeMethod}(...$arguments);
-
-                continue;
+            if (null === $this->route && 'bind' === $routeMethod) {
+                throw new \UnexpectedValueException(\sprintf('Binding the name "%s" is only supported on routes.', $arguments[0]));
             }
 
-            if ('bind' === $routeMethod) {
-                throw new \UnexpectedValueException(\sprintf('Binding the name "%s" is only supported on routes.', $arguments[0]));
+            if ('s' === $routeMethod[-1]) {
+                $arguments = [$arguments];
             }
 
             $this->doPrototype($routeMethod, $arguments);
@@ -83,10 +82,11 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype a name to a route, which is required for generating
-     * url from named routes.
+     * Prototype a unique name to a route.
      *
      * @see Route::bind() for more information
+     *
+     * @throws \UnderflowException if route doesn't exist
      *
      * @return $this
      */
@@ -102,9 +102,11 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype the route's handler executed when matched.
+     * Prototype a handler to a route.
      *
      * @param mixed $to PHP class, object or callable that returns the response when matched
+     *
+     * @throws \UnderflowException if route doesn't exist
      *
      * @return $this
      */
@@ -120,7 +122,7 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype the optional default value which maybe required by routes.
+     * Prototype optional default values to route(s)
      *
      * @param mixed $default The default value
      *
@@ -134,7 +136,7 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype the optional default values which maybe required by routes.
+     * Prototype optional default values to route(s)
      *
      * @param array<string,mixed> $values
      *
@@ -176,7 +178,7 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype the arguments supplied to route handler's constructor/factory.
+     * Prototype the parameter supplied to route handler's constructor/factory.
      *
      * @param mixed $value The parameter value
      *
@@ -190,7 +192,7 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype the arguments supplied to route handler's constructor/factory.
+     * Prototype the parameters supplied to route handler's constructor/factory.
      *
      * @param array<int|string> $parameters The route handler parameters
      *
@@ -224,11 +226,11 @@ trait PrototypeTrait
      */
     public function method(string ...$methods)
     {
-        return $this->doPrototype(__FUNCTION__, \func_get_args());
+        return $this->doPrototype(__FUNCTION__, $methods);
     }
 
     /**
-     * Prototype HTTP host scheme(s) to all routes.
+     * Prototype HTTP host scheme(s) to route(s)
      *
      * @see Route::scheme() for more information
      *
@@ -236,23 +238,23 @@ trait PrototypeTrait
      */
     public function scheme(string ...$schemes)
     {
-        return $this->doPrototype(__FUNCTION__, \func_get_args());
+        return $this->doPrototype(__FUNCTION__, $schemes);
     }
 
     /**
-     * Prototype HTTP host scheme(s) to all routes.
+     * Prototype HTTP host name(s) to route(s)
      *
-     * @see Route::scheme() for more information
+     * @see Route::domain() for more information
      *
      * @return $this
      */
     public function domain(string ...$hosts)
     {
-        return $this->doPrototype(__FUNCTION__, \func_get_args());
+        return $this->doPrototype(__FUNCTION__, $hosts);
     }
 
     /**
-     * Prototype a prefix prepended to route's path.
+     * Prototype prefix path to route(s)
      *
      * @see Route::prefix() for more information
      *
@@ -264,7 +266,7 @@ trait PrototypeTrait
     }
 
     /**
-     * Prototype named middleware group(s) to all routes.
+     * Prototype a set of named grouped middleware(s) to route(s)
      *
      * @see Route::piped() for more information
      *
@@ -272,7 +274,19 @@ trait PrototypeTrait
      */
     public function piped(string ...$to)
     {
-        return $this->doPrototype(__FUNCTION__, \func_get_args());
+        return $this->doPrototype(__FUNCTION__, $to);
+    }
+
+    /**
+     * Prototype a custom key and value to route(s)
+     *
+     * @param mixed $value
+     *
+     * @return $this
+     */
+    public function set(string $key, $value)
+    {
+        return $this->doPrototype('setData', \func_get_args());
     }
 
     /**
