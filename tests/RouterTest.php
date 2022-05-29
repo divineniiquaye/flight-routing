@@ -124,7 +124,10 @@ class RouterTest extends BaseTestCase
         $router->addRoute($route->bind('hello'), Route::to('https://example.com/foo')->bind('world'));
 
         $this->assertSame($path, (string) $router->generateUri($route->getName(), [], GeneratedUri::RELATIVE_PATH));
-        $this->assertSame('https://example.com:8080/foo', (string) $router->generateUri('world', [], GeneratedUri::ABSOLUTE_URL)->withPort('8080'));
+        $this->assertSame('https://example.com:8080/foo', (string) $router->generateUri('world', [], GeneratedUri::ABSOLUTE_URL)->withPort(8080));
+
+        $this->expectException(UrlGenerationException::class);
+        (new GeneratedUri('/hello', GeneratedUri::ABSOLUTE_PATH))->withPort(-1);
     }
 
     public function testGenerateUriWithDomain(): void

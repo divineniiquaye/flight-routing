@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Generator;
 
+use Flight\Routing\Exceptions\UrlGenerationException;
+
 /**
  * A generated URI from route made up of only the
  * URIs path component (pathinfo, scheme, host, and maybe port.) starting with a slash.
@@ -110,9 +112,15 @@ class GeneratedUri implements \Stringable
     /**
      * Sets the port component of the URI.
      */
-    public function withPort(string $port): self
+    public function withPort(int $port): self
     {
-        $this->port = \in_array($port, ['', 80, 443], true) ? null : ':' . $port;
+        if (0 > $port || 0xffff < $port) {
+            throw new UrlGenerationException(\sprintf('Invalid port: %d. Must be between 0 and 65535', $port));
+        }
+
+        if (!\in_array($port, ['', 80, 443], true)) {
+            $this->port = ':' . $port;
+        }
 
         return $this;
     }
