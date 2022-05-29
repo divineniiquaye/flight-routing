@@ -136,7 +136,10 @@ class GeneratedUri implements \Stringable
         if ([] !== $queryParams) {
             $queryString = \http_build_query($queryParams, '', '&', \PHP_QUERY_RFC3986);
 
-            $this->pathInfo .= '?' . \strtr($queryString, self::QUERY_DECODED);
+            if (!empty($queryString)) {
+                $this->pathInfo .= '?' . \strtr($queryString, self::QUERY_DECODED);
+            }
+
         }
 
         return $this;
