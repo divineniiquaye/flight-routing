@@ -139,7 +139,6 @@ class GeneratedUri implements \Stringable
             if (!empty($queryString)) {
                 $this->pathInfo .= '?' . \strtr($queryString, self::QUERY_DECODED);
             }
-
         }
 
         return $this;

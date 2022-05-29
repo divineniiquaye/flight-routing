@@ -65,8 +65,10 @@ class RouteHandler implements RequestHandlerInterface
 
             if (!$notFoundResponse instanceof ResponseInterface) {
                 throw new RouteNotFoundException(
-                    \sprintf('Unable to find the controller for path "%s". The route is wrongly configured.',
-                    $request->getUri()->getPath()),
+                    \sprintf(
+                        'Unable to find the controller for path "%s". The route is wrongly configured.',
+                        $request->getUri()->getPath()
+                    ),
                     404
                 );
             }
