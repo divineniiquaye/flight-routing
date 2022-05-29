@@ -144,4 +144,16 @@ class GeneratedUri implements \Stringable
 
         return $this;
     }
+
+    /**
+     * Set the fragment component of the URI
+     */
+    public function withFragment(string $fragment): self
+    {
+        if (!empty($fragment)) {
+            $this->pathInfo .= '#' . $fragment;
+        }
+
+        return $this;
+    }
 }
