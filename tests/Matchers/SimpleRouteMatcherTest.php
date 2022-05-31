@@ -293,6 +293,20 @@ class SimpleRouteMatcherTest extends TestCase
         $this->assertNull($serializedMatcher->match('GET', new Uri('/bar/foo/')));
     }
 
+    public function testDuplicationOnDynamicRoutePattern(): void
+    {
+        $collection = new RouteCollection();
+        $route1 = $collection->addRoute('[{locale:en|fr}]/admin/post/{id:int}/', Route::DEFAULT_METHODS)->getRoute();
+        $collection->addRoute('[{locale:en|fr}]/admin/post/{id:int}/', Route::DEFAULT_METHODS)->getRoute();
+
+        $matcher = new RouteMatcher($collection);
+        $this->assertEquals($route1, $matcher->match('GET', new Uri('/admin/post/23')));
+
+        $serializedMatcher = \unserialize(\serialize($matcher));
+        $this->assertInstanceOf(RouteMatcherInterface::class, $serializedMatcher);
+        $this->assertEquals($route1->argument('locale', 'en'), $serializedMatcher->match('GET', new Uri('en/admin/post/23')));
+    }
+
     /**
      * @dataProvider provideCompileData
      *

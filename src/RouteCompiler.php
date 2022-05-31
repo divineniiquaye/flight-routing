@@ -120,9 +120,8 @@ final class RouteCompiler implements RouteCompilerInterface
      */
     public function build(RouteCollection $routes): array
     {
-        $tree = new RegexGenerator();
         $uriPrefixRegex = '#[^a-zA-Z0-9]+$#';
-        $variables = $staticRegex = [];
+        $variables = $staticRegex = $dynamicRegex = [];
 
         foreach ($routes->getRoutes() as $i => $route) {
             [$pathRegex, $hostsRegex, $compiledVars] = $this->compile($route);
@@ -140,8 +139,7 @@ final class RouteCompiler implements RouteCompilerInterface
                 if (!\preg_match($uriPrefixRegex, $pathRegex[-2])) {
                     $pathRegex = \substr($pathRegex, 0, -1);
                 }
-
-                $tree->addRoute($pathRegex, [$pathRegex, $i]);
+                $dynamicRegex[$i] = $pathRegex;
                 continue;
             }
 
@@ -152,11 +150,18 @@ final class RouteCompiler implements RouteCompilerInterface
             $staticRegex[$pathRegex][] = $i;
         }
 
-        if (!empty($compiledRegex = $tree->compile(0))) {
-            $compiledRegex = '~^' . \substr($compiledRegex, 1) . '$~sDu';
+        if (!empty($dynamicRegex)) {
+            \natsort($dynamicRegex);
+            $tree = new RegexGenerator();
+
+            foreach (\array_unique($dynamicRegex) as $k => $regex) {
+                $tree->addRoute($regex, [$regex, $k]);
+            }
+
+            $compiledRegex = '~^' . \substr($tree->compile(0), 1) . '$~sDu';
         }
 
-        return [$staticRegex, $compiledRegex ?: null, $variables];
+        return [$staticRegex, $compiledRegex ?? null, $variables];
     }
 
     /**

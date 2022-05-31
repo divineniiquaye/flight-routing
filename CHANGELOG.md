@@ -11,6 +11,7 @@ CHANGELOG
 * Added new sets of requirements to the `Flight\Routing\RouteCompiler::SEGMENT_TYPES` constant
 * Improved the default's route class `__set_state` method to work properly with the `var_export` function
 * Improved the `Flight\Routing\Generator\GeneratedUri` class in generating reversed route path
+* Improved matching cached duplicated dynamic route pattern as unique to avoid regex error
 * [BR Break] Replaced the `RouteGeneratorInterface` interface with a `UrlGeneratorInterface` implementation
 * [BC Break] Updated the MRM feature on non-cached routes as optional as it affects performance
 * Removed the group trait from the route collection class and merge method into the route's collection class
