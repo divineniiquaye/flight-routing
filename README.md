@@ -59,8 +59,11 @@ location / {
 Nothing special is required for Apache to work. We've include the `.htaccess` file in the `public` folder. If rewriting is not working for you, please check that the `mod_rewrite` module (htaccess support) is enabled in the Apache configuration.
 
 ```htaccess
-<IfModule mod_rewrite.c>
+<IfModule mod_negotiation.c>
     Options -MultiViews
+</IfModule>
+
+<IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.*)$ index.php [QSA,L]
@@ -83,7 +86,6 @@ On IIS you have to add some lines your `web.config` file. If rewriting is not wo
     <system.webServer>
         <defaultDocument>
             <files>
-                <remove value="index.php" />
                 <add value="index.php" />
             </files>
         </defaultDocument>
