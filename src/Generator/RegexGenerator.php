@@ -72,18 +72,12 @@ class RegexGenerator
 
             if ($route instanceof self) {
                 $nested = '(?' . $route->compile($prefixLen + \strlen($prefix = \substr($route->prefix, $prefixLen))) . ')';
-
-                if (\str_starts_with($nested, '(?|(*')) {
-                    $realPos = \strrpos($realPrefix = $route->staticPrefixes[0], '?');
-
-                    if ($realPos && '?' === $realPrefix[$realPos]) {
-                        $nested = '?' . $nested;
-                    }
-                }
-
-                $code .= \ltrim($prefix, '?') . $nested;
+                $code .= \ltrim($prefix, '?') . (\str_starts_with($nested, '(?|?') ? '?(?|' . \substr($nested, 4) : $nested);
             } else {
-                $code .= \ltrim(\substr($route[0], $prefixLen), '?') . '(*:' . $route[1] . ')';
+                if (\preg_match('/^\|(.*?\|)\?(\(\*\:\d+\))\|$/', $code, $m)) {
+                    $code = '|?' . $m[1] . $m[2] . '|';
+                }
+                $code .= \substr($route[0], $prefixLen) . '(*:' . $route[1] . ')';
             }
         }
 
