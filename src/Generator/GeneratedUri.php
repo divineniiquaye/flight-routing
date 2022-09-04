@@ -69,24 +69,24 @@ class GeneratedUri implements \Stringable
      */
     public function __toString()
     {
-        $prefixed = '/';
-        $type = $this->referenceType;
+        $pathInfo = '/'.\ltrim($this->pathInfo, '/');
 
-        if ($this->scheme) {
-            $prefixed = $this->scheme . '://';
+        if (self::ABSOLUTE_PATH === $type = $this->referenceType) {
+            return $pathInfo;
         }
 
-        if ($this->host) {
-            if ('/' === $prefixed) {
-                $prefixed = \in_array($type, [self::ABSOLUTE_URL, self::NETWORK_PATH], true) ? '//' : '';
-            }
-
-            $prefixed .= \ltrim($this->host, './') . $this->port . '/';
-        } elseif ('/' === $prefixed && self::RELATIVE_PATH === $type) {
-            $prefixed = '.' . $prefixed;
+        if (self::RELATIVE_PATH === $type) {
+            return '.'.$pathInfo;
         }
 
-        return $prefixed . \ltrim($this->pathInfo, '/');
+        if (isset($this->host)) {
+            $hostPort = $this->host.$this->port;
+        } else {
+            $h = \explode(':', $_SERVER['HTTP_HOST'] ?? 'localhost:80', 2);
+            $hostPort = $h[0].($this->port ?? (!\in_array($h[1] ?? '', ['', '80', '443'], true) ? ':'.$h[0] : ''));
+        }
+
+        return (self::NETWORK_PATH === $type ? '//' : (isset($this->scheme) ? $this->scheme.'://' : '//')).$hostPort.$pathInfo;
     }
 
     /**
