@@ -17,9 +17,6 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Annotation;
 
-use Flight\Routing\Route as BaseRoute;
-use Flight\Routing\Handlers\ResourceHandler;
-
 /**
  * Annotation class for @Route().
  *
@@ -48,63 +45,30 @@ use Flight\Routing\Handlers\ResourceHandler;
 #[\Attribute(\Attribute::IS_REPEATABLE | \Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::TARGET_FUNCTION)]
 final class Route
 {
-    public ?string $path, $name, $resource;
-    public array $methods, $hosts, $schemes, $patterns, $defaults, $arguments;
+    /** @var array<int,string> */
+    public array $methods, $hosts, $schemes;
 
     /**
-     * @param string|string[] $methods
-     * @param string|string[] $schemes
-     * @param string|string[] $hosts
-     * @param string[]        $where
-     * @param string[]        $defaults
+     * @param array<int,string>|string $methods
+     * @param array<int,string>|string $schemes
+     * @param array<int,string>|string $hosts
+     * @param array<string,mixed>      $where
+     * @param array<string,mixed>      $defaults
+     * @param array<string,mixed>      $arguments
      */
     public function __construct(
-        string $path = null,
-        string $name = null,
-        $methods = [],
-        $schemes = [],
-        $hosts = [],
-        array $where = [],
-        array $defaults = [],
-        array $attributes = [],
-        string $resource = null
+        public ?string $path = null,
+        public ?string $name = null,
+        string|array $methods = [],
+        string|array $schemes = [],
+        string|array $hosts = [],
+        public array $where = [],
+        public array $defaults = [],
+        public array $arguments = [],
+        public ?string $resource = null
     ) {
-        $this->path = $path;
-        $this->name = $name;
-        $this->resource = $resource;
         $this->methods = (array) $methods;
         $this->schemes = (array) $schemes;
         $this->hosts = (array) $hosts;
-        $this->patterns = $where;
-        $this->defaults = $defaults;
-        $this->arguments = $attributes;
-    }
-
-    /**
-     * @param mixed $handler
-     */
-    public function getRoute($handler): BaseRoute
-    {
-        $routeData = [
-            'handler' => !empty($this->resource) ? new ResourceHandler($handler, $this->resource) : $handler,
-            'name' => $this->name,
-            'path' => $this->path,
-            'methods' => $this->methods,
-            'patterns' => $this->patterns,
-            'defaults' => $this->defaults,
-            'arguments' => $this->arguments,
-        ];
-
-        $route = BaseRoute::__set_state($routeData);
-
-        if (!empty($this->hosts)) {
-            $route->domain(...$this->hosts);
-        }
-
-        if (!empty($this->schemes)) {
-            $route->scheme(...$this->schemes);
-        }
-
-        return $route;
     }
 }
