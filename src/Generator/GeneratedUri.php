@@ -114,12 +114,12 @@ class GeneratedUri implements \Stringable
      */
     public function withPort(int $port): self
     {
-        if (0 > $port || 0xffff < $port) {
+        if (0 > $port || 0xFFFF < $port) {
             throw new UrlGenerationException(\sprintf('Invalid port: %d. Must be between 0 and 65535', $port));
         }
 
-        if (!\in_array($port, ['', 80, 443], true)) {
-            $this->port = ':' . $port;
+        if (!\in_array($port, [80, 443], true)) {
+            $this->port = ':'.$port;
         }
 
         return $this;
@@ -137,7 +137,7 @@ class GeneratedUri implements \Stringable
             $queryString = \http_build_query($queryParams, '', '&', \PHP_QUERY_RFC3986);
 
             if (!empty($queryString)) {
-                $this->pathInfo .= '?' . \strtr($queryString, self::QUERY_DECODED);
+                $this->pathInfo .= '?'.\strtr($queryString, self::QUERY_DECODED);
             }
         }
 
@@ -145,12 +145,12 @@ class GeneratedUri implements \Stringable
     }
 
     /**
-     * Set the fragment component of the URI
+     * Set the fragment component of the URI.
      */
     public function withFragment(string $fragment): self
     {
         if (!empty($fragment)) {
-            $this->pathInfo .= '#' . $fragment;
+            $this->pathInfo .= '#'.$fragment;
         }
 
         return $this;
