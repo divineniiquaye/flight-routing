@@ -37,7 +37,7 @@ namespace Flight\Routing;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteCollection
+class RouteCollection implements \Countable
 {
     use Traits\PrototypeTrait;
 
@@ -104,6 +104,18 @@ class RouteCollection
         }
 
         return $this->routes;
+    }
+
+    /**
+     * Get the total number of routes.
+     */
+    public function count(): int
+    {
+        if (!empty($this->groups)) {
+            $this->injectGroups('', $this->routes, $this->defaultIndex);
+        }
+
+        return $this->defaultIndex + 1;
     }
 
     /**
