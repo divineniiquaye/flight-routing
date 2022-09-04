@@ -37,7 +37,7 @@ namespace Flight\Routing;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteCollection implements \Countable
+class RouteCollection implements \Countable, \ArrayAccess
 {
     use Traits\PrototypeTrait;
 
@@ -116,6 +116,34 @@ class RouteCollection implements \Countable
         }
 
         return $this->defaultIndex + 1;
+    }
+
+    /**
+     * Checks if route by its index exists.
+     */
+    public function offsetExists(mixed $offset): bool
+    {
+        return isset($this->routes[$offset]);
+    }
+
+    /**
+     * Get the route by its index.
+     *
+     * @return null|array<string,mixed>
+     */
+    public function offsetGet(mixed $offset): ?array
+    {
+        return $this->routes[$offset] ?? null;
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->routes[$offset]);
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        throw new \BadMethodCallException('The operator "[]" for new route, use the add() method instead.');
     }
 
     /**
