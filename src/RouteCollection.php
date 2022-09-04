@@ -76,6 +76,23 @@ class RouteCollection
     }
 
     /**
+     * Sort all routes beginning with static routes.
+     */
+    public function sort(): void
+    {
+        if (!empty($this->groups)) {
+            $this->injectGroups('', $this->routes, $this->defaultIndex);
+        }
+
+        $this->sorted || $this->sorted = \usort($this->routes, static function (array $a, array $b): int {
+            $ap = $a['prefix'] ?? null;
+            $bp = $b['prefix'] ?? null;
+
+            return !($ap && $ap === $a['path']) <=> !($bp && $bp === $b['path']) ?: \strnatcmp($a['path'], $b['path']);
+        });
+    }
+
+    /**
      * Get all the routes.
      *
      * @return array<int,array<string,mixed>>
