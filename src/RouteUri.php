@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Generator;
+namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
 
@@ -25,7 +25,7 @@ use Flight\Routing\Exceptions\UrlGenerationException;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class GeneratedUri implements \Stringable
+class RouteUri implements \Stringable
 {
     /** Generates an absolute URL, e.g. "http://example.com/dir/file". */
     public const ABSOLUTE_URL = 0;
