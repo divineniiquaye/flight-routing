@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 /*
  * This file is part of Flight Routing.
@@ -18,7 +16,7 @@ declare(strict_types=1);
 namespace Flight\Routing\Interfaces;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Generator\GeneratedUri;
+use Flight\Routing\RouteUri;
 
 /**
  * A fluent implementation for reversing compiled route paths.
@@ -46,5 +44,5 @@ interface UrlGeneratorInterface
      * @throws UrlGenerationException if the route name is not known
      *                                or a parameter value does not match its regex
      */
-    public function generateUri(string $routeName, array $parameters = [], int $referenceType = GeneratedUri::ABSOLUTE_PATH): GeneratedUri;
+    public function generateUri(string $routeName, array $parameters = [], int $referenceType = RouteUri::ABSOLUTE_PATH): RouteUri;
 }
