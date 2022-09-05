@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 /*
  * This file is part of Flight Routing.
@@ -19,6 +17,8 @@ namespace Flight\Routing\Handlers;
 
 use Flight\Routing\Exceptions\InvalidControllerException;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Invokes a route's handler with arguments.
@@ -30,38 +30,36 @@ use Psr\Container\ContainerInterface;
  */
 class RouteInvoker
 {
-    private ?ContainerInterface $container;
-
-    public function __construct(ContainerInterface $container = null)
+    public function __construct(protected ?ContainerInterface $container = null)
     {
-        $this->container = $container;
     }
 
     /**
      * Auto-configure route handler parameters.
      *
-     * @param mixed               $handler
      * @param array<string,mixed> $arguments
-     *
-     * @return mixed
      */
-    public function __invoke($handler, array $arguments)
+    public function __invoke(mixed $handler, array $arguments): mixed
     {
         if (\is_string($handler)) {
-            if (null !== $this->container && $this->container->has($handler)) {
+            $handler = \ltrim($handler, '\\');
+
+            if ($this->container?->has($handler)) {
                 $handler = $this->container->get($handler);
             } elseif (\str_contains($handler, '@')) {
                 $handler = \explode('@', $handler, 2);
                 goto maybe_callable;
             } elseif (\class_exists($handler)) {
-                $handler = new $handler();
+                $handler = \is_callable($this->container) ? ($this->container)($handler) : new $handler();
             }
-        } elseif ((\is_array($handler) && [0, 1] === \array_keys($handler)) && \is_string($handler[0])) {
+        } elseif (\is_array($handler) && ([0, 1] === \array_keys($handler) && \is_string($handler[0]))) {
+            $handler[0] = \ltrim($handler[0], '\\');
+
             maybe_callable:
-            if (null !== $this->container && $this->container->has($handler[0])) {
+            if ($this->container?->has($handler[0])) {
                 $handler[0] = $this->container->get($handler[0]);
             } elseif (\class_exists($handler[0])) {
-                $handler[0] = new $handler[0]();
+                $handler[0] = \is_callable($this->container) ? ($this->container)($handler[0]) : new $handler[0]();
             }
         }
 
@@ -82,52 +80,127 @@ class RouteInvoker
         return $handlerRef->invokeArgs($resolvedParameters ?? []);
     }
 
+    public function getContainer(): ?ContainerInterface
+    {
+        return $this->container;
+    }
+
+    /**
+     * Resolve route handler & parameters.
+     *
+     * @throws InvalidControllerException
+     */
+    public static function resolveRoute(
+        ServerRequestInterface $request,
+        callable $resolver,
+        mixed $handler,
+        callable $arguments,
+    ): ResponseInterface|FileHandler|string|null {
+        if ($handler instanceof RequestHandlerInterface) {
+            return $handler->handle($request);
+        }
+        $printed = \ob_start(); // Start buffering response output
+
+        try {
+            if ($handler instanceof ResourceHandler) {
+                $handler = $handler($request->getMethod(), true);
+            }
+
+            $response = ($resolver)($handler, $arguments($request));
+        } catch (\Throwable $e) {
+            \ob_get_clean();
+
+            throw $e;
+        } finally {
+            while (\ob_get_level() > 1) {
+                $printed = \ob_get_clean() ?: null;
+            } // If more than one output buffers is set ...
+        }
+
+        if ($response instanceof ResponseInterface || \is_string($response = $printed ?: ($response ?? \ob_get_clean()))) {
+            return $response;
+        }
+
+        if ($response instanceof RequestHandlerInterface) {
+            return $response->handle($request);
+        }
+
+        if ($response instanceof \Stringable) {
+            return $response->__toString();
+        }
+
+        if ($response instanceof FileHandler) {
+            return $response;
+        }
+
+        if ($response instanceof \JsonSerializable || $response instanceof \iterable || \is_array($response)) {
+            return \json_encode($response, \JSON_THROW_ON_ERROR) ?: null;
+        }
+
+        return null;
+    }
+
     /**
      * @param array<int,\ReflectionParameter> $refParameters
      * @param array<string,mixed>             $arguments
      *
      * @return array<int,mixed>
      */
-    private function resolveParameters(array $refParameters, array $arguments): array
+    protected function resolveParameters(array $refParameters, array $arguments): array
     {
         $parameters = [];
+        $nullable = 0;
+
+        foreach ($arguments as $k => $v) {
+            if (\is_numeric($k) || !\str_contains($k, '&')) {
+                continue;
+            }
+
+            foreach (\explode('&', $k) as $i) {
+                $arguments[$i] = $v;
+            }
+        }
 
         foreach ($refParameters as $index => $parameter) {
             $typeHint = $parameter->getType();
 
-            if ($typeHint instanceof \ReflectionUnionType) {
+            if ($nullable > 0) {
+                $index = $parameter->getName();
+            }
+
+            if ($typeHint instanceof \ReflectionUnionType || $typeHint instanceof \ReflectionIntersectionType) {
                 foreach ($typeHint->getTypes() as $unionType) {
+                    if ($unionType->isBuiltin()) {
+                        continue;
+                    }
+
                     if (isset($arguments[$unionType->getName()])) {
                         $parameters[$index] = $arguments[$unionType->getName()];
-
                         continue 2;
                     }
 
-                    if (null !== $this->container && $this->container->has($unionType->getName())) {
+                    if ($this->container?->has($unionType->getName())) {
                         $parameters[$index] = $this->container->get($unionType->getName());
-
                         continue 2;
                     }
                 }
-            } elseif ($typeHint instanceof \ReflectionNamedType) {
+            } elseif ($typeHint instanceof \ReflectionNamedType && !$typeHint->isBuiltin()) {
                 if (isset($arguments[$typeHint->getName()])) {
                     $parameters[$index] = $arguments[$typeHint->getName()];
-
                     continue;
                 }
 
-                if (null !== $this->container && $this->container->has($typeHint->getName())) {
+                if ($this->container?->has($typeHint->getName())) {
                     $parameters[$index] = $this->container->get($typeHint->getName());
-
                     continue;
                 }
             }
 
             if (isset($arguments[$parameter->getName()])) {
                 $parameters[$index] = $arguments[$parameter->getName()];
-            } elseif (null !== $this->container && $this->container->has($parameter->getName())) {
-                $parameters[$index] = $this->container->get($parameter->getName());
-            } elseif ($parameter->allowsNull() && !$parameter->isDefaultValueAvailable()) {
+            } elseif ($parameter->isDefaultValueAvailable()) {
+                ++$nullable;
+            } elseif (!$parameter->isVariadic() && ($parameter->isOptional() || $parameter->allowsNull())) {
                 $parameters[$index] = null;
             }
         }
