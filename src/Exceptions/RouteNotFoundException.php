@@ -18,10 +18,19 @@ declare(strict_types=1);
 namespace Flight\Routing\Exceptions;
 
 use Flight\Routing\Interfaces\ExceptionInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * Class RouteNotFoundException.
  */
 class RouteNotFoundException extends \DomainException implements ExceptionInterface
 {
+    public function __construct(string|UriInterface $message = '', int $code = 404, \Throwable $previous = null)
+    {
+        if ($message instanceof UriInterface) {
+            $message = \sprintf('Unable to find the controller for path "%s". The route is wrongly configured.', $message->getPath());
+        }
+
+        parent::__construct($message, $code, $previous);
+    }
 }
