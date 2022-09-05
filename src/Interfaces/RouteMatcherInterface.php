@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 /*
  * This file is part of Flight Routing.
@@ -17,7 +15,7 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Interfaces;
 
-use Flight\Routing\Route;
+use Flight\Routing\RouteCollection;
 use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 
 /**
@@ -28,12 +26,18 @@ use Psr\Http\Message\{ServerRequestInterface, UriInterface};
 interface RouteMatcherInterface
 {
     /**
-     * Marshals a route result based on the results of matching URL from set of routes.
+     * Find a route by matching with request method and PSR-7 uri.
+     *
+     * @return null|array<string,mixed>
      */
-    public function match(string $method, UriInterface $uri): ?Route;
+    public function match(string $method, UriInterface $uri): ?array;
 
     /**
-     * @see RouteMatcherInterface::match() implementation
+     * Find a route by matching with PSR-7 server request.
+     *
+     * @return null|array<string,mixed>
      */
-    public function matchRequest(ServerRequestInterface $request): ?Route;
+    public function matchRequest(ServerRequestInterface $request): ?array;
+
+    public function getCollection(): RouteCollection;
 }
