@@ -17,11 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Tests\Benchmarks;
 
-use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Generator\GeneratedUri;
-use Flight\Routing\Route;
-use Flight\Routing\RouteCollection;
-use Flight\Routing\Router;
+use Flight\Routing\Exceptions\MethodNotAllowedException;
+use Flight\Routing\Interfaces\RouteMatcherInterface;
 use Nyholm\Psr7\Uri;
 
 /**
@@ -30,267 +27,138 @@ use Nyholm\Psr7\Uri;
  * @Iterations(5)
  * @BeforeClassMethods({"before"})
  */
-class RouteBench
+abstract class RouteBench
 {
-    private static int $maxRoutes = 400;
+    protected const MAX_ROUTES = 400;
+    protected const CACHE_FILE = __DIR__.'/../Fixtures/compiled_test.php';
 
-    private Router $router;
+    /** @var array<string,RouteMatcherInterface> */
+    private array $dispatchers = [];
 
     public static function before(): void
     {
-        if (\file_exists($cacheFile = __DIR__ . '/compiled_test.php')) {
-            @unlink($cacheFile);
+        if (\file_exists(self::CACHE_FILE)) {
+            @\unlink(self::CACHE_FILE);
         }
     }
 
-    /** @return \Generator<string,string> */
-    public function init(): iterable
+    /** @return \Generator<string,array<string,mixed>> */
+    abstract public function provideStaticRoutes(): iterable;
+
+    /** @return \Generator<string,array<string,mixed>> */
+    abstract public function provideDynamicRoutes(): iterable;
+
+    /** @return \Generator<string,array<string,mixed>> */
+    abstract public function provideOtherScenarios(): iterable;
+
+    /** @return \Generator<string,array<int,mixed>> */
+    public function provideAllScenarios(): iterable
     {
-        yield 'Best Case' => ['/route/1'];
-
-        yield 'Average Case' => ['/route/199'];
-
-        yield 'Real Case' => ['/route/' . \rand(0, self::$maxRoutes)];
-
-        yield 'Worst Case' => ['/route/399'];
-
-        yield 'Domain Case' => ['//localhost.com/route/401'];
-
-        yield 'Non-Existent Case' => ['/none'];
+        yield 'static(first,middle,last,invalid-method)' => \array_values(\iterator_to_array($this->provideStaticRoutes()));
+        yield 'dynamic(first,middle,last,invalid-method)' => \array_values(\iterator_to_array($this->provideDynamicRoutes()));
+        yield 'others(non-existent,...)' => \array_values(\iterator_to_array($this->provideOtherScenarios()));
     }
 
-    public function initUnoptimized(): void
+    /** @return \Generator<string,array<string,string>> */
+    public function provideDispatcher(): iterable
     {
-        $router = new Router();
-        $router->setCollection(static function (RouteCollection $routes): void {
-            $collection = [];
-
-            for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $collection[] = Route::to("/route/$i", ['GET'])->bind('static_' . $i);
-                $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
-            }
-
-            $collection[] = Route::to("//localhost.com/route/401", ['GET'])->bind('static_' . 401);
-            $collection[] = Route::to("//{host}/route/401/{foo}", ['GET'])->bind('no_static_' . 401);
-
-            $routes->routes($collection, false);
-        });
-
-        $this->router = $router;
+        yield 'not_cached' => ['dispatcher' => 'not_cached'];
+        yield 'cached' => ['dispatcher' => 'cached'];
     }
 
-    public function initOptimized(): void
+    public function initDispatchers(): void
     {
-        $router = new Router(null, __DIR__ . '/compiled_test.php');
-        $router->setCollection(static function (RouteCollection $routes): void {
-            $collection = [];
-
-            for ($i = 1; $i <= self::$maxRoutes; ++$i) {
-                $collection[] = Route::to("/route/$i", ['GET'])->bind('static_' . $i);
-                $collection[] = Route::to("/route/{$i}/{foo}", ['GET'])->bind('no_static_' . $i);
-            }
-
-            $collection[] = Route::to("//localhost.com/route/401", ['GET'])->bind('static_' . 401);
-            $collection[] = Route::to("//{host}/route/401/{foo}", ['GET'])->bind('no_static_' . 401);
-
-            $routes->routes($collection, false);
-        });
-
-        $this->router = $router;
+        $this->dispatchers['not_cached'] = $this->createDispatcher();
+        $this->dispatchers['cached'] = $this->createDispatcher(self::CACHE_FILE);
     }
 
     /**
-     * @Groups(value={"static_routes"})
-     * @BeforeMethods({"initUnoptimized"}, extend=true)
-     * @ParamProviders({"init"})
+     * @BeforeMethods({"initDispatchers"})
+     * @ParamProviders({"provideDispatcher", "provideStaticRoutes"})
      */
     public function benchStaticRoutes(array $params): void
     {
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
+        $this->runScenario($params);
     }
 
     /**
-     * @Groups(value={"dynamic_routes"})
-     * @BeforeMethods({"initUnoptimized"}, extend=true)
-     * @ParamProviders({"init"})
+     * @BeforeMethods({"initDispatchers"})
+     * @ParamProviders({"provideDispatcher", "provideDynamicRoutes"})
      */
     public function benchDynamicRoutes(array $params): void
     {
-        $result = $this->router->match('GET', new Uri($params[0] . '/bar'));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
+        $this->runScenario($params);
     }
 
     /**
-     * @Groups(value={"static_routes"})
-     * @BeforeMethods({"initUnoptimized"}, extend=true)
-     * @ParamProviders({"init"})
+     * @BeforeMethods({"initDispatchers"})
+     * @ParamProviders({"provideDispatcher", "provideOtherScenarios"})
      */
-    public function benchStaticRouteUri(array $params): void
+    public function benchOtherRoutes(array $params): void
     {
-        $value = \substr($params[0], \stripos($params[0], '/') ?: -1);
+        $this->runScenario($params);
+    }
 
-        try {
-            $result = $this->router->generateUri('static_' . $value);
-            $result = $result instanceof GeneratedUri;
-        } catch (\Throwable $e) {
-            $result = '/none' === $params[0] ? $e instanceof UrlGenerationException : false;
+    /**
+     * @BeforeMethods({"initDispatchers"})
+     * @ParamProviders({"provideDispatcher", "provideAllScenarios"})
+     */
+    public function benchAll(array $params): void
+    {
+        $dispatcher = \array_shift($params);
+
+        foreach ($params as $param) {
+            $this->runScenario($param + \compact('dispatcher'));
         }
-
-        \assert($result, new \RuntimeException(\sprintf('Route uri generation failed, for route name "%s" request path.', $value)));
     }
 
     /**
-     * @Groups(value={"dynamic_routes"})
-     * @BeforeMethods({"initUnoptimized"}, extend=true)
-     * @ParamProviders({"init"})
-     */
-    public function benchDynamicRouteUri(array $params): void
-    {
-        $value = \substr($params[0], \stripos($params[0], '/') ?: -1);
-
-        try {
-            $result = $this->router->generateUri('no_static_' . $value, ['foo' => 'bar', 'host' => 'biurad.com']);
-            $result = $result instanceof GeneratedUri;
-        } catch (\Throwable $e) {
-            $result = '/none' === $params[0] ? $e instanceof UrlGenerationException : false;
-        }
-
-        \assert($result, new \RuntimeException(\sprintf('Route uri generation failed, for route name "%s" request path.', $value)));
-    }
-
-    /**
-     * @Groups(value={"cached_routes:static"})
-     * @BeforeMethods({"initOptimized"}, extend=true)
-     * @ParamProviders({"init"})
-     */
-    public function benchStaticCachedRoutes(array $params): void
-    {
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"cached_routes:dynamic"})
-     * @BeforeMethods({"initOptimized"}, extend=true)
-     * @ParamProviders({"init"})
-     */
-    public function benchDynamicCachedRoutes(array $params): void
-    {
-        $result = $this->router->match('GET', new Uri($params[0] . '/bar'));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"optimized:static"})
-     * @ParamProviders({"init"})
-     */
-    public function benchOptimizedStatic(array $params): void
-    {
-        $this->initOptimized();
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"optimized:dynamic"})
-     * @ParamProviders({"init"})
-     */
-    public function benchOptimizedDynamic(array $params): void
-    {
-        $this->initOptimized();
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"optimized"})
+     * @ParamProviders({"provideAllScenarios"})
      * @Revs(4)
      */
-    public function benchOptimized(): void
+    public function benchWithRouter(array $params): void
     {
-        $this->initOptimized();
-        $s = $d = 0;
+        $this->dispatchers['router'] = $this->createDispatcher();
 
-        for (;;) {
-            if ($s <= self::$maxRoutes) {
-                $path = '/route/' . $s;
-                $s++;
-            } elseif ($d <= self::$maxRoutes) {
-                $path = '/route' . $d . '/foo';
-                $d++;
-            } else {
-                break;
-            }
-
-            $result = $this->router->match('GET', new Uri($path));
-            assert($this->runScope($path, $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $path)));
+        foreach ($params as $param) {
+            $this->runScenario($param + ['dispatcher' => 'router']);
         }
     }
 
     /**
-     * @Groups(value={"unoptimized:static"})
-     * @ParamProviders({"init"})
-     */
-    public function benchUnoptimizedStatic(array $params): void
-    {
-        $this->initUnoptimized();
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"unoptimized:dynamic"})
-     * @ParamProviders({"init"})
-     */
-    public function benchUnoptimizedDynamic(array $params): void
-    {
-        $this->initUnoptimized();
-        $result = $this->router->match('GET', new Uri($params[0]));
-
-        assert($this->runScope($params[0], $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $params[0])));
-    }
-
-    /**
-     * @Groups(value={"unoptimized"})
+     * @ParamProviders({"provideAllScenarios"})
      * @Revs(4)
      */
-    public function benchUnoptimized(): void
+    public function benchWithCache(array $params): void
     {
-        $this->initUnoptimized();
-        $s = $d = 0;
+        $this->dispatchers['cached'] = $this->createDispatcher(self::CACHE_FILE);
 
-        for (;;) {
-            if ($s <= self::$maxRoutes) {
-                $path = '/route/' . $s;
-                $s++;
-            } elseif ($d <= self::$maxRoutes) {
-                $path = '/route' . $d . '/foo';
-                $d++;
-            } else {
-                break;
-            }
-
-            $result = $this->router->match('GET', new Uri($path));
-            assert($this->runScope($path, $result), new \RuntimeException(\sprintf('Route match failed, expected a route instance for "%s" request path.', $path)));
+        foreach ($params as $param) {
+            $this->runScenario($param + ['dispatcher' => 'cached']);
         }
     }
 
-    private function runScope(string $requestPath, ?Route $route): bool
+    abstract protected function createDispatcher(string $cache = null): RouteMatcherInterface;
+
+    /**
+     * @param array<string,array<int,mixed>|string> $params
+     */
+    private function runScenario(array $params): void
     {
-        if ($route instanceof Route) {
-            return 'GET' === $route->getMethods()[0];
-        } elseif ('/none' === $requestPath) {
-            return null === $route;
+        try {
+            $dispatcher = $this->dispatchers[$params['dispatcher']];
+            $result = $params['result'] === $dispatcher->match($params['method'], new Uri($params['route']));
+        } catch (MethodNotAllowedException $e) {
+            $result = $params['result'] === $e::class;
         }
 
-        return false;
+        \assert($result, new \RuntimeException(
+            \sprintf(
+                'Benchmark "%s: %s" failed with method "%s"',
+                $params['dispatcher'],
+                $params['route'],
+                $params['method']
+            )
+        ));
     }
 }
