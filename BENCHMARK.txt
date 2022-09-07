@@ -1,0 +1,273 @@
++--------------+------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| provider     | key              | value                                                                                                                                                                                                                                                                                                                                                                                                                               |
++--------------+------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| uname        | os               | Linux                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| uname        | host             | divineniiquaye-flightrouting-xfj1838tu2g                                                                                                                                                                                                                                                                                                                                                                                                 |
+| uname        | release          | 5.15.0-47-generic                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| uname        | version          | #51-Ubuntu SMP Thu Aug 11 07:51:15 UTC 2022                                                                                                                                                                                                                                                                                                                                                                                         |
+| uname        | machine          | x86_64                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| php          | xdebug           | false                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| php          | version          | 8.1.9                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| php          | ini              | /etc/php/8.1/cli/php.ini                                                                                                                                                                                                                                                                                                                                                                                                            |
+| php          | extensions       | Core, date, libxml, openssl, pcre, zlib, filter, hash, json, pcntl, Reflection, SPL, session, standard, sodium, mysqlnd, PDO, xml, bcmath, calendar, ctype, curl, dom, mbstring, FFI, fileinfo, ftp, gd, gettext, iconv, intl, exif, mysqli, pdo_mysql, pdo_pgsql, pdo_sqlite, pgsql, Phar, posix, readline, shmop, SimpleXML, sockets, sqlite3, sysvmsg, sysvsem, sysvshm, tokenizer, xmlreader, xmlwriter, xsl, zip, Zend OPcache |
+| opcache      | extension_loaded | true                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| opcache      | enabled          | true                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| unix-sysload | l1               | 1.14                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| unix-sysload | l5               | 3.73                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| unix-sysload | l15              | 4.48                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| sampler      | nothing          | 0.0090599060058594                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| sampler      | md5              | 0.18787384033203                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| sampler      | file_rw          | 0.51593780517578                                                                                                                                                                                                                                                                                                                                                                                                                    |
++--------------+------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+PerformanceBench
+================
+
+Average iteration times by variant
+
+3.0ms     │                                                                          █  █
+2.6ms     │                                                                         ▁█ ▁█
+2.2ms     │                                                                         ██ ██
+1.9ms     │                                                                         ██ ██
+1.5ms     │                                                                         ██ ██  █
+1.1ms     │                                                        ▁                ██ ██ ▇█
+748.8μs   │                                                        █     ▄          ██ ██ ██
+374.4μs   │ ▄▆ ▁▁ ▁▆ ▁▁ ▁▁ ▁▁ ▄▆ ▁▁ ▄▆ ▁▁ ▁▁ ▁▁ ▁▁ ▁▁ ▄▆ ▁▁ ▂▃ ▁▁ ██ ▁▁ ██ ▁▁ ▂▃ ▁▁ ██ ██ ██ ▁▅ ▁▅ ▁▄
+          └───────────────────────────────────────────────────────────────────────────────────────────
+            1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0
+
+[█ <current>] [█ v1.6.4]
+
+1: benchStaticRoutes-n᠁ 2: benchStaticRoutes-c᠁ 3: benchStaticRoutes-n᠁ 4: benchStaticRoutes-c᠁
+5: benchStaticRoutes-n᠁ 6: benchStaticRoutes-c᠁ 7: benchStaticRoutes-n᠁ 8: benchStaticRoutes-c᠁
+9: benchDynamicRoutes-᠁ 10: benchDynamicRoutes-᠁ 11: benchDynamicRoutes-᠁ 12: benchDynamicRoutes-᠁
+13: benchDynamicRoutes-᠁ 14: benchDynamicRoutes-᠁ 15: benchDynamicRoutes-᠁ 16: benchDynamicRoutes-᠁
+17: benchOtherRoutes-no᠁ 18: benchOtherRoutes-ca᠁ 19: benchAll-not_cached᠁ 20: benchAll-cached,sta᠁
+21: benchAll-not_cached᠁ 22: benchAll-cached,dyn᠁ 23: benchAll-not_cached᠁ 24: benchAll-cached,oth᠁
+25: benchWithRouter-sta᠁ 26: benchWithRouter-dyn᠁ 27: benchWithRouter-oth᠁ 28: benchWithCache-stat᠁
+29: benchWithCache-dyna᠁ 30: benchWithCache-othe᠁
+
+Memory by variant
+
+4.1mb     │     █     █     █     █     █     █     █     █     █     █     █     █           █  █  █
+3.6mb     │     █     █     █     █     █     █     █     █     █     █     █     █           █  █  █
+3.1mb     │    ▄█    ▄█    ▄█    ▄█    ▄█    ▄█    ▄█    ▄█    ▄█    ▄█    ▅█    ▄█          ▄█ ▄█ ▄█
+2.6mb     │    ██    ██    ██    ██    ██    ██    ██    ██    ██    ██    ██    ██          ██ ██ ██
+2.0mb     │ ▄▄ ██ ▁▅ ██ ▅▅ ██ ▅▆ ██ ▄▄ ██  ▁ ██ ▄▄ ██ ▅▆ ██  ▁ ██ ▅▆ ██ ▅▆ ██  ▁ ██ ▇▆ ▇▆  ▁ ██ ██ ██
+1.5mb     │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ▅█ ██ ██ ██ ██ ██ ▅█ ██ ██ ██ ▅█ ██ ██ ██
+1.0mb     │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+510.1kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+          └───────────────────────────────────────────────────────────────────────────────────────────
+            1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0
+
+[█ <current>] [█ v1.6.4]
+
+1: benchStaticRoutes-n᠁ 2: benchStaticRoutes-c᠁ 3: benchStaticRoutes-n᠁ 4: benchStaticRoutes-c᠁
+5: benchStaticRoutes-n᠁ 6: benchStaticRoutes-c᠁ 7: benchStaticRoutes-n᠁ 8: benchStaticRoutes-c᠁
+9: benchDynamicRoutes-᠁ 10: benchDynamicRoutes-᠁ 11: benchDynamicRoutes-᠁ 12: benchDynamicRoutes-᠁
+13: benchDynamicRoutes-᠁ 14: benchDynamicRoutes-᠁ 15: benchDynamicRoutes-᠁ 16: benchDynamicRoutes-᠁
+17: benchOtherRoutes-no᠁ 18: benchOtherRoutes-ca᠁ 19: benchAll-not_cached᠁ 20: benchAll-cached,sta᠁
+21: benchAll-not_cached᠁ 22: benchAll-cached,dyn᠁ 23: benchAll-not_cached᠁ 24: benchAll-cached,oth᠁
+25: benchWithRouter-sta᠁ 26: benchWithRouter-dyn᠁ 27: benchWithRouter-oth᠁ 28: benchWithCache-stat᠁
+29: benchWithCache-dyna᠁ 30: benchWithCache-othe᠁
+
+<current>
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+| subject                                                         | memory  | mode      | rstdev | stdev    |
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+| benchStaticRoutes (not_cached,first)                            | 1.747mb | 176.042μs | ±0.82% | 1.448μs  |
+| benchStaticRoutes (cached,first)                                | 2.796mb | 3.671μs   | ±0.72% | 0.026μs  |
+| benchStaticRoutes (not_cached,middle)                           | 1.544mb | 1.531μs   | ±1.80% | 0.028μs  |
+| benchStaticRoutes (cached,middle)                               | 2.797mb | 1.582μs   | ±1.90% | 0.030μs  |
+| benchStaticRoutes (not_cached,last)                             | 1.803mb | 1.244μs   | ±3.32% | 0.042μs  |
+| benchStaticRoutes (cached,last)                                 | 2.797mb | 1.299μs   | ±3.00% | 0.038μs  |
+| benchStaticRoutes (not_cached,invalid-method)                   | 1.839mb | 176.355μs | ±0.91% | 1.604μs  |
+| benchStaticRoutes (cached,invalid-method)                       | 2.796mb | 3.834μs   | ±1.63% | 0.062μs  |
+| benchDynamicRoutes (not_cached,first)                           | 1.748mb | 175.468μs | ±0.69% | 1.210μs  |
+| benchDynamicRoutes (cached,first)                               | 2.797mb | 6.356μs   | ±1.22% | 0.077μs  |
+| benchDynamicRoutes (not_cached,middle)                          | 1.518mb | 1.606μs   | ±2.02% | 0.033μs  |
+| benchDynamicRoutes (cached,middle)                              | 2.798mb | 1.609μs   | ±0.63% | 0.010μs  |
+| benchDynamicRoutes (not_cached,last)                            | 1.748mb | 1.242μs   | ±2.60% | 0.033μs  |
+| benchDynamicRoutes (cached,last)                                | 2.797mb | 1.232μs   | ±1.25% | 0.015μs  |
+| benchDynamicRoutes (not_cached,invalid-method)                  | 1.822mb | 182.853μs | ±0.82% | 1.506μs  |
+| benchDynamicRoutes (cached,invalid-method)                      | 2.796mb | 9.756μs   | ±2.31% | 0.227μs  |
+| benchOtherRoutes (not_cached,non-existent)                      | 1.319mb | 59.182μs  | ±1.61% | 0.957μs  |
+| benchOtherRoutes (cached,non-existent)                          | 2.795mb | 1.765μs   | ±1.99% | 0.035μs  |
+| benchAll (not_cached,static(first,middle,last,invalid-method))  | 1.831mb | 359.099μs | ±0.40% | 1.443μs  |
+| benchAll (cached,static(first,middle,last,invalid-method))      | 2.802mb | 11.601μs  | ±2.19% | 0.256μs  |
+| benchAll (not_cached,dynamic(first,middle,last,invalid-method)) | 1.833mb | 370.265μs | ±0.22% | 0.807μs  |
+| benchAll (cached,dynamic(first,middle,last,invalid-method))     | 2.806mb | 23.227μs  | ±1.82% | 0.420μs  |
+| benchAll (not_cached,others(non-existent,...))                  | 1.319mb | 59.193μs  | ±1.62% | 0.964μs  |
+| benchAll (cached,others(non-existent,...))                      | 2.796mb | 2.210μs   | ±2.01% | 0.045μs  |
+| benchWithRouter (static(first,middle,last,invalid-method))      | 1.925mb | 2.246ms   | ±0.50% | 11.237μs |
+| benchWithRouter (dynamic(first,middle,last,invalid-method))     | 1.928mb | 2.271ms   | ±2.02% | 46.229μs |
+| benchWithRouter (others(non-existent,...))                      | 1.318mb | 1.034ms   | ±1.63% | 17.009μs |
+| benchWithCache (static(first,middle,last,invalid-method))       | 2.801mb | 17.523μs  | ±2.82% | 0.485μs  |
+| benchWithCache (dynamic(first,middle,last,invalid-method))      | 2.804mb | 41.193μs  | ±2.93% | 1.229μs  |
+| benchWithCache (others(non-existent,...))                       | 2.795mb | 4.500μs   | ±2.25% | 0.100μs  |
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+
+v1.6.4
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+| subject                                                         | memory  | mode      | rstdev | stdev    |
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+| benchStaticRoutes (not_cached,first)                            | 1.782mb | 249.409μs | ±1.76% | 4.417μs  |
+| benchStaticRoutes (cached,first)                                | 4.077mb | 1.862μs   | ±2.11% | 0.040μs  |
+| benchStaticRoutes (not_cached,middle)                           | 1.839mb | 254.122μs | ±1.42% | 3.628μs  |
+| benchStaticRoutes (cached,middle)                               | 4.077mb | 5.579μs   | ±2.29% | 0.127μs  |
+| benchStaticRoutes (not_cached,last)                             | 1.839mb | 1.378μs   | ±1.16% | 0.016μs  |
+| benchStaticRoutes (cached,last)                                 | 4.077mb | 1.340μs   | ±2.54% | 0.034μs  |
+| benchStaticRoutes (not_cached,invalid-method)                   | 1.873mb | 253.452μs | ±1.62% | 4.153μs  |
+| benchStaticRoutes (cached,invalid-method)                       | 4.077mb | 4.039μs   | ±0.70% | 0.028μs  |
+| benchDynamicRoutes (not_cached,first)                           | 1.782mb | 251.788μs | ±2.17% | 5.553μs  |
+| benchDynamicRoutes (cached,first)                               | 4.077mb | 5.991μs   | ±2.52% | 0.149μs  |
+| benchDynamicRoutes (not_cached,middle)                          | 1.591mb | 1.722μs   | ±2.04% | 0.035μs  |
+| benchDynamicRoutes (cached,middle)                              | 4.077mb | 1.685μs   | ±1.98% | 0.034μs  |
+| benchDynamicRoutes (not_cached,last)                            | 1.782mb | 1.376μs   | ±1.27% | 0.017μs  |
+| benchDynamicRoutes (cached,last)                                | 4.077mb | 1.387μs   | ±2.21% | 0.030μs  |
+| benchDynamicRoutes (not_cached,invalid-method)                  | 1.856mb | 263.274μs | ±0.82% | 2.153μs  |
+| benchDynamicRoutes (cached,invalid-method)                      | 4.077mb | 9.764μs   | ±2.87% | 0.279μs  |
+| benchOtherRoutes (not_cached,non-existent)                      | 1.586mb | 106.256μs | ±0.90% | 0.957μs  |
+| benchOtherRoutes (cached,non-existent)                          | 4.077mb | 1.788μs   | ±1.84% | 0.033μs  |
+| benchAll (not_cached,static(first,middle,last,invalid-method))  | 1.861mb | 766.223μs | ±0.79% | 6.089μs  |
+| benchAll (cached,static(first,middle,last,invalid-method))      | 4.080mb | 15.364μs  | ±2.68% | 0.419μs  |
+| benchAll (not_cached,dynamic(first,middle,last,invalid-method)) | 1.860mb | 533.440μs | ±2.05% | 10.821μs |
+| benchAll (cached,dynamic(first,middle,last,invalid-method))     | 4.081mb | 23.307μs  | ±1.85% | 0.435μs  |
+| benchAll (not_cached,others(non-existent,...))                  | 1.587mb | 107.916μs | ±2.40% | 2.580μs  |
+| benchAll (cached,others(non-existent,...))                      | 4.078mb | 2.224μs   | ±1.05% | 0.023μs  |
+| benchWithRouter (static(first,middle,last,invalid-method))      | 1.859mb | 2.995ms   | ±2.24% | 67.618μs |
+| benchWithRouter (dynamic(first,middle,last,invalid-method))     | 1.858mb | 2.982ms   | ±1.80% | 53.662μs |
+| benchWithRouter (others(non-existent,...))                      | 1.585mb | 1.493ms   | ±3.00% | 44.450μs |
+| benchWithCache (static(first,middle,last,invalid-method))       | 4.078mb | 198.636μs | ±2.22% | 4.424μs  |
+| benchWithCache (dynamic(first,middle,last,invalid-method))      | 4.078mb | 228.725μs | ±2.31% | 5.193μs  |
+| benchWithCache (others(non-existent,...))                       | 4.076mb | 175.763μs | ±0.76% | 1.336μs  |
++-----------------------------------------------------------------+---------+-----------+--------+----------+
+
+RealExampleBench
+================
+
+Average iteration times by variant
+
+249.7μs   │                                                                                   █
+218.5μs   │                                                                                ▅ ▁█  ▆
+187.3μs   │                                                                                █ ██  █
+156.1μs   │                                                                               ██ ██ ▆█
+124.8μs   │                                                                               ██ ██ ██
+93.6μs    │                                                                               ██ ██ ██     ▁
+62.4μs    │                                                                   ▃▅  ▇       ██ ██ ██    ▃█  ▃
+31.2μs    │ ▁▁ ▁▁ ▁▁ ▁▁ ▁▁ ▁▁ ▄▆ ▂▂ ▁▁ ▁▄ ▄▅ ▃▄ ▁▁ ▁▄ ▅▆ ▄▃ ▄▅ ▂▄ ▁▁ ▁▄ ▆▇ ▃▃ ██ ██ ▄▆ ▃█ ██ ██ ██ ▄▇ ██ ▅█
+          └─────────────────────────────────────────────────────────────────────────────────────────────────
+            1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2
+
+[█ <current>] [█ v1.6.4]
+
+1: benchStaticRoutes-n᠁ 2: benchStaticRoutes-c᠁ 3: benchStaticRoutes-n᠁ 4: benchStaticRoutes-c᠁
+5: benchStaticRoutes-n᠁ 6: benchStaticRoutes-c᠁ 7: benchStaticRoutes-n᠁ 8: benchStaticRoutes-c᠁
+9: benchDynamicRoutes-᠁ 10: benchDynamicRoutes-᠁ 11: benchDynamicRoutes-᠁ 12: benchDynamicRoutes-᠁
+13: benchDynamicRoutes-᠁ 14: benchDynamicRoutes-᠁ 15: benchDynamicRoutes-᠁ 16: benchDynamicRoutes-᠁
+17: benchOtherRoutes-no᠁ 18: benchOtherRoutes-ca᠁ 19: benchOtherRoutes-no᠁ 20: benchOtherRoutes-ca᠁
+21: benchAll-not_cached᠁ 22: benchAll-cached,sta᠁ 23: benchAll-not_cached᠁ 24: benchAll-cached,dyn᠁
+25: benchAll-not_cached᠁ 26: benchAll-cached,oth᠁ 27: benchWithRouter-sta᠁ 28: benchWithRouter-dyn᠁
+29: benchWithRouter-oth᠁ 30: benchWithCache-stat᠁ 31: benchWithCache-dyna᠁ 32: benchWithCache-othe᠁
+
+
+Memory by variant
+
+1.3mb     │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+1.2mb     │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+991.3kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+826.1kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+660.9kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+495.7kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+330.4kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+165.2kb   │ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██
+          └─────────────────────────────────────────────────────────────────────────────────────────────────
+            1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  6  7  8  9  0  1  2
+
+[█ <current>] [█ v1.6.4]
+
+1: benchStaticRoutes-n᠁ 2: benchStaticRoutes-c᠁ 3: benchStaticRoutes-n᠁ 4: benchStaticRoutes-c᠁
+5: benchStaticRoutes-n᠁ 6: benchStaticRoutes-c᠁ 7: benchStaticRoutes-n᠁ 8: benchStaticRoutes-c᠁
+9: benchDynamicRoutes-᠁ 10: benchDynamicRoutes-᠁ 11: benchDynamicRoutes-᠁ 12: benchDynamicRoutes-᠁
+13: benchDynamicRoutes-᠁ 14: benchDynamicRoutes-᠁ 15: benchDynamicRoutes-᠁ 16: benchDynamicRoutes-᠁
+17: benchOtherRoutes-no᠁ 18: benchOtherRoutes-ca᠁ 19: benchOtherRoutes-no᠁ 20: benchOtherRoutes-ca᠁
+21: benchAll-not_cached᠁ 22: benchAll-cached,sta᠁ 23: benchAll-not_cached᠁ 24: benchAll-cached,dyn᠁
+25: benchAll-not_cached᠁ 26: benchAll-cached,oth᠁ 27: benchWithRouter-sta᠁ 28: benchWithRouter-dyn᠁
+29: benchWithRouter-oth᠁ 30: benchWithCache-stat᠁ 31: benchWithCache-dyna᠁ 32: benchWithCache-othe᠁
+
+
+<current>
++-----------------------------------------------------------------+---------+-----------+--------+---------+
+| subject                                                         | memory  | mode      | rstdev | stdev   |
++-----------------------------------------------------------------+---------+-----------+--------+---------+
+| benchStaticRoutes (not_cached,first)                            | 1.319mb | 1.183μs   | ±2.94% | 0.034μs |
+| benchStaticRoutes (cached,first)                                | 1.319mb | 1.137μs   | ±2.04% | 0.023μs |
+| benchStaticRoutes (not_cached,middle)                           | 1.319mb | 1.253μs   | ±2.59% | 0.033μs |
+| benchStaticRoutes (cached,middle)                               | 1.319mb | 1.247μs   | ±1.19% | 0.015μs |
+| benchStaticRoutes (not_cached,last)                             | 1.319mb | 1.251μs   | ±1.00% | 0.013μs |
+| benchStaticRoutes (cached,last)                                 | 1.319mb | 1.280μs   | ±0.94% | 0.012μs |
+| benchStaticRoutes (not_cached,invalid-method)                   | 1.319mb | 14.596μs  | ±1.87% | 0.273μs |
+| benchStaticRoutes (cached,invalid-method)                       | 1.319mb | 3.946μs   | ±2.75% | 0.109μs |
+| benchDynamicRoutes (not_cached,first)                           | 1.319mb | 1.310μs   | ±1.04% | 0.014μs |
+| benchDynamicRoutes (cached,first)                               | 1.319mb | 1.290μs   | ±2.43% | 0.032μs |
+| benchDynamicRoutes (not_cached,middle)                          | 1.320mb | 13.850μs  | ±2.30% | 0.322μs |
+| benchDynamicRoutes (cached,middle)                              | 1.320mb | 8.570μs   | ±3.24% | 0.271μs |
+| benchDynamicRoutes (not_cached,last)                            | 1.319mb | 1.323μs   | ±2.24% | 0.030μs |
+| benchDynamicRoutes (cached,last)                                | 1.319mb | 1.323μs   | ±2.08% | 0.028μs |
+| benchDynamicRoutes (not_cached,invalid-method)                  | 1.319mb | 18.207μs  | ±2.44% | 0.450μs |
+| benchDynamicRoutes (cached,invalid-method)                      | 1.319mb | 12.332μs  | ±1.29% | 0.159μs |
+| benchOtherRoutes (not_cached,non-existent)                      | 1.319mb | 12.556μs  | ±2.68% | 0.333μs |
+| benchOtherRoutes (cached,non-existent)                          | 1.319mb | 6.291μs   | ±2.17% | 0.139μs |
+| benchOtherRoutes (not_cached,longest-route)                     | 1.320mb | 1.289μs   | ±1.85% | 0.024μs |
+| benchOtherRoutes (cached,longest-route)                         | 1.320mb | 1.277μs   | ±1.53% | 0.020μs |
+| benchAll (not_cached,static(first,middle,last,invalid-method))  | 1.320mb | 22.967μs  | ±1.83% | 0.424μs |
+| benchAll (cached,static(first,middle,last,invalid-method))      | 1.320mb | 8.591μs   | ±1.38% | 0.120μs |
+| benchAll (not_cached,dynamic(first,middle,last,invalid-method)) | 1.322mb | 40.733μs  | ±1.58% | 0.647μs |
+| benchAll (cached,dynamic(first,middle,last,invalid-method))     | 1.322mb | 29.327μs  | ±1.95% | 0.565μs |
+| benchAll (not_cached,others(non-existent,...))                  | 1.320mb | 14.999μs  | ±2.28% | 0.347μs |
+| benchAll (cached,others(non-existent,...))                      | 1.320mb | 9.844μs   | ±2.43% | 0.243μs |
+| benchWithRouter (static(first,middle,last,invalid-method))      | 1.320mb | 153.451μs | ±2.26% | 3.460μs |
+| benchWithRouter (dynamic(first,middle,last,invalid-method))     | 1.321mb | 190.421μs | ±2.11% | 4.042μs |
+| benchWithRouter (others(non-existent,...))                      | 1.319mb | 146.774μs | ±2.00% | 2.961μs |
+| benchWithCache (static(first,middle,last,invalid-method))       | 1.320mb | 14.903μs  | ±1.25% | 0.187μs |
+| benchWithCache (dynamic(first,middle,last,invalid-method))      | 1.321mb | 40.788μs  | ±1.49% | 0.604μs |
+| benchWithCache (others(non-existent,...))                       | 1.319mb | 19.347μs  | ±0.97% | 0.187μs |
++-----------------------------------------------------------------+---------+-----------+--------+---------+
+
+v1.6.4
++-----------------------------------------------------------------+---------+-----------+--------+---------+
+| subject                                                         | memory  | mode      | rstdev | stdev   |
++-----------------------------------------------------------------+---------+-----------+--------+---------+
+| benchStaticRoutes (not_cached,first)                            | 1.321mb | 1.272μs   | ±2.25% | 0.029μs |
+| benchStaticRoutes (cached,first)                                | 1.321mb | 1.275μs   | ±1.04% | 0.013μs |
+| benchStaticRoutes (not_cached,middle)                           | 1.321mb | 1.368μs   | ±2.31% | 0.032μs |
+| benchStaticRoutes (cached,middle)                               | 1.321mb | 1.329μs   | ±0.77% | 0.010μs |
+| benchStaticRoutes (not_cached,last)                             | 1.321mb | 1.370μs   | ±0.99% | 0.014μs |
+| benchStaticRoutes (cached,last)                                 | 1.321mb | 1.364μs   | ±1.57% | 0.021μs |
+| benchStaticRoutes (not_cached,invalid-method)                   | 1.321mb | 21.526μs  | ±3.44% | 0.758μs |
+| benchStaticRoutes (cached,invalid-method)                       | 1.321mb | 4.097μs   | ±2.29% | 0.094μs |
+| benchDynamicRoutes (not_cached,first)                           | 1.321mb | 1.406μs   | ±1.52% | 0.021μs |
+| benchDynamicRoutes (cached,first)                               | 1.321mb | 12.281μs  | ±2.88% | 0.355μs |
+| benchDynamicRoutes (not_cached,middle)                          | 1.321mb | 19.006μs  | ±2.73% | 0.526μs |
+| benchDynamicRoutes (cached,middle)                              | 1.321mb | 14.251μs  | ±2.06% | 0.290μs |
+| benchDynamicRoutes (not_cached,last)                            | 1.321mb | 1.403μs   | ±2.78% | 0.038μs |
+| benchDynamicRoutes (cached,last)                                | 1.321mb | 11.994μs  | ±2.07% | 0.251μs |
+| benchDynamicRoutes (not_cached,invalid-method)                  | 1.321mb | 22.565μs  | ±2.80% | 0.628μs |
+| benchDynamicRoutes (cached,invalid-method)                      | 1.321mb | 11.617μs  | ±2.78% | 0.330μs |
+| benchOtherRoutes (not_cached,non-existent)                      | 1.321mb | 16.581μs  | ±2.43% | 0.404μs |
+| benchOtherRoutes (cached,non-existent)                          | 1.321mb | 11.705μs  | ±2.48% | 0.286μs |
+| benchOtherRoutes (not_cached,longest-route)                     | 1.321mb | 1.520μs   | ±1.49% | 0.022μs |
+| benchOtherRoutes (cached,longest-route)                         | 1.321mb | 12.256μs  | ±2.88% | 0.349μs |
+| benchAll (not_cached,static(first,middle,last,invalid-method))  | 1.321mb | 27.065μs  | ±2.35% | 0.644μs |
+| benchAll (cached,static(first,middle,last,invalid-method))      | 1.321mb | 9.584μs   | ±2.08% | 0.197μs |
+| benchAll (not_cached,dynamic(first,middle,last,invalid-method)) | 1.322mb | 48.068μs  | ±2.70% | 1.320μs |
+| benchAll (cached,dynamic(first,middle,last,invalid-method))     | 1.322mb | 58.022μs  | ±2.55% | 1.450μs |
+| benchAll (not_cached,others(non-existent,...))                  | 1.321mb | 20.408μs  | ±2.42% | 0.499μs |
+| benchAll (cached,others(non-existent,...))                      | 1.321mb | 27.461μs  | ±3.79% | 1.017μs |
+| benchWithRouter (static(first,middle,last,invalid-method))      | 1.320mb | 206.080μs | ±1.30% | 2.697μs |
+| benchWithRouter (dynamic(first,middle,last,invalid-method))     | 1.321mb | 249.682μs | ±2.22% | 5.616μs |
+| benchWithRouter (others(non-existent,...))                      | 1.320mb | 207.218μs | ±1.84% | 3.829μs |
+| benchWithCache (static(first,middle,last,invalid-method))       | 1.320mb | 23.553μs  | ±1.72% | 0.406μs |
+| benchWithCache (dynamic(first,middle,last,invalid-method))      | 1.321mb | 65.983μs  | ±2.85% | 1.917μs |
+| benchWithCache (others(non-existent,...))                       | 1.320mb | 39.758μs  | ±0.31% | 0.122μs |
++-----------------------------------------------------------------+---------+-----------+--------+---------+
