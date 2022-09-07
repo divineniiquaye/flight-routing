@@ -29,6 +29,7 @@
         "doctrine/annotations": "^1.11",
         "nyholm/psr7": "^1.4",
         "nyholm/psr7-server": "^1.0",
+        "pestphp/pest": "^1.21",
         "phpstan/phpstan": "^1.0",
         "phpunit/phpunit": "^9.5",
         "spiral/attributes": "^2.9",
@@ -49,11 +50,6 @@
             "Flight\\Routing\\": "src/"
         }
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Flight\\Routing\\Tests\\": "tests/"
-        }
-    },
     "extra": {
         "branch-alias": {
             "dev-master": "2.x-dev"
@@ -63,7 +59,7 @@
         "phpcs": "phpcs -q",
         "phpstan": "phpstan analyse",
         "psalm": "psalm --show-info=true",
-        "phpunit": "phpunit --no-coverage",
+        "pest": "pest --no-coverage",
         "test": [
             "@phpcs",
             "@phpstan",
@@ -73,7 +69,8 @@
     },
     "config": {
         "allow-plugins": {
-            "composer/package-versions-deprecated": false
+            "composer/package-versions-deprecated": false,
+            "pestphp/pest-plugin": true
         }
     },
     "minimum-stability": "dev",
