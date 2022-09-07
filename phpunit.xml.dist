@@ -3,17 +3,9 @@
          xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          backupGlobals="false"
-         backupStaticAttributes="false"
-         beStrictAboutCoversAnnotation="true"
-         beStrictAboutOutputDuringTests="true"
-         beStrictAboutTestsThatDoNotTestAnything="false"
-         beStrictAboutTodoAnnotatedTests="true"
          colors="true"
-         verbose="true"
-         executionOrder="default"
-         processIsolation="false"
-         stopOnFailure="false"
-         stopOnError="false"
+         failOnRisky="true"
+         failOnWarning="true"
 >
     <testsuites>
         <testsuite name="Routes, RESTFull, URI generation">
