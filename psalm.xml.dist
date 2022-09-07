@@ -3,7 +3,7 @@
        xmlns="https://getpsalm.org/schema/config"
        name="Psalm for Flight Routing"
        useDocblockTypes="true"
-       errorLevel="4"
+       errorLevel="7"
        strictBinaryOperands="false"
        rememberPropertyAssignmentsAfterCall="true"
        checkForThrowsDocblock="false"
@@ -15,17 +15,11 @@
 >
     <projectFiles>
         <directory name="src"/>
-        <ignoreFiles>
-            <file name="src/Handlers/RouteInvoker.php" />
-            <directory name="vendor"/>
-        </ignoreFiles>
     </projectFiles>
 
     <issueHandlers>
         <UndefinedMethod>
             <errorLevel type="suppress">
-                <referencedMethod name="Flight\Routing\Generator\RegexGenerator::offsetGet" />
-                <referencedMethod name="Flight\Routing\RouteCollection::offsetGet" />
             </errorLevel>
         </UndefinedMethod>
     </issueHandlers>
