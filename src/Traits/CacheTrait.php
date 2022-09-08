@@ -75,6 +75,8 @@ trait CacheTrait
                 if (\method_exists($value, '__set_state')) {
                     return $value::class.'::__set_state('.self::export(
                         \array_merge(...\array_map(function (\ReflectionProperty $v) use ($value): array {
+                            $v->setAccessible(true);
+
                             return [$v->getName() => $v->getValue($value)];
                         }, (new \ReflectionObject($value))->getProperties()))
                     );
