@@ -131,7 +131,7 @@ test('if route handler does return a csv valid response', function (): void {
         CSV;
     }]);
     t\assertInstanceOf(ResponseInterface::class, $res = $handler->handle($req));
-    t\assertSame('text/csv', $res->getHeaderLine('Content-Type'));
+    t\assertTrue(\in_array($res->getHeaderLine('Content-Type'), ['text/csv', 'application/csv'], true));
     t\assertSame(200, $res->getStatusCode());
 });
 
