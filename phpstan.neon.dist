@@ -5,14 +5,8 @@ parameters:
     checkMissingIterableValueType: false
     checkGenericClassInNonGenericObjectType: false
 
-    excludePaths:
-        - %currentWorkingDirectory%/src/Handlers/RouteInvoker.php
-
     ignoreErrors:
         - "#^Unsafe usage of new static\\(\\)|Expression on left side of \\?\\? is not nullable.$#"
-        -
-            message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:group\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection.$#"
-            path: src/RouteCollection.php
         -
             message: "#^Method Flight\\\\Routing\\\\RouteCollection\\:\\:end\\(\\) should return \\$this\\(Flight\\\\Routing\\\\RouteCollection\\) but returns Flight\\\\Routing\\\\RouteCollection.$#"
             path: src/Traits/PrototypeTrait.php

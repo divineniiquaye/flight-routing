@@ -23,7 +23,6 @@ namespace Flight\Routing;
  * This class provides all(*) methods for creating path+HTTP method-based routes and
  * injecting them into the router:
  *
- * - head
  * - get
  * - post
  * - put
@@ -33,108 +32,118 @@ namespace Flight\Routing;
  * - any
  * - resource
  *
- * A general `addRoute()` method allows specifying multiple request methods and/or
+ * A general `add()` method allows specifying multiple request methods and/or
  * arbitrary request methods when creating a path-based route.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class RouteCollection
+class RouteCollection implements \Countable, \ArrayAccess
 {
     use Traits\PrototypeTrait;
 
-    private ?string $namedPrefix;
-    private ?Route $route = null;
-    private ?self $parent = null;
-    private bool $sortRoutes, $locked = false;
-
-    /** @var array<int,Route> */
-    private array $routes = [];
-
-    /** @var array<int,self> */
-    private array $groups = [];
+    /**
+     * A Pattern to Locates appropriate route by name, support dynamic route allocation using following pattern:
+     * Pattern route:   `pattern/*<controller@action>`
+     * Default route: `*<controller@action>`
+     * Only action:   `pattern/*<action>`.
+     */
+    public const RCA_PATTERN = '/^(?:([a-z]+)\:)?(?:\/{2}([^\/]+))?([^*]*)(?:\*\<(?:([\w+\\\\]+)\@)?(\w+)\>)?$/u';
 
     /**
-     * @param string $namedPrefix The unqiue name for this group
+     * A Pattern to match the route's priority.
+     *
+     * If route path matches, 1 is expected return else 0 should be return as priority index.
      */
-    public function __construct(string $namedPrefix = null, bool $sortRoutes = false)
-    {
-        $this->namedPrefix = $namedPrefix;
-        $this->sortRoutes = $sortRoutes;
-    }
+    protected const PRIORITY_REGEX = '/([^<[{:]+\b)/A';
+
+    protected ?self $parent = null;
+    protected ?string $namedPrefix = null;
 
     /**
-     * Nested collection and routes should be cloned.
+     * @internal
+     *
+     * @param array<string,mixed> $properties
      */
-    public function __clone()
+    public static function __set_state(array $properties): static
     {
-        $this->includeRoute(); // Incase of missing end method call on route.
+        $collection = new static();
 
-        foreach ($this->routes as $offset => $route) {
-            $this->routes[$offset] = clone $route;
+        foreach ($properties as $property => $value) {
+            $collection->{$property} = $value;
         }
+
+        return $collection;
     }
 
     /**
-     * Inject Groups and sort routes in a natural order.
+     * Sort all routes beginning with static routes.
      */
-    final public function buildRoutes(): void
+    public function sort(): void
     {
-        $this->includeRoute(); // Incase of missing end method call on route.
-        $routes = $this->routes;
-
         if (!empty($this->groups)) {
-            $this->injectGroups('', $routes);
+            $this->injectGroups('', $this->routes, $this->defaultIndex);
         }
 
-        if ($this->sortRoutes) {
-            \usort($routes, static function (Route $a, Route $b): int {
-                return !$a->getStaticPrefix() <=> !$b->getStaticPrefix() ?: \strnatcmp($a->getPath(), $b->getPath());
-            });
-        }
+        $this->sorted || $this->sorted = \usort($this->routes, static function (array $a, array $b): int {
+            $ap = $a['prefix'] ?? null;
+            $bp = $b['prefix'] ?? null;
 
-        $this->routes = $routes;
+            return !($ap && $ap === $a['path']) <=> !($bp && $bp === $b['path']) ?: \strnatcmp($a['path'], $b['path']);
+        });
     }
 
     /**
      * Get all the routes.
      *
-     * @return array<int,Route>
+     * @return array<int,array<string,mixed>>
      */
     public function getRoutes(): array
     {
-        if (!$this->locked) {
-            $this->buildRoutes();
-            $this->locked = true; // Lock grouping and prototyping
+        if (!empty($this->groups)) {
+            $this->injectGroups('', $this->routes, $this->defaultIndex);
         }
 
         return $this->routes;
     }
 
     /**
-     * Get the current route in stack.
+     * Get the total number of routes.
      */
-    public function getRoute(): ?Route
+    public function count(): int
     {
-        return $this->route;
+        if (!empty($this->groups)) {
+            $this->injectGroups('', $this->routes, $this->defaultIndex);
+        }
+
+        return $this->defaultIndex + 1;
     }
 
     /**
-     * Add route to the collection.
-     *
-     * @param bool $inject Whether to call injectRoute() on route
-     *
-     * @return $this
+     * Checks if route by its index exists.
      */
-    public function add(Route $route, bool $inject = true)
+    public function offsetExists(mixed $offset): bool
     {
-        if ($this->locked) {
-            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
-        }
+        return isset($this->routes[$offset]);
+    }
 
-        $this->includeRoute(); // Incase of missing end method call on route.
-        $this->route = $inject ? $this->injectRoute($route) : $route;
+    /**
+     * Get the route by its index.
+     *
+     * @return null|array<string,mixed>
+     */
+    public function offsetGet(mixed $offset): ?array
+    {
+        return $this->routes[$offset] ?? null;
+    }
 
-        return $this;
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->routes[$offset]);
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        throw new \BadMethodCallException('The operator "[]" for new route, use the add() method instead.');
     }
 
     /**
@@ -148,32 +157,28 @@ class RouteCollection
      *
      * @return $this
      */
-    public function addRoute(string $pattern, array $methods, $handler = null)
+    public function add(string $pattern, array $methods = Router::DEFAULT_METHODS, mixed $handler = null): self
     {
-        return $this->add(new Route($pattern, $methods, $handler));
-    }
+        $this->asRoute = true;
+        $this->routes[++$this->defaultIndex] = ['handler' => $handler];
+        $this->path($pattern);
 
-    /**
-     * Add routes to the collection.
-     *
-     * @param array<int,Route> $routes
-     * @param bool             $inject Whether to call injectRoute() on each route
-     *
-     * @throws \TypeError        if $routes doesn't contain a route instance
-     * @throws \RuntimeException if locked
-     *
-     * @return $this
-     */
-    public function routes(array $routes, bool $inject = true)
-    {
-        if ($this->locked) {
-            throw new \RuntimeException('Cannot add a route to a frozen routes collection.');
+        foreach ($this->prototypes as $route => $arguments) {
+            if ('prefix' === $route) {
+                $this->prefix(\implode('', $arguments));
+            } elseif ('domain' === $route) {
+                $this->domain(...$arguments);
+            } elseif ('namespace' === $route) {
+                foreach ($arguments as $namespace) {
+                    $this->namespace($namespace);
+                }
+            } else {
+                $this->routes[$this->defaultIndex][$route] = $arguments;
+            }
         }
 
-        $this->includeRoute(); // Incase of missing end method call on route.
-
-        foreach ($routes as $route) {
-            $this->routes[] = $inject ? $this->injectRoute($route) : $route;
+        foreach ($methods as $method) {
+            $this->routes[$this->defaultIndex]['methods'][\strtoupper($method)] = true;
         }
 
         return $this;
@@ -182,61 +187,51 @@ class RouteCollection
     /**
      * Mounts controllers under the given route prefix.
      *
-     * @param string|null                   $name        The route group prefixed name
-     * @param callable|RouteCollection|null $controllers A RouteCollection instance or a callable for defining routes
-     *
-     * @throws \TypeError        if $controllers not instance of route collection's class
-     * @throws \RuntimeException if locked
-     *
-     * @return $this
+     * @param null|string                   $name        The route group prefixed name
+     * @param null|callable|RouteCollection $collection A RouteCollection instance or a callable for defining routes
+     * @param bool $return If true returns a new collection instance else returns $this
      */
-    public function group(string $name = null, $controllers = null)
+    public function group(string $name = null, callable|self $collection = null, bool $return = false): self
     {
-        $this->includeRoute(); // Incase of missing end method call on route.
+        $this->asRoute = false;
 
-        if (\is_callable($controllers)) {
-            $controllers($routes = $this->injectGroup($name, new static($name)));
+        if (\is_callable($collection)) {
+            $collection($routes = $this->injectGroup($name, new static()), $return);
         }
+        $route = $routes ?? $this->injectGroup($name, $collection ?? new static(), $return);
+        $this->groups[] = $route;
 
-        return $this->groups[] = $routes ?? $this->injectGroup($name, $controllers ?? new static($name));
+        return $return ? $route : $this;
     }
 
     /**
      * Merge a collection into base.
      *
-     * @throws \RuntimeException if locked
+     * @return $this
      */
-    public function populate(self $collection, bool $asGroup = false): void
+    public function populate(self $collection, bool $asGroup = false)
     {
-        $this->includeRoute();
-
         if ($asGroup) {
             $this->groups[] = $this->injectGroup($collection->namedPrefix, $collection);
         } else {
-            $collection->includeRoute(); // Incase of missing end method call on route.
             $routes = $collection->routes;
+            $asRoute = $this->asRoute;
 
             if (!empty($collection->groups)) {
-                $collection->injectGroups($collection->namedPrefix ?? '', $routes);
+                $collection->injectGroups($collection->namedPrefix ?? '', $routes, $this->defaultIndex);
             }
 
             foreach ($routes as $route) {
-                $this->routes[] = $this->injectRoute($route);
+                $this->add($route['path'], [], $route['handler']);
+                $this->routes[$this->defaultIndex] = \array_merge_recursive(
+                    $this->routes[$this->defaultIndex],
+                    \array_diff_key($route, ['path' => null, 'handler' => null])
+                );
             }
+            $this->asRoute = $asRoute;
         }
-    }
 
-    /**
-     * Maps a HEAD request to a handler.
-     *
-     * @param string $pattern Matched route pattern
-     * @param mixed  $handler Handler that returns the response when matched
-     *
-     * @return $this
-     */
-    public function head(string $pattern, $handler = null)
-    {
-        return $this->addRoute($pattern, [Router::METHOD_HEAD], $handler);
+        return $this;
     }
 
     /**
@@ -247,9 +242,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function get(string $pattern, $handler = null)
+    public function get(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_GET, Router::METHOD_HEAD], $handler);
+        return $this->add($pattern, [Router::METHOD_GET, Router::METHOD_HEAD], $handler);
     }
 
     /**
@@ -260,9 +255,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function post(string $pattern, $handler = null)
+    public function post(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_POST], $handler);
+        return $this->add($pattern, [Router::METHOD_POST], $handler);
     }
 
     /**
@@ -273,9 +268,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function put(string $pattern, $handler = null)
+    public function put(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_PUT], $handler);
+        return $this->add($pattern, [Router::METHOD_PUT], $handler);
     }
 
     /**
@@ -286,9 +281,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function patch(string $pattern, $handler = null)
+    public function patch(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_PATCH], $handler);
+        return $this->add($pattern, [Router::METHOD_PATCH], $handler);
     }
 
     /**
@@ -299,9 +294,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function delete(string $pattern, $handler = null)
+    public function delete(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_DELETE], $handler);
+        return $this->add($pattern, [Router::METHOD_DELETE], $handler);
     }
 
     /**
@@ -312,9 +307,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function options(string $pattern, $handler = null)
+    public function options(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, [Router::METHOD_OPTIONS], $handler);
+        return $this->add($pattern, [Router::METHOD_OPTIONS], $handler);
     }
 
     /**
@@ -325,9 +320,9 @@ class RouteCollection
      *
      * @return $this
      */
-    public function any(string $pattern, $handler = null)
+    public function any(string $pattern, $handler = null): self
     {
-        return $this->addRoute($pattern, Router::HTTP_METHODS_STANDARD, $handler);
+        return $this->add($pattern, Router::HTTP_METHODS_STANDARD, $handler);
     }
 
     /**
@@ -342,66 +337,30 @@ class RouteCollection
      *
      * @return $this
      */
-    public function resource(string $pattern, $resource, string $action = 'action')
+    public function resource(string $pattern, string|object $resource, string $action = 'action'): self
     {
         return $this->any($pattern, new Handlers\ResourceHandler($resource, $action));
     }
 
-    /**
-     * @throws \RuntimeException if locked
-     */
-    protected function injectRoute(Route $route): Route
+    public function generateRouteName(string $prefix, array $route = null): string
     {
-        if (!empty($defaultsStack = $this->prototypes)) {
-            foreach ($defaultsStack as $routeMethod => $arguments) {
-                if ('prefix' === $routeMethod) {
-                    $route->prefix(\implode('', \array_merge(...$arguments)));
-                    continue;
-                }
+        $route = $route ?? $this->routes[$this->defaultIndex];
+        $routeName = \implode('_', \array_keys($route['methods'] ?? [])).'_'.$prefix.$route['path'] ?? '';
+        $routeName = \str_replace(['/', ':', '|', '-'], '_', $routeName);
+        $routeName = (string) \preg_replace('/[^a-z0-9A-Z_.]+/', '', $routeName);
 
-                foreach ($arguments as $parameters) {
-                    \call_user_func_array([$route, $routeMethod], $parameters);
-                }
-            }
-        }
-
-        return $route;
+        return (string) \preg_replace(['/\_+/', '/\.+/'], ['_', '.'], $routeName);
     }
 
-    /**
-     * Include route to stack if not done.
-     */
-    protected function includeRoute(): void
+    // 'next', 'key', 'valid', 'rewind'
+
+    protected function injectGroup(?string $prefix, self $controllers, bool $return = false): self
     {
-        if (null !== $this->route) {
-            $this->defaultIndex = -1;
+        $controllers->prototypes = \array_merge_recursive($this->prototypes, $controllers->prototypes);
 
-            $this->routes[] = $this->route; // Incase an end method is missing at the end of a route call.
-            $this->route = null;
+        if ($return) {
+            $controllers->parent = $this;
         }
-    }
-
-    /**
-     * @return self|$this
-     */
-    protected function injectGroup(?string $prefix, self $controllers)
-    {
-        if ($this->locked) {
-            throw new \RuntimeException('Cannot add a nested routes collection to a frozen routes collection.');
-        }
-
-        if ($controllers->sortRoutes) {
-            throw new \RuntimeException('Cannot sort routes in a nested collection.');
-        }
-
-        $controllers->includeRoute(); // Incase of missing end method call on route.
-
-        if (empty($controllers->routes)) {
-            $controllers->defaultIndex = 1;
-        }
-
-        $controllers->prototypes = \array_merge($this->prototypes, $controllers->prototypes);
-        $controllers->parent = $this;
 
         if (empty($controllers->namedPrefix)) {
             $controllers->namedPrefix = $prefix;
@@ -411,31 +370,31 @@ class RouteCollection
     }
 
     /**
-     * @param array<int,Route> $collection
+     * @param array<int,array<string,mixed>> $collection
      */
-    private function injectGroups(string $prefix, array &$collection): void
+    private function injectGroups(string $prefix, array &$collection, int &$count): void
     {
         $unnamedRoutes = [];
 
         foreach ($this->groups as $group) {
-            $group->includeRoute(); // Incase of missing end method call on route.
-
             foreach ($group->routes as $route) {
-                if (empty($name = $route->getName())) {
-                    $name = $route->generateRouteName('');
+                if (empty($name = $route['name'] ?? '')) {
+                    $name = $group->generateRouteName('', $route);
 
                     if (isset($unnamedRoutes[$name])) {
-                        $name .= ('_' !== $name[-1] ? '_' : '') . ++$unnamedRoutes[$name];
+                        $name .= ('_' !== $name[-1] ? '_' : '').++$unnamedRoutes[$name];
                     } else {
                         $unnamedRoutes[$name] = 0;
                     }
                 }
 
-                $collection[] = $route->bind($prefix . $group->namedPrefix . $name);
+                $route['name'] = $prefix.$group->namedPrefix.$name;
+                $collection[] = $route;
+                ++$count;
             }
 
             if (!empty($group->groups)) {
-                $group->injectGroups($prefix . $group->namedPrefix, $collection);
+                $group->injectGroups($prefix.$group->namedPrefix, $collection, $count);
             }
         }
 

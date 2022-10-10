@@ -27,24 +27,30 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class BlankRequestHandler implements RequestHandlerInterface
 {
-    /**
-     * @var bool
-     */
-    private $isRunned = false;
+    private bool $isDone = false;
 
     /**
-     * @var array
+     * @param array<string,mixed> $attributes
      */
-    private $attributes;
-
-    public function __construct(array $attributes = [])
+    public function __construct(private array $attributes = [])
     {
         $this->attributes = $attributes;
     }
 
-    public function isRunned(): bool
+    public static function __set_state(array $properties): static
     {
-        return $this->isRunned;
+        $new = new static();
+
+        foreach ($properties as $property => $value) {
+            $new->{$property} = $value;
+        }
+
+        return $new;
+    }
+
+    public function isDone(): bool
+    {
+        return $this->isDone;
     }
 
     /**
@@ -56,11 +62,8 @@ class BlankRequestHandler implements RequestHandlerInterface
     }
 
     /**
-     * @param mixed $key
-     *
-     * @return mixed
      */
-    public function getAttribute($key)
+    public function getAttribute(string $key): mixed
     {
         return $this->attributes[$key] ?? null;
     }
@@ -70,9 +73,12 @@ class BlankRequestHandler implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->isRunned = true;
         $this->attributes = $request->getAttributes();
 
-        return (new Psr17Factory())->createResponse();
+        try {
+            return (new Psr17Factory())->createResponse();
+        } finally {
+            $this->isDone = true;
+        }
     }
 }

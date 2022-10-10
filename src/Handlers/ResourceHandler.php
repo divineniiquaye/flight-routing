@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
+use Flight\Routing\Exceptions\InvalidControllerException;
+
 /**
  * An extendable HTTP Verb-based route handler to provide a RESTful API for a resource.
  *
@@ -24,19 +26,38 @@ namespace Flight\Routing\Handlers;
  */
 final class ResourceHandler
 {
-    /** @var string|object */
-    private $classResource;
-
-    private string $actionResource;
+    /**
+     * @param string $method The method name eg: action -> getAction
+     */
+    public function __construct(
+        private string|object $resource,
+        private string $method = 'action'
+    ) {
+        if (\is_callable($resource) || \is_subclass_of($resource, self::class)) {
+            throw new \Flight\Routing\Exceptions\InvalidControllerException(
+                'Expected a class string or class object, got a type of "callable" instead'
+            );
+        }
+    }
 
     /**
-     * @param class-string|object $class  of class string or class object
-     * @param string              $action The method name eg: action -> getAction
+     * @return array<int,object|string>
      */
-    public function __construct($class, string $action = 'action')
+    public function __invoke(string $requestMethod, bool $validate = false): array
     {
-        $this->classResource = $class;
-        $this->actionResource = \ucfirst($action);
+        $method = \strtolower($requestMethod).\ucfirst($this->method);
+
+        if (\is_string($class = $this->resource)) {
+            $class = \ltrim($class, '\\');
+        }
+
+        if ($validate && !\method_exists($class, $method)) {
+            $err = 'Method %s() for resource route "%s" is not found.';
+
+            throw new InvalidControllerException(\sprintf($err, $method, \is_object($class) ? $class::class : $class));
+        }
+
+        return [$class, $method];
     }
 
     /**
@@ -46,20 +67,14 @@ final class ResourceHandler
      */
     public function namespace(string $namespace): self
     {
-        $resource = $this->classResource;
+        if (!\is_string($resource = $this->resource) || '\\' === $resource[0]) {
+            return $this;
+        }
 
-        if (\is_string($resource) && '\\' === $resource[0]) {
-            $this->classResource = $namespace . $resource;
+        if (!\str_starts_with($resource, $namespace)) {
+            $this->resource = $namespace.$resource;
         }
 
         return $this;
-    }
-
-    /**
-     * @return array<int,object|string>
-     */
-    public function __invoke(string $requestMethod): array
-    {
-        return [$this->classResource, \strtolower($requestMethod) . $this->actionResource];
     }
 }

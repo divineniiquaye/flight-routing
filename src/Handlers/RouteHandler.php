@@ -17,8 +17,8 @@ declare(strict_types=1);
 
 namespace Flight\Routing\Handlers;
 
-use Flight\Routing\Route;
 use Flight\Routing\Exceptions\{InvalidControllerException, RouteNotFoundException};
+use Flight\Routing\Router;
 use Psr\Http\Message\{ResponseFactoryInterface, ResponseInterface, ServerRequestInterface};
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -32,102 +32,51 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class RouteHandler implements RequestHandlerInterface
 {
-    /**
-     * This allows a response to be served when no route is found.
-     */
-    public const OVERRIDE_HTTP_RESPONSE = ResponseInterface::class;
-
-    protected const CONTENT_TYPE = 'Content-Type';
-    protected const CONTENT_REGEX = '#(?|\{\"[\w\,\"\:\[\]]+\}|\["[\w\"\,]+\]|\<(?|\?(xml)|\w+).*>.*<\/(\w+)>)$#s';
-
-    protected ResponseFactoryInterface $responseFactory;
+    /** This allows a response to be served when no route is found. */
+    public const OVERRIDE_NULL_ROUTE = 'OVERRIDE_NULL_ROUTE';
 
     /** @var callable */
     protected $handlerResolver;
 
-    public function __construct(ResponseFactoryInterface $responseFactory, callable $handlerResolver = null)
+    public function __construct(protected ResponseFactoryInterface $responseFactory, callable $handlerResolver = null)
     {
-        $this->responseFactory = $responseFactory;
         $this->handlerResolver = $handlerResolver ?? new RouteInvoker();
     }
 
     /**
      * {@inheritdoc}
      *
-     * @throws RouteNotFoundException|InvalidControllerException
+     * @throws InvalidControllerException|RouteNotFoundException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (null === $route = $request->getAttribute(Route::class)) {
-            if (true === $notFoundResponse = $request->getAttribute(static::OVERRIDE_HTTP_RESPONSE)) {
+        if (null === $route = $request->getAttribute(Router::class)) {
+            if (true === $res = $request->getAttribute(static::OVERRIDE_NULL_ROUTE)) {
                 return $this->responseFactory->createResponse();
             }
 
-            if (!$notFoundResponse instanceof ResponseInterface) {
-                throw new RouteNotFoundException(
-                    \sprintf(
-                        'Unable to find the controller for path "%s". The route is wrongly configured.',
-                        $request->getUri()->getPath()
-                    ),
-                    404
-                );
-            }
-
-            return $notFoundResponse;
+            return $res instanceof ResponseInterface ? $res : throw new RouteNotFoundException($request->getUri());
         }
 
-        // Resolve route handler arguments ...
-        if (!$response = $this->resolveRoute($route, $request)) {
-            throw new InvalidControllerException('The route handler\'s content is not a valid PSR7 response body stream.');
+        if (empty($handler = $route['handler'] ?? null)) {
+            return $this->responseFactory->createResponse(204)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        }
+
+        $arguments = fn (ServerRequestInterface $request): array => $this->resolveArguments($request, $route['arguments'] ?? []);
+        $response = RouteInvoker::resolveRoute($request, $this->handlerResolver, $handler, $arguments);
+
+        if ($response instanceof FileHandler) {
+            return $response($this->responseFactory);
         }
 
         if (!$response instanceof ResponseInterface) {
-            ($result = $this->responseFactory->createResponse())->getBody()->write($response);
-            $response = $result;
+            if (empty($contents = $response)) {
+                throw new InvalidControllerException('The route handler\'s content is not a valid PSR7 response body stream.');
+            }
+            ($response = $this->responseFactory->createResponse())->getBody()->write($contents);
         }
 
-        return $response->hasHeader(self::CONTENT_TYPE) ? $response : $this->negotiateContentType($response);
-    }
-
-    /**
-     * @return ResponseInterface|string|false
-     */
-    protected function resolveRoute(Route $route, ServerRequestInterface $request)
-    {
-        \ob_start(); // Start buffering response output
-
-        try {
-            // The route handler to resolve ...
-            $handler = $route->getHandler();
-
-            if ($handler instanceof ResourceHandler) {
-                $handler = $handler($request->getMethod());
-            }
-
-            $response = ($this->handlerResolver)($handler, $this->resolveArguments($request, $route));
-
-            if ($response instanceof RequestHandlerInterface) {
-                return $response->handle($request);
-            }
-
-            if ($response instanceof ResponseInterface || \is_string($response)) {
-                return $response;
-            }
-
-            if ($response instanceof \JsonSerializable || \is_iterable($response) || \is_array($response)) {
-                return \json_encode($response, \JSON_THROW_ON_ERROR);
-            }
-        } catch (\Throwable $e) {
-            \ob_get_clean();
-
-            throw $e;
-        } finally {
-            while (\ob_get_level() > 1) {
-                $response = \ob_get_clean(); // If more than one output buffers is set ...
-            }
-        }
-
-        return $response ?? \ob_get_clean();
+        return $response->hasHeader('Content-Type') ? $response : $this->negotiateContentType($response);
     }
 
     /**
@@ -135,31 +84,28 @@ class RouteHandler implements RequestHandlerInterface
      */
     protected function negotiateContentType(ResponseInterface $response): ResponseInterface
     {
-        $contents = (string) $response->getBody();
-        $contentType = 'text/html; charset=utf-8'; // Default content type.
-
-        if (1 === $matched = \preg_match(static::CONTENT_REGEX, $contents, $matches, \PREG_UNMATCHED_AS_NULL)) {
-            if (null === $matches[2]) {
-                $contentType = 'application/json';
-            } elseif ('xml' === $matches[1]) {
-                $contentType = 'svg' === $matches[2] ? 'image/svg+xml' : \sprintf('application/%s; charset=utf-8', 'rss' === $matches[2] ? 'rss+xml' : 'xml');
-            }
-        } elseif (0 === $matched) {
-            $contentType = 'text/plain; charset=utf-8';
+        if (empty($contents = (string) $response->getBody())) {
+            $mime = 'text/plain; charset=utf-8';
+            $response = $response->withStatus(204);
+        } elseif (false === $mime = (new \finfo(\FILEINFO_MIME_TYPE))->buffer($contents)) {
+            $mime = 'text/html; charset=utf-8'; // @codeCoverageIgnore
+        } elseif ('text/xml' === $mime) {
+            \preg_match('/<(?:\s+)?\/?(?:\s+)?(\w+)(?:\s+)?>$/', $contents, $xml, \PREG_UNMATCHED_AS_NULL);
+            $mime = 'svg' === $xml[1] ? 'image/svg+xml' : \sprintf('%s; charset=utf-8', 'rss' === $xml[1] ? 'application/rss+xml' : 'text/xml');
         }
 
-        return $response->withHeader(self::CONTENT_TYPE, $contentType);
+        return $response->withHeader('Content-Type', $mime);
     }
 
     /**
+     * @param array<string,mixed> $parameters
+     *
      * @return array<int|string,mixed>
      */
-    protected function resolveArguments(ServerRequestInterface $request, Route $route): array
+    protected function resolveArguments(ServerRequestInterface $request, array $parameters): array
     {
-        $parameters = $route->getArguments();
-
         foreach ([$request, $this->responseFactory] as $psr7) {
-            $parameters[\get_class($psr7)] = $psr7;
+            $parameters[$psr7::class] = $psr7;
 
             foreach ((@\class_implements($psr7) ?: []) as $psr7Interface) {
                 $parameters[$psr7Interface] = $psr7;

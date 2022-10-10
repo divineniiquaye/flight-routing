@@ -1,19 +1,31 @@
 {
-    "runner.bootstrap": "vendor/autoload.php",
+    "runner.bootstrap": "tests/Fixtures/bench_autoload.php",
     "runner.path": "tests/Benchmarks",
+    "runner.file_pattern": "*Bench.php",
     "runner.output_mode": "time",
     "runner.retry_threshold": 5,
     "runner.php_config": {
-        "max_execution_time": 60,
         "opcache.enable": true,
         "opcache.enable_cli": true,
         "opcache.jit": 1235,
         "xdebug.mode": "off"
     },
     "report.generators": {
+        "all": {
+            "generator": "composite",
+            "reports": [ "env", "benchmark" ]
+        },
         "default": {
             "extends": "expression",
-            "cols": [ "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
+            "break": [ "benchmark" ],
+            "cols": [ "benchmark", "subject", "set", "mem_peak", "mode", "best", "mean", "worst", "stdev", "rstdev" ]
+        }
+    },
+    "report.outputs": {
+        "html": {
+            "renderer": "html",
+            "path": "build/bench-report.html",
+            "title": "Flight Routing Benchmark"
         }
    }
 }

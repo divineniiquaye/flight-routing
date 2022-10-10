@@ -36,16 +36,11 @@ use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
  */
 class UriRedirectMiddleware implements MiddlewareInterface
 {
-    /** @var array<string,string|UriInterface> */
-    protected array $redirects;
-
-    private bool $keepRequestMethod;
-
     /**
      * @param array<string,string|UriInterface> $redirects         [from previous => to new]
      * @param bool                              $keepRequestMethod Whether redirect action should keep HTTP request method
      */
-    public function __construct(array $redirects = [], bool $keepRequestMethod = false)
+    public function __construct(protected array $redirects = [], private bool $keepRequestMethod = false)
     {
         $this->redirects = $redirects;
         $this->keepRequestMethod = $keepRequestMethod;
@@ -61,7 +56,7 @@ class UriRedirectMiddleware implements MiddlewareInterface
 
         if ('' === $redirectedUri = (string) ($this->redirects[$requestPath] ?? '')) {
             foreach ($this->redirects as $oldPath => $newPath) {
-                if (1 === \preg_match('#^' . $oldPath . '$#u', $requestPath)) {
+                if (1 === \preg_match('#^'.$oldPath.'$#u', $requestPath)) {
                     $redirectedUri = $newPath;
 
                     break;
@@ -77,8 +72,9 @@ class UriRedirectMiddleware implements MiddlewareInterface
             $redirectedUri = $uri->withPath(\substr($redirectedUri, 1));
         }
 
-        return $handler->handle($request->withAttribute(RouteHandler::OVERRIDE_HTTP_RESPONSE, true))
+        return $handler->handle($request->withAttribute(RouteHandler::OVERRIDE_NULL_ROUTE, true))
             ->withStatus($this->keepRequestMethod ? 308 : 301)
-            ->withHeader('Location', (string) $redirectedUri);
+            ->withHeader('Location', (string) $redirectedUri)
+        ;
     }
 }

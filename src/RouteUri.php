@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Flight\Routing\Generator;
+namespace Flight\Routing;
 
 use Flight\Routing\Exceptions\UrlGenerationException;
 
@@ -25,7 +25,7 @@ use Flight\Routing\Exceptions\UrlGenerationException;
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
-class GeneratedUri implements \Stringable
+class RouteUri implements \Stringable
 {
     /** Generates an absolute URL, e.g. "http://example.com/dir/file". */
     public const ABSOLUTE_URL = 0;
@@ -69,24 +69,24 @@ class GeneratedUri implements \Stringable
      */
     public function __toString()
     {
-        $prefixed = '/';
-        $type = $this->referenceType;
+        $pathInfo = '/'.\ltrim($this->pathInfo, '/');
 
-        if ($this->scheme) {
-            $prefixed = $this->scheme . '://';
+        if (self::ABSOLUTE_PATH === $type = $this->referenceType) {
+            return $pathInfo;
         }
 
-        if ($this->host) {
-            if ('/' === $prefixed) {
-                $prefixed = \in_array($type, [self::ABSOLUTE_URL, self::NETWORK_PATH], true) ? '//' : '';
-            }
-
-            $prefixed .= \ltrim($this->host, './') . $this->port . '/';
-        } elseif ('/' === $prefixed && self::RELATIVE_PATH === $type) {
-            $prefixed = '.' . $prefixed;
+        if (self::RELATIVE_PATH === $type) {
+            return '.'.$pathInfo;
         }
 
-        return $prefixed . \ltrim($this->pathInfo, '/');
+        if (isset($this->host)) {
+            $hostPort = $this->host.$this->port;
+        } else {
+            $h = \explode(':', $_SERVER['HTTP_HOST'] ?? 'localhost:80', 2);
+            $hostPort = $h[0].($this->port ?? (!\in_array($h[1] ?? '', ['', '80', '443'], true) ? ':'.$h[0] : ''));
+        }
+
+        return (self::NETWORK_PATH === $type ? '//' : (isset($this->scheme) ? $this->scheme.'://' : '//')).$hostPort.$pathInfo;
     }
 
     /**
@@ -114,12 +114,12 @@ class GeneratedUri implements \Stringable
      */
     public function withPort(int $port): self
     {
-        if (0 > $port || 0xffff < $port) {
+        if (0 > $port || 0xFFFF < $port) {
             throw new UrlGenerationException(\sprintf('Invalid port: %d. Must be between 0 and 65535', $port));
         }
 
-        if (!\in_array($port, ['', 80, 443], true)) {
-            $this->port = ':' . $port;
+        if (!\in_array($port, [80, 443], true)) {
+            $this->port = ':'.$port;
         }
 
         return $this;
@@ -137,7 +137,7 @@ class GeneratedUri implements \Stringable
             $queryString = \http_build_query($queryParams, '', '&', \PHP_QUERY_RFC3986);
 
             if (!empty($queryString)) {
-                $this->pathInfo .= '?' . \strtr($queryString, self::QUERY_DECODED);
+                $this->pathInfo .= '?'.\strtr($queryString, self::QUERY_DECODED);
             }
         }
 
@@ -145,12 +145,12 @@ class GeneratedUri implements \Stringable
     }
 
     /**
-     * Set the fragment component of the URI
+     * Set the fragment component of the URI.
      */
     public function withFragment(string $fragment): self
     {
         if (!empty($fragment)) {
-            $this->pathInfo .= '#' . $fragment;
+            $this->pathInfo .= '#'.$fragment;
         }
 
         return $this;

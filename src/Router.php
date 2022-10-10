@@ -19,12 +19,10 @@ namespace Flight\Routing;
 
 use Fig\Http\Message\RequestMethodInterface;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\Generator\GeneratedUri;
 use Flight\Routing\Interfaces\{RouteCompilerInterface, RouteMatcherInterface, UrlGeneratorInterface};
 use Laminas\Stratigility\Next;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface, UriInterface};
 use Psr\Http\Server\{MiddlewareInterface, RequestHandlerInterface};
-use Symfony\Component\VarExporter\VarExporter;
 
 /**
  * Aggregate routes for matching and Dispatching.
@@ -33,6 +31,11 @@ use Symfony\Component\VarExporter\VarExporter;
  */
 class Router implements RouteMatcherInterface, RequestMethodInterface, MiddlewareInterface, UrlGeneratorInterface
 {
+    use Traits\CacheTrait, Traits\ResolverTrait;
+
+    /** @var array<int,string> Default methods for route. */
+    public const DEFAULT_METHODS = [self::METHOD_GET, self::METHOD_HEAD];
+
     /**
      * Standard HTTP methods for browser requests.
      */
@@ -49,78 +52,86 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
         self::METHOD_CONNECT,
     ];
 
-    private ?RouteCompilerInterface $compiler;
-    private ?RouteMatcherInterface $matcher = null;
+    private RouteCompilerInterface $compiler;
     private ?\SplQueue $pipeline = null;
-    private string $matcherClass = RouteMatcher::class;
-    private ?string $cacheData;
+    private \Closure|RouteCollection|null $collection = null;
 
     /** @var array<string,array<int,MiddlewareInterface>> */
     private array $middlewares = [];
 
-    /** @var RouteCollection|(callable(RouteCollection): void)|null */
-    private $collection;
-
     /**
-     * @param string|null $cache file path to store compiled routes
+     * @param null|string $cache file path to store compiled routes
      */
     public function __construct(RouteCompilerInterface $compiler = null, string $cache = null)
     {
-        $this->compiler = $compiler;
-        $this->cacheData = $cache;
+        $this->cache = $cache;
+        $this->compiler = $compiler ?? new RouteCompiler();
     }
 
     /**
      * Set a route collection instance into Router in order to use addRoute method.
      *
-     * @param string|null $cache file path to store compiled routes
-     *
-     * @return static
+     * @param null|string $cache file path to store compiled routes
      */
-    public static function withCollection(RouteCollection $collection = null, RouteCompilerInterface $compiler = null, string $cache = null)
-    {
+    public static function withCollection(
+        \Closure|RouteCollection $collection = null,
+        RouteCompilerInterface $compiler = null,
+        string $cache = null
+    ): static {
         $new = new static($compiler, $cache);
-        $new->collection = $collection ?? new RouteCollection();
+        $new->collection = $collection;
 
         return $new;
     }
 
     /**
-     * This method works only if withCollection method is used.
+     * {@inheritdoc}
      */
-    public function addRoute(Route ...$routes): void
+    public function match(string $method, UriInterface $uri): ?array
     {
-        $this->getCollection()->routes($routes, false);
+        return $this->optimized[$method.$uri->__toString()] ??= [$this, $this->cache ? 'resolveCache' : 'resolveRoute'](
+            \rtrim(\rawurldecode($uri->getPath()), '/') ?: '/',
+            $method,
+            $uri
+        );
     }
 
     /**
      * {@inheritdoc}
      */
-    public function match(string $method, UriInterface $uri): ?Route
+    public function matchRequest(ServerRequestInterface $request): ?array
     {
-        return $this->getMatcher()->match($method, $uri);
-    }
+        $requestUri = $request->getUri();
+        $pathInfo = $request->getServerParams()['PATH_INFO'] ?? '';
 
-    /**
-     * {@inheritdoc}
-     */
-    public function matchRequest(ServerRequestInterface $request): ?Route
-    {
-        return $this->getMatcher()->matchRequest($request);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function generateUri(string $routeName, array $parameters = [], int $referenceType = GeneratedUri::ABSOLUTE_PATH): GeneratedUri
-    {
-        $matcher = $this->getMatcher();
-
-        if (!$matcher instanceof UrlGeneratorInterface) {
-            throw new UrlGenerationException(\sprintf('The route matcher does not support using the %s implementation', UrlGeneratorInterface::class));
+        // Resolve request path to match sub-directory or /index.php/path
+        if ('' !== $pathInfo && $pathInfo !== $requestUri->getPath()) {
+            $requestUri = $requestUri->withPath($pathInfo);
         }
 
-        return $matcher->generateUri($routeName, $parameters, $referenceType);
+        return $this->match($request->getMethod(), $requestUri);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function generateUri(string $routeName, array $parameters = [], int $referenceType = RouteUri::ABSOLUTE_PATH): RouteUri
+    {
+        if (empty($matchedRoute = &$this->optimized[$routeName] ?? null)) {
+            foreach ($this->getCollection()->getRoutes() as $route) {
+                if (isset($route['name']) && $route['name'] === $routeName) {
+                    $matchedRoute = $route;
+                    break;
+                }
+            }
+        }
+
+        if (!isset($matchedRoute)) {
+            throw new UrlGenerationException(\sprintf('Route "%s" does not exist.', $routeName));
+        }
+
+        return $this->compiler->generateUri($matchedRoute, $parameters, $referenceType)
+            ?? throw new UrlGenerationException(\sprintf('%s::generateUri() not implemented in compiler.', $this->compiler::class));
     }
 
     /**
@@ -160,50 +171,28 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function getCollection(): RouteCollection
     {
-        if (\is_callable($collection = $this->collection)) {
-            $collection($collection = new RouteCollection());
-        } elseif (null !== $collection) {
-            return $this->collection;
+        if ($this->cache) {
+            return $this->optimized[2] ?? $this->doCache();
         }
 
-        return $this->collection = $collection ?? new RouteCollection();
-    }
-
-    /**
-     * Set where cached data will be stored.
-     *
-     * @param string $cache file path to store compiled routes
-     */
-    public function setCache(string $cache): void
-    {
-        $this->cacheData = $cache;
-    }
-
-    /**
-     * If RouteCollection's data has been cached.
-     */
-    public function isCached(): bool
-    {
-        return ($cache = $this->cacheData) && \file_exists($cache);
-    }
-
-    /**
-     * Set a matcher class associated with this Router.
-     */
-    public function setMatcher(string $matcherClass): void
-    {
-        if (!\is_subclass_of($matcherClass, RouteMatcherInterface::class)) {
-            throw new \InvalidArgumentException(\sprintf('"%s" must be a subclass of "%s".', $matcherClass, RouteMatcherInterface::class));
+        if ($this->collection instanceof \Closure) {
+            ($this->collection)($this->collection = new RouteCollection());
         }
-        $this->matcherClass = $matcherClass;
+
+        return $this->collection ??= new RouteCollection();
     }
 
     /**
-     * Gets the Route matcher instance associated with this Router.
+     * Set a route compiler instance into Router.
      */
-    public function getMatcher(): RouteMatcherInterface
+    public function setCompiler(RouteCompiler $compiler): void
     {
-        return $this->matcher ??= $this->cacheData ? $this->getCachedData($this->cacheData) : new $this->matcherClass($this->getCollection(), $this->compiler);
+        $this->compiler = $compiler;
+    }
+
+    public function getCompiler(): RouteCompilerInterface
+    {
+        return $this->compiler;
     }
 
     /**
@@ -211,43 +200,20 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $route = $this->getMatcher()->matchRequest($request);
+        $route = $this->matchRequest($request);
 
         if (null !== $route) {
-            foreach ($route->getPiped() as $middleware) {
-                if (isset($this->middlewares[$middleware])) {
-                    $this->pipe(...$this->middlewares[$middleware]);
+            foreach ($route['middlewares'] ?? [] as $a => $b) {
+                if (isset($this->middlewares[$a])) {
+                    $this->pipe(...$this->middlewares[$a]);
                 }
             }
         }
 
-        if (null !== $this->pipeline) {
+        if (!empty($this->pipeline)) {
             $handler = new Next($this->pipeline, $handler);
         }
 
-        return $handler->handle($request->withAttribute(Route::class, $route));
-    }
-
-    protected function getCachedData(string $cache): RouteMatcherInterface
-    {
-        $cachedData = @include $cache;
-
-        if (!$cachedData instanceof RouteMatcherInterface) {
-            $cachedData = new $this->matcherClass($this->getCollection(), $this->compiler);
-            $dumpData = \class_exists(VarExporter::class) ? VarExporter::export($cachedData) : "\unserialize(<<<'SERIALIZED'\n" . \serialize($cachedData) . "\nSERIALIZED)";
-
-            if (!\is_dir($directory = \dirname($cache))) {
-                @\mkdir($directory, 0775, true);
-            }
-
-            \file_put_contents($cache, "<?php // auto generated: AVOID MODIFYING\n\nreturn " . $dumpData . ";\n");
-
-            if (\function_exists('opcache_invalidate') && \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)) {
-                @\opcache_invalidate($cache, true);
-            }
-            $cachedData = require $cache;
-        }
-
-        return $cachedData;
+        return $handler->handle($request->withAttribute(self::class, $route));
     }
 }

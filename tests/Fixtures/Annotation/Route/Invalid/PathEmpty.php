@@ -23,7 +23,7 @@ use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 /**
  * @Route(
  *   name="home",
- *   path="//localhost",
+ *   path="",
  *   methods={"GET"}
  * )
  */

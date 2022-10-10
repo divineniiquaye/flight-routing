@@ -20,6 +20,14 @@
 
     <!-- Include full PSR-12 Coding Standard -->
     <rule ref="PSR12">
+        <exclude name="PSR12.Files.OpenTag.NotAlone"/>
+        <exclude name="PSR12.Traits.UseDeclaration.MultipleImport"/>
         <exclude name="PSR2.Classes.PropertyDeclaration.Multiple"/>
+        <exclude name="PSR12.Operators.OperatorSpacing.NoSpaceBefore"/>
+        <exclude name="PSR12.Operators.OperatorSpacing.NoSpaceAfter"/>
+        <exclude name="PSR12.Files.FileHeader.SpacingAfterBlock"/>
+        <exclude name="PSR12.ControlStructures.ControlStructureSpacing.FirstExpressionLine"/>
+        <exclude name="PSR12.ControlStructures.ControlStructureSpacing.LineIndent"/>
+        <exclude name="PSR12.ControlStructures.ControlStructureSpacing.CloseParenthesisLine"/>
     </rule>
 </ruleset>

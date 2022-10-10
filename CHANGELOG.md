@@ -1,6 +1,45 @@
 CHANGELOG
 =========
 
+2.0
+===
+
+* [BC BREAK] Removed the route class to use array instead of object
+* [BC BREAK] Removed the route matcher class to use only the `Flight\Routing\Router` class for route matching
+* [BC BREAK] Removed the `buildRoutes` method from the route collection class, use the `getRoutes` method directly
+* [BC BREAK] Removed the `getRoute` method from the route collection class, use the `offGet` method instead
+* [BC BREAK] Removed the `routes` method from the route collection class with no replacement
+* [BC BREAK] Removed the `addRoute` method from the route collection class, use the `add` method instead
+* [BC BREAK] Removed the `isCached` and `addRoute` methods from the default router class
+* [BC BREAK] Removed classes, traits and class methods which are unnecessary or affects performance of routing
+* [BC BREAK] Improved the route collection class to use array based routes instead of objects
+* [BC BREAK] Improved how the default route handler handles array like callable handlers
+* [BC BREAK] Replaced the route matcher implementation in the router class for compiler's implementation instead
+* [BC BREAK] Replaced unmatched route host exception to instead return null and a route not found exception
+* [BC BREAK] Renamed the `Flight\Routing\Generator\GeneratedUri` class to `Flight\Routing\RouteUri`
+* Removed `symfony/var-exporter` library support from caching support, using PHP `var-export` function instead
+* Added a new `FileHandler` handler class to return contents from a valid file as PSR-7 response
+* Added new sets of requirements to the `Flight\Routing\RouteCompiler::SEGMENT_TYPES` constant
+* Added a `offGet` method to the route collection class for finding route by it index number
+* Added PHP `Countable` support to the route collection class, for faster routes count
+* Added PHP `ArrayAccess` support to the route collection class for easier access to routes
+* Added support for the default route compiler placeholder's default rule from `\w+` to `.*?`
+* Added a static `export` method to the default router class to export php values in a well formatted way for caching
+* Improved the route annotation's listener and attribute class for better performance
+* Improved the default route matcher's `generateUri` method reversing a route path and strictly matching parameters
+* Improved the default route matcher's class `Flight\Routing\Router::match()` method for better performance
+* Improved the default route handler's class for easier extending of route handler and arguments rendering
+* Improved the default route handler's class ability to detect content type of string
+* Improved and fixed route namespacing issues
+* Improved thrown exceptions messages for better debugging of errors
+* Improved the sorting of routes in the route's collection class
+* Improved the `README.md` doc file for better understanding on how to use this library
+* Improved coding standard in making the codebase more readable
+* Improved benchmarking scenarios for better performance comparison
+* Improved performance tremendously, see [Benchmark Results](./BENCHMARK.txt)
+* Updated all tests units rewritten with `pestphp/pest` for easier maintenance and improved benchmarking
+* Updated minimum requirement for installing this library to PHP 8.0
+
 1.6
 ===
 
