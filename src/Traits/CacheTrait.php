@@ -152,7 +152,7 @@ trait CacheTrait
             $this->optimized[1][1][$i] = $var;
         }
         \ksort($this->optimized[0], \SORT_NATURAL);
-        \ksort($dynamicRoutes, \SORT_NATURAL);
+        \uksort($dynamicRoutes, fn (string $a, string $b): int => \in_array('/', [$a, $b], true) ? \strcmp($b, $a) : \strcmp($a, $b));
 
         foreach ($dynamicRoutes as $offset => $paths) {
             $numParts = \max(1, \round(($c = \count($paths)) / 30));
@@ -160,12 +160,6 @@ trait CacheTrait
             foreach (\array_chunk($paths, (int) \ceil($c / $numParts)) as $chunk) {
                 $this->optimized[1][0]['/'.\ltrim($offset, '/')][] = '~^(?|'.\implode('|', $chunk).')$~';
             }
-        }
-
-        if (isset($this->optimized[1][0]['/'])) {
-            $last = $this->optimized[1][0]['/'];
-            unset($this->optimized[1][0]['/']);
-            $this->optimized[1][0]['/'] = $last;
         }
 
         return self::export([...$this->optimized, $doCache ? $collection : null]);
