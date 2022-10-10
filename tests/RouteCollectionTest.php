@@ -815,6 +815,9 @@ test('if fetching of attribute/annotation routes from directories is possible', 
     ], $names);
 
     $routes->sort();
+    $routes = $routes->getRoutes();
+    $routes[4]['handler'][0] = 'Flight\\Routing\\Tests\\Fixtures\\Annotation\\Route\\Valid\\MultipleMethodRouteController';
+    $routes[5]['handler'][0] = 'Flight\\Routing\\Tests\\Fixtures\\Annotation\\Route\\Valid\\DefaultNameController';
     t\assertEquals(<<<'EOT'
     [
         [
@@ -1173,7 +1176,7 @@ test('if fetching of attribute/annotation routes from directories is possible', 
             'name' => 'action',
         ],
     ]
-    EOT, debugFormat($routes->getRoutes()));
+    EOT, debugFormat($routes));
 })->setRunTestInSeparateProcess(true);
 
 test('if route path from attribute route can be invalid', function (): void {
