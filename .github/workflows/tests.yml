@@ -27,25 +27,39 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: mbstring, xml, ctype, iconv, curl
+          extensions: mbstring, xml, ctype, iconv, curl, fileinfo
           coverage: xdebug
           tools: composer:v2
 
       - name: Get composer cache directory
-        id: composercache
+        id: composer-cache
         run: echo "::set-output name=dir::$(composer config cache-files-dir)"
 
       - name: Cache composer dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
-          path: ${{ steps.composercache.outputs.dir }}
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer install --no-progress --optimize-autoloader
+        run: composer install --no-progress --optimize-autoloader ${{ 8.2 == matrix.php-versions && '--ignore-platform-reqs' || '' }}
 
-      - name: Run unit tests (PHPUnit)
+      - name: Check coding standards (PHP_CodeSniffer)
+        run: vendor/bin/phpcs
+
+      - name: Statically analyze code (Phpstan)
+        run: vendor/bin/phpstan analyse
+
+      - name: Statically analyze code (Psalm)
+        run: vendor/bin/psalm --output-format=github --taint-analysis --shepherd --report=build/logs/psalm.sarif
+
+      - name: "Upload security analysis results to GitHub"
+        uses: "github/codeql-action/upload-sarif@v2"
+        with:
+          sarif_file: "build/logs/psalm.sarif"
+
+      - name: Run unit tests (Pest)
         run: vendor/bin/pest --coverage --coverage-clover=coverage.clover
 
       - name: "Upload coverage report to Codecov"
@@ -60,22 +74,8 @@ jobs:
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
 
-      - name: Check coding standards (PHP_CodeSniffer)
-        run: vendor/bin/phpcs
-
-      - name: Statically analyze code (Phpstan)
-        run: vendor/bin/phpstan analyse
-
-      - name: Statically analyze code (Psalm)
-        run: vendor/bin/psalm --output-format=github --taint-analysis --shepherd --report=build/logs/psalm.sarif
-
-      - name: "Upload security analysis results to GitHub"
-        uses: "github/codeql-action/upload-sarif@v1"
-        with:
-          sarif_file: "build/logs/psalm.sarif"
-
       - name: "Benchmark for Performance"
         if: matrix.operating-system != 'macos-latest'
         run: |
-          composer require phpbench/phpbench -W
+          composer require phpbench/phpbench -W --dev ${{ 8.2 == matrix.php-versions && '--ignore-platform-reqs' || '' }}
           vendor/bin/phpbench run --report=default -l none
