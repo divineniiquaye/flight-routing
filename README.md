@@ -185,10 +185,9 @@ $routes->add('/user/{id:\d+}', ['GET', 'POST'], new ResourceHandler(Demo\UserCon
 As of Version 2.0, flight routing is very much stable and can be used in production, Feel free to contribute to the project, report bugs, request features and so on.
 
 > Kindly take note of these before using:
-> * The route collection class is declared as final and it's `getIterator` method returns a PHP SplFixedArray instance.
 > * Avoid declaring the same pattern of dynamic route multiple times (eg. `/hello/{name}`), instead use static paths if you choose use same route path with multiple configurations.
 > * Route handlers prefixed with a `\` (eg. `\HelloClass` or `['\HelloClass', 'handle']`) should be avoided if you choose to use a different resolver other the default hander's RouteInvoker class.
-> * If you decide again to use a custom route's handler resolver, I recommend you use the static `resolveRoute` method from the default's route's RouteInvoker class.
+> * If you decide again to use a custom route's handler resolver, I recommend you include the static `resolveRoute` method from the default's route's RouteInvoker class.
 
 ## 📓 Documentation
 
