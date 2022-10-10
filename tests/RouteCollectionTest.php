@@ -661,6 +661,16 @@ test('if deep route grouping is possible', function (): void {
             ],
         ],
         [
+            'handler' => 'Home::ping',
+            'prefix' => '/api/ping',
+            'path' => '/api/ping',
+            'methods' => [
+                'GET' => true,
+                'HEAD' => true,
+            ],
+            'name' => 'api.ping',
+        ],
+        [
             'handler' => 'Home::createProduct',
             'prefix' => '/api/v1/product/create',
             'path' => '/api/v1/product/create',
@@ -692,29 +702,13 @@ test('if deep route grouping is possible', function (): void {
         ],
         [
             'handler' => 'Home::indexApi',
-            'prefix' => [
-                '/api',
-                null,
-            ],
+            'prefix' => '/api',
             'path' => '/api/',
             'methods' => [
                 'GET' => true,
                 'HEAD' => true,
             ],
             'name' => 'api.GET_HEAD_api_',
-        ],
-        [
-            'handler' => 'Home::ping',
-            'prefix' => [
-                '/api/ping',
-                '/ping',
-            ],
-            'path' => '/api/ping',
-            'methods' => [
-                'GET' => true,
-                'HEAD' => true,
-            ],
-            'name' => 'api.ping',
         ],
         [
             'handler' => 'Home::productUpdate',

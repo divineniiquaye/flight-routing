@@ -225,7 +225,7 @@ class RouteCollection implements \Countable, \ArrayAccess
                 $this->add($route['path'], [], $route['handler']);
                 $this->routes[$this->defaultIndex] = \array_merge_recursive(
                     $this->routes[$this->defaultIndex],
-                    \array_diff_key($route, ['path' => null, 'handler' => null])
+                    \array_diff_key($route, ['path' => null, 'handler' => null, 'prefix' => null])
                 );
             }
             $this->asRoute = $asRoute;
