@@ -53,10 +53,7 @@ final class PathMiddleware implements MiddlewareInterface
     ) {
         $this->permanent = $permanent;
         $this->keepRequestMethod = $keepRequestMethod;
-
-        if (!empty($uriSuffixes)) {
-            $this->uriSuffixes = \array_combine($uriSuffixes, $uriSuffixes);
-        }
+        $this->uriSuffixes = empty($uriSuffixes) ? ['/' => '/'] : \array_combine($uriSuffixes, $uriSuffixes);
     }
 
     /**
