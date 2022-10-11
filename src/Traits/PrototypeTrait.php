@@ -58,8 +58,11 @@ trait PrototypeTrait
             return $this;
         }
 
-        foreach ($routeData as $routeMethod => $arguments) {
-            \call_user_func_array([$this, $routeMethod], \is_array($arguments) ? $arguments : [$arguments]);
+        foreach (\array_filter($routeData) as $routeMethod => $arguments) {
+            \call_user_func_array(
+                [$this, $routeMethod],
+                (!\is_array($arguments) || \count($arguments) > 1 && !\array_is_list($arguments)) ? [$arguments] : $arguments
+            );
         }
 
         return $this;
