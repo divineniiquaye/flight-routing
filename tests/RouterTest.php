@@ -3,10 +3,10 @@
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.4 and above required
+ * PHP version 8.0 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
- * @copyright 2019 Biurad Group (https://biurad.com/)
+ * @copyright 2019 Divine Niiquaye Ibok (https://divinenii.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
  * For the full copyright and license information, please view the LICENSE
@@ -17,13 +17,13 @@ use Flight\Routing\Exceptions\MethodNotAllowedException;
 use Flight\Routing\Exceptions\RouteNotFoundException;
 use Flight\Routing\Exceptions\UriHandlerException;
 use Flight\Routing\Exceptions\UrlGenerationException;
-use Flight\Routing\ROuteUri as GeneratedUri;
 use Flight\Routing\Handlers\CallbackHandler;
 use Flight\Routing\Handlers\ResourceHandler;
 use Flight\Routing\Handlers\RouteHandler;
 use Flight\Routing\RouteCollection;
 use Flight\Routing\RouteCompiler;
 use Flight\Routing\Router;
+use Flight\Routing\ROuteUri as GeneratedUri;
 use Flight\Routing\Tests\Fixtures\BlankRequestHandler;
 use Laminas\Stratigility\Next;
 use Nyholm\Psr7\Factory\Psr17Factory;

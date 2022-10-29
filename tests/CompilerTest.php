@@ -3,10 +3,10 @@
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.4 and above required
+ * PHP version 8.0 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
- * @copyright 2019 Biurad Group (https://biurad.com/)
+ * @copyright 2019 Divine Niiquaye Ibok (https://divinenii.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
  * For the full copyright and license information, please view the LICENSE
@@ -165,7 +165,7 @@ dataset('patterns', [
             '/hello/barfoo/world/divine/abs.php',
             '/hello/foobaz/world/abs.php',
             '/hello/bar100/world/divine/11/abs.html',
-            '/hello/true/world/divine/11/2022/abs.html'
+            '/hello/true/world/divine/11/2022/abs.html',
         ],
     ],
     [
@@ -221,8 +221,8 @@ dataset('reversed', [
             '/divine/23/abc' => ['23', 'a' => 'a', 'b' => 'b', 'c' => 'c'],
             '/divine/23/abc.php' => ['23', 'a' => 'a', 'b' => 'b', 'c' => 'c', 'd' => 'hp'],
             '/divine/23.phtml' => ['id' => '23', 'd' => 'html'],
-        ]
-    ]
+        ],
+    ],
 ]);
 
 test('if route path is a valid regex', function (string $path, string $regex, array $vars, array $matches): void {
@@ -275,7 +275,7 @@ test('if route path placeholder is used more than once', function (): void {
 
 test('if route path placeholder has regex values', function (string $path, array $segment): void {
     $compiler = new \Flight\Routing\RouteCompiler();
-    [$pathRegex,] = $compiler->compile($path, $segment);
+    [$pathRegex] = $compiler->compile($path, $segment);
     t\assertMatchesRegularExpression($pathRegex, '/a');
     t\assertMatchesRegularExpression($pathRegex, '/b');
 })->with([

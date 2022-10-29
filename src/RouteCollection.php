@@ -5,10 +5,10 @@ declare(strict_types=1);
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.4 and above required
+ * PHP version 8.0 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
- * @copyright 2019 Biurad Group (https://biurad.com/)
+ * @copyright 2019 Divine Niiquaye Ibok (https://divinenii.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
  * For the full copyright and license information, please view the LICENSE
@@ -187,9 +187,9 @@ class RouteCollection implements \Countable, \ArrayAccess
     /**
      * Mounts controllers under the given route prefix.
      *
-     * @param null|string                   $name        The route group prefixed name
+     * @param null|string                   $name       The route group prefixed name
      * @param null|callable|RouteCollection $collection A RouteCollection instance or a callable for defining routes
-     * @param bool $return If true returns a new collection instance else returns $this
+     * @param bool                          $return     If true returns a new collection instance else returns $this
      */
     public function group(string $name = null, callable|self $collection = null, bool $return = false): self
     {
