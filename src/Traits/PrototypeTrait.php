@@ -112,7 +112,7 @@ trait PrototypeTrait
             $this->routes[$this->defaultIndex]['prefix'] = $m[1] ?? null;
         }
 
-        $this->routes[$this->defaultIndex]['path'] = '/'.\ltrim($pattern, '/');
+        $this->routes[$this->defaultIndex]['path'] = $pattern;
 
         return $this;
     }
@@ -405,17 +405,7 @@ trait PrototypeTrait
      */
     public function prefix(string $path): self
     {
-        $resolver = static function (string $prefix, string $path): string {
-            if ('/' !== ($prefix[0] ?? '')) {
-                $prefix = '/'.$prefix;
-            }
-
-            if ($prefix[-1] === $path[0] || 1 === \preg_match('/^\W+$/', $prefix[-1])) {
-                return $prefix.\substr($path, 1);
-            }
-
-            return $prefix.$path;
-        };
+        $resolver = fn (string $a, string $b): string => $a.(($a[-1] ?? '') === $b[0] ? \substr($b, 1) : $b);
 
         if ($this->asRoute) {
             \preg_match(

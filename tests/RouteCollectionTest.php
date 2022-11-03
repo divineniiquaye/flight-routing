@@ -172,11 +172,11 @@ test('if route collection routes can be accessed using the [] operator', functio
     $collection->add('hello1', ['GET']);
 
     t\assertTrue(isset($collection[1]));
-    t\assertSame('/hello1', $collection[1]['path']);
+    t\assertSame('hello1', $collection[1]['path']);
 
     unset($collection[1]);
     t\assertNull($collection[1] ?? null);
-    t\assertSame('/hello', $collection[0]['path']);
+    t\assertSame('hello', $collection[0]['path']);
 
     $collection[2] = ['path' => '/hello2'];
 })->throws(
@@ -227,7 +227,7 @@ test('if route collection route prototyping works', function (): void {
     $collection->defaults(['follow' => 'Me']);
     $collection->placeholders(['number' => '\d+']);
     $collection->piped('web');
-    $collection->prefix('/hello');
+    $collection->prefix('/hello/');
     $collection->set('flight', 'routing');
     $collection->prototype(true);
     $collection->set('data', ['hello', 'world']);
@@ -413,9 +413,12 @@ test('if route path can be prefixed', function (array|string $prefixes, string $
     ['', '/bar', '/bar'],
     ['/foo', '/bar', '/foo/bar'],
     [['/c', '/b', '/a'], '/hello', ['/c/hello', '/b/c/hello', '/a/b/c/hello']],
-    [['/c.', 'b.', '/a.'], '/hello', ['/c.hello', '/b.c.hello', '/a.b.c.hello']],
+    [['c.', 'b.', '/a.'], 'hello', ['c.hello', 'b.c.hello', '/a.b.c.hello']],
+    ['/[{lang}]', '/', '/[{lang}]/'],
+    ['/[{lang}]', '/foo', '/[{lang}]/foo'],
+    ['/[{lang}/]', 'foo', '/[{lang}/]foo'],
     ['/foo/', '/bar', '/foo/bar'],
-    ['/bar~', '/foo', '/bar~foo'],
+    ['/bar~', 'foo', '/bar~foo'],
 ]);
 
 test('if route internal data name can be overridden by the set method', function (): void {
@@ -595,23 +598,24 @@ test('if deep route grouping is possible', function (): void {
             $collection->scheme('https', 'http')
                 ->method('CONNECT')
                 ->set('something', 'different')
-                ->get('hello', 'Home::greet')->bind('hello')->argument('foo', 'hello')->end()
+                ->get('/hello', 'Home::greet')->bind('hello')->argument('foo', 'hello')->end()
                 ->method('OPTIONS')->piped('web');
         })
         ->group(return: true)
-        ->prototype(['prefix' => '/v1', 'domain' => 'https://products.example.com'])
-        ->group(return: true)
-        ->prefix('/section')
-        ->post('/create', 'Home::createSection')->bind('section.create')
-        ->patch('/update/{id}', 'Home::sectionUpdate')->bind('section.update')
+           ->prototype(['prefix' => '/v1', 'domain' => 'https://products.example.com'])
+            ->group(return: true)
+                ->prefix('/section')
+                ->post('/create', 'Home::createSection')->bind('section.create')
+                ->patch('/update/{id}', 'Home::sectionUpdate')->bind('section.update')
+            ->end()
+            ->group(return: true)
+                ->prefix('/product')
+                ->post('/create', 'Home::createProduct')->bind('product.create')
+                ->patch('/update/{id}', 'Home::productUpdate')->bind('product.update')
+            ->end()
         ->end()
-        ->group(return: true)
-        ->prefix('/product')
-        ->post('/create', 'Home::createProduct')->bind('product.create')
-        ->patch('/update/{id}', 'Home::productUpdate')->bind('product.update')
-        ->end()
-        ->end()
-        ->get('/about-us', 'Home::aboutUs')->bind('about-us')->sort();
+        ->get('/about-us', 'Home::aboutUs')->bind('about-us')
+    ->sort();
 
     t\assertCount(9, $collection);
     t\assertEquals(['web' => true], ($routes = $collection->getRoutes())[2]['middlewares']);
@@ -787,7 +791,7 @@ test('if fetching of attribute/annotation routes from directories is possible', 
         'POST_post',
         'PUT_put',
         'action',
-        'attribute_GET_HEAD_defaults_localespecific_none',
+        'attribute_GET_HEAD_defaults_locale_specific_none',
         'attribute_specific_name',
         'class_group@CONNECT_GET_HEAD_get',
         'class_group@CONNECT_POST_post',
@@ -1088,7 +1092,7 @@ test('if fetching of attribute/annotation routes from directories is possible', 
                 'withName',
             ],
             'prefix' => '/defaults',
-            'path' => '/defaults/{locale}specific-name',
+            'path' => '/defaults/{locale}/specific-name',
             'placeholders' => [
                 'locale' => 'en|fr',
             ],
@@ -1106,7 +1110,7 @@ test('if fetching of attribute/annotation routes from directories is possible', 
                 'noName',
             ],
             'prefix' => '/defaults',
-            'path' => '/defaults/{locale}specific-none',
+            'path' => '/defaults/{locale}/specific-none',
             'placeholders' => [
                 'locale' => 'en|fr',
             ],
@@ -1117,7 +1121,7 @@ test('if fetching of attribute/annotation routes from directories is possible', 
                 'GET' => true,
                 'HEAD' => true,
             ],
-            'name' => 'attribute_GET_HEAD_defaults_localespecific_none',
+            'name' => 'attribute_GET_HEAD_defaults_locale_specific_none',
         ],
         [
             'handler' => [
@@ -1131,18 +1135,6 @@ test('if fetching of attribute/annotation routes from directories is possible', 
                 'POST' => true,
             ],
             'name' => 'hello_without_default',
-        ],
-        [
-            'handler' => [
-                'Flight\\Routing\\Tests\\Fixtures\\Annotation\\Route\\Valid\\MethodOnRoutePattern',
-                'handleSomething',
-            ],
-            'prefix' => 'testing',
-            'path' => '/testing/',
-            'methods' => [
-                'GET' => true,
-                'HEAD' => true,
-            ],
         ],
         [
             'handler' => new ResourceHandler([
@@ -1168,6 +1160,18 @@ test('if fetching of attribute/annotation routes from directories is possible', 
                 'POST' => true,
             ],
             'name' => 'action',
+        ],
+        [
+            'handler' => [
+                'Flight\\Routing\\Tests\\Fixtures\\Annotation\\Route\\Valid\\MethodOnRoutePattern',
+                'handleSomething',
+            ],
+            'prefix' => '/testing',
+            'path' => '/testing/',
+            'methods' => [
+                'GET' => true,
+                'HEAD' => true,
+            ],
         ],
     ]
     EOT, debugFormat($routes));

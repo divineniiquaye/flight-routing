@@ -82,6 +82,10 @@ function debugFormat(mixed $value, $indent = ''): string
         foreach ($value as $k => $v) {
             $code .= $subIndent;
 
+            if (\in_array($k, ['path', 'prefix'], true) && \is_string($v)) {
+                $v = '/'.\ltrim($v, '/');
+            }
+
             if (!\is_int($k) || 1 !== $k - $j) {
                 $code .= debugFormat($k, $subIndent).' => ';
             }
