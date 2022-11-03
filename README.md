@@ -186,7 +186,7 @@ As of Version 2.0, flight routing is very much stable and can be used in product
 
 > Kindly take note of these before using:
 > * Avoid declaring the same pattern of dynamic route multiple times (eg. `/hello/{name}`), instead use static paths if you choose use same route path with multiple configurations.
-> * Route handlers prefixed with a `\` (eg. `\HelloClass` or `['\HelloClass', 'handle']`) should be avoided if you choose to use a different resolver other the default hander's RouteInvoker class.
+> * Route handlers prefixed with a `\` (eg. `\HelloClass` or `['\HelloClass', 'handle']`) should be avoided if you choose to use a different resolver other the default handler's RouteInvoker class.
 > * If you decide again to use a custom route's handler resolver, I recommend you include the static `resolveRoute` method from the default's route's RouteInvoker class.
 
 ## 📓 Documentation
