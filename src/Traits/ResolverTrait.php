@@ -3,10 +3,10 @@
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.4 and above required
+ * PHP version 8.0 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
- * @copyright 2019 Biurad Group (https://biurad.com/)
+ * @copyright 2019 Divine Niiquaye Ibok (https://divinenii.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
  * For the full copyright and license information, please view the LICENSE
@@ -74,10 +74,10 @@ trait ResolverTrait
         $errors = [[], []];
 
         foreach ($this->getCollection()->getRoutes() as $i => $r) {
-            if (isset($r['prefix']) && !\str_starts_with($path, $r['prefix'])) {
+            if (isset($r['prefix']) && !\str_starts_with($path, '/'.\ltrim($r['prefix'], '/'))) {
                 continue;
             }
-            [$p, $v] = $this->optimized[$i] ??= $this->compiler->compile($r['path'], $r['placeholders'] ?? []);
+            [$p, $v] = $this->optimized[$i] ??= $this->compiler->compile('/'.\ltrim($r['path'], '/'), $r['placeholders'] ?? []);
 
             if (\preg_match($p, $path, $m, \PREG_UNMATCHED_AS_NULL)) {
                 if (!$this->assertRoute($method, $uri, $r, $errors)) {

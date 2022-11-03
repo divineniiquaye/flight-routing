@@ -1,14 +1,12 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 /*
  * This file is part of Flight Routing.
  *
- * PHP version 7.4 and above required
+ * PHP version 8.0 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
- * @copyright 2019 Biurad Group (https://biurad.com/)
+ * @copyright 2019 Divine Niiquaye Ibok (https://divinenii.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
  * For the full copyright and license information, please view the LICENSE
@@ -114,7 +112,7 @@ trait PrototypeTrait
             $this->routes[$this->defaultIndex]['prefix'] = $m[1] ?? null;
         }
 
-        $this->routes[$this->defaultIndex]['path'] = '/'.\ltrim($pattern, '/');
+        $this->routes[$this->defaultIndex]['path'] = $pattern;
 
         return $this;
     }
@@ -407,17 +405,7 @@ trait PrototypeTrait
      */
     public function prefix(string $path): self
     {
-        $resolver = static function (string $prefix, string $path): string {
-            if ('/' !== ($prefix[0] ?? '')) {
-                $prefix = '/'.$prefix;
-            }
-
-            if ($prefix[-1] === $path[0] || 1 === \preg_match('/^\W+$/', $prefix[-1])) {
-                return $prefix.\substr($path, 1);
-            }
-
-            return $prefix.$path;
-        };
+        $resolver = fn (string $a, string $b): string => $a.(($a[-1] ?? '') === $b[0] ? \substr($b, 1) : $b);
 
         if ($this->asRoute) {
             \preg_match(
