@@ -34,36 +34,26 @@ trait ResolverTrait
      */
     protected function assertRoute(string $method, UriInterface $uri, array &$route, array &$errors): bool
     {
-        if (!\array_key_exists($method, $route['methods'] ?? [])) {
+        $matched = true;
+
+        if (!isset($route['methods'][$method])) {
             $errors[0] += $route['methods'] ?? [];
-
-            return false;
-        }
-
-        if (\array_key_exists('hosts', $route)) {
+            $matched = false;
+        } elseif (isset($route['hosts']) && !isset($route['hosts'][$errors[2] ??= \rtrim($uri->getHost().':'.$uri->getPort(), ':')])) {
             $hosts = \array_keys($route['hosts'], true, true);
             [$hostsRegex, $hostVar] = $this->compiler->compile(\implode('|', $hosts), $route['placeholders'] ?? []);
 
-            if (!\preg_match($hostsRegex.'i', $errors[2] ??= \rtrim($uri->getHost().':'.$uri->getPort(), ':'), $matches, \PREG_UNMATCHED_AS_NULL)) {
-                return false;
+            if ($matched = 1 === \preg_match($hostsRegex.'i', $errors[2], $matches, \PREG_UNMATCHED_AS_NULL)) {
+                foreach ($hostVar as $key => $value) {
+                    $route['arguments'][$key] = $matches[$key] ?? $route['defaults'][$key] ?? $value;
+                }
             }
-
-            foreach ($hostVar as $key => $value) {
-                $route['arguments'][$key] = $matches[$key] ?? $route['defaults'][$key] ?? $value;
-            }
+        } elseif (isset($route['schemes']) && !isset($route['schemes'][$uri->getScheme()])) {
+            $errors[1] += $route['schemes'] ?? [];
+            $matched = false;
         }
 
-        if (\array_key_exists('schemes', $route)) {
-            $hasScheme = isset($route['schemes'][$uri->getScheme()]);
-
-            if (!$hasScheme) {
-                $errors[1] += $route['schemes'] ?? [];
-
-                return false;
-            }
-        }
-
-        return true;
+        return $matched;
     }
 
     /**
