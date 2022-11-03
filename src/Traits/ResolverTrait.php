@@ -69,17 +69,15 @@ trait ResolverTrait
             }
             [$p, $v] = $this->optimized[$i] ??= $this->compiler->compile($r['path'], $r['placeholders'] ?? []);
 
-            if (\preg_match($p, $path, $m, \PREG_UNMATCHED_AS_NULL)) {
-                if (!$this->assertRoute($method, $uri, $r, $errors)) {
-                    continue;
-                }
-
-                foreach ($v as $key => $value) {
-                    $r['arguments'][$key] = $m[$key] ?? $r['defaults'][$key] ?? $value;
-                }
-
-                return $r;
+            if (!\preg_match($p, $path, $m, \PREG_UNMATCHED_AS_NULL) || !$this->assertRoute($method, $uri, $r, $errors)) {
+                continue;
             }
+
+            foreach ($v as $key => $value) {
+                $r['arguments'][$key] = $m[$key] ?? $r['defaults'][$key] ?? $value;
+            }
+
+            return $r;
         }
 
         return $this->resolveError($errors, $method, $uri);
