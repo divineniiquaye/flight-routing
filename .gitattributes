@@ -14,3 +14,5 @@
 /phpunit.xml.dist     export-ignore
 /psalm.xml.dist       export-ignore
 /tests                export-ignore
+/BENCHMARK.txt        export-ignore
+/phpbench.json        export-ignore
