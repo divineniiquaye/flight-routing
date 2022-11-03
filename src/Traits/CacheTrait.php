@@ -122,9 +122,9 @@ trait CacheTrait
         $this->optimized = [[], [[], []]];
 
         foreach ($collection->getRoutes() as $i => $route) {
-            $trimmed = \preg_replace('/\W$/', '', $path = $route['path']);
+            $trimmed = \preg_replace('/\W$/', '', $path = '/'.\ltrim($route['path'], '/'));
 
-            if (\in_array($prefix = $route['prefix'] ?? '/', [$trimmed, $path], true)) {
+            if (\in_array($prefix = '/'.\ltrim($route['prefix'] ?? '/', '/') ?? '/', [$trimmed, $path], true)) {
                 $this->optimized[0][$trimmed ?: '/'][] = $i;
                 continue;
             }
