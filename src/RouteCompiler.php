@@ -53,7 +53,7 @@ final class RouteCompiler implements RouteCompilerInterface
      * - /{var=foo} - A required variable with default value
      * - /{var}[.{format:(html|php)=html}] - A required variable with an optional variable, a rule & default
      */
-    private const COMPILER_REGEX = '~\{(\w+)(?:\:(.*?\}?))?(?:\=(.*?))?\}~i';
+    private const COMPILER_REGEX = '~\{(\w+)(?:\:(.*?[\}=]?))?(?:\=(.*?))?\}~i';
 
     /**
      * This regex is used to reverse a pattern path, matching required and options vars.
