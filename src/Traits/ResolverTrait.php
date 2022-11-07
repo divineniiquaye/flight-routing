@@ -45,7 +45,7 @@ trait ResolverTrait
 
             if ($matched = 1 === \preg_match($hostsRegex.'i', $errors[2], $matches, \PREG_UNMATCHED_AS_NULL)) {
                 foreach ($hostVar as $key => $value) {
-                    $route['arguments'][$key] = $matches[$key] ?? $route['defaults'][$key] ?? $value;
+                    $route['arguments'][$key] = $matches[$key] ?: $route['defaults'][$key] ?? $value;
                 }
             }
         } elseif (isset($route['schemes']) && !isset($route['schemes'][$uri->getScheme()])) {
@@ -114,7 +114,7 @@ trait ResolverTrait
                         $i = 0;
 
                         foreach ($this->optimized[1][1][$o] ?? [] as $key => $value) {
-                            $r['arguments'][$key] = $m[++$i] ?? $r['defaults'][$key] ?? $value;
+                            $r['arguments'][$key] = $m[++$i] ?: $r['defaults'][$key] ?? $value;
                         }
 
                         return $r;
