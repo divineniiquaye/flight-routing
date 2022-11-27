@@ -36,10 +36,10 @@ trait ResolverTrait
     {
         $matched = true;
 
-        if (!isset($route['methods'][$method])) {
+        if (!\array_key_exists($method, $route['methods'] ?? [])) {
             $errors[0] += $route['methods'] ?? [];
             $matched = false;
-        } elseif (isset($route['hosts']) && !isset($route['hosts'][$errors[2] ??= \rtrim($uri->getHost().':'.$uri->getPort(), ':')])) {
+        } elseif (isset($route['hosts']) && !\array_key_exists($errors[2] ??= \rtrim($uri->getHost().':'.$uri->getPort(), ':'), $route['hosts'])) {
             $hosts = \array_keys($route['hosts'], true, true);
             [$hostsRegex, $hostVar] = $this->compiler->compile(\implode('|', $hosts), $route['placeholders'] ?? []);
 
@@ -48,7 +48,7 @@ trait ResolverTrait
                     $route['arguments'][$key] = $matches[$key] ?: $route['defaults'][$key] ?? $value;
                 }
             }
-        } elseif (isset($route['schemes']) && !isset($route['schemes'][$uri->getScheme()])) {
+        } elseif (isset($route['schemes']) && !\array_key_exists($uri->getScheme(), $route['schemes'])) {
             $errors[1] += $route['schemes'] ?? [];
             $matched = false;
         }
