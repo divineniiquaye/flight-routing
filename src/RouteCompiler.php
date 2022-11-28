@@ -135,7 +135,7 @@ final class RouteCompiler implements RouteCompilerInterface
                     throw new UriHandlerException(\sprintf('Route pattern "%s" cannot reference variable name "%s" more than once.', $route, $varName));
                 }
 
-                $segment = self::SEGMENT_TYPES[$segment] ?? $segment ?? self::prepareSegment($varName, $placeholders);
+                $segment = self::SEGMENT_TYPES[$segment] ?? self::prepareSegment($varName, $placeholders[$varName] ?? $segment);
                 [$variables[$varName], $replaces[$placeholder]] = !$reversed ? [$default, '(?P<'.$varName.'>'.$segment.')'] : [[$segment, $default], '<'.$varName.'>'];
             }
         }
@@ -247,16 +247,8 @@ final class RouteCompiler implements RouteCompilerInterface
      *
      * @param array<string,mixed> $requirements
      */
-    private static function prepareSegment(string $name, array $requirements): string
+    private static function prepareSegment(string $name, string|array|null $segment): string
     {
-        if (!\array_key_exists($name, $requirements)) {
-            return self::DEFAULT_SEGMENT;
-        }
-
-        if (!\is_array($segment = $requirements[$name])) {
-            return self::sanitizeRequirement($name, $segment);
-        }
-
-        return \implode('|', $segment);
+        return null === $segment ? self::DEFAULT_SEGMENT : (!\is_array($segment) ? self::sanitizeRequirement($name, $segment) : \implode('|', $segment));
     }
 }
