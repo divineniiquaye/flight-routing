@@ -245,7 +245,7 @@ final class RouteCompiler implements RouteCompilerInterface
     /**
      * Prepares segment pattern with given constrains.
      *
-     * @param array<string,mixed> $requirements
+     * @param null|array<int,string>|string $segment
      */
     private static function prepareSegment(string $name, string|array|null $segment): string
     {
