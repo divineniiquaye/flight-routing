@@ -91,36 +91,26 @@ trait ResolverTrait
         $errors = [[], []];
         $routes = $this->optimized[2] ?? $this->doCache();
 
-        foreach ($this->optimized[0][$path] ?? $this->optimized[1][0] ?? [] as $s => $h) {
-            if (\is_int($s)) {
-                $r = $routes[$h] ?? $routes->getRoutes()[$h];
+        if (!$matched = $this->optimized[0][$path] ?? $this->optimized[1][0]($path)) {
+            return null;
+        }
 
-                if (!$this->assertRoute($method, $uri, $r, $errors)) {
-                    continue;
-                }
+        foreach ($matched as $match) {
+            $r = $routes[$o = \intval($match['MARK'] ?? $match)] ?? $routes->getRoutes()[$o];
 
-                return $r;
-            }
-
-            if (!\str_starts_with($path, $s)) {
+            if (!$this->assertRoute($method, $uri, $r, $errors)) {
                 continue;
             }
 
-            foreach ($h as $p) {
-                if (\preg_match($p, $path, $m, \PREG_UNMATCHED_AS_NULL)) {
-                    $r = $routes[$o = (int) $m['MARK']] ?? $routes->getRoutes()[$o];
+            if (isset($match['MARK'])) {
+                $i = 0;
 
-                    if ($this->assertRoute($method, $uri, $r, $errors)) {
-                        $i = 0;
-
-                        foreach ($this->optimized[1][1][$o] ?? [] as $key => $value) {
-                            $r['arguments'][$key] = $m[++$i] ?: $r['defaults'][$key] ?? $value;
-                        }
-
-                        return $r;
-                    }
+                foreach ($this->optimized[1][1][$o] ?? [] as $key => $value) {
+                    $r['arguments'][$key] = $match[++$i] ?: $r['defaults'][$key] ?? $value;
                 }
             }
+
+            return $r;
         }
 
         return $this->resolveError($errors, $method, $uri);

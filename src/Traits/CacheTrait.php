@@ -123,19 +123,21 @@ trait CacheTrait
             if (\function_exists('opcache_invalidate') && \filter_var(\ini_get('opcache.enable'), \FILTER_VALIDATE_BOOLEAN)) {
                 @\opcache_invalidate($this->cache, true);
             }
+
+            $this->optimized = require $this->cache;
         }
     }
 
     protected function buildCache(RouteCollection $collection, bool $doCache): string
     {
-        $dynamicRoutes = [];
-        $this->optimized = [[], [[], []]];
+        $dynamicRoutes = $dynamicVar = $staticRoutes = [];
+        $dynamicString = ":static function (string \$path): ?array {\n      ";
 
         foreach ($collection->getRoutes() as $i => $route) {
             $trimmed = \preg_replace('/\W$/', '', $path = '/'.\ltrim($route['path'], '/'));
 
             if (\in_array($prefix = '/'.\ltrim($route['prefix'] ?? '/', '/') ?? '/', [$trimmed, $path], true)) {
-                $this->optimized[0][$trimmed ?: '/'][] = $i;
+                $staticRoutes[$trimmed ?: '/'][] = $i;
                 continue;
             }
             [$path, $var] = $this->getCompiler()->compile($path, $route['placeholders'] ?? []);
@@ -158,19 +160,26 @@ trait CacheTrait
                 }
             }
             $dynamicRoutes[$prefix][] = \preg_replace('#\?(?|P<\w+>|<\w+>|\'\w+\')#', '', $path)."(*:{$i})";
-            $this->optimized[1][1][$i] = $var;
+            $dynamicVar[$i] = $var;
         }
-        \ksort($this->optimized[0], \SORT_NATURAL);
+        \ksort($staticRoutes, \SORT_NATURAL);
         \uksort($dynamicRoutes, fn (string $a, string $b): int => \in_array('/', [$a, $b], true) ? \strcmp($b, $a) : \strcmp($a, $b));
 
         foreach ($dynamicRoutes as $offset => $paths) {
             $numParts = \max(1, \round(($c = \count($paths)) / 30));
-
-            foreach (\array_chunk($paths, (int) \ceil($c / $numParts)) as $chunk) {
-                $this->optimized[1][0]['/'.\ltrim($offset, '/')][] = '~^(?|'.\implode('|', $chunk).')$~';
-            }
+            $prefix = '/'.\ltrim($offset, '/');
+            $indent = '      ';
+            $chunks = self::export(\array_map(fn (array $p): string => "~^(?|".implode('|', $p).")$~", \array_chunk($paths, (int) \ceil($c / $numParts))), $indent);
+            $dynamicString .= <<<PHP
+            if (\str_starts_with(\$path, '$prefix')) { foreach($chunks as \$p) { if (!\preg_match(\$p, \$path, \$m)) continue; return [\$m]; }}
+                  else
+            PHP;
         }
 
-        return self::export([...$this->optimized, $doCache ? $collection : null]);
+        if (\str_ends_with($dynamicString, 'else')) {
+            $dynamicString = \substr($dynamicString, 0, -4);
+        }
+
+        return self::export([$staticRoutes, [$dynamicString."return null;\n    }:", $dynamicVar], $doCache ? $collection : null]);
     }
 }
