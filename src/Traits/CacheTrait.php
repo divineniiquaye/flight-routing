@@ -67,6 +67,8 @@ trait CacheTrait
                 }
 
                 return \rtrim($code, ', ').$indent.']';
+            case (\is_string($value) && (':' === $value[0] && ':' === $value[-1])):
+                return \substr($value, 1, -1);
             case $value instanceof ResourceHandler:
                 return $value::class.'('.self::export($value(''), $indent).')';
             case $value instanceof \stdClass:
