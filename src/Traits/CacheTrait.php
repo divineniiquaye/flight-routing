@@ -44,9 +44,17 @@ trait CacheTrait
             case [] === $value:
                 return '[]';
             case \is_array($value):
+                if (!($t = \count($value, \COUNT_RECURSIVE) > 15) && \array_is_list($value)) {
+                    \array_walk($value, function ($v) use (&$t, $value) {
+                        if (\count($value) > 1 && \is_string($v) && \strlen($v) > 100) {
+                            $t = true;
+                        }
+                    });
+                }
+
                 $j = -1;
-                $code = ($t = \count($value, \COUNT_RECURSIVE)) > 15 ? "[\n" : '[';
-                $subIndent = $t > 15 ? $indent.'  ' : $indent = '';
+                $code = $t ? "[\n" : '[';
+                $subIndent = $t ? $indent.'  ' : $indent = '';
 
                 foreach ($value as $k => $v) {
                     $code .= $subIndent;
@@ -55,7 +63,7 @@ trait CacheTrait
                         $code .= self::export($k, $subIndent).' => ';
                     }
 
-                    $code .= self::export($v, $subIndent).($t > 15 ? ",\n" : ', ');
+                    $code .= self::export($v, $subIndent).($t ? ",\n" : ', ');
                 }
 
                 return \rtrim($code, ', ').$indent.']';
