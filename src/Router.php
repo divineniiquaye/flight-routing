@@ -87,7 +87,7 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
      */
     public function match(string $method, UriInterface $uri): ?array
     {
-        return $this->optimized[$method.$uri->__toString()] ??= [$this, $this->cache ? 'resolveCache' : 'resolveRoute'](
+        return $this->optimized[$method.$uri->__toString()] ??= $this->{$this->cache ? 'resolveCache' : 'resolveRoute'}(
             \rtrim(\rawurldecode($uri->getPath()), '/') ?: '/',
             $method,
             $uri
