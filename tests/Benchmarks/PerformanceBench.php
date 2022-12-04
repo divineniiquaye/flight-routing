@@ -31,7 +31,7 @@ final class PerformanceBench extends RouteBench
     {
         $router = new Router(null, $cache);
         $router->setCollection(static function (RouteCollection $routes): void {
-            for ($i = 1; $i < self::MAX_ROUTES; ++$i) {
+            for ($i = 0; $i < self::MAX_ROUTES; ++$i) {
                 if (199 === $i) {
                     $routes->add('//localhost.com/route'.$i, ['GET'])->bind('static-'.$i);
                     $routes->add('//{host}/route{foo}/'.$i, ['GET'])->bind('no-static-'.$i);
