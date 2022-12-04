@@ -62,12 +62,11 @@
             "@phpcs",
             "@phpstan",
             "@psalm",
-            "@phpunit"
+            "@pest"
         ]
     },
     "config": {
         "allow-plugins": {
-            "composer/package-versions-deprecated": false,
             "pestphp/pest-plugin": true
         }
     },
