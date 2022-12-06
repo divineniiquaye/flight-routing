@@ -57,10 +57,7 @@ trait PrototypeTrait
         }
 
         foreach (\array_filter($routeData) as $routeMethod => $arguments) {
-            \call_user_func_array(
-                [$this, $routeMethod],
-                (!\is_array($arguments) || \count($arguments) > 1 && !\array_is_list($arguments)) ? [$arguments] : $arguments
-            );
+            $this->{$routeMethod}(...(!\is_array($arguments) || (\count($arguments) > 1 && !\array_is_list($arguments)) ? [$arguments] : $arguments));
         }
 
         return $this;
@@ -531,7 +528,7 @@ trait PrototypeTrait
         foreach ($this->groups as $group) {
             $asRoute = $group->asRoute;
             $group->asRoute = false;
-            \call_user_func_array([$group, $method], $arguments);
+            $group->{$method}(...$arguments);
             $group->asRoute = $asRoute;
         }
     }
