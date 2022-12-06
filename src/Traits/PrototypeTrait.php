@@ -164,10 +164,10 @@ trait PrototypeTrait
         if ($this->asRoute) {
             $this->routes[$this->defaultIndex]['defaults'][$variable] = $default;
         } elseif (-1 === $this->defaultIndex && empty($this->groups)) {
-            $this->prototypes['defaults'] = \array_merge_recursive($this->prototypes['defaults'] ?? [], [$variable => $default]);
+            $this->prototypes['defaults'][$variable] = $default;
         } else {
             foreach ($this->routes as &$route) {
-                $route['defaults'] = \array_merge_recursive($route['defaults'] ?? [], [$variable => $default]);
+                $route['defaults'][$variable] = $default;
             }
             $this->resolveGroup(__FUNCTION__, [$variable, $default]);
         }
@@ -203,10 +203,10 @@ trait PrototypeTrait
         if ($this->asRoute) {
             $this->routes[$this->defaultIndex]['placeholders'][$variable] = $regexp;
         } elseif (-1 === $this->defaultIndex && empty($this->groups)) {
-            $this->prototypes['placeholders'] = \array_merge_recursive($this->prototypes['placeholders'] ?? [], [$variable => $regexp]);
+            $this->prototypes['placeholders'][$variable] = $regexp;
         } else {
             foreach ($this->routes as &$route) {
-                $route['placeholders'] = \array_merge_recursive($route['placeholders'] ?? [], [$variable => $regexp]);
+                $route['placeholders'][$variable] = $regexp;
             }
 
             $this->resolveGroup(__FUNCTION__, [$variable, $regexp]);
@@ -243,10 +243,10 @@ trait PrototypeTrait
         if ($this->asRoute) {
             $this->routes[$this->defaultIndex]['arguments'][$parameter] = $resolver($value);
         } elseif (-1 === $this->defaultIndex && empty($this->groups)) {
-            $this->prototypes['arguments'] = \array_merge_recursive($this->prototypes['arguments'] ?? [], [$parameter => $value]);
+            $this->prototypes['arguments'][$parameter] = $resolver($value);
         } else {
             foreach ($this->routes as &$route) {
-                $route['arguments'] = \array_merge_recursive($route['arguments'] ?? [], [$parameter => $resolver($value)]);
+                $route['arguments'][$parameter] = $resolver($value);
             }
             $this->resolveGroup(__FUNCTION__, [$parameter, $value]);
         }
