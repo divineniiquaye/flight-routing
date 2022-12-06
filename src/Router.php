@@ -69,10 +69,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Set a route collection instance into Router in order to use addRoute method.
      *
+     * @param \Closure|RouteCollection|null $collection
      * @param null|string $cache file path to store compiled routes
      */
     public static function withCollection(
-        \Closure|RouteCollection $collection = null,
+        \Closure|RouteCollection|null $collection = null,
         RouteCompilerInterface $compiler = null,
         string $cache = null
     ): static {
@@ -157,11 +158,11 @@ class Router implements RouteMatcherInterface, RequestMethodInterface, Middlewar
     /**
      * Sets the RouteCollection instance associated with this Router.
      *
-     * @param (callable(RouteCollection): void) $routeDefinitionCallback takes only one parameter of route collection
+     * @param \Closure|RouteCollection $collection
      */
-    public function setCollection(callable $routeDefinitionCallback): void
+    public function setCollection(\Closure|RouteCollection $collection): void
     {
-        $this->collection = $routeDefinitionCallback;
+        $this->collection = $collection;
     }
 
     /**
