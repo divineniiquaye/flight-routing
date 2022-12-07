@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+2.1
+===
+
+* [BC BREAK] Replaced `array_merge_recursive` in route to allow total replacement of route vars
+* Added support to the router's `setCollection` method to strictly accept type of closure or route collection
+* Improved route match performance tremendously nearly over 30% faster than previous version
+
 2.0
 ===
 
