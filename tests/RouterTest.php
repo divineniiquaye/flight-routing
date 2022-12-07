@@ -247,6 +247,12 @@ test('if router can be resolvable', function (int $cache): void {
         }
     }
 
+    try {
+        $router->match(Router::METHOD_DELETE, new Uri('/a/22'));
+    } catch (MethodNotAllowedException $e) {
+        t\assertSame('Route with "/a/22" path requires request method(s) [GET], "DELETE" is invalid.', $e->getMessage());
+    }
+
     $route1 = $router->match(Router::METHOD_GET, new Uri('/fr/blog'));
     $route2 = $router->matchRequest(new ServerRequest(Router::METHOD_GET, 'http://localhost/chuck12/hello/1/2'));
     $route3 = $router->matchRequest(new ServerRequest(Router::METHOD_GET, '/a/333'));
