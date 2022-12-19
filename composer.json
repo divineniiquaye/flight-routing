@@ -34,7 +34,7 @@
         "phpunit/phpunit": "^9.5",
         "spiral/attributes": "^2.9",
         "squizlabs/php_codesniffer": "^3.6",
-        "vimeo/psalm": "^4.23"
+        "vimeo/psalm": "^5.3"
     },
     "suggest": {
         "biurad/annotations": "For annotation routing on classes and methods using Annotation/Listener class",
