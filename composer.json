@@ -26,7 +26,7 @@
     "require-dev": {
         "biurad/annotations": "^1.0",
         "divineniiquaye/php-invoker": "^0.9",
-        "doctrine/annotations": "^1.11",
+        "doctrine/annotations": "^2.0",
         "nyholm/psr7": "^1.4",
         "nyholm/psr7-server": "^1.0",
         "pestphp/pest": "^1.21",
